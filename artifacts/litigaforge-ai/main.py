@@ -184,7 +184,7 @@ async def list_chains():
             {"name": "MEE_SEVA_TG",  "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
             {"name": "TRANSPORT_TS", "description": "Telangana Transport Dept — DL & RC via Parivahan/API Setu"},
         ],
-        "note": "Set API_SETU_KEY in .env for live data. Realistic mock data returned in dummy mode.",
+        "note": "Live sandbox mode active (sandbox.api-setu.in). Set MEESEVA_USE_PROD=true + production API_SETU_KEY for real citizen data." if os.getenv("API_SETU_KEY") else "Set API_SETU_KEY to enable live sandbox calls via API Setu.",
     }
 
 
