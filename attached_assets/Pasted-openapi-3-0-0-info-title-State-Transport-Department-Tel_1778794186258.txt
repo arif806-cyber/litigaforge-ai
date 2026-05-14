@@ -1,0 +1,281 @@
+openapi: 3.0.0
+info:
+  title: State Transport Department, Telangana
+  description: Driving License (DL) and Vehicle Registration Certificate (RC) of the
+    State, as available on Parivahan Sewa (https://parivahan.gov.in/) of Ministry
+    of Road Transport and Highways, are available on DigiLocker. Citizens can pull
+    these documents into their DigiLocker accounts.
+  version: 1.0.0
+servers:
+- url: https://sandbox.api-setu.in/
+  description: Sandbox
+- url: https://apisetu.gov.in/
+  description: Production
+tags:
+- name: APIs
+paths:
+  /certificate/v3/transportts/drvlc:
+    parameters:
+    - name: X-APISETU-APIKEY
+      in: header
+      required: true
+      schema:
+        type: string
+        example: demokey123456ABCD789
+        default: demokey123456ABCD789
+    - name: X-APISETU-CLIENTID
+      in: header
+      required: true
+      schema:
+        type: string
+        example: in.gov.sandbox
+        default: in.gov.sandbox
+    - name: Content-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        example: application/json
+        default: application/json
+    post:
+      tags:
+      - APIs
+      summary: Driving License
+      description: API to verify Driving License
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: invalid_parameter
+                  errorDescription: Bad request
+        '401':
+          description: Unauthorized access
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: invalid_authentication
+                  errorDescription: Authentication failed
+        '404':
+          description: No Record Found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: record_not_found
+                  errorDescription: No record found!
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: internal_server_error
+                  errorDescription: Internal server error
+        '502':
+          description: Bad gateway
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: bad_gateway
+                  errorDescription: Publisher service returned an invalid response.
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: service_unavailable
+                  errorDescription: Publisher service is temporarily unavailable
+        '504':
+          description: Gateway timeout
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: gateway_timeout
+                  errorDescription: Publisher service did not respond in time
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                txnId: f7f1469c-29b0-4325-9dfc-c567200a70f7
+                format: xml
+                certificateParameters:
+                  dlno: Ex. JH02/2009/236543
+                consentArtifact:
+                  consent:
+                    consentId: ea9c43aa-7f5a-4bf3-a0be-e1caa24737ba
+                    timestamp: '2024-12-03T11:07:33.974Z'
+                    dataConsumer:
+                      id: string
+                    dataProvider:
+                      id: string
+                    purpose:
+                      description: string
+                    user:
+                      idType: string
+                      idNumber: string
+                      mobile: '9988776655'
+                      email: test@email.com
+                    data:
+                      id: string
+                    permission:
+                      access: string
+                      dateRange:
+                        from: '2024-12-03T11:07:33.974Z'
+                        to: '2024-12-03T11:07:33.974Z'
+                      frequency:
+                        unit: string
+                        value: 0
+                        repeats: 0
+                  signature:
+                    signature: string
+  /certificate/v3/transportts/rvcer:
+    parameters:
+    - name: X-APISETU-APIKEY
+      in: header
+      required: true
+      schema:
+        type: string
+        example: demokey123456ABCD789
+        default: demokey123456ABCD789
+    - name: X-APISETU-CLIENTID
+      in: header
+      required: true
+      schema:
+        type: string
+        example: in.gov.sandbox
+        default: in.gov.sandbox
+    - name: Content-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        example: application/json
+        default: application/json
+    post:
+      tags:
+      - APIs
+      summary: Registration of Vehicles
+      description: API to verify Registration of Vehicles
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: invalid_parameter
+                  errorDescription: Bad request
+        '401':
+          description: Unauthorized access
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: invalid_authentication
+                  errorDescription: Authentication failed
+        '404':
+          description: No Record Found
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: record_not_found
+                  errorDescription: No record found!
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: internal_server_error
+                  errorDescription: Internal server error
+        '502':
+          description: Bad gateway
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: bad_gateway
+                  errorDescription: Publisher service returned an invalid response.
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: service_unavailable
+                  errorDescription: Publisher service is temporarily unavailable
+        '504':
+          description: Gateway timeout
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  error: gateway_timeout
+                  errorDescription: Publisher service did not respond in time
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                txnId: f7f1469c-29b0-4325-9dfc-c567200a70f7
+                format: xml
+                certificateParameters:
+                  reg_no: DL01AA0101 As per your Vehicle Registration Certificate
+                  chasis_no: MBLKC12EFBGJ08420
+                consentArtifact:
+                  consent:
+                    consentId: ea9c43aa-7f5a-4bf3-a0be-e1caa24737ba
+                    timestamp: '2024-12-03T11:07:33.974Z'
+                    dataConsumer:
+                      id: string
+                    dataProvider:
+                      id: string
+                    purpose:
+                      description: string
+                    user:
+                      idType: string
+                      idNumber: string
+                      mobile: '9988776655'
+                      email: test@email.com
+                    data:
+                      id: string
+                    permission:
+                      access: string
+                      dateRange:
+                        from: '2024-12-03T11:07:33.974Z'
+                        to: '2024-12-03T11:07:33.974Z'
+                      frequency:
+                        unit: string
+                        value: 0
+                        repeats: 0
+                  signature:
+                    signature: string
