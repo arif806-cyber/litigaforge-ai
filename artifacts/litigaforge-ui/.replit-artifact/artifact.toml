@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "LitigaForge AI"
+version = "1.0.0"
+id = "artifacts/litigaforge-ui"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23790
+
+[services.development]
+run = "pnpm --filter @workspace/litigaforge-ui run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/litigaforge-ui", "run", "build" ]
+publicDir = "artifacts/litigaforge-ui/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23790"
+BASE_PATH = "/"
