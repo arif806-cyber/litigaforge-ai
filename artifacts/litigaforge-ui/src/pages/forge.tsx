@@ -124,6 +124,15 @@ export default function Forge() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
+  // Pre-fill from Use Cases page
+  useEffect(() => {
+    const prefill = sessionStorage.getItem("forge_prefill");
+    if (prefill) {
+      setPrompt(prefill);
+      sessionStorage.removeItem("forge_prefill");
+    }
+  }, []);
+
   const forge = useMutation({
     mutationFn: (p: string) =>
       apiFetch("/forge", {

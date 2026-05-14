@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Scale, FileText, Link2, Activity, Clock, Menu, X } from "lucide-react";
+import { Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/", label: "Forge", icon: Scale },
   { href: "/cases", label: "Cases", icon: FileText },
   { href: "/chains", label: "Chains", icon: Link2 },
+  { href: "/use-cases", label: "Use Cases", icon: Lightbulb },
 ];
 
 function AnimatedCounter({ value }: { value: number }) {

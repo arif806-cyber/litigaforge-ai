@@ -7,6 +7,7 @@ import Forge from "@/pages/forge";
 import Cases from "@/pages/cases";
 import CaseDetail from "@/pages/case-detail";
 import Chains from "@/pages/chains";
+import UseCases from "@/pages/use-cases";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/cases" component={Cases} />
         <Route path="/cases/:id" component={CaseDetail} />
         <Route path="/chains" component={Chains} />
+        <Route path="/use-cases" component={UseCases} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
