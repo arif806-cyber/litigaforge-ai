@@ -1,45 +1,62 @@
-# [Project name]
+# LitigaForge AI
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Legal AI tool for Telangana & AP advocates — extracts entities from case facts, runs 10 government API chains, and synthesises a legal strategy.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Backend runs via `LitigaForge AI` workflow: `cd artifacts/litigaforge-ai && PORT=5000 python main.py`
+- Frontend runs via `artifacts/litigaforge-ui: web` workflow: `pnpm --filter @workspace/litigaforge-ui run dev`
+- Production build: `PORT=23790 BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run build`
+- GitHub branch: `feature/arifbase` on `arif806-cyber/litigaforge-ai`
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Frontend: React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter
+- Backend: Python 3.12, FastAPI, LangGraph, LangChain, Uvicorn
+- Mobile: Expo (React Native), Expo Router, NativeWind — in `deployable/mobile/`
+- Fonts: Space Grotesk + JetBrains Mono (Google Fonts)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/litigaforge-ui/src/pages/` — forge.tsx, cases.tsx, chains.tsx, case-detail.tsx
+- `artifacts/litigaforge-ui/src/components/` — layout.tsx, graphics/ (ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt)
+- `artifacts/litigaforge-ui/src/lib/api.ts` — all API calls; BASE = "/litigaforge"
+- `artifacts/litigaforge-ai/main.py` — FastAPI app, all routes, router mounted at BASE_PATH
+- `artifacts/litigaforge-ai/api_chains/` — 10 government API chain modules
+- `deployable/` — self-contained Docker + mobile package for production deployment
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- BASE_PATH=/litigaforge: backend router mounts all routes at this prefix; proxy routes /litigaforge/* to port 5000
+- Dummy mode: all 10 chains return realistic mock data when OPENAI_API_KEY is absent
+- Tailwind v4: NEVER use `@apply dark` — use `document.documentElement.classList.add("dark")` in main.tsx
+- Mobile layout: sidebar hidden on mobile, replaced by hamburger drawer + fixed bottom tab bar (h-16); main content has `pb-16 md:pb-0`
+- Code splitting: vite.config.ts splits react-vendor, motion, query, ui into separate chunks
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- The Forge: input case facts → extract entities → run government API chains → get legal strategy
+- Cases: browse all previously forged cases, drill into full chain results
+- Chains: view all 10 API chains (GSTIN, PAN, eCourts, VAHAN, SARATHI, DigiLocker, BPCL LPG, MeriPehchaan, Mee Seva TG, Transport TS)
+- Watch Mode: background scheduler monitors cases for court date changes
+- WhatsApp alerts: hearing reminders via Twilio
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Stunning advanced UI with graphics — dark navy (#0a0f1e) / amber / gold theme, glassmorphism, particles
+- Full mobile compatibility (Android + iOS)
+- All work saved to GitHub: repo `arif806-cyber/litigaforge-ai`, branch `feature/arifbase`
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Never nest `<Link>` inside `<a>` — wouter's Link renders as `<a>`
+- ScalesHero is `hidden lg:block` — only shows on large screens
+- The standalone `LitigaForge AI` workflow runs without BASE_PATH; production uses BASE_PATH=/litigaforge
+- `data-testid` attributes must be preserved on all interactive elements
+- pnpm workspaces: run build/dev with `--filter @workspace/<name>`, never `pnpm dev` at root
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- See `deployable/README.md` for Docker deployment and mobile store submission guide
+- See `README.md` (root) for full project documentation
+- See the `pnpm-workspace` skill for workspace structure details
