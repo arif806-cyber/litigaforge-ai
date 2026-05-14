@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, ChevronRight, AlertTriangle, Scale } from "lucide-react";
+import { FileText, ChevronRight, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
+import { EmptyStateArt } from "@/components/graphics/EmptyStateArt";
 
 interface CaseListItem {
   case_id: string;
@@ -69,12 +70,9 @@ export default function Cases() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             data-testid="cases-empty"
-            className="flex flex-col items-center justify-center py-32 text-center"
+            className="flex flex-col items-center justify-center py-16 text-center"
           >
-            <div className="relative mb-6">
-              <Scale className="w-20 h-20 text-white/10" />
-              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
-            </div>
+            <EmptyStateArt className="w-56 h-44 mb-4" />
             <h3 className="text-xl font-bold text-white tracking-wide">No Cases Forged Yet</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-sm">
               Initiate your first legal strategy on the Forge page to populate the archives.
@@ -101,27 +99,26 @@ export default function Cases() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <Link href={`/cases/${c.case_id}`}>
-                    <a
-                      data-testid={`card-case-${c.case_id}`}
-                      className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group cursor-pointer"
-                    >
-                      {/* Timeline Dot */}
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full border-4 border-background bg-white/20 group-hover:bg-primary group-hover:border-primary/30 group-hover:shadow-[0_0_15px_hsl(var(--primary))] transition-all duration-300 absolute left-28 -translate-x-1/2 md:left-1/2" />
-                      
-                      <div className="w-[calc(100%-8rem)] md:w-[calc(50%-2rem)] glass-panel p-5 rounded-xl group-hover:-translate-y-1 group-hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.8)] group-hover:border-primary/30 transition-all duration-300 ml-auto md:ml-0">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm font-mono font-bold text-primary group-hover:text-primary/90 transition-colors drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">{c.case_id}</span>
-                          <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-primary transition-colors" />
-                        </div>
-                        <p className="text-sm text-white/80 leading-relaxed line-clamp-2">{c.prompt_preview}</p>
-                        <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground font-mono bg-black/40 px-2 py-1 rounded">
-                            {formatTime(c.timestamp)}
-                          </span>
-                        </div>
+                  <Link
+                    href={`/cases/${c.case_id}`}
+                    data-testid={`card-case-${c.case_id}`}
+                    className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group cursor-pointer"
+                  >
+                    {/* Timeline Dot */}
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full border-4 border-background bg-white/20 group-hover:bg-primary group-hover:border-primary/30 group-hover:shadow-[0_0_15px_hsl(var(--primary))] transition-all duration-300 absolute left-28 -translate-x-1/2 md:left-1/2" />
+                    
+                    <div className="w-[calc(100%-8rem)] md:w-[calc(50%-2rem)] glass-panel p-5 rounded-xl group-hover:-translate-y-1 group-hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.8)] group-hover:border-primary/30 transition-all duration-300 ml-auto md:ml-0">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-mono font-bold text-primary group-hover:text-primary/90 transition-colors drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">{c.case_id}</span>
+                        <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-primary transition-colors" />
                       </div>
-                    </a>
+                      <p className="text-sm text-white/80 leading-relaxed line-clamp-2">{c.prompt_preview}</p>
+                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground font-mono bg-black/40 px-2 py-1 rounded">
+                          {formatTime(c.timestamp)}
+                        </span>
+                      </div>
+                    </div>
                   </Link>
                 </motion.div>
               ))}

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { motion, useAnimation, useInView } from "framer-motion";
 import { useRef } from "react";
+import { ParticleCanvas } from "@/components/graphics/ParticleCanvas";
 
 const navItems = [
   { href: "/", label: "Forge", icon: Scale },
@@ -174,8 +175,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Main content */}
         <main className="flex-1 overflow-auto relative z-0" data-testid="main-content">
+          <ParticleCanvas />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
-          {children}
+          <div className="relative z-10 h-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

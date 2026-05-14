@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2, CircleDashed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { ScalesHero } from "@/components/graphics/ScalesHero";
+import { ChainDiagram } from "@/components/graphics/ChainDiagram";
 
 interface ChainMapItem { chain: string; status: string; }
 interface ForgeResult {
@@ -82,6 +84,11 @@ function PipelineLoading() {
         </div>
       </div>
 
+      {/* Pipeline flow diagram */}
+      <div className="relative z-10">
+        <ChainDiagram className="w-full max-w-2xl mx-auto opacity-70" />
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 relative z-10">
         {LOADING_CHAINS.map((chain, i) => {
           const status = i < activeIdx ? "done" : i === activeIdx ? "loading" : "pending";
@@ -155,24 +162,34 @@ export default function Forge() {
     <div className="h-full flex flex-col relative">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
       
-      {/* Header */}
-      <div className="px-10 py-8 flex-shrink-0 relative z-10">
-        <motion.h1 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold text-white tracking-tight flex items-center gap-3"
+      {/* Header with hero illustration */}
+      <div className="px-10 py-8 flex-shrink-0 relative z-10 flex items-start justify-between">
+        <div>
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl font-bold text-white tracking-tight flex items-center gap-3"
+          >
+            <Zap className="w-6 h-6 text-primary" />
+            The Forge
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-sm text-muted-foreground mt-2 max-w-xl leading-relaxed"
+          >
+            Input your case facts. LitigaForge will extract entities, execute government API chains, and synthesize a Supreme Court-grade legal strategy.
+          </motion.p>
+        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.8 }}
+          className="flex-shrink-0 hidden lg:block"
         >
-          <Zap className="w-6 h-6 text-primary" />
-          The Forge
-        </motion.h1>
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed"
-        >
-          Input your case facts. LitigaForge will extract entities, execute government API chains, and synthesize a Supreme Court-grade legal strategy.
-        </motion.p>
+          <ScalesHero className="w-56 h-44 opacity-80" />
+        </motion.div>
       </div>
 
       <div className="flex-1 overflow-auto px-10 pb-10 space-y-8 relative z-10">

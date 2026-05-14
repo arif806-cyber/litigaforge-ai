@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Info, Link2, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ChainDiagram } from "@/components/graphics/ChainDiagram";
 
 interface Chain {
   name: string;
@@ -57,7 +58,19 @@ export default function Chains() {
 
       <div className="flex-1 overflow-auto px-10 py-8 relative z-10">
         <div className="max-w-6xl space-y-8">
-          
+
+          {/* Architecture diagram */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-panel rounded-xl p-6 space-y-3"
+          >
+            <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <span className="w-4 h-px bg-white/20" /> Execution Architecture
+            </p>
+            <ChainDiagram className="w-full opacity-80" />
+          </motion.div>
+
           {/* Mode notice */}
           {health && (
             <motion.div
