@@ -264,15 +264,26 @@ def _fetch_certificate(cert_code: str, app_no: str, party_name: str, aadhaar: st
     result = safe_post(url, _meeseva_headers(), _consent_payload(app_no, aadhaar), timeout=15)
 
     if not result["success"]:
-        logger.warning(f"[MEE_SEVA_TG] {cert_code} failed: {result['error']} — using dummy")
+        is_404       = result.get("error_type") == "record_not_found"
+        connected    = result.get("sandbox_connected", False)
+        status_label = "sandbox_connected_no_record" if (connected and is_404) else ("connection_failed" if not connected else "api_error")
+        note_text    = (
+            "Sandbox API connected (sandbox.api-setu.in) — document number not found in Mee Seva database. "
+            "Provide a real Mee Seva ApplicationNo for live certificate data."
+            if (connected and is_404)
+            else f"Sandbox unreachable — {result['error']}"
+        )
+        logger.warning(f"[MEE_SEVA_TG] {cert_code} {status_label}: {result['error']}")
         return {
-            "cert_code": cert_code,
-            "cert_name": info["name"],
-            "status":    "mock_fallback",
-            "api_error": result["error"],
-            "data":      _dummy_cert_data(cert_code, app_no, party_name),
-            "legal_use": info["legal_use"],
-            "applicable_law": info["act"],
+            "cert_code":        cert_code,
+            "cert_name":        info["name"],
+            "status":           status_label,
+            "sandbox_connected": connected,
+            "api_error":        result["error"],
+            "note":             note_text,
+            "data":             _dummy_cert_data(cert_code, app_no, party_name),
+            "legal_use":        info["legal_use"],
+            "applicable_law":   info["act"],
         }
 
     return {

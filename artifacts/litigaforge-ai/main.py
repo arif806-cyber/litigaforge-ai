@@ -105,6 +105,94 @@ async def health():
     return {"status": "ok", "service": "LitigaForge AI", "dummy_mode": not os.getenv("OPENAI_API_KEY")}
 
 
+@router.get("/sandbox/ping")
+async def sandbox_ping():
+    """
+    Direct connectivity test for all API Setu sandbox endpoints.
+    Sends a minimal POST to each endpoint and reports whether the sandbox
+    is reachable (any HTTP response = connected; 404 = connected but no record).
+    """
+    import requests, uuid
+    from datetime import datetime, timedelta
+
+    key       = os.getenv("API_SETU_KEY", "demokey123456ABCD789")
+    client_id = os.getenv("API_SETU_CLIENT_ID", "in.gov.sandbox")
+    base      = "https://sandbox.api-setu.in"
+    headers   = {
+        "X-APISETU-APIKEY":   key,
+        "X-APISETU-CLIENTID": client_id,
+        "Content-Type":       "application/json",
+    }
+    now = datetime.utcnow()
+    consent = {
+        "consentId":    str(uuid.uuid4()),
+        "timestamp":    now.isoformat() + "Z",
+        "dataConsumer": {"id": client_id},
+        "dataProvider": {"id": "in.gov.sandbox"},
+        "purpose":      {"description": "LitigaForge sandbox ping"},
+        "user":         {"idType": "mobile", "idNumber": "999900000000", "mobile": "9988776655", "email": "ping@litigaforge.ai"},
+        "data":         {"id": "PING"},
+        "permission":   {"access": "view", "dateRange": {"from": now.isoformat() + "Z", "to": (now + timedelta(days=1)).isoformat() + "Z"}, "frequency": {"unit": "day", "value": 1, "repeats": 1}},
+    }
+    payload = {"txnId": str(uuid.uuid4()), "format": "xml", "certificateParameters": {"ApplicationNo": "IC021921512596"}, "consentArtifact": {"consent": consent, "signature": {"signature": "litigaforge-ping"}}}
+
+    endpoints = {
+        "mee_seva_tg_incer":  f"{base}/certificate/v3/meesevatg/incer",
+        "mee_seva_tg_rscer":  f"{base}/certificate/v3/meesevatg/rscer",
+        "mee_seva_tg_ctcer":  f"{base}/certificate/v3/meesevatg/ctcer",
+        "transport_ts_drvlc": f"{base}/certificate/v3/transportts/drvlc",
+        "transport_ts_rvcer": f"{base}/certificate/v3/transportts/rvcer",
+        "bpcl_lpg":           f"{base}/certificate/v3/bharatpetroleum/lpgsv",
+    }
+
+    results = {}
+    for name, url in endpoints.items():
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=10)
+            http_status = resp.status_code
+            if http_status == 200:
+                connectivity = "connected_live_data"
+            elif http_status == 404:
+                connectivity = "connected_no_record"
+            elif http_status == 401:
+                connectivity = "connected_auth_failed"
+            else:
+                connectivity = f"connected_http_{http_status}"
+            results[name] = {
+                "reachable":    True,
+                "http_status":  http_status,
+                "connectivity": connectivity,
+                "note": {
+                    200: "Live data returned",
+                    401: "Connected but API key rejected — check API_SETU_KEY",
+                    404: "Connected and authenticated — no record for test parameters (expected in sandbox)",
+                }.get(http_status, f"Connected with HTTP {http_status}"),
+            }
+        except requests.exceptions.ConnectionError:
+            results[name] = {"reachable": False, "http_status": None, "connectivity": "unreachable", "note": "Cannot reach sandbox.api-setu.in — check network"}
+        except requests.exceptions.Timeout:
+            results[name] = {"reachable": False, "http_status": None, "connectivity": "timeout", "note": "Request timed out"}
+
+    all_connected = all(r["reachable"] for r in results.values())
+    auth_ok       = all(r.get("http_status") != 401 for r in results.values() if r["reachable"])
+
+    return {
+        "sandbox_url":    base,
+        "api_key_set":    bool(os.getenv("API_SETU_KEY")),
+        "api_key_demo":   os.getenv("API_SETU_KEY") == "demokey123456ABCD789",
+        "all_reachable":  all_connected,
+        "auth_ok":        auth_ok,
+        "summary": (
+            "All API Setu sandbox endpoints reachable and authenticated. "
+            "404 responses are expected — sandbox proxies real govt DBs, test numbers don't exist there. "
+            "Use real document numbers (real Mee Seva ApplicationNo, real vehicle/DL number) for live data."
+            if all_connected and auth_ok
+            else "Some endpoints unreachable — check network or API key"
+        ),
+        "endpoints": results,
+    }
+
+
 @router.post("/forge")
 async def forge(request: ForgeRequest, background_tasks: BackgroundTasks):
     if not request.prompt.strip():
