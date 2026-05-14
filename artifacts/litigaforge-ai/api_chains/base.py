@@ -16,9 +16,15 @@ def api_setu_headers() -> Dict[str, str]:
     }
 
 
+def _is_govt_prod(url: str) -> bool:
+    """Indian government production APIs use self-signed cert chains — skip SSL verify."""
+    return "apisetu.gov.in" in url or "gov.in" in url
+
+
 def safe_get(url: str, headers: Dict, params: Dict = None, timeout: int = 10) -> Dict[str, Any]:
     try:
-        resp = requests.get(url, headers=headers, params=params, timeout=timeout)
+        resp = requests.get(url, headers=headers, params=params, timeout=timeout,
+                            verify=not _is_govt_prod(url))
         if resp.status_code == 404:
             return {
                 "success": False,
@@ -47,7 +53,8 @@ def safe_get(url: str, headers: Dict, params: Dict = None, timeout: int = 10) ->
 
 def safe_post(url: str, headers: Dict, payload: Dict, timeout: int = 10) -> Dict[str, Any]:
     try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout,
+                             verify=not _is_govt_prod(url))
         if resp.status_code == 404:
             return {
                 "success": False,
