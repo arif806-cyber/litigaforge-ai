@@ -167,10 +167,19 @@ def _call_dl(dl_no: str, party_name: str) -> dict:
     }
     result = safe_post(url, _headers(), payload, timeout=15)
     if not result["success"]:
-        logger.warning(f"[TRANSPORT_TS] DL API failed: {result['error']} — using mock")
+        is_404    = result.get("error_type") == "record_not_found"
+        connected = result.get("sandbox_connected", False)
+        status_label = "sandbox_connected_no_record" if (connected and is_404) else ("connection_failed" if not connected else "api_error")
+        logger.warning(f"[TRANSPORT_TS] DL {status_label}: {result['error']}")
         r = _mock_dl(dl_no, party_name)
-        r["status"] = "mock_fallback"
-        r["api_error"] = result["error"]
+        r["status"]           = status_label
+        r["sandbox_connected"] = connected
+        r["api_error"]        = result["error"]
+        r["note"] = (
+            "Sandbox API connected (sandbox.api-setu.in) — DL number not found in Parivahan database. "
+            "Provide a real Telangana DL number for live verification."
+            if (connected and is_404) else f"Sandbox unreachable — {result['error']}"
+        )
         return r
     return {**result["data"], "chain": "TRANSPORT_TS_DL", "status": "success",
             "source": "Parivahan Sewa — Ministry of Road Transport & Highways"}
@@ -190,10 +199,19 @@ def _call_rc(reg_no: str, chasis_no: str, party_name: str) -> dict:
     }
     result = safe_post(url, _headers(), payload, timeout=15)
     if not result["success"]:
-        logger.warning(f"[TRANSPORT_TS] RC API failed: {result['error']} — using mock")
+        is_404    = result.get("error_type") == "record_not_found"
+        connected = result.get("sandbox_connected", False)
+        status_label = "sandbox_connected_no_record" if (connected and is_404) else ("connection_failed" if not connected else "api_error")
+        logger.warning(f"[TRANSPORT_TS] RC {status_label}: {result['error']}")
         r = _mock_rc(reg_no, chasis_no, party_name)
-        r["status"] = "mock_fallback"
-        r["api_error"] = result["error"]
+        r["status"]           = status_label
+        r["sandbox_connected"] = connected
+        r["api_error"]        = result["error"]
+        r["note"] = (
+            "Sandbox API connected (sandbox.api-setu.in) — vehicle number not found in Parivahan database. "
+            "Provide a real registered vehicle number for live RC verification."
+            if (connected and is_404) else f"Sandbox unreachable — {result['error']}"
+        )
         return r
     return {**result["data"], "chain": "TRANSPORT_TS_RC", "status": "success",
             "source": "Parivahan Sewa — Ministry of Road Transport & Highways"}
