@@ -12,6 +12,7 @@ LitigaForge AI is a full-stack legal tool that takes a plain-language descriptio
 - [Tech Stack](#tech-stack)
 - [Repo Structure](#repo-structure)
 - [Environment Variables](#environment-variables)
+- [API Chain Status](#api-chain-status)
 - [Run Locally (Replit)](#run-locally-replit)
 - [Deploy on Your Own Server](#deploy-on-your-own-server-one-command)
 - [Deploy on Replit (one click)](#deploy-on-replit-one-click)
@@ -26,9 +27,11 @@ LitigaForge AI is a full-stack legal tool that takes a plain-language descriptio
 
 - **The Forge** — paste case facts, get a full legal strategy with entity extraction, chain orchestration, and AI synthesis
 - **10 Government API Chains** — GSTIN, PAN, eCourts, VAHAN, SARATHI, DigiLocker, BPCL LPG, MeriPehchaan, Mee Seva Telangana, Telangana Transport
+- **Use Cases** — 7 interactive scenario cards (Property, MACT, GST Fraud, Criminal, Mee Seva, Watch Mode, NPA/DRT) that pre-fill the Forge with real-world case templates
 - **Case Memory** — every forged case is stored and searchable; learn patterns over time
 - **Watch Mode** — background scheduler that monitors cases and parties for court date changes
 - **WhatsApp Alerts** — hearing reminders and forge results delivered via Twilio WhatsApp
+- **Sandbox Mode** — Mee Seva TG and Transport TS make live calls to `sandbox.api-setu.in` using the public demo key; no registration required
 - **Dummy Mode** — works without any API keys; returns realistic mock data for all chains
 - **Mobile App** — full Expo (React Native) app for Android and iOS
 - **Dark Navy / Amber / Gold UI** — glassmorphism cards, particle canvas, framer-motion animations, fully mobile-responsive
@@ -39,7 +42,7 @@ LitigaForge AI is a full-stack legal tool that takes a plain-language descriptio
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query |
+| Frontend | React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter |
 | Backend | Python 3.12, FastAPI, LangGraph, LangChain, OpenAI |
 | Mobile | Expo (React Native), Expo Router, NativeWind |
 | Deployment | Docker, Nginx, Uvicorn |
@@ -54,18 +57,27 @@ litigaforge-ai/
 ├── artifacts/
 │   ├── litigaforge-ui/          # React + Vite web frontend
 │   │   └── src/
-│   │       ├── pages/           # forge.tsx, cases.tsx, chains.tsx, case-detail.tsx
-│   │       ├── components/      # layout.tsx, graphics/, ui/
+│   │       ├── pages/           # forge.tsx, cases.tsx, chains.tsx, case-detail.tsx, use-cases.tsx
+│   │       ├── components/      # layout.tsx, graphics/ (ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt)
 │   │       └── lib/             # api.ts, utils.ts
 │   ├── litigaforge-ai/          # Python FastAPI backend
-│   │   ├── main.py              # FastAPI app with all routes
+│   │   ├── main.py              # FastAPI app with all routes (mounted at BASE_PATH)
 │   │   ├── litigaforge_engine.py
 │   │   ├── api_chains/          # 10 government API chain modules
-│   │   ├── alerts/              # WhatsApp via Twilio
-│   │   ├── watch_mode/          # background case watcher
-│   │   ├── forge_memory/        # case storage & pattern learning
-│   │   └── requirements.txt
-│   └── api-server/              # Node.js Express API server
+│   │   │   ├── gstin.py         # GST Network
+│   │   │   ├── pan.py           # PAN verification
+│   │   │   ├── ecourts.py       # eCourts case lookup
+│   │   │   ├── vahan.py         # Vehicle registration (VAHAN)
+│   │   │   ├── sarathi.py       # Driving licence (SARATHI)
+│   │   │   ├── digilocker.py    # DigiLocker documents
+│   │   │   ├── bpcl_lpg.py      # BPCL LPG subsidy (API Setu)
+│   │   │   ├── meripehchaan.py  # MeriPehchaan / DigiLocker OAuth2
+│   │   │   ├── mee_seva_tg.py   # Mee Seva Telangana (API Setu) — LIVE SANDBOX
+│   │   │   └── transport_ts.py  # Telangana Transport Dept (API Setu) — LIVE SANDBOX
+│   │   ├── alerts/              # whatsapp.py — Twilio WhatsApp integration
+│   │   ├── watch_mode/          # background case watcher scheduler
+│   │   └── forge_memory/        # case storage & pattern learning
+│   └── api-server/              # Node.js Express API server (separate artifact)
 │
 └── deployable/                  # Self-contained deployable package
     ├── README.md
@@ -90,18 +102,81 @@ litigaforge-ai/
 
 ## Environment Variables
 
-Create a `.env` file (copy from `.env.example`):
+Copy `.env.example` to `.env` (for Docker) or add as Replit Secrets / shared env vars.
+
+### Core
+
+| Variable | Default | Description |
+|---|---|---|
+| `BASE_PATH` | `/litigaforge` | URL prefix the backend mounts all routes on. Must match the reverse proxy config. |
+| `PORT` | `5000` | Port the backend Uvicorn server listens on. |
+| `SESSION_SECRET` | — | Session signing secret for cookie-based auth. |
+
+### AI Engine
 
 | Variable | Required | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | No | Enables live LangGraph AI chains. App runs in dummy mode without it. |
-| `API_SETU_KEY` | No | Live government API data — GSTIN, PAN, VAHAN, DigiLocker, Mee Seva, etc. |
-| `TWILIO_ACCOUNT_SID` | No | WhatsApp alerts via Twilio |
-| `TWILIO_AUTH_TOKEN` | No | WhatsApp alerts via Twilio |
-| `TWILIO_FROM_NUMBER` | No | Twilio WhatsApp sender (e.g. `whatsapp:+14155238886`) |
-| `SESSION_SECRET` | No | Session signing secret |
+| `OPENAI_API_KEY` | No | Enables live LangGraph AI synthesis. Without it the engine runs in dummy mode and returns pre-built legal strategies. |
 
-> Without any keys, all 10 chains return realistic mock data. The app is fully functional in dummy mode.
+### API Setu (Government APIs)
+
+| Variable | Required | Description |
+|---|---|---|
+| `API_SETU_KEY` | No | API Setu key. Set to `demokey123456ABCD789` for the free public sandbox. Required for production. |
+| `API_SETU_CLIENT_ID` | No | API Setu client ID. Set to `in.gov.sandbox` for the free public sandbox. |
+| `MEESEVA_USE_PROD` | No | Set to `true` to switch Mee Seva TG and Transport TS chains from `sandbox.api-setu.in` to `apisetu.gov.in` (production). Default: `false`. |
+
+### MeriPehchaan / DigiLocker OAuth2
+
+| Variable | Required | Description |
+|---|---|---|
+| `MERIPEHCHAAN_CLIENT_ID` | No | OAuth2 client ID from meripehchaan.gov.in. |
+| `MERIPEHCHAAN_CLIENT_SECRET` | No | OAuth2 client secret from meripehchaan.gov.in. |
+
+### WhatsApp Alerts (Twilio)
+
+| Variable | Required | Description |
+|---|---|---|
+| `TWILIO_ACCOUNT_SID` | No | Twilio account SID for WhatsApp alerts. |
+| `TWILIO_AUTH_TOKEN` | No | Twilio auth token. |
+| `TWILIO_FROM_NUMBER` | No | Twilio WhatsApp sender (e.g. `whatsapp:+14155238886`). |
+| `ADVOCATE_WHATSAPP` | No | Recipient WhatsApp number (e.g. `whatsapp:+919876543210`). |
+
+> Without any keys, all 10 chains return realistic mock data. The app is fully functional without any secrets.
+
+---
+
+## API Chain Status
+
+| Chain | Live Data Source | Status | Keys Needed |
+|---|---|---|---|
+| **Mee Seva TG** | API Setu `sandbox.api-setu.in` | **Live sandbox** (no registration) | `API_SETU_KEY` + `API_SETU_CLIENT_ID` |
+| **Transport TS** | API Setu `sandbox.api-setu.in` | **Live sandbox** (no registration) | `API_SETU_KEY` + `API_SETU_CLIENT_ID` |
+| BPCL LPG | API Setu | Sandbox-ready | `API_SETU_KEY` + `API_SETU_CLIENT_ID` |
+| MeriPehchaan | meripehchaan.gov.in | Mock — needs OAuth | `MERIPEHCHAAN_CLIENT_ID` + `MERIPEHCHAAN_CLIENT_SECRET` |
+| GSTIN | GSTN | Mock | `API_SETU_KEY` or direct GSTN key |
+| PAN | Income Tax / NSDL | Mock | `API_SETU_KEY` or direct NSDL key |
+| eCourts | NIC eCourts | Mock | `ECOURTS_API_KEY` |
+| VAHAN | Parivahan | Mock | `API_SETU_KEY` |
+| SARATHI | Parivahan | Mock | `API_SETU_KEY` |
+| DigiLocker | NIC | Mock | OAuth credentials |
+
+### To enable live sandbox right now (free, no registration):
+
+```bash
+API_SETU_KEY=demokey123456ABCD789
+API_SETU_CLIENT_ID=in.gov.sandbox
+MEESEVA_USE_PROD=false
+```
+
+These are the public demo keys published in the API Setu YAML specifications. Already set in the Replit environment.
+
+### To switch to production (real citizen data):
+
+1. Register at [api.setu.in](https://api.setu.in) or [apisetu.gov.in](https://apisetu.gov.in)
+2. Apply for each API product (Mee Seva TG, Transport TS, BPCL LPG)
+3. Once approved, replace `API_SETU_KEY` with your production key
+4. Set `MEESEVA_USE_PROD=true`
 
 ---
 
@@ -111,10 +186,12 @@ The project runs on Replit out of the box. Two workflows start automatically:
 
 | Workflow | Command | Purpose |
 |---|---|---|
-| `LitigaForge AI` | `python main.py` | Backend on port 5000 |
+| `LitigaForge AI` | `cd artifacts/litigaforge-ai && PORT=5000 python main.py` | Backend on port 5000 |
 | `artifacts/litigaforge-ui: web` | `pnpm --filter @workspace/litigaforge-ui run dev` | Frontend dev server |
 
-Open the Replit preview pane — the UI is live at `/`.
+`BASE_PATH` and `PORT` are set as shared environment variables in Replit so all workflows pick them up automatically.
+
+Open the Replit preview pane — the UI is live at `/litigaforge-ui` (or `/` depending on artifact routing).
 
 ---
 
@@ -251,6 +328,33 @@ Fill in your Google Play service account key and Apple credentials in `deployabl
 
 ---
 
+## WhatsApp Alerts (Twilio)
+
+LitigaForge sends hearing reminders and forge results to your WhatsApp via Twilio.
+
+### Sandbox setup (free, 5 minutes)
+
+1. Create a free [Twilio account](https://www.twilio.com/try-twilio)
+2. Go to **Messaging → Try it out → Send a WhatsApp message**
+3. Follow the sandbox join instructions (send a WhatsApp message to the Twilio sandbox number)
+4. Add to Replit Secrets:
+
+| Secret | Value |
+|---|---|
+| `TWILIO_ACCOUNT_SID` | From Twilio Console dashboard |
+| `TWILIO_AUTH_TOKEN` | From Twilio Console dashboard |
+| `TWILIO_FROM_NUMBER` | `whatsapp:+14155238886` (Twilio sandbox number) |
+| `ADVOCATE_WHATSAPP` | `whatsapp:+91XXXXXXXXXX` (your number) |
+
+### Production WhatsApp Business API
+
+Requires Meta approval (1–3 business days):
+1. Apply at [business.whatsapp.com](https://business.whatsapp.com)
+2. Get a dedicated WhatsApp Business number from Twilio
+3. Replace `TWILIO_FROM_NUMBER` with your approved business number
+
+---
+
 ## Architecture
 
 ```
@@ -262,6 +366,7 @@ Browser or Mobile App
    └── /litigaforge   ──▶  FastAPI backend (Uvicorn, port 5000)
                                 │
                          LangGraph Engine
+                      (dummy mode if no OPENAI_API_KEY)
                                 │
                     ┌───────────┴───────────┐
                     ▼                       ▼
@@ -273,9 +378,13 @@ Browser or Mobile App
        GSTIN       PAN      eCourts
       VAHAN      SARATHI  DigiLocker
      Mee Seva  Transport  MeriPehchaan
+      (LIVE)    (LIVE)
                     │
               Forge Memory
            (pattern learning)
+                    │
+            WhatsApp Alerts
+              (Twilio)
 ```
 
 ---
@@ -286,11 +395,11 @@ All backend routes are prefixed with `/litigaforge`.
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/litigaforge/healthz` | Health check |
+| `GET` | `/litigaforge/healthz` | Health check — returns `dummy_mode` flag |
 | `POST` | `/litigaforge/forge` | Forge a legal strategy from case facts |
 | `GET` | `/litigaforge/cases` | List recent forged cases |
 | `GET` | `/litigaforge/cases/{id}` | Get a specific case by ID |
-| `GET` | `/litigaforge/chains` | List all available API chains |
+| `GET` | `/litigaforge/chains` | List all available API chains with live/sandbox/mock status |
 | `GET` | `/litigaforge/memory/patterns` | View learned forge patterns |
 | `GET` | `/litigaforge/memory/stats` | Memory statistics |
 | `POST` | `/litigaforge/watch` | Add a case to Watch Mode |
@@ -301,7 +410,7 @@ All backend routes are prefixed with `/litigaforge`.
 | `POST` | `/litigaforge/alert` | Send a WhatsApp alert |
 | `POST` | `/litigaforge/alert/hearing` | Send a hearing reminder |
 
-Interactive API docs available at `/litigaforge/docs` when the backend is running.
+Interactive API docs (Swagger UI) available at `/litigaforge/docs` when the backend is running.
 
 ---
 
@@ -315,6 +424,37 @@ curl -X POST https://YOUR_DOMAIN/litigaforge/forge \
     "notify_whatsapp": false
   }'
 ```
+
+### Response shape
+
+```json
+{
+  "status": "success",
+  "case_id": "uuid-v4",
+  "entities": {
+    "pan": ["ABCDE1234F"],
+    "gstin": ["36ABCDE1234F1Z5"],
+    "vehicle_numbers": ["TS09EA1234"]
+  },
+  "api_results": {
+    "GSTIN": { "status": "found", "note": "...", "data": { ... } },
+    "MEE_SEVA_TG": { "status": "found", "note": "Live data from Mee Seva API Setu", "data": { ... } },
+    "TRANSPORT_TS": { "status": "found", "note": "Live data from Telangana Transport Dept", "data": { ... } }
+  },
+  "strategy": "Full Supreme Court-grade legal strategy text..."
+}
+```
+
+---
+
+## Forge Prompt Tips
+
+- Include full party names (e.g. "Ramesh Kumar s/o Suresh Kumar")
+- Include identifiers you have: PAN, GSTIN, vehicle number, DL number, Aadhaar (masked), case number
+- Mention the court if known ("pending before the District Court, Rangareddy")
+- Mention the nature of the dispute ("property mutation", "MACT claim", "cheque bounce")
+
+The entity extractor picks up all of these automatically.
 
 ---
 
