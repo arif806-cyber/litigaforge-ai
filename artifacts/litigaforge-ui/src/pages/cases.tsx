@@ -34,8 +34,8 @@ export default function Cases() {
     <div className="h-full flex flex-col relative">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
 
-      <div className="px-10 py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05]">
-        <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05]">
+        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
           <FileText className="w-6 h-6 text-primary" />
           Case Archives
         </h1>
@@ -44,7 +44,7 @@ export default function Cases() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-auto px-10 py-8 relative z-10">
+      <div className="flex-1 overflow-auto px-4 py-5 md:px-10 md:py-8 relative z-10">
         {isLoading && (
           <div className="space-y-4" data-testid="cases-loading">
             {[...Array(5)].map((_, i) => (
@@ -91,34 +91,28 @@ export default function Cases() {
               </span>
             </div>
 
-            <div className="space-y-4 relative before:absolute before:inset-0 before:ml-28 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-px before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
+            <div className="space-y-3">
               {(data.cases as CaseListItem[]).map((c, i) => (
                 <motion.div
                   key={c.case_id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
                   <Link
                     href={`/cases/${c.case_id}`}
                     data-testid={`card-case-${c.case_id}`}
-                    className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group cursor-pointer"
+                    className="group flex items-center justify-between glass-panel p-4 md:p-5 rounded-xl hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.8)] transition-all duration-300 cursor-pointer"
                   >
-                    {/* Timeline Dot */}
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full border-4 border-background bg-white/20 group-hover:bg-primary group-hover:border-primary/30 group-hover:shadow-[0_0_15px_hsl(var(--primary))] transition-all duration-300 absolute left-28 -translate-x-1/2 md:left-1/2" />
-                    
-                    <div className="w-[calc(100%-8rem)] md:w-[calc(50%-2rem)] glass-panel p-5 rounded-xl group-hover:-translate-y-1 group-hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.8)] group-hover:border-primary/30 transition-all duration-300 ml-auto md:ml-0">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-mono font-bold text-primary group-hover:text-primary/90 transition-colors drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">{c.case_id}</span>
-                        <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-primary transition-colors" />
+                    <div className="flex-1 min-w-0 pr-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-sm font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">{c.case_id}</span>
+                        <span className="text-[10px] text-white/30 font-mono hidden sm:inline">{formatTime(c.timestamp)}</span>
                       </div>
-                      <p className="text-sm text-white/80 leading-relaxed line-clamp-2">{c.prompt_preview}</p>
-                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground font-mono bg-black/40 px-2 py-1 rounded">
-                          {formatTime(c.timestamp)}
-                        </span>
-                      </div>
+                      <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{c.prompt_preview}</p>
+                      <span className="text-[10px] text-white/30 font-mono mt-1.5 block sm:hidden">{formatTime(c.timestamp)}</span>
                     </div>
+                    <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-primary flex-shrink-0 transition-colors" />
                   </Link>
                 </motion.div>
               ))}

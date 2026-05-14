@@ -54,7 +54,7 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
 
   if (isLoading) {
     return (
-      <div className="px-10 py-8 space-y-6" data-testid="case-loading">
+      <div className="px-4 py-5 md:px-10 md:py-8 space-y-6" data-testid="case-loading">
         <Skeleton className="h-10 w-64 bg-white/5 rounded-xl" />
         <Skeleton className="h-32 w-full max-w-4xl bg-white/5 rounded-xl" />
         <Skeleton className="h-64 w-full max-w-4xl bg-white/5 rounded-xl" />
@@ -64,7 +64,7 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
 
   if (isError) {
     return (
-      <div className="px-10 py-8">
+      <div className="px-4 py-5 md:px-10 md:py-8">
         <div className="glass-panel border-destructive/50 bg-destructive/10 rounded-xl p-6 flex items-start gap-4">
           <div className="p-2 bg-destructive/20 rounded-full flex-shrink-0">
             <AlertTriangle className="w-6 h-6 text-destructive" />
@@ -92,7 +92,7 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.05] via-transparent to-transparent pointer-events-none" />
 
       {/* Header */}
-      <div className="px-10 py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05] bg-black/20 backdrop-blur-sm">
+      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05] bg-black/20 backdrop-blur-sm">
         <div className="max-w-5xl">
           <Button
             variant="ghost"
@@ -125,7 +125,7 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-10 py-8 relative z-10">
+      <div className="flex-1 overflow-auto px-4 py-5 md:px-10 md:py-8 relative z-10">
         <motion.div variants={container} initial="hidden" animate="show" className="max-w-5xl space-y-8 pb-20">
           
           {/* Prompt */}

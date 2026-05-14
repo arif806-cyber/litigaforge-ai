@@ -46,8 +46,8 @@ export default function Chains() {
     <div className="h-full flex flex-col relative">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
 
-      <div className="px-10 py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05]">
-        <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05]">
+        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
           <Link2 className="w-6 h-6 text-primary" />
           Data Pipelines
         </h1>
@@ -56,7 +56,7 @@ export default function Chains() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-auto px-10 py-8 relative z-10">
+      <div className="flex-1 overflow-auto px-4 py-5 md:px-10 md:py-8 relative z-10">
         <div className="max-w-6xl space-y-8">
 
           {/* Architecture diagram */}
@@ -68,7 +68,9 @@ export default function Chains() {
             <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
               <span className="w-4 h-px bg-white/20" /> Execution Architecture
             </p>
-            <ChainDiagram className="w-full opacity-80" />
+            <div className="overflow-x-auto -mx-2 px-2">
+              <ChainDiagram className="w-full min-w-[480px] opacity-80" />
+            </div>
           </motion.div>
 
           {/* Mode notice */}

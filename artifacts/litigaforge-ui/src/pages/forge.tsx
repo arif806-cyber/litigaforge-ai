@@ -163,12 +163,12 @@ export default function Forge() {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
       
       {/* Header with hero illustration */}
-      <div className="px-10 py-8 flex-shrink-0 relative z-10 flex items-start justify-between">
+      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 flex items-start justify-between">
         <div>
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold text-white tracking-tight flex items-center gap-3"
+            className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3"
           >
             <Zap className="w-6 h-6 text-primary" />
             The Forge
@@ -192,9 +192,9 @@ export default function Forge() {
         </motion.div>
       </div>
 
-      <div className="flex-1 overflow-auto px-10 pb-10 space-y-8 relative z-10">
+      <div className="flex-1 overflow-auto px-4 pb-6 md:px-10 md:pb-10 space-y-6 md:space-y-8 relative z-10">
         {/* Input form */}
-        <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
+        <form onSubmit={handleSubmit} className="max-w-4xl space-y-4 md:space-y-6">
           <div className="relative group">
             <div className={cn(
               "absolute -inset-0.5 rounded-xl blur transition duration-1000",
@@ -208,7 +208,7 @@ export default function Forge() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe the case facts here. Include PAN, GSTIN, vehicle numbers, or names..."
               className={cn(
-                "relative min-h-[160px] font-mono text-base resize-none bg-black/60 border-white/10 text-white placeholder:text-muted-foreground/50 rounded-xl p-5 shadow-2xl transition-all",
+                "relative min-h-[120px] md:min-h-[160px] font-mono text-sm md:text-base resize-none bg-black/60 border-white/10 text-white placeholder:text-muted-foreground/50 rounded-xl p-4 md:p-5 shadow-2xl transition-all",
                 focused && "border-primary/50 shadow-[0_0_30px_rgba(251,191,36,0.1)]"
               )}
               disabled={forge.isPending}
@@ -249,13 +249,13 @@ export default function Forge() {
             )}
           </AnimatePresence>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Button
               data-testid="button-forge"
               type="submit"
               disabled={!prompt.trim() || forge.isPending}
               className={cn(
-                "h-14 px-8 rounded-xl font-bold text-base tracking-wide transition-all shadow-xl overflow-hidden relative",
+                "h-12 md:h-14 px-6 md:px-8 rounded-xl font-bold text-sm md:text-base tracking-wide transition-all shadow-xl overflow-hidden relative w-full sm:w-auto",
                 prompt.trim() && !forge.isPending
                   ? "bg-primary text-primary-foreground hover:scale-[1.02] shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:shadow-[0_0_30px_rgba(251,191,36,0.5)]"
                   : "bg-white/5 text-white/40 cursor-not-allowed"
@@ -274,7 +274,7 @@ export default function Forge() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-14 px-6 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium"
+                className="h-12 md:h-14 px-6 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium w-full sm:w-auto"
                 onClick={() => { setResult(null); setPrompt(""); }}
               >
                 Reset Canvas
@@ -296,7 +296,7 @@ export default function Forge() {
         )}
 
         {forge.isPending ? (
-          <div className="max-w-4xl"><PipelineLoading /></div>
+          <div className="max-w-4xl w-full"><PipelineLoading /></div>
         ) : result ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
