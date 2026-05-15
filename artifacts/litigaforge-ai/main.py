@@ -270,9 +270,17 @@ async def list_chains():
             {"name": "BPCL_LPG",     "description": "LPG Subscription Voucher — Ministry of Petroleum (BPCL)"},
             {"name": "MERIPEHCHAAN", "description": "DigiLocker OAuth2 SSO — all citizen documents (NIC/MeitY)"},
             {"name": "MEE_SEVA_TG",  "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
-            {"name": "TRANSPORT_TS", "description": "Telangana Transport Dept — DL & RC via Parivahan/API Setu"},
+            {"name": "TRANSPORT_TS", "description": "Vehicle RC & DL verification — RapidAPI (real VAHAN) or API Setu sandbox"},
         ],
-        "note": "Live sandbox mode active (sandbox.api-setu.in). Set MEESEVA_USE_PROD=true + production API_SETU_KEY for real citizen data." if os.getenv("API_SETU_KEY") else "Set API_SETU_KEY to enable live sandbox calls via API Setu.",
+        "vehicle_rc_source": (
+            "RapidAPI / VAHAN — real data (RAPIDAPI_KEY set)" if os.getenv("RAPIDAPI_KEY")
+            else "API Setu sandbox (RAPIDAPI_KEY not set — add for real vehicle data)"
+        ),
+        "note": (
+            "Vehicle RC: Live real data via RapidAPI VAHAN. DL: API Setu sandbox active."
+            if os.getenv("RAPIDAPI_KEY") else
+            "Add RAPIDAPI_KEY (free at rapidapi.com) for real vehicle RC data. DL uses API Setu sandbox."
+        ),
     }
 
 
