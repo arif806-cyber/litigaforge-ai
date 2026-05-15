@@ -25,6 +25,7 @@ from database import (
     increment_case_count, update_subscription, SUBSCRIPTION_PLANS, TIER_LIMITS,
 )
 from auth import hash_password, verify_password, create_token, get_current_user, require_user
+from extra_routes import router as extra_router
 
 watcher = WatchModeManager(memory=memory, alert_fn=send_whatsapp_alert)
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
@@ -391,6 +392,7 @@ async def sandbox_ping():
 # ─── Mount ─────────────────────────────────────────────────────────────────────
 
 app.include_router(router, prefix=BASE_PATH)
+app.include_router(extra_router, prefix=BASE_PATH)
 
 if __name__ == "__main__":
     import uvicorn
