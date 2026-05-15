@@ -4,7 +4,7 @@ import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, AlertTriangle, FileText, CheckCircle2, CircleDashed } from "lucide-react";
+import { ArrowLeft, AlertTriangle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -163,25 +163,6 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
             </motion.div>
           )}
 
-          {/* Chain Stepper */}
-          {chainMap.length > 0 && (
-            <motion.div variants={item} className="glass-panel p-6 rounded-xl">
-              <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-6 flex items-center gap-2">
-                <span className="w-4 h-px bg-white/20" /> Execution Pipeline
-              </p>
-              <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-none">
-                {chainMap.map((item, idx) => (
-                  <div key={item.chain} className="flex items-center gap-2 flex-shrink-0">
-                    <div className={cn("px-3 py-1.5 rounded border text-xs font-mono font-bold flex items-center gap-2", CHAIN_COLORS[item.chain] || "border-white/20 text-white bg-white/5")}>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      {item.chain}
-                    </div>
-                    {idx < chainMap.length - 1 && <div className="w-8 h-px bg-white/20 border-t border-dashed border-white/40" />}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
 
           {/* Final output */}
           {caseData.final_output && (
@@ -200,38 +181,44 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
             </motion.div>
           )}
 
-          {/* API results */}
-          {Object.keys(apiResults).length > 0 && (
-            <motion.div variants={item}>
-              <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-                <span className="w-4 h-px bg-white/20" /> Raw API Intelligence
-              </p>
-              <div className="glass-panel rounded-xl overflow-hidden">
-                <Accordion type="multiple" className="divide-y divide-white/5">
-                  {Object.entries(apiResults).map(([chain, data]) => {
-                    const colorClass = CHAIN_COLORS[chain]?.split(' ')[0] || 'border-white/20';
-                    return (
-                      <AccordionItem key={chain} value={chain} className="border-0">
-                        <AccordionTrigger
-                          data-testid={`accordion-${chain}`}
-                          className={cn("px-6 py-4 hover:no-underline hover:bg-white/5 transition-colors group relative border-l-4", colorClass)}
-                        >
-                          <span className="text-sm font-mono font-bold">{chain} Payload</span>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-2">
-                          <div className="bg-black/60 rounded-lg p-4 border border-white/5 overflow-auto max-h-[400px]">
-                            <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                              {JSON.stringify(data, null, 2)}
-                            </pre>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    );
-                  })}
-                </Accordion>
-              </div>
-            </motion.div>
-          )}
+          {/* API results — only show chains that returned live data */}
+          {(() => {
+            const liveResults = Object.entries(apiResults).filter(
+              ([, data]) => typeof data === "object" && data !== null && (data as Record<string, unknown>).status === "success"
+            );
+            if (liveResults.length === 0) return null;
+            return (
+              <motion.div variants={item}>
+                <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <span className="w-4 h-px bg-white/20" /> Retrieved Data
+                </p>
+                <div className="glass-panel rounded-xl overflow-hidden">
+                  <Accordion type="multiple" className="divide-y divide-white/5">
+                    {liveResults.map(([chain, data]) => {
+                      const colorClass = CHAIN_COLORS[chain]?.split(' ')[0] || 'border-white/20';
+                      return (
+                        <AccordionItem key={chain} value={chain} className="border-0">
+                          <AccordionTrigger
+                            data-testid={`accordion-${chain}`}
+                            className={cn("px-6 py-4 hover:no-underline hover:bg-white/5 transition-colors group relative border-l-4", colorClass)}
+                          >
+                            <span className="text-sm font-mono font-bold">{chain}</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-6 pb-6 pt-2">
+                            <div className="bg-black/60 rounded-lg p-4 border border-white/5 overflow-auto max-h-[400px]">
+                              <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                {JSON.stringify(data, null, 2)}
+                              </pre>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
+                </div>
+              </motion.div>
+            );
+          })()}
         </motion.div>
       </div>
     </div>
