@@ -179,7 +179,15 @@ def _dummy_plan_chains(entities: Dict) -> List[str]:
 
     # ── Finance & markets ─────────────────────────────────────────────────────
     if entities.get("company_name"):
+        # Use NSE_INDIA (free, no key) + STOCK_EXCHANGE (RapidAPI, richer data)
+        chains.append("NSE_INDIA")
         chains.append("STOCK_EXCHANGE")
+    if entities.get("cin"):
+        chains.append("MCA_COMPANY")
+    if entities.get("company_name") and "MCA_COMPANY" not in chains:
+        chains.append("MCA_COMPANY")
+    if entities.get("currency") or entities.get("foreign_amount"):
+        chains.append("FOREX")
     if entities.get("ifsc_code"):
         chains.append("IFSC")
 

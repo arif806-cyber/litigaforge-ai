@@ -280,19 +280,27 @@ async def list_chains():
                 {"name": "MEE_SEVA_TG",  "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
             ],
             "Finance & Markets": [
-                {"name": "STOCK_EXCHANGE", "description": "NSE/BSE stock data, financials, shareholding, board meetings, insider trading — Indian Stock Exchange API2"},
+                {"name": "NSE_INDIA",      "key_required": False,  "description": "NSE India live stock quotes, OHLC, 52-week range, Nifty membership — free, no key"},
+                {"name": "STOCK_EXCHANGE", "key_required": True,   "description": "NSE/BSE financials, shareholding pattern, board meetings, insider trading — RapidAPI (Indian Stock Exchange API2)"},
+                {"name": "FOREX",          "key_required": False,  "description": "Live INR forex rates for USD/GBP/EUR/AED/SAR — ECB/Frankfurter, free, no key"},
+            ],
+            "Company Registry": [
+                {"name": "MCA_COMPANY",    "key_required": False,  "description": "MCA21 company search — CIN validation (offline), OpenCorporates India (free signup key)"},
             ],
             "Banking & Address": [
-                {"name": "IFSC",         "description": "IFSC bank branch verification — RBI registry (free, no key needed)"},
-                {"name": "PINCODE",      "description": "India Post pincode lookup — district, state, post offices (free, no key needed)"},
+                {"name": "IFSC",           "key_required": False,  "description": "IFSC bank branch verification — RBI registry via Razorpay, free, no key"},
+                {"name": "PINCODE",        "key_required": False,  "description": "India Post pincode — district, state, all post offices, free, no key"},
             ],
         },
         "api_keys_status": {
-            "RAPIDAPI_KEY":    "set — RapidAPI chains active (Vehicle RC, GSTIN, Stock Exchange)" if os.getenv("RAPIDAPI_KEY") else "not set — add for live Vehicle RC, GSTIN, and Stock Exchange data",
-            "API_SETU_KEY":    "set — Mee Seva, Transport TS, DigiLocker sandbox active" if os.getenv("API_SETU_KEY") else "not set",
-            "OPENAI_API_KEY":  "set — AI strategy active" if os.getenv("OPENAI_API_KEY") else "not set — using built-in legal strategy",
-            "IFSC":            "live — no key needed (RBI registry)",
-            "PINCODE":         "live — no key needed (India Post)",
+            "RAPIDAPI_KEY":           "✅ set — Vehicle RC, GSTIN live, Stock Exchange active" if os.getenv("RAPIDAPI_KEY") else "❌ not set — add for Vehicle RC, live GSTIN, Stock Exchange (RapidAPI)",
+            "API_SETU_KEY":           "✅ set — Mee Seva TG, Transport TS, DigiLocker sandbox" if os.getenv("API_SETU_KEY") else "❌ not set",
+            "OPENAI_API_KEY":         "✅ set — AI strategy engine active" if os.getenv("OPENAI_API_KEY") else "⚠️ not set — using built-in legal strategy templates",
+            "NSE_INDIA":              "✅ live — no key (NSE public API)",
+            "FOREX":                  "✅ live — no key (ECB/Frankfurter)",
+            "IFSC":                   "✅ live — no key (RBI/Razorpay)",
+            "PINCODE":                "✅ live — no key (India Post)",
+            "OPENCORPORATES_API_KEY": "✅ set — MCA company search active" if os.getenv("OPENCORPORATES_API_KEY") else "⚠️ not set — CIN validation available offline; signup free at opencorporates.com",
         },
     }
 
