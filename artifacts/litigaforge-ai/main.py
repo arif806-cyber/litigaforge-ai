@@ -260,27 +260,40 @@ async def list_chains():
     from api_chains import CHAIN_MAP
     return {
         "total_chains": len(CHAIN_MAP),
-        "chains": [
-            {"name": "GSTIN",        "description": "GST registration status, filing history, taxpayer details"},
-            {"name": "PAN",          "description": "PAN verification, name match, Aadhaar seeding status"},
-            {"name": "DigiLocker",   "description": "Aadhaar, income, domicile certificates via API Setu"},
-            {"name": "eCourts",      "description": "Case search by party name or case number — all Indian courts"},
-            {"name": "VAHAN",        "description": "Vehicle RC, owner, insurance, fitness, tax validity"},
-            {"name": "SARATHI",      "description": "Driving licence holder, validity, vehicle classes"},
-            {"name": "BPCL_LPG",     "description": "LPG Subscription Voucher — Ministry of Petroleum (BPCL)"},
-            {"name": "MERIPEHCHAAN", "description": "DigiLocker OAuth2 SSO — all citizen documents (NIC/MeitY)"},
-            {"name": "MEE_SEVA_TG",  "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
-            {"name": "TRANSPORT_TS", "description": "Vehicle RC & DL verification — RapidAPI (real VAHAN) or API Setu sandbox"},
-        ],
-        "vehicle_rc_source": (
-            "RapidAPI / VAHAN — real data (RAPIDAPI_KEY set)" if os.getenv("RAPIDAPI_KEY")
-            else "API Setu sandbox (RAPIDAPI_KEY not set — add for real vehicle data)"
-        ),
-        "note": (
-            "Vehicle RC: Live real data via RapidAPI VAHAN. DL: API Setu sandbox active."
-            if os.getenv("RAPIDAPI_KEY") else
-            "Add RAPIDAPI_KEY (free at rapidapi.com) for real vehicle RC data. DL uses API Setu sandbox."
-        ),
+        "departments": {
+            "Identity & Tax": [
+                {"name": "GSTIN",        "description": "GST registration status, filing history, taxpayer details — live via RapidAPI"},
+                {"name": "PAN",          "description": "PAN verification, name match, Aadhaar seeding status"},
+                {"name": "DigiLocker",   "description": "Aadhaar, income, domicile certificates via API Setu"},
+                {"name": "MERIPEHCHAAN", "description": "DigiLocker OAuth2 SSO — all citizen documents (NIC/MeitY)"},
+            ],
+            "Courts": [
+                {"name": "eCourts",      "description": "Case search by party name or case number — all Indian courts"},
+            ],
+            "Transport & Vehicle": [
+                {"name": "VAHAN",        "description": "Vehicle RC, owner, insurance, fitness, tax validity"},
+                {"name": "SARATHI",      "description": "Driving licence holder, validity, vehicle classes"},
+                {"name": "TRANSPORT_TS", "description": "Vehicle RC & DL — RapidAPI (real VAHAN) / API Setu sandbox (TS/AP)"},
+            ],
+            "State Services": [
+                {"name": "BPCL_LPG",     "description": "LPG Subscription Voucher — Ministry of Petroleum (BPCL)"},
+                {"name": "MEE_SEVA_TG",  "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
+            ],
+            "Finance & Markets": [
+                {"name": "STOCK_EXCHANGE", "description": "NSE/BSE stock data, financials, shareholding, board meetings, insider trading — Indian Stock Exchange API2"},
+            ],
+            "Banking & Address": [
+                {"name": "IFSC",         "description": "IFSC bank branch verification — RBI registry (free, no key needed)"},
+                {"name": "PINCODE",      "description": "India Post pincode lookup — district, state, post offices (free, no key needed)"},
+            ],
+        },
+        "api_keys_status": {
+            "RAPIDAPI_KEY":    "set — RapidAPI chains active (Vehicle RC, GSTIN, Stock Exchange)" if os.getenv("RAPIDAPI_KEY") else "not set — add for live Vehicle RC, GSTIN, and Stock Exchange data",
+            "API_SETU_KEY":    "set — Mee Seva, Transport TS, DigiLocker sandbox active" if os.getenv("API_SETU_KEY") else "not set",
+            "OPENAI_API_KEY":  "set — AI strategy active" if os.getenv("OPENAI_API_KEY") else "not set — using built-in legal strategy",
+            "IFSC":            "live — no key needed (RBI registry)",
+            "PINCODE":         "live — no key needed (India Post)",
+        },
     }
 
 
