@@ -77,13 +77,39 @@ To go live on all API Setu chains: register at api.setu.in, get approved credent
 - Mobile layout: sidebar hidden on mobile, replaced by hamburger drawer + fixed bottom tab bar (h-16); main content has `pb-16 md:pb-0`
 - Code splitting: vite.config.ts splits react-vendor, motion, query, ui into separate chunks
 
+## Database Schema (PostgreSQL)
+
+- `users` — id, email, name, password_hash (bcrypt), subscription_tier, cases_this_month, month_reset_date, created_at
+- `subscriptions` — id, user_id (FK), tier, started_at, expires_at, status, payment_ref
+
+## Auth & Subscription
+
+- `POST /auth/register` — create user, returns JWT (30-day)
+- `POST /auth/login` — verify bcrypt hash, returns JWT
+- `GET /auth/me` — returns current user (requires Bearer token)
+- `GET /subscription/plans` — Free / Professional (₹999) / Advocate Pro (₹2,499)
+- `POST /subscription/upgrade` — switch tier instantly (demo mode, no payment yet)
+- JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-context.tsx`
+- All main routes are protected (`ProtectedRoute` → redirect to `/login` if unauthenticated)
+
+### Subscription Tiers
+
+| Tier | Price | Cases/Month | AI |
+|---|---|---|---|
+| Free | ₹0 | 5 | Smart Fallback |
+| Professional | ₹999/mo | 50 | Gemini 2.5 Flash |
+| Advocate Pro | ₹2,499/mo | Unlimited | Claude + Gemini + GPT-5 |
+
 ## Product (pages)
 
+- **Login** (`/login`): email + password sign-in, link to register
+- **Register** (`/register`): name + email + password, starts on Free tier
 - **The Forge** (`/`): input case facts → extract entities → run government API chains → get legal strategy
 - **Cases** (`/cases`): browse all previously forged cases, drill into full chain results
-- **Chains** (`/chains`): view all 10 API chains with live/sandbox/mock status
+- **Chains** (`/chains`): view all 16 API chains with live/sandbox/mock status
 - **Case Detail** (`/cases/:id`): full chain results, strategy, entities for a single case
-- **Use Cases** (`/use-cases`): 7 interactive scenario cards — Property, MACT, GST Fraud, Criminal, Mee Seva, Watch Mode, NPA/DRT — each with a "Try in Forge" button that pre-fills the Forge via sessionStorage
+- **Use Cases** (`/use-cases`): 7 interactive scenario cards with "Try in Forge" button
+- **Subscription** (`/subscription`): plan comparison, upgrade/downgrade, monthly usage meter
 
 ## User preferences
 
