@@ -1,13 +1,15 @@
 """
-RapidAPI — RTO Vehicle Information India
+RapidAPI — RTO Vehicle Details  (rto-vehicle-details.p.rapidapi.com)
 Real VAHAN data: owner name, RC status, insurance, chassis, fitness, hypothecation.
 
-API: https://rapidapi.com/streamifyworld/api/rto-vehicle-information-india
-Sign up free at rapidapi.com → subscribe → copy your key → add as RAPIDAPI_KEY secret.
+API listing : https://rapidapi.com/flashbomberapp/api/rto-vehicle-details
+Endpoint    : POST /api4
+Body        : {"reg": "TS13EZ9523"}
+Headers     : x-rapidapi-key, x-rapidapi-host
 
-Free tier: ~100 requests/day
+Free tier: subscribe at rapidapi.com (free plan) — key works immediately after subscribe.
 Data source: VAHAN (Ministry of Road Transport & Highways)
-Coverage: All India vehicle registrations (TS, AP, MH, DL, KA, TN, etc.)
+Coverage   : All India — TS, AP, MH, DL, KA, TN, etc.
 """
 import os
 import logging
@@ -15,56 +17,64 @@ import requests
 
 logger = logging.getLogger("litigaforge.chain.rapidapi_vehicle")
 
-RAPIDAPI_HOST = "rto-vehicle-information-india.p.rapidapi.com"
-RAPIDAPI_URL  = f"https://{RAPIDAPI_HOST}/getVehicleInfo"
+RAPIDAPI_HOST = "rto-vehicle-details.p.rapidapi.com"
+RAPIDAPI_URL  = f"https://{RAPIDAPI_HOST}/api4"
 
 
 def _headers() -> dict:
     return {
-        "X-RapidAPI-Key":  os.getenv("RAPIDAPI_KEY", ""),
-        "X-RapidAPI-Host": RAPIDAPI_HOST,
+        "x-rapidapi-key":  os.getenv("RAPIDAPI_KEY", ""),
+        "x-rapidapi-host": RAPIDAPI_HOST,
         "Content-Type":    "application/json",
     }
 
 
 def _parse_response(data: dict, reg_no: str) -> dict:
-    d = data.get("data") or data.get("result") or data
+    """Normalise whatever the API returns into our standard chain schema."""
+    d = data if isinstance(data, dict) else {}
+
+    def _get(*keys):
+        for k in keys:
+            if d.get(k) not in (None, "", "NA", "N/A"):
+                return d[k]
+        return "—"
+
     return {
         "chain":               "VEHICLE_RC",
         "status":              "success",
         "data_source":         "RapidAPI / VAHAN (Ministry of Road Transport & Highways)",
-        "registration_number": d.get("regNo") or d.get("reg_no") or reg_no,
-        "owner_name":          d.get("ownerName") or d.get("owner_name") or "—",
-        "father_name":         d.get("fatherName") or d.get("father_name") or "—",
-        "address":             d.get("presentAddress") or d.get("address") or "—",
-        "maker_model":         (d.get("maker") or d.get("make") or "") + " / " + (d.get("makerModal") or d.get("model") or ""),
-        "vehicle_class":       d.get("vehicleClass") or d.get("vehicle_class") or "—",
-        "body_type":           d.get("bodyType") or d.get("body_type") or "—",
-        "fuel_type":           d.get("fuelType") or d.get("fuel_type") or "—",
-        "colour":              d.get("vehicleColor") or d.get("colour") or "—",
-        "seating_capacity":    d.get("passengerCapacity") or d.get("seating_capacity") or "—",
-        "manufacturing_year":  d.get("manufacturingYear") or d.get("mfg_year") or "—",
-        "chassis_number":      d.get("chassisNo") or d.get("chassis_no") or "—",
-        "engine_number":       d.get("engineNo") or d.get("engine_no") or "—",
-        "registration_date":   d.get("regDate") or d.get("reg_date") or "—",
-        "registration_upto":   d.get("regUpto") or d.get("reg_upto") or "—",
-        "fitness_upto":        d.get("fitnessUpto") or d.get("fitness_upto") or "—",
-        "tax_upto":            d.get("taxUpto") or d.get("tax_upto") or "—",
-        "insurance_company":   d.get("insCompany") or d.get("insurance_company") or "—",
-        "insurance_upto":      d.get("insUpto") or d.get("insurance_upto") or "—",
-        "hypothecation":       d.get("financier") or d.get("hypothecation") or None,
-        "blacklist_status":    d.get("blacklistStatus") or d.get("blacklist") or "Not Blacklisted",
-        "noc_details":         d.get("nocDetails") or None,
-        "rto":                 d.get("rto") or d.get("rtoName") or "—",
-        "state":               d.get("state") or "—",
-        "rc_status":           d.get("viStatus") or d.get("status") or "ACTIVE",
-        "emission_norms":      d.get("fuelNorms") or d.get("emission_norms") or "—",
+        "registration_number": _get("regNo", "reg_no", "vehicleNo") or reg_no,
+        "owner_name":          _get("ownerName", "owner_name", "owner"),
+        "father_name":         _get("fatherName", "father_name"),
+        "address":             _get("presentAddress", "permanentAddress", "address"),
+        "maker_model":         (_get("maker", "make") + " / " + _get("makerModal", "model", "vehicleModel")).strip(" /"),
+        "vehicle_class":       _get("vehicleClass", "vehicle_class", "class"),
+        "body_type":           _get("bodyType", "body_type"),
+        "fuel_type":           _get("fuelType", "fuel_type"),
+        "colour":              _get("vehicleColor", "colour", "color"),
+        "seating_capacity":    _get("passengerCapacity", "seating_capacity", "seatingCapacity"),
+        "manufacturing_year":  _get("manufacturingYear", "mfg_year", "manufacturedYear"),
+        "chassis_number":      _get("chassisNo", "chassis_no", "chassisNumber"),
+        "engine_number":       _get("engineNo", "engine_no", "engineNumber"),
+        "registration_date":   _get("regDate", "reg_date", "registrationDate"),
+        "registration_upto":   _get("regUpto", "reg_upto", "regValidUpto"),
+        "fitness_upto":        _get("fitnessUpto", "fitness_upto", "fitnessValidUpto"),
+        "tax_upto":            _get("taxUpto", "tax_upto"),
+        "insurance_company":   _get("insCompany", "insurance_company", "insuranceCompany"),
+        "insurance_upto":      _get("insUpto", "insurance_upto", "insuranceValidUpto"),
+        "hypothecation":       _get("financier", "hypothecation") or None,
+        "blacklist_status":    _get("blacklistStatus", "blacklist") or "Not Blacklisted",
+        "noc_details":         _get("nocDetails") or None,
+        "rto":                 _get("rto", "rtoName", "rtoCode"),
+        "state":               _get("state", "stateCode"),
+        "rc_status":           _get("viStatus", "rcStatus", "status") or "ACTIVE",
+        "emission_norms":      _get("fuelNorms", "emission_norms", "emissionNorms"),
         "raw":                 d,
         "legal_relevance": {
-            "ownership_verified":  True,
-            "insurance_valid":     bool(d.get("insUpto") or d.get("insurance_upto")),
-            "fitness_valid":       bool(d.get("fitnessUpto") or d.get("fitness_upto")),
-            "has_hypothecation":   bool(d.get("financier") or d.get("hypothecation")),
+            "ownership_verified": True,
+            "insurance_valid":    _get("insUpto", "insurance_upto") != "—",
+            "fitness_valid":      _get("fitnessUpto", "fitness_upto") != "—",
+            "has_hypothecation":  _get("financier", "hypothecation") != "—",
             "notes": (
                 "RC verified via VAHAN / Ministry of Road Transport & Highways. "
                 "Proves vehicle ownership in accident claims (MACT), loan/finance disputes, "
@@ -78,69 +88,72 @@ def _parse_response(data: dict, reg_no: str) -> dict:
 def lookup_vehicle_rc(reg_no: str) -> dict:
     """
     Look up a real vehicle RC from VAHAN via RapidAPI.
-    Requires RAPIDAPI_KEY env var. No fallback — returns clear error if key missing.
+    Requires RAPIDAPI_KEY env var. Returns a clear error dict if key is missing.
     """
     api_key = os.getenv("RAPIDAPI_KEY", "").strip()
     if not api_key:
         return {
-            "chain":  "VEHICLE_RC",
-            "status": "no_api_key",
+            "chain":               "VEHICLE_RC",
+            "status":              "no_api_key",
             "registration_number": reg_no,
-            "error":  "RAPIDAPI_KEY not set",
-            "note":   (
+            "error":               "RAPIDAPI_KEY not set",
+            "note": (
                 "Add your free RapidAPI key to get real vehicle data. "
-                "Sign up at rapidapi.com → search 'RTO Vehicle Information India' → "
+                "Go to rapidapi.com → search 'RTO Vehicle Details' → "
                 "subscribe (free) → copy API key → add as RAPIDAPI_KEY secret in Replit."
             ),
         }
 
-    reg_no = reg_no.upper().replace(" ", "").replace("-", "")
-    logger.info(f"[RAPIDAPI_VEHICLE] Fetching RC for {reg_no}")
+    reg_no_clean = reg_no.upper().replace(" ", "").replace("-", "")
+    logger.info(f"[RAPIDAPI_VEHICLE] Fetching RC for {reg_no_clean}")
 
     try:
         resp = requests.post(
             RAPIDAPI_URL,
             headers=_headers(),
-            json={"reg_no": reg_no},
+            json={"reg": reg_no_clean},
             timeout=15,
         )
-        logger.info(f"[RAPIDAPI_VEHICLE] HTTP {resp.status_code} for {reg_no}")
+        logger.info(f"[RAPIDAPI_VEHICLE] HTTP {resp.status_code} for {reg_no_clean}")
 
         if resp.status_code == 200:
             data = resp.json()
-            if data.get("success") is False or data.get("status") == 0:
+            if data.get("success") is False or data.get("status") == 0 or data.get("message"):
                 return {
                     "chain":               "VEHICLE_RC",
                     "status":              "not_found",
-                    "registration_number": reg_no,
+                    "registration_number": reg_no_clean,
                     "error":               data.get("message") or "Vehicle not found in VAHAN",
-                    "note":                "Vehicle number not found in VAHAN national database. Check number format (e.g. TS13EZ9523).",
+                    "note":                "Check the registration number format (e.g. TS13EZ9523).",
                 }
-            return _parse_response(data, reg_no)
+            return _parse_response(data, reg_no_clean)
 
-        if resp.status_code == 401 or resp.status_code == 403:
+        if resp.status_code in (401, 403):
             return {
-                "chain":  "VEHICLE_RC",
-                "status": "auth_failed",
-                "registration_number": reg_no,
-                "error":  "Invalid or expired RAPIDAPI_KEY",
-                "note":   "Check your RapidAPI key at rapidapi.com → Developer Dashboard.",
+                "chain":               "VEHICLE_RC",
+                "status":              "auth_failed",
+                "registration_number": reg_no_clean,
+                "error":               f"HTTP {resp.status_code} — {resp.json().get('message', 'Auth failed')}",
+                "note": (
+                    "Either the key is wrong, or you haven't subscribed to 'RTO Vehicle Details' on RapidAPI yet. "
+                    "Go to rapidapi.com → search 'RTO Vehicle Details' (flashbomberapp) → click Subscribe."
+                ),
             }
 
         if resp.status_code == 429:
             return {
-                "chain":  "VEHICLE_RC",
-                "status": "rate_limited",
-                "registration_number": reg_no,
-                "error":  "Free tier daily limit reached",
-                "note":   "Upgrade to a paid plan at rapidapi.com for more requests.",
+                "chain":               "VEHICLE_RC",
+                "status":              "rate_limited",
+                "registration_number": reg_no_clean,
+                "error":               "Free tier daily/minute limit reached",
+                "note":                "Wait a moment and retry, or upgrade plan at rapidapi.com.",
             }
 
         return {
-            "chain":  "VEHICLE_RC",
-            "status": "api_error",
-            "registration_number": reg_no,
-            "error":  f"HTTP {resp.status_code}: {resp.text[:200]}",
+            "chain":               "VEHICLE_RC",
+            "status":              "api_error",
+            "registration_number": reg_no_clean,
+            "error":               f"HTTP {resp.status_code}: {resp.text[:200]}",
         }
 
     except requests.exceptions.Timeout:
