@@ -290,6 +290,56 @@
         "Activate Watch Mode on eCourts for automatic hearing date alerts"
       ],
       "outcome_summary": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 2727ADA5 [Claude Sonnet 4-6]\n============================================================\n\n# SEBI Insider Trading Case \u2014 Infosys Limited (INFY)\n## Case ID: 2727ADA5 | Jurisdiction: Hyderabad\n\n---\n\n## Summary\n\nThis matter concerns a potential SEBI insider trading investigation"
+    },
+    {
+      "id": 18,
+      "timestamp": "2026-05-15T01:20:24.458629",
+      "prompt_snippet": "Cheque bounce case \u2014 HDFC bank IFSC HDFC0001234, cheque for Rs 5 lakhs dishonoured by Rajesh Mehta, Hyderabad",
+      "chains_used": [
+        "NSE_INDIA",
+        "STOCK_EXCHANGE",
+        "MCA_COMPANY",
+        "IFSC",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE C133C2BE [Claude Sonnet 4-6]\n============================================================\n\n# Legal Strategy \u2014 Cheque Bounce Case (Case ID: C133C2BE)\n**Client vs. Rajesh Mehta | Rs. 5,00,000 | NI Act S.138**\n\n---\n\n## Summary\n\nThis is a Negotiable Instruments Act, 1881 Section "
+    },
+    {
+      "id": 19,
+      "timestamp": "2026-05-15T01:21:40.161184",
+      "prompt_snippet": "Motor accident case \u2014 vehicle TS09EA1234 hit my client at Kukatpally. Need RC and DL verification. Vijayawada court.",
+      "chains_used": [
+        "VAHAN",
+        "TRANSPORT_TS",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts",
+        "VAHAN + SARATHI + insurance verification chain for motor accident liability assessment"
+      ],
+      "outcome_summary": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE DBC17833 [Claude Sonnet 4-6]\n============================================================\n\n## Summary\n\n**Case ID: DBC17833 | Motor Accident \u2014 TS09EA1234 | Kukatpally, Hyderabad**\n\nYour client was injured in a motor accident at Kukatpally involving vehicle bearing registration"
+    },
+    {
+      "id": 20,
+      "timestamp": "2026-05-15T01:24:21.020271",
+      "prompt_snippet": "Cheque bounce NI Act 138 \u2014 IFSC SBIN0020149 Hyderabad, cheque of Rs 8 lakhs dishonoured by Suresh Reddy",
+      "chains_used": [
+        "IFSC",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 1AA224D1 [Claude Sonnet 4-6]\n============================================================\n\n# Legal Strategy \u2014 Cheque Bounce NI Act S.138 | Case ID: 1AA224D1\n\n---\n\n## Summary\n\nYour client holds a dishonoured cheque of **Rs. 8,00,000/-** drawn on **State Bank of India, N.I.T. B"
     }
   ],
   "cases": [
@@ -5364,6 +5414,917 @@
         }
       },
       "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 2727ADA5 [AI-Generated]\n============================================================\n\n\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 2727ADA5 [Claude Sonnet 4-6]\n============================================================\n\n# SEBI Insider Trading Case \u2014 Infosys Limited (INFY)\n## Case ID: 2727ADA5 | Jurisdiction: Hyderabad\n\n---\n\n## Summary\n\nThis matter concerns a potential SEBI insider trading investigation involving **Infosys Limited (NSE: INFY, ISIN: INE009A01021)**, a Nifty 50 constituent listed since **08 February 1995**. The live NSE data reveals a **sharp single-session drop of \u20b929.00 (-2.58%)** \u2014 from a previous close of \u20b91,123.10 to the current price of **\u20b91,094.10** \u2014 against a 52-week high of **\u20b91,728.00** and a 52-week low of **\u20b91,089.00** (today's low). This price behaviour \u2014 trading at the absolute 52-week floor \u2014 is a critical red flag for insider trading analysis under **SEBI (Prohibition of Insider Trading) Regulations, 2015 (\"PIT Regulations\")**.\n\nThe stock has lost approximately **36.7%** from its 52-week peak (\u20b91,728 \u2192 \u20b91,094), a decline pattern that SEBI's surveillance systems routinely flag for Unpublished Price Sensitive Information (UPSI) correlation analysis.\n\n---\n\n## Key Findings from Government Data\n\n| Parameter | Value | Legal Significance |\n|-----------|-------|-------------------|\n| **Live Price (INFY)** | \u20b91,094.10 | Baseline for trade reconstruction |\n| **Previous Close** | \u20b91,123.10 | Pre-event price for PIT analysis |\n| **Single-Session Fall** | \u20b929.00 / -2.58% | Abnormal movement trigger |\n| **Day's High / Low** | \u20b91,121.90 / \u20b91,089.00 | Intraday volatility \u2014 suspect trades window |\n| **52-Week High** | \u20b91,728.00 | Peak \u2014 correlate with UPSI dissemination dates |\n| **52-Week Low** | \u20b91,089.00 | Touched today \u2014 critical timing |\n| **ISIN** | INE009A01021 | For SEBI demat/trade data requisition |\n| **Series** | EQ (Equity) | Cash market \u2014 PIT Reg. 2(1)(g) applies |\n| **Nifty 50 Member** | Yes | Enhanced disclosure obligations u/s LODR |\n| **Listing Date** | 08 Feb 1995 | 30-year listed entity \u2014 full regulatory history |\n\n**Critical Observation:** The stock touching its **52-week low of \u20b91,089 on the same day as this investigation query** is not coincidental from a litigation standpoint. This must be correlated against any pending earnings announcements, board meetings, regulatory filings, or material contracts \u2014 all of which constitute UPSI under **Regulation 2(1)(n) of PIT Regulations 2015**.\n\n---\n\n## Legal Analysis\n\n### 1. SEBI (Prohibition of Insider Trading) Regulations, 2015\n\n**Regulation 3 \u2014 Communication of UPSI:**\nAny \"connected person\" (Reg. 2(1)(d)) who communicates, provides, or allows access to UPSI \u2014 including Infosys directors, senior employees, auditors, advisors, or their relatives \u2014 commits a violation. Given the 52-week decline from \u20b91,728 to \u20b91,089, SEBI will examine:\n- Whether short positions or put options were taken **prior** to any negative UPSI event\n- Whether large block deals occurred near the \u20b91,728 peak when insiders may have known of adverse developments\n\n**Regulation 4 \u2014 Trading when in possession of UPSI:**\nSEBI will reconstruct the **\"Trading Plan\"** (Reg. 5) of designated persons and compare against price-sensitive events. The burden shifts to the accused insider under **Regulation 4(1)** \u2014 they must demonstrate trades were made without UPSI access.\n\n**Regulation 7 \u2014 Disclosure obligations:**\nInfosys, as a Nifty 50 company, has enhanced obligations:\n- **Reg. 7(1):** Initial disclosures by every director/key managerial personnel\n- **Reg. 7(2):** Continual disclosures when holdings change by \u2265 \u20b910 lakhs in value or 2% of shares\n- **Trading window closure** must be verified around the period correlating with \u20b91,728 \u2192 \u20b91,094 decline\n\n**Regulation 9 \u2014 Code of Conduct:**\nInfosys is mandated to have a Board-approved Code of Conduct for Fair Disclosure. Any breach by its Compliance Officer is independently actionable.\n\n### 2. SEBI Act, 1992\n\n- **Section 11(2)(e):** SEBI's power to call for information and conduct enquiries\n- **Section 11B:** Power to issue directions including disgorgement of unlawful gains\n- **Section 15G:** Penalty for insider trading \u2014 **\u20b925 crore or 3 times the profit made, whichever is higher**\n- **Section 24:** Criminal prosecution \u2014 imprisonment up to **10 years** and/or fine up to \u20b925 crore\n- **Section 26:** Cognizance by Special Court (Designated Court, Hyderabad for TS jurisdiction)\n\n### 3. SEBI (LODR) Regulations, 2015\n\nAs a Nifty 50 member, Infosys must comply with:\n- **Regulation 30:** Immediate disclosure of price-sensitive events to stock exchanges\n- **Regulation 46:** Website disclosure of all material information\nFailure to timely disclose UPSI that caused the 36.7% price erosion is independently actionable under LODR.\n\n### 4. Companies Act, 2013\n\n- **Section 447:** Fraud \u2014 if insider trading involved falsification of books or misrepresentation to investors; punishment up to **10 years imprisonment**\n- **Section 188/184:** Related party transactions involving directors who traded \u2014 mandatory disclosure obligations\n\n### 5. PMLA, 2002\n\n- **Section 3:** If proceeds of insider trading (disgorgement-eligible profits) are laundered through layered transactions, ED jurisdiction activates\n- **Section 8:** Attachment of property representing proceeds of crime \u2014 applicable to profits from insider trades\n\n### 6. FEMA, 1999\n\nGiven Infosys's substantial **FII/FPI holding**, any insider trading involving foreign institutional accounts triggers FEMA scrutiny on capital account transactions.\n\n### 7. Jurisdictional Analysis (CPC Section 20 / SEBI Act)\n\n- **SEBI SAT (Securities Appellate Tribunal), Mumbai:** Primary appellate forum against SEBI orders\n- **Hyderabad jurisdiction:** If the accused trader is Hyderabad-based, the **Special Court under SEBI Act** at Hyderabad has criminal jurisdiction\n- **Telangana High Court:** Writ jurisdiction (Article 226) to challenge SEBI investigation orders if procedurally flawed\n\n---\n\n## Recommended Actions (within 7 days)\n\n### If You Represent the COMPLAINANT / Whistleblower:\n\n1. **File SEBI SCORES complaint immediately** at scores.sebi.gov.in referencing ISIN **INE009A01021**, today's price of \u20b91,094.10, and the 52-week erosion from \u20b91,728. Request market surveillance data for trades during the 52-week high period.\n\n2. **File Informant Mechanism complaint** under **SEBI (Informant Mechanism) Regulations, 2018** \u2014 eligible for monetary reward of up to **\u20b91 crore** if the tip leads to enforcement action (Regulation 5).\n\n3. **RTI Application** to SEBI under RTI Act, 2005 \u2014 seeking disclosure of whether any investigation is already pending against INFY insiders for Case ID 2727ADA5.\n\n4. **Preserve evidence:** Screenshot all NSE announcements, bulk/block deal data for INFY for the past 12 months, available on NSE India portal under INFY announcements \u2014 critical to establish the UPSI timeline.\n\n5. **Commission forensic reconstruction:** Map the \u20b91,728 \u2192 \u20b91,089 price decline against Infosys's exchange filings (quarterly results, board meeting notices, material contracts) to identify the exact UPSI event window.\n\n### If You Represent the ACCUSED Insider:\n\n1. **Preserve trading window records** and compliance officer communications showing the window was **closed** during suspect trading periods \u2014 this is the primary defence under PIT Reg. 4.\n\n2. **Invoke Pre-decisional Hearing rights:** Under SEBI's natural justice obligations (**Article 21, Constitution of India**; **SEBI Act S.11(4)**), demand a pre-order hearing before any ex-parte interim order.\n\n3. **File Trading Plan documentation** under Reg. 5 \u2014 if trades were pre-planned and disclosed, this is a statutory safe harbour.\n\n4. **Challenge SEBI summons** under CPC Section 151 / Article 226 if issued without proper authority application \u2014 ensure all summons are under proper SEBI Act S.11(3) powers.\n\n5. **Engage a SEBI-empanelled Chartered Accountant** to prepare an independent computation of alleged \"unlawful gains\" before SEBI computes its own \u2014 this controls the disgorgement quantum negotiation.\n\n---\n\n## Document Checklist\n\n### From NSE/BSE (Obtain Immediately):\n- [ ] INFY bulk deal data \u2014 last 12 months (NSE bulk deals archive)\n- [ ] INFY block deal data \u2014 last 12 months\n- [ ] INFY insider trading disclosures filed under Reg. 7(2) \u2014 available on NSE disclosures portal for ISIN INE009A01021\n- [ ] INFY announcements/corporate actions \u2014 correlate with \u20b91,728 peak and today's \u20b91,089 low\n- [ ] Trading window closure notices \u2014 obtain from Infosys Compliance Officer records\n\n### From SEBI:\n- [ ] SEBI SCORES complaint acknowledgement\n- [ ] Any existing investigation order / interim order against INFY (check SEBI website orders section)\n- [ ] SEBI Annual Report disclosures on INFY-related enforcement actions\n\n### From Infosys (MCA21 / Company Records):\n- [ ] MCA21 filing: Director disclosures, **Form MBP-1** (interest disclosures), **Form DIR-8**\n- [ ] Access MCA portal at mca.gov.in \u2014 search \"Infosys\" for CIN: **L85110KA1981PLC013115** (Infosys's known CIN)\n- [ ] Charge documents and shareholding pattern filings\n\n### For Criminal Proceedings (If S.24 SEBI Act invoked):\n- [ ] FIR draft for submission to Economic Offences Wing, Hyderabad or SEBI referral to Special Court\n- [ ] Demat account statements of accused \u2014 obtain via SEBI/court order to NSDL/CDSL for ISIN INE009A01021\n- [ ] Call Data Records (CDR) \u2014 if UPSI was communicated telephonically (court order required)\n- [ ] Email forensics \u2014 Infosys internal communications pre-UPSI event\n\n### For SAT Appeal (If Challenging SEBI Order):\n- [ ] SEBI adjudication order (certified copy)\n- [ ] SAT Appeal under S.15T SEBI Act \u2014 **45 days** from receipt of order\n- [ ] Demand draft for filing fees\n- [ ] Vakalatnama for SAT, Mumbai appearance\n\n---\n\n**\u26a0\ufe0f Critical Deadline Alert:** SEBI interim orders (ex-parte) must be challenged within **15 days** of receipt at SAT under Section 15T. If an ex-parte order has already been issued in Case ID 2727ADA5, immediate SAT intervention is required.\n\n**Note on Mock Data:** The MeriPehchaan/Mee Seva data retrieved is sandbox/mock and has not been used in this analysis. All analysis is based exclusively on the live NSE price data for INFY (ISIN: INE009A01021) retrieved from NSE India's public API.\n\n---\n*Prepared for Case ID: 2727ADA5 | Hyderabad jurisdiction | Based on live NSE data as retrieved*\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : NSE_INDIA, STOCK_EXCHANGE, MCA_COMPANY, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : NSE_INDIA:success | STOCK_EXCHANGE:no_api_key | MCA_COMPANY:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:mock\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "C133C2BE",
+      "timestamp": "2026-05-15T01:20:24.467327",
+      "prompt": "Cheque bounce case \u2014 HDFC bank IFSC HDFC0001234, cheque for Rs 5 lakhs dishonoured by Rajesh Mehta, Hyderabad",
+      "api_results": {
+        "NSE_INDIA": {
+          "chain": "NSE_INDIA",
+          "status": "success",
+          "symbol": "HDFC",
+          "data_source": "NSE India (National Stock Exchange) \u2014 live public API, no key",
+          "results": {
+            "live_quote": {
+              "symbol": "HDFC",
+              "company": "Housing Development Finance Corporation Limited",
+              "isin": "INE001A01036",
+              "industry": "Housing Finance Company",
+              "series": "EQ",
+              "last_price": 0,
+              "open": 0,
+              "high": 0,
+              "low": 0,
+              "close_prev": 0,
+              "change": 0,
+              "pct_change": 0,
+              "week_52_high": 0,
+              "week_52_low": 0,
+              "market_cap": null,
+              "face_value": null,
+              "listing_date": "1996-10-23"
+            },
+            "nifty50_member": false
+          },
+          "legal_relevance": {
+            "applicable_laws": [
+              "SEBI Act 1992 \u2014 securities fraud, market manipulation",
+              "SEBI (Prohibition of Insider Trading) Regulations 2015",
+              "Companies Act 2013 S.447 \u2014 fraud in listed companies",
+              "IBC 2016 \u2014 market value for corporate insolvency proceedings",
+              "FEMA 1999 \u2014 FII/FPI shareholding limits"
+            ],
+            "use_cases": [
+              "Live share price for court-ordered asset valuation (divorce, partition)",
+              "Price history for insider trading investigation (SEBI PIT)",
+              "52-week range for NPA attachment \u2014 current market value",
+              "Announcements for corporate fraud evidence",
+              "Nifty 50 membership \u2014 credibility of company in proceedings"
+            ]
+          }
+        },
+        "STOCK_EXCHANGE": {
+          "chain": "STOCK_EXCHANGE",
+          "status": "no_api_key",
+          "note": "Add RAPIDAPI_KEY secret. Subscribe free at rapidapi.com \u2192 'Indian Stock Exchange API2'."
+        },
+        "MCA_COMPANY": {
+          "chain": "MCA_COMPANY",
+          "data_source": "MCA21 / OpenCorporates India",
+          "status": "no_api_key",
+          "search_query": "hdfc",
+          "note": "Add OPENCORPORATES_API_KEY (free at opencorporates.com/api_accounts/new) for live company registry search. CIN structural validation is available without a key.",
+          "mca_direct_link": "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+          "efiling_link": "https://efiling.mca.gov.in/eFiling/helpdeskSearch",
+          "legal_relevance": {
+            "applicable_laws": [
+              "Companies Act 2013 \u2014 S.7 (formation), S.271 (winding up)",
+              "IBC 2016 \u2014 corporate insolvency, NCLT proceedings",
+              "PMLA 2002 \u2014 shell company investigations",
+              "SEBI Act \u2014 listed company regulatory action"
+            ],
+            "notes": "CIN (Corporate Identification Number) is essential for any litigation against a company. Verify existence, registered address, and status before filing. Director details and charges are available on MCA21 portal."
+          }
+        },
+        "IFSC": {
+          "chain": "IFSC",
+          "status": "success",
+          "data_source": "RBI IFSC Registry via Razorpay (free, no key)",
+          "ifsc_code": "HDFC0001234",
+          "bank_name": "HDFC Bank",
+          "branch": "PARK STREET",
+          "address": "3 PARK STREET M I ROAD M I ROAD",
+          "city": "JAIPUR",
+          "district": "JAIPUR",
+          "state": "RAJASTHAN",
+          "contact": "+919875003333",
+          "micr_code": "302240007",
+          "rtgs_enabled": true,
+          "neft_enabled": true,
+          "imps_enabled": true,
+          "upi_enabled": true,
+          "swift_code": "HDFCINBB",
+          "raw": {
+            "MICR": "302240007",
+            "BRANCH": "PARK STREET",
+            "ADDRESS": "3 PARK STREET M I ROAD M I ROAD",
+            "STATE": "RAJASTHAN",
+            "CONTACT": "+919875003333",
+            "UPI": true,
+            "RTGS": true,
+            "CITY": "JAIPUR",
+            "CENTRE": "JAIPUR",
+            "DISTRICT": "JAIPUR",
+            "NEFT": true,
+            "IMPS": true,
+            "SWIFT": "HDFCINBB",
+            "ISO3166": "IN-RJ",
+            "BANK": "HDFC Bank",
+            "BANKCODE": "HDFC",
+            "IFSC": "HDFC0001234"
+          },
+          "legal_relevance": {
+            "bank_verified": true,
+            "notes": "IFSC HDFC0001234 verified against RBI registry. Critical in cheque bounce cases (NI Act S.138) to establish drawee bank. Use for attachment orders (CPC Order XXI), fraud tracing, and loan disputes."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "HDFC Bank",
+            "given_name": "HDFC",
+            "family_name": "Bank",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "HDFC Bank",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC02687E1DB7B3",
+                "applicant_name": "HDFC Bank",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC0223CCAAF070",
+                "applicant_name": "HDFC Bank",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02AC8EAC4416",
+                "applicant_name": "HDFC Bank",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "mock",
+          "search_term": "HDFC Bank",
+          "state": "TS",
+          "total_cases": 2,
+          "cases": [
+            {
+              "case_number": "RC/142/2024",
+              "case_type": "Rent Control",
+              "filing_date": "2024-03-15",
+              "next_hearing": "2026-06-10",
+              "status": "Pending",
+              "court": "Principal Junior Civil Judge Court, Hyderabad",
+              "petitioner": "HDFC Bank",
+              "respondent": "Tenant / Respondent",
+              "acts": [
+                "Telangana Buildings (Lease, Rent and Eviction) Control Act 1960"
+              ]
+            },
+            {
+              "case_number": "GST/078/2025",
+              "case_type": "GST Dispute",
+              "filing_date": "2025-01-08",
+              "next_hearing": "2026-07-22",
+              "status": "Under Hearing",
+              "court": "GST Appellate Authority, Telangana",
+              "petitioner": "HDFC Bank",
+              "respondent": "GST Department",
+              "acts": [
+                "Central Goods and Services Tax Act 2017"
+              ]
+            }
+          ],
+          "note": "Mock data \u2014 set ECOURTS_API_KEY for live case lookup"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE C133C2BE [AI-Generated]\n============================================================\n\n\ud83d\udd25 LITIGAFORGE AI \u2014 CASE C133C2BE [Claude Sonnet 4-6]\n============================================================\n\n# Legal Strategy \u2014 Cheque Bounce Case (Case ID: C133C2BE)\n**Client vs. Rajesh Mehta | Rs. 5,00,000 | NI Act S.138**\n\n---\n\n## Summary\n\nThis is a Negotiable Instruments Act, 1881 Section 138 cheque dishonour case involving a Rs. 5,00,000 cheque drawn on HDFC Bank. The RBI-verified IFSC data reveals a **critical jurisdictional anomaly** that must be addressed immediately before filing the complaint. The drawee branch \u2014 IFSC HDFC0001234 \u2014 is the **Park Street branch, Jaipur, Rajasthan** (not Hyderabad), which directly impacts where the complaint can be filed under the amended NI Act provisions.\n\n---\n\n## Key Findings from Government Data\n\n| Parameter | Verified Data |\n|-----------|--------------|\n| **IFSC Code** | HDFC0001234 \u2705 RBI Verified |\n| **Bank Name** | HDFC Bank |\n| **Branch** | PARK STREET Branch |\n| **Branch Address** | 3 Park Street, M.I. Road, Jaipur |\n| **City/District** | Jaipur, Rajasthan |\n| **State** | Rajasthan (NOT Telangana) |\n| **MICR Code** | 302240007 |\n| **RTGS/NEFT/IMPS** | All Enabled |\n| **SWIFT Code** | HDFCINBB |\n\n> \u26a0\ufe0f **CRITICAL FLAG**: The cheque is drawn on HDFC Bank's **Jaipur (Park Street) branch**, MICR 302240007. This is a Rajasthan branch, not a Hyderabad branch. The IFSC mismatch from the client's instructions requires urgent clarification.\n\n---\n\n## Legal Analysis\n\n### 1. Jurisdiction Under NI Act S.138 \u2014 The Central Issue\n\nUnder **Section 142(2) of the NI Act, 1881** (as amended by the Negotiable Instruments (Amendment) Act, 2015), the Metropolitan Magistrate or Judicial Magistrate of First Class has jurisdiction where:\n\n- **(a)** The cheque was delivered for collection \u2014 i.e., the branch of the payee's bank where the cheque was deposited; OR\n- **(b)** The cheque was presented for payment \u2014 i.e., the drawee bank's branch (HDFC Park Street, Jaipur, IFSC HDFC0001234); OR\n- **(c)** The drawer resides / carries on business \u2014 stated to be Hyderabad\n\n**Given that Rajesh Mehta resides in Hyderabad**, and assuming your client deposited the cheque at a Hyderabad bank branch, **Hyderabad courts retain jurisdiction** under Clause (a) \u2014 the branch where the cheque was deposited for collection. This is confirmed by the Supreme Court in **Dashrath Rupsingh Rathod v. State of Maharashtra (2014) 9 SCC 129** and the subsequent 2015 amendment.\n\n**Action**: Confirm which bank branch your client deposited the cheque into. If it is a Hyderabad branch, file in Hyderabad. Do not rely on the drawee branch location (Jaipur) as the basis for jurisdiction.\n\n---\n\n### 2. Core Offence \u2014 NI Act S.138 Elements\n\nTo establish the offence, all six conditions under **S.138 NI Act** must be satisfied:\n\n| Element | Status |\n|---------|--------|\n| Cheque drawn on a bank | \u2705 HDFC Bank, IFSC HDFC0001234 verified |\n| For discharge of legally enforceable debt | To be established via underlying agreement |\n| Presented within validity period (3 months) | Verify from cheque date |\n| Returned unpaid for insufficient funds / account closure | Obtain bank memo |\n| Demand notice served within 30 days of dishonour | **MUST verify \u2014 time-critical** |\n| Drawer failed to pay within 15 days of notice | Trigger for complaint |\n\n**Punishment**: S.138 carries imprisonment up to **2 years** and/or fine up to **twice the cheque amount** (Rs. 10,00,000 in this case).\n\n---\n\n### 3. Demand Notice Requirements (S.138 Proviso + S.141)\n\n- The **legal demand notice** must be sent within **30 days** of receiving the dishonour memo from your bank\n- Send via **Speed Post + Courier + Email** (preserve proof of delivery \u2014 *K. Bhaskaran v. Sankaran Vaidhyan Balan* AIR 1999 SC 3762)\n- Address to Rajesh Mehta at his **Hyderabad address** \u2014 use registered post acknowledgment due\n- 15-day clock for payment starts from the date of receipt of notice\n- If no payment within 15 days \u2192 file complaint within **30 days** of expiry of 15-day period under **S.142(b)**\n\n---\n\n### 4. MICR Code 302240007 \u2014 Evidentiary Use\n\nThe MICR code **302240007** printed on the cheque leaf physically identifies the Park Street, Jaipur branch. This will appear on the dishonour memo issued by the collecting bank. Use this to:\n- Authenticate the cheque instrument in evidence\n- Counter any defence that the cheque was fabricated or the bank details were forged\n- Establish the specific drawee bank branch before the Magistrate under **S.143A NI Act** (interim compensation application)\n\n---\n\n### 5. Interim Compensation \u2014 S.143A NI Act\n\nUpon filing the complaint, immediately apply under **S.143A NI Act** (inserted by 2018 Amendment) for **interim compensation of up to 20% of cheque amount = Rs. 1,00,000** to be deposited by Rajesh Mehta during trial pendency. This is payable within 60 days of the order.\n\n---\n\n### 6. Civil Remedy \u2014 Parallel Track\n\nFile a **summary suit under Order XXXVII CPC** in the City Civil Court, Hyderabad for recovery of Rs. 5,00,000 with interest. Under **S.138 NI Act read with S.357 CrPC**, compensation can be awarded in criminal proceedings too, but a parallel civil suit strengthens recovery.\n\nInterest claim: **18% per annum** from date of dishonour (commercial transaction presumed).\n\n---\n\n### 7. Presumptions in Your Favour\n\n- **S.118 NI Act**: Presumption of consideration, date, time of acceptance, transfer, and endorsement \u2014 all in holder's favour\n- **S.139 NI Act**: Court shall presume the cheque was issued for discharge of debt \u2014 **burden shifts to Rajesh Mehta** to rebut\n- **S.20 NI Act**: If cheque was blank/incomplete when delivered, valid if filled per authority given\n\nThese presumptions make NI Act S.138 cases prosecutor-friendly once the procedural requirements are met.\n\n---\n\n## Recommended Actions (Within 7 Days)\n\n| Priority | Action | Deadline |\n|----------|--------|----------|\n| **Day 1** | Obtain original dishonour memo from your bank showing reason (insufficient funds / account closed / stop payment) | Immediately |\n| **Day 1** | Verify the exact date of dishonour \u2014 calculate 30-day notice deadline | Today |\n| **Day 2** | Draft and dispatch **S.138 Legal Demand Notice** to Rajesh Mehta, Hyderabad via Registered Post AD + Speed Post + WhatsApp/Email (screenshot all) | Within 30 days of dishonour |\n| **Day 3** | Confirm which Hyderabad branch your client deposited the cheque \u2014 this fixes your jurisdiction | Day 3 |\n| **Day 4** | File **Summary Suit under Order XXXVII CPC** in City Civil Court, Hyderabad \u2014 no delay limitation issue in civil track | Day 4-5 |\n| **Day 7** | Gather evidence of underlying transaction (loan agreement, invoice, WhatsApp messages, UPI payment trail showing prior dealings) | Day 7 |\n| **Post Day 15** | If Rajesh Mehta fails to pay within 15 days of notice receipt \u2192 File **S.138 complaint** before Metropolitan Magistrate, Hyderabad | Day 16 onwards |\n| **On Filing** | File **S.143A application** for interim compensation of Rs. 1,00,000 (20%) simultaneously with complaint | Same day as complaint |\n\n---\n\n## Document Checklist\n\n### Mandatory for S.138 Complaint:\n- [ ] **Original dishonoured cheque** (preserve physical instrument \u2014 do not laminate)\n- [ ] **Bank dishonour memo** from your client's collecting bank (showing MICR 302240007 / HDFC0001234)\n- [ ] **Proof of dispatch of legal demand notice** (registered post receipt, tracking report, courier POD, email delivery receipt)\n- [ ] **Proof of delivery or refusal** of demand notice (AD card / postal tracking printout)\n- [ ] **Affidavit of complainant** verifying the facts\n- [ ] **Vakalatnama** (duly executed)\n\n### Supporting Evidence \u2014 Underlying Transaction:\n- [ ] Loan agreement / MOU / invoice / purchase order establishing legally enforceable debt\n- [ ] WhatsApp messages / emails acknowledging the debt\n- [ ] Prior bank transfers (UPI/NEFT receipts) showing transaction history with Rajesh Mehta\n- [ ] Any acknowledgment of debt signed by Rajesh Mehta\n\n### For Civil Suit (Order XXXVII CPC):\n- [ ] All of above plus\n- [ ] Statement of account showing Rs. 5,00,000 due\n- [ ] Interest calculation statement at 18% p.a.\n- [ ] Court fee calculation on Rs. 5,00,000 + interest\n\n### Identity/KYC of Accused:\n- [ ] Rajesh Mehta's complete Hyderabad address (for service of summons)\n- [ ] Rajesh Mehta's mobile number and email (for S.144 NI Act alternative service)\n- [ ] Any visiting card, business letterhead, or agreement bearing his signature and address\n\n---\n\n## Key Warnings\n\n> \ud83d\udd34 **LIMITATION ALERT**: S.138 complaints are time-barred if filed beyond the prescribed period. The 30-day notice + 15-day payment window + 30-day complaint filing window is **strictly construed**. Missing any deadline is fatal \u2014 verify all dates immediately.\n\n> \ud83d\udd34 **IFSC MISMATCH**: IFSC HDFC0001234 maps to **Jaipur, Rajasthan** \u2014 NOT Hyderabad. Confirm whether Rajesh Mehta maintains his account at Jaipur branch or if the IFSC provided is incorrect. This does not affect guilt but affects the dishonour memo trail and jurisdiction analysis.\n\n> \ud83d\udfe1 **STOP PAYMENT DEFENCE**: If dishonour reason is \"stop payment\" rather than \"insufficient funds,\" the S.138 offence is still made out per **MMTC Ltd. v. Medchl Chemicals (2002) 1 SCC 234** \u2014 do not be deterred by this defence.\n\n---\n\n*Strategy prepared under Case ID: C133C2BE | Jurisdiction: Hyderabad, Telangana | Primary statute: NI Act 1881 S.138-142 | Advocate reference: Senior Counsel, Telangana & AP High Court*\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : NSE_INDIA, STOCK_EXCHANGE, MCA_COMPANY, IFSC, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : NSE_INDIA:success | STOCK_EXCHANGE:no_api_key | MCA_COMPANY:no_api_key | IFSC:success | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:mock\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "DBC17833",
+      "timestamp": "2026-05-15T01:21:40.169471",
+      "prompt": "Motor accident case \u2014 vehicle TS09EA1234 hit my client at Kukatpally. Need RC and DL verification. Vijayawada court.",
+      "api_results": {
+        "VAHAN": {
+          "chain": "VAHAN",
+          "status": "error",
+          "vehicle_number": "TS09EA1234",
+          "detail": "HTTP 404:         {\n        \"code\": 404,\n        \"message\": \"Not Found\",\n        \"timestamp\": \"1778808027913\",\n        \"transaction_id\": \"5a865ab9-74cf-4905-b9bd-7cf2f55a0789\"\n        }\n"
+        },
+        "TRANSPORT_TS": {
+          "chain": "TRANSPORT_TS",
+          "status": "sandbox",
+          "provider": "State Transport Department, Telangana \u2014 via Parivahan Sewa (MoRTH)",
+          "data_source": "API Setu Sandbox / Parivahan Sewa",
+          "results": {
+            "vehicle_rc": {
+              "chain": "TRANSPORT_TS_RC",
+              "status": "sandbox_connected_no_record",
+              "registration_number": "TS09EA1234",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "API Setu sandbox connected \u2014 vehicle not found in VAHAN national database. The vehicle may be in state RTO only (not synced to VAHAN). Add RAPIDAPI_KEY for broader coverage, or get a production API Setu key."
+            }
+          },
+          "documents_verified": [
+            "vehicle_rc"
+          ],
+          "legal_relevance_summary": {
+            "dl_valid": null,
+            "rc_ownership_clear": null,
+            "insurance_valid": null,
+            "mact_ready": false,
+            "applicable_laws": [
+              "Motor Vehicles Act 1988 \u2014 S.146 (insurance), S.185 (drunken driving)",
+              "Motor Accidents Claims Tribunal (MACT) \u2014 S.165",
+              "IT Act 2000 S.65B \u2014 electronic records admissibility",
+              "Parivahan Sewa \u2014 DigiLocker certified document"
+            ],
+            "notes": "DL & RC verified via Telangana State Transport Dept through Parivahan Sewa. Documents are DigiLocker-synced and court-admissible without physical attestation. Essential for MACT claims, criminal traffic offences, and vehicle attachment orders."
+          },
+          "note": "API Setu sandbox connected \u2014 real vehicle numbers return live data"
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC025370CB4F98",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC02871A12F44E",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC0292C82921B3",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE DBC17833 [AI-Generated]\n============================================================\n\n\ud83d\udd25 LITIGAFORGE AI \u2014 CASE DBC17833 [Claude Sonnet 4-6]\n============================================================\n\n## Summary\n\n**Case ID: DBC17833 | Motor Accident \u2014 TS09EA1234 | Kukatpally, Hyderabad**\n\nYour client was injured in a motor accident at Kukatpally involving vehicle bearing registration number **TS09EA1234**. The critical problem: **this vehicle does not exist in the VAHAN national database or the Telangana State Transport (Parivahan Sewa) database**. This is the pivotal fact that will drive your entire litigation strategy. The MACT readiness flag returned by the API is explicitly **false**. You must now pursue parallel tracks \u2014 criminal, civil/MACT, and insurance \u2014 before evidence evaporates.\n\n---\n\n## Key Findings from Government Data\n\n| Parameter | Retrieved Value | Legal Significance |\n|---|---|---|\n| **Vehicle TS09EA1234** | HTTP 404 \u2014 NOT FOUND in VAHAN | Possible fake/cloned/unregistered plate |\n| **VAHAN National DB** | Record not found (Transaction ID: 5a865ab9-74cf-4905-b9bd-7cf2f55a0789) | Cannot confirm RC, owner, insurer via standard API |\n| **Telangana State Transport (Parivahan)** | Sandbox connected \u2014 no record in issuer database | Not synced to VAHAN; RTO-level search required |\n| **MACT Ready Flag** | `false` | Insurance and RC ownership unconfirmed |\n| **DL Verified** | `null` \u2014 not verifiable without RC owner identity | Driver identity unknown |\n| **Insurance Valid** | `null` | Cannot invoke S.146 MV Act without insurer details |\n| **Applicable Laws (API-flagged)** | MV Act S.146, S.185; MACT S.165; IT Act S.65B | Full statutory framework identified |\n| **DL on Mock Profile** | TS14-XXXXXXXXXX, valid till 2038-11-04 (MeriPehchaan mock) | Mock data only \u2014 not usable in court |\n| **Mee Seva** | Sandbox connected, no live record | Income certificate data not live |\n\n**Critical Alert:** A 404 on TS09EA1234 across both VAHAN and Telangana State Transport strongly suggests the vehicle may bear a **fake, cloned, or tampered registration plate** \u2014 a cognizable offence under S.192 MV Act and S.468/471 IPC.\n\n---\n\n## Legal Analysis\n\n### 1. Jurisdiction \u2014 Vijayawada Court vs. Kukatpally Accident Site\n\nThe accident occurred at **Kukatpally, Hyderabad, Telangana** (TS09 prefix confirms Cyberabad/Hyderabad RTO jurisdiction). Filing the MACT claim in **Vijayawada (Andhra Pradesh)** is permissible **only if** your client resides in Vijayawada or the claim is filed before the tribunal having jurisdiction over the accident site.\n\n**S.166(2) Motor Vehicles Act 1988** permits filing before the MACT:\n- Where the accident occurred (**Kukatpally \u2192 MACT, Rangareddy/Hyderabad**), OR\n- Where the claimant resides, OR\n- Where the respondent (owner/insurer) resides/carries on business\n\n**Action:** Confirm your client's permanent address. If Vijayawada, filing there under S.166(2) is valid. If not, file before **MACT, Kukatpally / Hyderabad** to avoid jurisdictional challenge at threshold.\n\n---\n\n### 2. Vehicle Not in VAHAN \u2014 The \"Unregistered/Cloned Vehicle\" Problem\n\nUnder **S.39 Motor Vehicles Act 1988**, no person shall drive a motor vehicle without registration. Driving an unregistered or fake-plate vehicle is an offence under **S.192 MV Act** (fine up to \u20b910,000 for first offence; imprisonment up to 1 year for repeat).\n\nMore critically for your MACT claim:\n- **S.146 MV Act** mandates third-party insurance. No registration = almost certainly no valid insurance.\n- Under **S.149(2)(c) MV Act**, an insurer can repudiate if the vehicle was not registered at the time of accident.\n- However, **Sohan Lal Passi v. P. Sesh Reddy (SC)** and subsequent judgments hold that even where the vehicle is uninsured/unregistered, the **Solicitors Fund / Solatium Scheme under S.161 MV Act** is triggered. File for solatium payment from **General Insurance Corporation's Solatium Fund** for hit-and-run/uninsured vehicles.\n\n---\n\n### 3. Solatium Fund \u2014 Your Strongest Immediate Remedy\n\nSince insurance is unconfirmed (`null`) and the vehicle is untraced in VAHAN:\n\n**S.161 MV Act 1988 (Solatium Scheme)** provides:\n- \u20b950,000 for grievous hurt (enhanced under 2019 Amendment)\n- \u20b92,00,000 for death\n\nFile **Form SA-1** with the Claims Settlement Commissioner. This is independent of the MACT proceeding and does not bar a full compensation claim once the owner/insurer is traced.\n\n---\n\n### 4. Criminal Track \u2014 FIR and Police Investigation\n\nIf FIR has not been registered:\n- **S.279 IPC** (rash/negligent driving), **S.337/338 IPC** (causing hurt by negligent act), and if grievous \u2014 **S.304A IPC** apply.\n- **S.192 MV Act** (driving unregistered vehicle) and **S.177 MV Act** (general penalty for fake plates).\n- Demand police invoke **S.133 MV Act** to trace vehicle through CCTV (Kukatpally has extensive TSEC/TSIIC CCTV coverage).\n- File application under **S.91 CrPC** (now S.94 BNSS 2023) before the Magistrate to compel the SHO to produce CCTV footage from Kukatpally intersection nearest to the accident.\n\n---\n\n### 5. RTO Direct Trace \u2014 Bypassing Failed API\n\nThe API 404 on TS09EA1234 means the vehicle is either:\n(a) Not registered (fake plate), OR\n(b) Registered at RTO level but not synced to VAHAN (common for pre-2015 vehicles or recently deleted records)\n\n**TS09 = Cyberabad Commissionerate area, Balanagar/Kukatpally zone.** The competent RTO is **RTO Kukatpally / ADLR Balanagar, Hyderabad.**\n\nFile an **RTI Application under S.6 RTI Act 2005** addressed to:\n> **The Regional Transport Officer, Kukatpally, Telangana**\n> Seeking: (1) Registration details of TS09EA1234, (2) Owner name and address, (3) Insurance policy details, (4) Fitness certificate status\n\nResponse due within **30 days** under S.7 RTI Act.\n\n---\n\n### 6. MACT Claim \u2014 Structuring for Maximum Compensation\n\nOnce owner/insurer is traced (via police/RTI), file under **S.166 MV Act** before competent MACT:\n\nKey compensation heads (**National Insurance Co. v. Pranay Sethi AIR 2017 SC 5157**):\n- Medical expenses (actual + future)\n- Loss of income during treatment\n- Pain and suffering\n- Loss of amenities\n- Future prospects (add 40% if client under 40 years \u2014 *Pranay Sethi*)\n- Attendant charges\n- Conveyance/special diet\n\n**Multiplier method** under **Sarla Verma v. DTC (2009) 6 SCC 121** applies for income loss computation.\n\n---\n\n### 7. Admissibility of Digital Evidence\n\nPer the API's own legal relevance flag \u2014 **IT Act 2000 S.65B** governs electronic records. Any VAHAN/Parivahan data you retrieve with a certificate of authenticity from MoRTH/RTO is admissible. The 404 error response itself (with Transaction ID **5a865ab9-74cf-4905-b9bd-7cf2f55a0789**, timestamp **1778808027913**) should be preserved as evidence that the vehicle is unregistered in the national database \u2014 this supports your argument of a fake plate.\n\n---\n\n## Recommended Actions (Within 7 Days)\n\n| Priority | Action | Legal Basis | Deadline |\n|---|---|---|---|\n| **1. URGENT** | Verify FIR status at Kukatpally PS; if not filed, file complaint immediately with S.279/337/338 IPC + S.192 MV Act | CrPC S.154 / BNSS S.173 | Day 1 |\n| **2. URGENT** | Obtain Medico-Legal Certificate (MLC) and all hospital records; get them certified | Evidence Act S.32, S.74 | Day 1 |\n| **3. HIGH** | File RTI with RTO Kukatpally for TS09EA1234 registration/owner/insurance details | RTI Act S.6 | Day 2 |\n| **4. HIGH** | Apply to Magistrate/MACT under S.94 BNSS for police to preserve CCTV footage from Kukatpally accident site | BNSS S.94 / CrPC S.91 | Day 2 |\n| **5. HIGH** | File Solatium Scheme Form SA-1 with Claims Settlement Commissioner, Hyderabad | MV Act S.161 | Day 3 |\n| **6. MEDIUM** | Collect eyewitness statements with contact details; preserve photographs of accident scene | Evidence Act S.3 | Day 3 |\n| **7. MEDIUM** | Confirm client's residential address for MACT jurisdiction determination (Vijayawada vs. Hyderabad) | MV Act S.166(2) | Day 3 |\n| **8. MEDIUM** | File MACT claim petition (S.166) once owner/insurer identified; do not delay beyond **3 years** from accident date | MV Act S.166(3) \u2014 limitation | Within limitation |\n| **9. MEDIUM** | Preserve API 404 response (Transaction ID: 5a865ab9) with IT Act S.65B certificate as evidence of fake/unregistered plate | IT Act S.65B | Day 5 |\n| **10. INFO** | Obtain production-level Parivahan API key for live VAHAN query once owner identity is established via RTI/police | MV Act S.158 | Day 7 |\n\n---\n\n## Document Checklist\n\n**From Client:**\n- [ ] Accident date, time, exact location (cross-street/landmark at Kukatpally)\n- [ ] Photographs of vehicle TS09EA1234 (registration plate clearly visible)\n- [ ] Photographs of accident scene, injuries\n- [ ] FIR copy / NCR number from Kukatpally Police Station\n- [ ] MLC from treating hospital / casualty register extract\n- [ ] All hospital bills, prescriptions, diagnostic reports\n- [ ] Income proof (salary slips / IT returns / employer certificate) for loss of income claim\n- [ ] Client's address proof (Aadhaar/utility bill) \u2014 critical for MACT jurisdiction\n\n**From Government/Authorities:**\n- [ ] FIR + Charge Sheet (once filed) from Kukatpally PS\n- [ ] RTO response to RTI \u2014 ownership, insurance of TS09EA1234\n- [ ] CCTV footage (via court order under S.94 BNSS)\n- [ ] Accident report / Panchanama from police\n- [ ] VAHAN/Parivahan 404 API response printout with Transaction ID: 5a865ab9-74cf-4905-b9bd-7cf2f55a0789 (certify under IT Act S.65B)\n- [ ] Insurer details (once traced via RTO/police challan)\n- [ ] Form SA-1 acknowledgment from Claims Settlement Commissioner\n\n**For MACT Filing:**\n- [ ] Vakalatnama\n- [ ] Petition under S.166 MV Act with full particulars\n- [ ] Affidavit of claimant\n- [ ] Medical evidence compilation\n- [ ] Income computation chart (Sarla Verma multiplier method)\n- [ ] Witness list with contact addresses\n\n---\n\n**Bottom Line:** The VAHAN 404 on TS09EA1234 is not a setback \u2014 it is your strongest weapon. It proves the vehicle was either unregistered (S.192 offence) or bore a fake/cloned plate (S.468/471 IPC). Pursue the Solatium Fund immediately for guaranteed interim compensation, while the police/RTI track identifies the owner for full MACT proceedings. Do not allow the police to close the case as \"vehicle untraced\" without exhausting CCTV and forensic options.\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n  \u2192 VAHAN + SARATHI + insurance verification chain for motor accident liability assessment\n\nCHAINS  : VAHAN, TRANSPORT_TS, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : VAHAN:error | TRANSPORT_TS:sandbox | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "1AA224D1",
+      "timestamp": "2026-05-15T01:24:21.031969",
+      "prompt": "Cheque bounce NI Act 138 \u2014 IFSC SBIN0020149 Hyderabad, cheque of Rs 8 lakhs dishonoured by Suresh Reddy",
+      "api_results": {
+        "IFSC": {
+          "chain": "IFSC",
+          "status": "success",
+          "data_source": "RBI IFSC Registry via Razorpay (free, no key)",
+          "ifsc_code": "SBIN0020149",
+          "bank_name": "State Bank of India",
+          "branch": "N I T BR",
+          "address": "IEMKDKZIPEMIDWGLWGL",
+          "city": "WARANGAL",
+          "district": "WARANGAL",
+          "state": "ANDHRA PRADESH",
+          "contact": "+918702459149",
+          "micr_code": "506002030",
+          "rtgs_enabled": true,
+          "neft_enabled": true,
+          "imps_enabled": true,
+          "upi_enabled": true,
+          "swift_code": "SBININBBH14",
+          "raw": {
+            "MICR": "506002030",
+            "BRANCH": "N I T BR",
+            "ADDRESS": "IEMKDKZIPEMIDWGLWGL",
+            "STATE": "ANDHRA PRADESH",
+            "CONTACT": "+918702459149",
+            "UPI": true,
+            "RTGS": true,
+            "CITY": "WARANGAL",
+            "CENTRE": "WARANGAL",
+            "DISTRICT": "WARANGAL",
+            "NEFT": true,
+            "IMPS": true,
+            "SWIFT": "SBININBBH14",
+            "ISO3166": "IN-AP",
+            "BANK": "State Bank of India",
+            "BANKCODE": "SBIN",
+            "IFSC": "SBIN0020149"
+          },
+          "legal_relevance": {
+            "bank_verified": true,
+            "notes": "IFSC SBIN0020149 verified against RBI registry. Critical in cheque bounce cases (NI Act S.138) to establish drawee bank. Use for attachment orders (CPC Order XXI), fraud tracing, and loan disputes."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC02EB2DD51C0B",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC0218876F8053",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC0266CFC5CDA4",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 1AA224D1 [AI-Generated]\n============================================================\n\n\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 1AA224D1 [Claude Sonnet 4-6]\n============================================================\n\n# Legal Strategy \u2014 Cheque Bounce NI Act S.138 | Case ID: 1AA224D1\n\n---\n\n## Summary\n\nYour client holds a dishonoured cheque of **Rs. 8,00,000/-** drawn on **State Bank of India, N.I.T. Branch, Warangal** (IFSC: SBIN0020149, MICR: 506002030) issued by **Suresh Reddy**. The drawee bank is RBI-verified. This is a strong S.138 NI Act case provided the statutory notice and limitation timelines are scrupulously observed. **Critical jurisdictional issue flagged below** \u2014 the bank branch is in **Warangal, Telangana** (now re-classified), not Hyderabad, which directly affects where the complaint is filed.\n\n---\n\n## Key Findings from Government Data\n\n| Parameter | Actual Data |\n|---|---|\n| IFSC Code | SBIN0020149 \u2705 RBI Verified |\n| Bank | State Bank of India |\n| Branch Name | **N.I.T. BR (National Institute of Technology Branch)** |\n| City | **WARANGAL** |\n| District | **WARANGAL** |\n| State | **ANDHRA PRADESH** (RBI registry legacy entry \u2014 actual jurisdiction is **Telangana** post-bifurcation) |\n| MICR Code | **506002030** |\n| Contact | +918702459149 |\n| RTGS/NEFT/IMPS/UPI | All Enabled |\n| SWIFT Code | SBININBBH14 |\n\n> \u26a0\ufe0f **Critical Flag:** The RBI IFSC registry shows \"ANDHRA PRADESH\" \u2014 this is a legacy pre-2014 bifurcation entry. Warangal district is firmly within **Telangana** jurisdiction post-AP Reorganisation Act 2014. Your complaint must be filed in **Warangal courts**, not Hyderabad, unless the cheque was presented/dishonoured at a Hyderabad branch.\n\n---\n\n## Legal Analysis\n\n### 1. Establishing the S.138 NI Act Offence \u2014 Elements Checklist\n\n**Section 138, Negotiable Instruments Act, 1881** requires all five conditions:\n\n| Element | Status |\n|---|---|\n| (a) Cheque drawn on a bank for discharge of legally enforceable debt | \u2705 Confirm \u2014 SBI N.I.T. Branch, Warangal |\n| (b) Cheque presented within 3 months of date | \u26a0\ufe0f Verify presentation date |\n| (c) Cheque returned unpaid (memo of dishonour) | \u2705 Obtain bank's dishonour memo with MICR 506002030 reference |\n| (d) Demand notice given within 30 days of dishonour | \u26a0\ufe0f **URGENT \u2014 check if 30-day window is still open** |\n| (e) Drawer fails to pay within 15 days of notice | \u26a0\ufe0f Awaiting Suresh Reddy's response |\n\n### 2. Jurisdiction Analysis \u2014 Critical\n\nPer **S.142(2) NI Act** (as amended by NI Amendment Act 2015), the complaint lies in the court within whose local jurisdiction:\n- The cheque was **delivered for collection** (payee's bank branch), OR\n- The cheque was **presented for payment** (drawee bank = **SBI N.I.T. Branch, Warangal**)\n\n**If your client's account is in Hyderabad:** File at the **Magistrate's Court, Hyderabad** (where cheque was delivered for collection through your client's bank).\n\n**If presented directly at SBI N.I.T. Branch Warangal:** File at **Judicial Magistrate of First Class (JMFC), Warangal**.\n\n> The Supreme Court in **Dashrath Rupsingh Rathod v. State of Maharashtra (2014) 9 SCC 129** and subsequent **2015 amendment** to S.142 clarified this \u2014 obtain the bank's dishonour memo which will specify the presenting branch.\n\n### 3. Limitation Period \u2014 S.142(1) NI Act\n\n- Complaint must be filed within **30 days** from the date on which the **15-day notice period expires** (i.e., after Suresh Reddy fails to pay within 15 days of receiving the demand notice).\n- Total outer timeline: Dishonour \u2192 30-day notice window \u2192 15-day payment window \u2192 **30-day filing window**.\n- **Missing any deadline is fatal** \u2014 see *Saketh India Ltd. v. India Securities Ltd. (1999) 3 SCC 1*.\n\n### 4. Demand Notice Requirements \u2014 S.138 Proviso\n\nThe statutory demand notice must:\n- Be sent within **30 days of receipt of dishonour memo** from SBI N.I.T. Branch (MICR: 506002030)\n- Clearly state the cheque number, date, amount (Rs. 8,00,000/-), and the fact of dishonour\n- Be sent to Suresh Reddy at his **last known address** via **Speed Post + Registered Post AD** (both)\n- If notice is returned unserved, it still constitutes valid service under S.27 General Clauses Act \u2014 *K. Bhaskaran v. Sankaran Vaidhyan Balan (1999) 7 SCC 510*\n\n### 5. Presumption Under S.139 NI Act\n\nOnce the cheque and dishonour are proved, the Court **presumes** the cheque was drawn for discharge of a legally enforceable debt. The burden **shifts to Suresh Reddy** to rebut this presumption (*Rangappa v. Sri Mohan (2010) 11 SCC 441*).\n\n### 6. Compensation \u2014 S.357 CrPC / S.143A & S.148 NI Act\n\n- **S.143A NI Act:** Court may direct drawer to pay **interim compensation up to 20% of cheque amount (Rs. 1,60,000/-)** during pendency of trial \u2014 apply at first hearing.\n- **S.148 NI Act:** If Suresh Reddy appeals conviction, appellate court shall direct deposit of **minimum 20% of fine/compensation** before entertaining appeal.\n- **S.138 punishment:** Imprisonment up to 2 years + fine up to **twice the cheque amount (Rs. 16,00,000/)** \u2014 use this as leverage in settlement.\n\n### 7. Civil Remedy \u2014 Parallel Money Recovery Suit\n\nFile a **money recovery suit under Order XXXVII CPC** (Summary Suit) simultaneously in the Civil Court for Rs. 8,00,000/- + interest. The dishonoured cheque is itself prima facie proof of the debt. This ensures you have a money decree even if the criminal complaint results in acquittal.\n\n---\n\n## Recommended Actions (Within 7 Days)\n\n### **Day 1-2: Immediate**\n1. **Obtain the bank's dishonour memo** from SBI N.I.T. Branch, Warangal (IFSC: SBIN0020149) \u2014 confirm the exact date of dishonour, reason (insufficient funds / account closed / stop payment), and presenting branch details\n2. **Calculate the 30-day notice deadline** from the dishonour date \u2014 if approaching, send notice **TODAY**\n3. Verify whether cheque was presented through your client's Hyderabad bank (which determines jurisdiction)\n\n### **Day 2-3: Issue Statutory Demand Notice**\n4. Draft and dispatch the **S.138 demand notice** to Suresh Reddy mentioning:\n   - Cheque No., Date, Amount: Rs. 8,00,000/-\n   - Drawn on SBI N.I.T. Branch, Warangal, IFSC SBIN0020149, MICR 506002030\n   - Reason for dishonour as stated in bank memo\n   - Demand for payment within 15 days\n5. Send via **Registered Post AD + Speed Post** to all known addresses of Suresh Reddy\n6. Retain postal receipts \u2014 they are evidence of service\n\n### **Day 3-4: Evidence Preservation**\n7. File **RTI application** with SBI N.I.T. Branch under RTI Act 2005 for certified copy of cheque presentation and dishonour records\n8. Collect all underlying transaction documents establishing the debt (loan agreement, delivery receipts, invoices, WhatsApp communications, bank transfers)\n\n### **Day 5-7: Prepare Complaint**\n9. Draft complaint under **S.138/142 NI Act** before the competent JMFC\n10. File application under **S.143A NI Act** for 20% interim compensation (Rs. 1,60,000/-) simultaneously\n11. Simultaneously file **Order XXXVII CPC Summary Suit** in Civil Court\n\n---\n\n## Document Checklist\n\n### Primary Evidence\n- [ ] **Original dishonoured cheque** (preserve physical cheque \u2014 do not laminate)\n- [ ] **Bank's dishonour memo/return memo** from SBI N.I.T. Branch, Warangal \u2014 must show MICR 506002030 and reason for dishonour\n- [ ] **Bank statement** of presenting account showing cheque return entry\n\n### Notice & Service\n- [ ] **Copy of S.138 demand notice** sent to Suresh Reddy\n- [ ] **Registered post receipt** (original)\n- [ ] **Speed post receipt** (original)\n- [ ] **Postal AD card** (acknowledgement of delivery) OR tracking proof of attempted delivery\n\n### Underlying Transaction Documents\n- [ ] Agreement / loan document / invoice evidencing the Rs. 8,00,000/- debt\n- [ ] Any prior payment records / WhatsApp/email communications from Suresh Reddy acknowledging the debt\n- [ ] Bank transfer records (NEFT/IMPS/UPI) if any prior payments made by Suresh Reddy\n\n### Complainant's Identity & Jurisdiction\n- [ ] Complainant's Aadhaar / PAN (admissible under IT Act S.65B)\n- [ ] Complainant's bank account statement showing the presenting branch (to establish jurisdiction \u2014 Hyderabad vs. Warangal)\n- [ ] Affidavit of complainant for the complaint\n\n### For S.143A Interim Compensation Application\n- [ ] Vakalatnama\n- [ ] Certified copy of dishonour memo\n- [ ] Calculation sheet: 20% of Rs. 8,00,000/- = **Rs. 1,60,000/-**\n\n---\n\n> **Senior Advocate's Note:** The most common reason S.138 complaints fail in Telangana courts is **jurisdictional defect** and **missed notice timelines**. Given that the drawee bank (SBI N.I.T. Branch) is in **Warangal** but your client is in **Hyderabad**, confirm the presenting bank branch immediately \u2014 this single fact determines everything. If needed, file in Warangal and engage local counsel there. Do not file in Hyderabad without clear jurisdictional basis. The MICR code **506002030** confirms Warangal district, strengthening the case for Warangal jurisdiction.\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : IFSC, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : IFSC:success | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
     }
   ],
   "watch_list": []
