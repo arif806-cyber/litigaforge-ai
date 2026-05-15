@@ -4,11 +4,10 @@ import { useLocation } from "wouter";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2, CircleDashed } from "lucide-react";
+import { Scale, Loader2, ChevronRight, AlertTriangle, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScalesHero } from "@/components/graphics/ScalesHero";
-import { ChainDiagram } from "@/components/graphics/ChainDiagram";
 
 interface ChainMapItem { chain: string; status: string; }
 interface ForgeResult {
@@ -35,18 +34,6 @@ const ENTITY_CONFIG: Record<string, { label: string; color: string }> = {
   aadhaar: { label: "Aadhaar", color: "text-orange-400 border-orange-500/30 bg-orange-500/10" },
 };
 
-const CHAIN_COLORS: Record<string, string> = {
-  GSTIN: "border-blue-500/30 text-blue-400 bg-blue-500/10",
-  PAN: "border-violet-500/30 text-violet-400 bg-violet-500/10",
-  DigiLocker: "border-cyan-500/30 text-cyan-400 bg-cyan-500/10",
-  eCourts: "border-amber-500/30 text-amber-400 bg-amber-500/10",
-  VAHAN: "border-green-500/30 text-green-400 bg-green-500/10",
-  SARATHI: "border-teal-500/30 text-teal-400 bg-teal-500/10",
-  BPCL_LPG: "border-orange-500/30 text-orange-400 bg-orange-500/10",
-  MERIPEHCHAAN: "border-pink-500/30 text-pink-400 bg-pink-500/10",
-  MEE_SEVA_TG: "border-red-500/30 text-red-400 bg-red-500/10",
-  TRANSPORT_TS: "border-indigo-500/30 text-indigo-400 bg-indigo-500/10",
-};
 
 const EXAMPLE_PROMPTS = [
   { text: "My client Ramesh Kumar with PAN ABCDE1234F and GSTIN 36ABCDE1234F1Z5 has a property dispute in Hyderabad. Vehicle TS09EA1234 involved.", hotkey: "1" },
@@ -54,64 +41,12 @@ const EXAMPLE_PROMPTS = [
   { text: "GST fraud case — GSTIN 29AABCU9603R1ZM and PAN AABCU9603R, case filed at City Civil Court Hyderabad.", hotkey: "3" },
 ];
 
-const LOADING_CHAINS = ["GSTIN", "PAN", "eCourts", "VAHAN", "SARATHI", "MEE_SEVA_TG", "TRANSPORT_TS", "MERIPEHCHAAN", "DigiLocker"];
-
 function PipelineLoading() {
-  const [activeIdx, setActiveIdx] = useState(-1);
-
-  useEffect(() => {
-    let current = 0;
-    const interval = setInterval(() => {
-      setActiveIdx(current);
-      current++;
-      if (current > LOADING_CHAINS.length + 1) current = 0;
-    }, 400);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <div className="glass-panel p-8 rounded-xl space-y-8 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent animate-shimmer" />
-      
-      <div className="flex items-center gap-4 relative z-10">
-        <div className="relative">
-          <Loader2 className="w-6 h-6 animate-spin text-primary relative z-10" />
-          <div className="absolute inset-0 bg-primary/20 blur-md rounded-full animate-pulse" />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-white tracking-wide">Forging Intelligence</h3>
-          <p className="text-xs text-muted-foreground font-mono mt-1">Executing multi-hop data extraction pipeline...</p>
-        </div>
-      </div>
-
-      {/* Pipeline flow diagram */}
-      <div className="relative z-10">
-        <ChainDiagram className="w-full max-w-2xl mx-auto opacity-70" />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 relative z-10">
-        {LOADING_CHAINS.map((chain, i) => {
-          const status = i < activeIdx ? "done" : i === activeIdx ? "loading" : "pending";
-          return (
-            <motion.div
-              key={chain}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border text-sm font-mono transition-all duration-300",
-                status === "done" ? "bg-primary/10 border-primary/30 text-primary" :
-                status === "loading" ? "bg-white/5 border-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]" :
-                "bg-black/20 border-white/5 text-muted-foreground/40"
-              )}
-            >
-              {status === "done" && <CheckCircle2 className="w-4 h-4 text-primary" />}
-              {status === "loading" && <Loader2 className="w-4 h-4 animate-spin text-white" />}
-              {status === "pending" && <CircleDashed className="w-4 h-4" />}
-              {chain}
-            </motion.div>
-          );
-        })}
+    <div className="flex items-center justify-center py-20">
+      <div className="relative">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
       </div>
     </div>
   );
@@ -379,38 +314,6 @@ function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase:
           </div>
         </motion.div>
       )}
-
-      {/* Chain Execution Ribbon */}
-      <motion.div variants={item} className="space-y-3">
-        <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <span className="w-4 h-px bg-white/20" /> API Chains Executed
-        </h3>
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x">
-          {result.chain_map.map((c) => (
-            <div
-              key={c.chain}
-              data-testid={`chain-row-${c.chain}`}
-              className="glass-panel p-4 rounded-xl min-w-[200px] flex-shrink-0 snap-start flex flex-col gap-3"
-            >
-              <div className="flex justify-between items-start">
-                <span className={cn("text-xs font-bold font-mono px-2 py-1 rounded border", CHAIN_COLORS[c.chain] || "text-white bg-white/10 border-white/20")}>
-                  {c.chain}
-                </span>
-                {c.status === "live" ? (
-                  <span className="flex items-center gap-1.5 text-[10px] text-green-400 font-mono uppercase font-bold bg-green-500/10 px-2 py-0.5 rounded">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Live
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-amber-400 font-mono uppercase font-bold bg-amber-500/10 px-2 py-0.5 rounded">Dummy</span>
-                )}
-              </div>
-              <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-primary w-full" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
 
       {/* Strategy Block */}
       {result.final_output && (
