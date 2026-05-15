@@ -46,18 +46,50 @@ def _dummy_extract_entities(prompt: str) -> Dict:
     entities = {}
     prompt_lower = prompt.lower()
 
+    # GSTIN
     gstin_match = re.search(r'\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}\b', prompt)
     if gstin_match:
         entities["gstin"] = gstin_match.group()
 
+    # PAN
     pan_match = re.search(r'\b[A-Z]{5}\d{4}[A-Z]{1}\b', prompt)
     if pan_match:
         entities["pan"] = pan_match.group()
 
+    # Vehicle registration number
     vehicle_match = re.search(r'\b[A-Z]{2}\d{2}[A-Z]{1,2}\d{4}\b', prompt)
     if vehicle_match:
         entities["vehicle_number"] = vehicle_match.group()
 
+    # IFSC code (11 chars: 4 alpha + 0 + 6 alphanum)
+    ifsc_match = re.search(r'\b[A-Z]{4}0[A-Z0-9]{6}\b', prompt)
+    if ifsc_match:
+        entities["ifsc_code"] = ifsc_match.group()
+
+    # Pincode (6 digits, not part of larger number)
+    pin_match = re.search(r'(?<!\d)([1-9]\d{5})(?!\d)', prompt)
+    if pin_match:
+        entities["pincode"] = pin_match.group(1)
+
+    # Stock / company name
+    stock_keywords = [
+        "infosys", "tcs", "reliance", "wipro", "hdfc", "icici", "sbi", "bajaj",
+        "adani", "ongc", "ntpc", "coal india", "hindalco", "mahindra", "maruti",
+        "itc", "bharti airtel", "sun pharma", "dr reddy", "cipla", "hero motocorp",
+    ]
+    for kw in stock_keywords:
+        if kw in prompt_lower:
+            entities["company_name"] = kw
+            break
+    # Also catch "shares of XYZ" or "listed company XYZ"
+    stock_pattern = re.search(
+        r'(?:shares?\s+of|stock\s+of|listed\s+company|company)\s+([A-Z][a-zA-Z\s]{2,30})',
+        prompt, re.IGNORECASE
+    )
+    if stock_pattern and "company_name" not in entities:
+        entities["company_name"] = stock_pattern.group(1).strip().lower()
+
+    # Party name
     name_patterns = [
         r'client\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
         r'for\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
@@ -69,6 +101,7 @@ def _dummy_extract_entities(prompt: str) -> Dict:
             entities["party_name"] = match.group(1)
             break
 
+    # Case type
     case_types = {
         "eviction": "Rent Eviction",
         "gst": "GST Dispute",
@@ -78,12 +111,19 @@ def _dummy_extract_entities(prompt: str) -> Dict:
         "motor": "Motor Accident",
         "criminal": "Criminal",
         "writ": "Writ Petition",
+        "securities": "Securities Fraud",
+        "insider": "Insider Trading",
+        "npa": "NPA / DRT",
+        "drt": "NPA / DRT",
+        "insolvency": "Insolvency",
+        "bank fraud": "Bank Fraud",
     }
     for keyword, case_type in case_types.items():
         if keyword in prompt_lower:
             entities["case_type"] = case_type
             break
 
+    # LPG
     lpg_match = re.search(r'\b\d{12}\b', prompt)
     if lpg_match and "lpg" in prompt_lower:
         entities["lpg_id"] = lpg_match.group()
@@ -92,10 +132,15 @@ def _dummy_extract_entities(prompt: str) -> Dict:
     if svid_match:
         entities["svid"] = svid_match.group(1)
 
+    # State / location
     state_map = {
         "hyderabad": "TS", "telangana": "TS", "kukatpally": "TS",
-        "secunderabad": "TS", "warangal": "TS", "mumbai": "MH",
-        "pune": "MH", "delhi": "DL", "bangalore": "KA", "chennai": "TN",
+        "secunderabad": "TS", "warangal": "TS", "nalgonda": "TS",
+        "mumbai": "MH", "pune": "MH", "nagpur": "MH",
+        "delhi": "DL", "new delhi": "DL",
+        "bangalore": "KA", "bengaluru": "KA",
+        "chennai": "TN", "coimbatore": "TN",
+        "kolkata": "WB", "ahmedabad": "GJ",
     }
     for city, code in state_map.items():
         if city in prompt_lower:
@@ -112,12 +157,16 @@ def _dummy_extract_entities(prompt: str) -> Dict:
 def _dummy_plan_chains(entities: Dict) -> List[str]:
     """Pick chains based on available entity data."""
     chains = []
+
+    # ── Identity & tax ────────────────────────────────────────────────────────
     if entities.get("gstin"):
         chains.append("GSTIN")
     if entities.get("pan"):
         chains.append("PAN")
     if entities.get("aadhaar"):
         chains.append("DigiLocker")
+
+    # ── Vehicle & transport ───────────────────────────────────────────────────
     if entities.get("vehicle_number"):
         chains.append("VAHAN")
         if entities.get("state_code", "TS") in ("TS", "AP", "TG"):
@@ -127,14 +176,31 @@ def _dummy_plan_chains(entities: Dict) -> List[str]:
         if entities.get("state_code", "TS") in ("TS", "AP", "TG"):
             if "TRANSPORT_TS" not in chains:
                 chains.append("TRANSPORT_TS")
+
+    # ── Finance & markets ─────────────────────────────────────────────────────
+    if entities.get("company_name"):
+        chains.append("STOCK_EXCHANGE")
+    if entities.get("ifsc_code"):
+        chains.append("IFSC")
+
+    # ── Address ───────────────────────────────────────────────────────────────
+    if entities.get("pincode"):
+        chains.append("PINCODE")
+
+    # ── State services ────────────────────────────────────────────────────────
     if entities.get("lpg_id"):
         chains.append("BPCL_LPG")
+
+    # ── Defaults if nothing else matched ─────────────────────────────────────
     if not chains:
         chains = ["PAN", "DigiLocker"]
+
+    # ── Always run ────────────────────────────────────────────────────────────
     chains.append("MERIPEHCHAAN")
     if entities.get("state_code", "TS") in ("TS", "AP", "TG"):
         chains.append("MEE_SEVA_TG")
     chains.append("eCourts")
+
     return chains
 
 
@@ -261,6 +327,7 @@ def entity_extractor(state: LitigaState) -> LitigaState:
 You are a legal entity extraction specialist for Indian law.
 Extract from the user prompt (return null for missing):
 - gstin, pan, aadhaar, vehicle_number, dl_number
+- ifsc_code, pincode, company_name (listed NSE/BSE company)
 - party_name, opponent_name, case_number, case_type
 - state_code (2-letter: TS, AP, MH...), location
 
@@ -340,6 +407,12 @@ def execute_chains(state: LitigaState) -> LitigaState:
                 case_number=entities.get("case_number"),
                 state_code=entities.get("state_code", "TS"),
                 name=entities.get("party_name"),
+                # New departments
+                ifsc_code=entities.get("ifsc_code"),
+                pincode=entities.get("pincode"),
+                company_name=entities.get("company_name"),
+                stock_symbol=entities.get("stock_symbol"),
+                address=entities.get("address"),
             )
             results[chain_name] = result
             for cm in state["chain_map"]:
