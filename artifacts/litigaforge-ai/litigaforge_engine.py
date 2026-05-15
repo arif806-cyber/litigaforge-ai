@@ -29,7 +29,11 @@ memory = ForgeMemory()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_BASE    = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "")
-# AI_MODE: "openai" | "gemini" | "smart_fallback"
+
+# AI_MODE resolution:
+#   "gemini"         — default, free via Replit AI Integrations (no key needed)
+#   "openai"         — optional override: set OPENAI_API_KEY + pip install langchain-openai
+#   "smart_fallback" — regex + data-driven templates (Gemini unavailable)
 if OPENAI_API_KEY:
     AI_MODE = "openai"
 elif GEMINI_BASE:
@@ -39,16 +43,19 @@ else:
 
 DUMMY_MODE = (AI_MODE == "smart_fallback")
 
+llm = None
 if AI_MODE == "openai":
-    from langchain_openai import ChatOpenAI
-    llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o"), temperature=0.3, api_key=OPENAI_API_KEY)
-    logger.info("AI MODE: OpenAI GPT-4o")
+    try:
+        from langchain_openai import ChatOpenAI
+        llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o"), temperature=0.3, api_key=OPENAI_API_KEY)
+        logger.info("AI MODE: OpenAI GPT-4o (optional override)")
+    except ImportError:
+        logger.warning("OPENAI_API_KEY set but langchain-openai not installed — falling back to Gemini")
+        AI_MODE = "gemini" if GEMINI_BASE else "smart_fallback"
 elif AI_MODE == "gemini":
-    llm = None
-    logger.info("AI MODE: Gemini 2.5 Flash via Replit AI Integrations (free)")
+    logger.info("AI MODE: Gemini 2.5 Flash — free via Replit AI Integrations")
 else:
-    llm = None
-    logger.info("AI MODE: Smart fallback (Gemini base URL not found)")
+    logger.info("AI MODE: Smart fallback (regex + data-driven templates)")
 
 
 # ─── Dummy LLM Responses ─────────────────────────────────────────────────────
