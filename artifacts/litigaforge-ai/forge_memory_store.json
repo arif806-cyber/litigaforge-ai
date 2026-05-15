@@ -273,6 +273,23 @@
         "Cross-chain GSTIN + PAN + eCourts for combined tax + civil dispute strategy"
       ],
       "outcome_summary": "As a senior advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, I have reviewed the provided information regarding the GST fraud case (Case ID: F070D482) concerning GSTIN `36AAAAA0000A1ZA` in Telangana.\n\n## Summary\n\nThe core of this case is an alleged GST fraud associat"
+    },
+    {
+      "id": 17,
+      "timestamp": "2026-05-15T01:15:15.525707",
+      "prompt_snippet": "search Infosys stock \u2014 SEBI insider trading case",
+      "chains_used": [
+        "NSE_INDIA",
+        "STOCK_EXCHANGE",
+        "MCA_COMPANY",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 2727ADA5 [Claude Sonnet 4-6]\n============================================================\n\n# SEBI Insider Trading Case \u2014 Infosys Limited (INFY)\n## Case ID: 2727ADA5 | Jurisdiction: Hyderabad\n\n---\n\n## Summary\n\nThis matter concerns a potential SEBI insider trading investigation"
     }
   ],
   "cases": [
@@ -5019,6 +5036,334 @@
         }
       },
       "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE F070D482 [AI-Generated]\n============================================================\n\nAs a senior advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, I have reviewed the provided information regarding the GST fraud case (Case ID: F070D482) concerning GSTIN `36AAAAA0000A1ZA` in Telangana.\n\n## Summary\n\nThe core of this case is an alleged GST fraud associated with GSTIN `36AAAAA0000A1ZA` in Telangana. While the GSTIN itself is identified, **crucially, no live GST compliance or return data could be retrieved** due to an API key limitation. Therefore, a direct analysis of the GST fraud based on real-time GST records is currently not possible.\n\nHowever, extensive *mock* identity and background verification data for a \"Citizen (Mock)\" has been retrieved via MeriPehchaan, indicating a robust digital identity profile. This data, if corresponding to an actual individual involved in the fraud, is legally admissible. Additionally, *mock* Mee Seva certificate data for an \"Applicant (Mock)\" in Hyderabad, Kukatpally, Telangana, suggests potential financial information, though live records were not found.\n\n## Key Findings\n\n1.  **GSTIN Identification:** The GSTIN in question is `36AAAAA0000A1ZA`, located in Telangana.\n    *   **Limitation:** The API for live GSTIN lookup returned `\"status\": \"no_api_key\"`, meaning no actual GST return status, registration details, or compliance history could be accessed for this GSTIN.\n2.  **Mock Citizen Identity (MeriPehchaan):** Comprehensive *mock* identity documents for a \"Citizen (Mock)\" (`sub: \"dummy-citizen-001\"`) have been retrieved, including:\n    *   Aadhaar Card (`XXXX-XXXX-1234`, issued 2019-03-15)\n    *   PAN Card (`ABCDE1234F`, issued 2015-07-22)\n    *   Driving Licence (`TS14-XXXXXXXXXX`, valid till 2038-11-04)\n    *   Telangana Government issued Income Certificate (issued 2024-01-10), Domicile Certificate (issued 2023-06-18), and Caste Certificate (issued 2022-09-01).\n    *   All these documents are marked as \"verified\" and are digitally available.\n3.  **Legal Admissibility of Digital Documents:** The MeriPehchaan data explicitly states that these digital records are \"Admissible under IT Act 2000 Section 65B as government-certified digital records\" and \"Can be submitted directly in court without physical copy attestation.\"\n4.  **Mock Mee Seva Certificates (Telangana):**\n    *   *Mock* data for an \"Income Certificate\" and \"Residence Certificate\" for an \"Applicant (Mock)\" in \"Hyderabad, Kukatpally, Telangana\" was provided.\n    *   The *mock* Income Certificate indicates an annual income of \"\u20b94,50,000\" from \"Salaried Employment\", falling under the \"Below \u20b98 Lakh (EWS/OBC eligible)\" category.\n    *   **Limitation:** The Mee Seva API returned `\"status\": \"sandbox_connected_no_record\"` and an `HTTP 404` error, indicating that no live record was found for the provided (mock) application numbers.\n\n## Legal Analysis\n\n1.  **GST Fraud Allegation (Limited Data):** Without live GSTIN data for `36AAAAA0000A1ZA`, it is impossible to ascertain the nature or extent of the alleged GST fraud from the retrieved information. We cannot verify registration status, return filing, input tax credit claims, or tax liabilities.\n2.  **Identity and Culpability:** If the \"Citizen (Mock)\" is identified as a proprietor, director, partner, or key individual associated with the GSTIN `36AAAAA0000A1ZA` or the alleged fraudulent activities, their verified digital identity documents (Aadhaar, PAN) become critical. These documents can be used to establish their legal identity, link them to bank accounts, property, and other financial instruments relevant to the fraud investigation.\n3.  **Evidentiary Value of Digital Records:** The explicit mention of admissibility under **Section 65B of the Information Technology Act, 2000**, for the MeriPehchaan documents is a significant advantage. This means that once the \"Citizen (Mock)\" is identified as a real person involved, their digital records from DigiLocker can be directly presented in court as evidence without the need for physical attestation, streamlining the legal process.\n4.  **Jurisdiction:** The GSTIN is in Telangana, and the Mee Seva mock data points to Hyderabad, Kukatpally, Telangana. This confirms that the appropriate jurisdiction for legal proceedings would be within the State of Telangana, specifically the courts in Hyderabad.\n5.  **Financial Standing (Potential Relevance):** While the Mee Seva income data is mock, if a real income certificate for an implicated individual confirms an income of \u20b94,50,000, it could be relevant for:\n    *   Assessing their financial capacity for potential penalties or recovery of fraudulent gains.\n    *   Determining eligibility for legal aid under the **Legal Services Authorities Act, 1987**, or court fee waivers under the **Telangana Court Fees and Suits Valuation Act**.\n\n## Recommended Actions\n\n1.  **Immediate Priority: Obtain Live GSTIN Data:**\n    *   **Action:** Secure a RapidAPI key and integrate it to retrieve the live \"GST Return Status\" for `36AAAAA0000A1ZA`.\n    *   **Purpose:** This will provide the actual legal name of the entity, its registration status, date of registration, principal place of business, return filing history, and any cancellation or suspension details. This is fundamental to understanding the nature and scale of the alleged GST fraud.\n2.  **Identify the \"Citizen (Mock)\":**\n    *   **Action:** Determine the actual identity of the individual represented by the \"Citizen (Mock)\" data. Is this the proprietor, a partner, a director, an authorized signatory, or a key person involved in the alleged fraud related to `36AAAAA0000A1ZA`?\n    *   **Purpose:** Link the verified digital identity (Aadhaar, PAN) to the GSTIN and the fraudulent activities.\n3.  **Leverage Digital Identity for Investigation:**\n    *   **Action:** Once the individual is identified, use their Aadhaar (`XXXX-XXXX-1234`) and PAN (`ABCDE1234F`) details to trace bank accounts, property holdings, and other financial assets that may be linked to the fraudulent proceeds.\n    *   **Purpose:** Gather evidence for financial trail and asset recovery.\n4.  **Investigate Actual Mee Seva Records (if applicable):**\n    *   **Action:** If the \"Citizen (Mock)\" is a party, attempt to retrieve their *actual* Income and Residence Certificates from Mee Seva using their real application numbers.\n    *   **Purpose:** Verify their declared income, residential address, and other details that might corroborate or contradict other evidence in the fraud case.\n5.  **Liaise with GST Authorities:**\n    *   **Action:** File a formal complaint or assist the investigating agency (e.g., Directorate General of GST Intelligence - DGGI) with all available information, including the GSTIN and the identified individual's details.\n    *   **Purpose:** Initiate or support a formal investigation into the GST fraud under the **Central Goods and Services Tax Act, 2017**, particularly sections related to fraudulent input tax credit claims (Section 16), tax evasion (Section 122), and criminal offenses (Section 132).\n\n## Document Checklist\n\n1.  **Live GSTIN Data for `36AAAAA0000A1ZA`:** (To be obtained post API key integration)\n    *   GST registration certificate.\n    *   GST return filing history (GSTR-1, GSTR-3B, GSTR-9).\n    *   Ledger details (Electronic Cash Ledger, Electronic Credit Ledger).\n2.  **Certified Digital Copies of Identity Documents:** (If \"Citizen (Mock)\" is identified as a real person involved)\n    *   Aadhaar Card (in.gov.uidai-ADHAR-XXXXXXXX1234)\n    *   PAN Card (in.gov.incometax-PANCRD-ABCDE1234F)\n    *   Driving Licence (in.gov.sarathi-DRVLC-TS14XXXXXXXXXX)\n    *   Income Certificate (in.gov.telangana-INCOME-2024XXXXXX)\n    *   Domicile Certificate (in.gov.telangana-DOMICILE-2023XXXXXX)\n    *   Caste Certificate (in.gov.telangana-CASTE-2022XXXXXX)\n3.  **Actual Mee Seva Certificates:** (If retrieved for the identified individual)\n    *   Income Certificate\n    *   Residence Certificate\n4.  **FIR/Complaint:** Copy of the First Information Report or formal complaint filed regarding the GST fraud.\n5.  **Supporting Evidence:** Any invoices, e-way bills, bank statements, or other financial records related to the alleged fraudulent transactions.\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n  \u2192 Cross-chain GSTIN + PAN + eCourts for combined tax + civil dispute strategy\n\nCHAINS  : GSTIN, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : GSTIN:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "2727ADA5",
+      "timestamp": "2026-05-15T01:15:15.534878",
+      "prompt": "search Infosys stock \u2014 SEBI insider trading case",
+      "api_results": {
+        "NSE_INDIA": {
+          "chain": "NSE_INDIA",
+          "status": "success",
+          "symbol": "INFY",
+          "data_source": "NSE India (National Stock Exchange) \u2014 live public API, no key",
+          "results": {
+            "live_quote": {
+              "symbol": "INFY",
+              "company": "Infosys Limited",
+              "isin": "INE009A01021",
+              "industry": "Computers - Software & Consulting",
+              "series": "EQ",
+              "last_price": 1094.1,
+              "open": 1119.8,
+              "high": 1121.9,
+              "low": 1089,
+              "close_prev": 1123.1,
+              "change": -29,
+              "pct_change": -2.582138723176921,
+              "week_52_high": 1728,
+              "week_52_low": 1089,
+              "market_cap": null,
+              "face_value": null,
+              "listing_date": "1995-02-08"
+            },
+            "nifty50_member": true
+          },
+          "legal_relevance": {
+            "applicable_laws": [
+              "SEBI Act 1992 \u2014 securities fraud, market manipulation",
+              "SEBI (Prohibition of Insider Trading) Regulations 2015",
+              "Companies Act 2013 S.447 \u2014 fraud in listed companies",
+              "IBC 2016 \u2014 market value for corporate insolvency proceedings",
+              "FEMA 1999 \u2014 FII/FPI shareholding limits"
+            ],
+            "use_cases": [
+              "Live share price for court-ordered asset valuation (divorce, partition)",
+              "Price history for insider trading investigation (SEBI PIT)",
+              "52-week range for NPA attachment \u2014 current market value",
+              "Announcements for corporate fraud evidence",
+              "Nifty 50 membership \u2014 credibility of company in proceedings"
+            ]
+          }
+        },
+        "STOCK_EXCHANGE": {
+          "chain": "STOCK_EXCHANGE",
+          "status": "no_api_key",
+          "note": "Add RAPIDAPI_KEY secret. Subscribe free at rapidapi.com \u2192 'Indian Stock Exchange API2'."
+        },
+        "MCA_COMPANY": {
+          "chain": "MCA_COMPANY",
+          "data_source": "MCA21 / OpenCorporates India",
+          "status": "no_api_key",
+          "search_query": "infosys",
+          "note": "Add OPENCORPORATES_API_KEY (free at opencorporates.com/api_accounts/new) for live company registry search. CIN structural validation is available without a key.",
+          "mca_direct_link": "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+          "efiling_link": "https://efiling.mca.gov.in/eFiling/helpdeskSearch",
+          "legal_relevance": {
+            "applicable_laws": [
+              "Companies Act 2013 \u2014 S.7 (formation), S.271 (winding up)",
+              "IBC 2016 \u2014 corporate insolvency, NCLT proceedings",
+              "PMLA 2002 \u2014 shell company investigations",
+              "SEBI Act \u2014 listed company regulatory action"
+            ],
+            "notes": "CIN (Corporate Identification Number) is essential for any litigation against a company. Verify existence, registered address, and status before filing. Director details and charges are available on MCA21 portal."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Infosys",
+            "given_name": "Infosys",
+            "family_name": "",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Infosys",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC028F46E7151A",
+                "applicant_name": "Infosys",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC022E616D6240",
+                "applicant_name": "Infosys",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02E844385370",
+                "applicant_name": "Infosys",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "mock",
+          "search_term": "Infosys",
+          "state": "TS",
+          "total_cases": 2,
+          "cases": [
+            {
+              "case_number": "RC/142/2024",
+              "case_type": "Rent Control",
+              "filing_date": "2024-03-15",
+              "next_hearing": "2026-06-10",
+              "status": "Pending",
+              "court": "Principal Junior Civil Judge Court, Hyderabad",
+              "petitioner": "Infosys",
+              "respondent": "Tenant / Respondent",
+              "acts": [
+                "Telangana Buildings (Lease, Rent and Eviction) Control Act 1960"
+              ]
+            },
+            {
+              "case_number": "GST/078/2025",
+              "case_type": "GST Dispute",
+              "filing_date": "2025-01-08",
+              "next_hearing": "2026-07-22",
+              "status": "Under Hearing",
+              "court": "GST Appellate Authority, Telangana",
+              "petitioner": "Infosys",
+              "respondent": "GST Department",
+              "acts": [
+                "Central Goods and Services Tax Act 2017"
+              ]
+            }
+          ],
+          "note": "Mock data \u2014 set ECOURTS_API_KEY for live case lookup"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 2727ADA5 [AI-Generated]\n============================================================\n\n\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 2727ADA5 [Claude Sonnet 4-6]\n============================================================\n\n# SEBI Insider Trading Case \u2014 Infosys Limited (INFY)\n## Case ID: 2727ADA5 | Jurisdiction: Hyderabad\n\n---\n\n## Summary\n\nThis matter concerns a potential SEBI insider trading investigation involving **Infosys Limited (NSE: INFY, ISIN: INE009A01021)**, a Nifty 50 constituent listed since **08 February 1995**. The live NSE data reveals a **sharp single-session drop of \u20b929.00 (-2.58%)** \u2014 from a previous close of \u20b91,123.10 to the current price of **\u20b91,094.10** \u2014 against a 52-week high of **\u20b91,728.00** and a 52-week low of **\u20b91,089.00** (today's low). This price behaviour \u2014 trading at the absolute 52-week floor \u2014 is a critical red flag for insider trading analysis under **SEBI (Prohibition of Insider Trading) Regulations, 2015 (\"PIT Regulations\")**.\n\nThe stock has lost approximately **36.7%** from its 52-week peak (\u20b91,728 \u2192 \u20b91,094), a decline pattern that SEBI's surveillance systems routinely flag for Unpublished Price Sensitive Information (UPSI) correlation analysis.\n\n---\n\n## Key Findings from Government Data\n\n| Parameter | Value | Legal Significance |\n|-----------|-------|-------------------|\n| **Live Price (INFY)** | \u20b91,094.10 | Baseline for trade reconstruction |\n| **Previous Close** | \u20b91,123.10 | Pre-event price for PIT analysis |\n| **Single-Session Fall** | \u20b929.00 / -2.58% | Abnormal movement trigger |\n| **Day's High / Low** | \u20b91,121.90 / \u20b91,089.00 | Intraday volatility \u2014 suspect trades window |\n| **52-Week High** | \u20b91,728.00 | Peak \u2014 correlate with UPSI dissemination dates |\n| **52-Week Low** | \u20b91,089.00 | Touched today \u2014 critical timing |\n| **ISIN** | INE009A01021 | For SEBI demat/trade data requisition |\n| **Series** | EQ (Equity) | Cash market \u2014 PIT Reg. 2(1)(g) applies |\n| **Nifty 50 Member** | Yes | Enhanced disclosure obligations u/s LODR |\n| **Listing Date** | 08 Feb 1995 | 30-year listed entity \u2014 full regulatory history |\n\n**Critical Observation:** The stock touching its **52-week low of \u20b91,089 on the same day as this investigation query** is not coincidental from a litigation standpoint. This must be correlated against any pending earnings announcements, board meetings, regulatory filings, or material contracts \u2014 all of which constitute UPSI under **Regulation 2(1)(n) of PIT Regulations 2015**.\n\n---\n\n## Legal Analysis\n\n### 1. SEBI (Prohibition of Insider Trading) Regulations, 2015\n\n**Regulation 3 \u2014 Communication of UPSI:**\nAny \"connected person\" (Reg. 2(1)(d)) who communicates, provides, or allows access to UPSI \u2014 including Infosys directors, senior employees, auditors, advisors, or their relatives \u2014 commits a violation. Given the 52-week decline from \u20b91,728 to \u20b91,089, SEBI will examine:\n- Whether short positions or put options were taken **prior** to any negative UPSI event\n- Whether large block deals occurred near the \u20b91,728 peak when insiders may have known of adverse developments\n\n**Regulation 4 \u2014 Trading when in possession of UPSI:**\nSEBI will reconstruct the **\"Trading Plan\"** (Reg. 5) of designated persons and compare against price-sensitive events. The burden shifts to the accused insider under **Regulation 4(1)** \u2014 they must demonstrate trades were made without UPSI access.\n\n**Regulation 7 \u2014 Disclosure obligations:**\nInfosys, as a Nifty 50 company, has enhanced obligations:\n- **Reg. 7(1):** Initial disclosures by every director/key managerial personnel\n- **Reg. 7(2):** Continual disclosures when holdings change by \u2265 \u20b910 lakhs in value or 2% of shares\n- **Trading window closure** must be verified around the period correlating with \u20b91,728 \u2192 \u20b91,094 decline\n\n**Regulation 9 \u2014 Code of Conduct:**\nInfosys is mandated to have a Board-approved Code of Conduct for Fair Disclosure. Any breach by its Compliance Officer is independently actionable.\n\n### 2. SEBI Act, 1992\n\n- **Section 11(2)(e):** SEBI's power to call for information and conduct enquiries\n- **Section 11B:** Power to issue directions including disgorgement of unlawful gains\n- **Section 15G:** Penalty for insider trading \u2014 **\u20b925 crore or 3 times the profit made, whichever is higher**\n- **Section 24:** Criminal prosecution \u2014 imprisonment up to **10 years** and/or fine up to \u20b925 crore\n- **Section 26:** Cognizance by Special Court (Designated Court, Hyderabad for TS jurisdiction)\n\n### 3. SEBI (LODR) Regulations, 2015\n\nAs a Nifty 50 member, Infosys must comply with:\n- **Regulation 30:** Immediate disclosure of price-sensitive events to stock exchanges\n- **Regulation 46:** Website disclosure of all material information\nFailure to timely disclose UPSI that caused the 36.7% price erosion is independently actionable under LODR.\n\n### 4. Companies Act, 2013\n\n- **Section 447:** Fraud \u2014 if insider trading involved falsification of books or misrepresentation to investors; punishment up to **10 years imprisonment**\n- **Section 188/184:** Related party transactions involving directors who traded \u2014 mandatory disclosure obligations\n\n### 5. PMLA, 2002\n\n- **Section 3:** If proceeds of insider trading (disgorgement-eligible profits) are laundered through layered transactions, ED jurisdiction activates\n- **Section 8:** Attachment of property representing proceeds of crime \u2014 applicable to profits from insider trades\n\n### 6. FEMA, 1999\n\nGiven Infosys's substantial **FII/FPI holding**, any insider trading involving foreign institutional accounts triggers FEMA scrutiny on capital account transactions.\n\n### 7. Jurisdictional Analysis (CPC Section 20 / SEBI Act)\n\n- **SEBI SAT (Securities Appellate Tribunal), Mumbai:** Primary appellate forum against SEBI orders\n- **Hyderabad jurisdiction:** If the accused trader is Hyderabad-based, the **Special Court under SEBI Act** at Hyderabad has criminal jurisdiction\n- **Telangana High Court:** Writ jurisdiction (Article 226) to challenge SEBI investigation orders if procedurally flawed\n\n---\n\n## Recommended Actions (within 7 days)\n\n### If You Represent the COMPLAINANT / Whistleblower:\n\n1. **File SEBI SCORES complaint immediately** at scores.sebi.gov.in referencing ISIN **INE009A01021**, today's price of \u20b91,094.10, and the 52-week erosion from \u20b91,728. Request market surveillance data for trades during the 52-week high period.\n\n2. **File Informant Mechanism complaint** under **SEBI (Informant Mechanism) Regulations, 2018** \u2014 eligible for monetary reward of up to **\u20b91 crore** if the tip leads to enforcement action (Regulation 5).\n\n3. **RTI Application** to SEBI under RTI Act, 2005 \u2014 seeking disclosure of whether any investigation is already pending against INFY insiders for Case ID 2727ADA5.\n\n4. **Preserve evidence:** Screenshot all NSE announcements, bulk/block deal data for INFY for the past 12 months, available on NSE India portal under INFY announcements \u2014 critical to establish the UPSI timeline.\n\n5. **Commission forensic reconstruction:** Map the \u20b91,728 \u2192 \u20b91,089 price decline against Infosys's exchange filings (quarterly results, board meeting notices, material contracts) to identify the exact UPSI event window.\n\n### If You Represent the ACCUSED Insider:\n\n1. **Preserve trading window records** and compliance officer communications showing the window was **closed** during suspect trading periods \u2014 this is the primary defence under PIT Reg. 4.\n\n2. **Invoke Pre-decisional Hearing rights:** Under SEBI's natural justice obligations (**Article 21, Constitution of India**; **SEBI Act S.11(4)**), demand a pre-order hearing before any ex-parte interim order.\n\n3. **File Trading Plan documentation** under Reg. 5 \u2014 if trades were pre-planned and disclosed, this is a statutory safe harbour.\n\n4. **Challenge SEBI summons** under CPC Section 151 / Article 226 if issued without proper authority application \u2014 ensure all summons are under proper SEBI Act S.11(3) powers.\n\n5. **Engage a SEBI-empanelled Chartered Accountant** to prepare an independent computation of alleged \"unlawful gains\" before SEBI computes its own \u2014 this controls the disgorgement quantum negotiation.\n\n---\n\n## Document Checklist\n\n### From NSE/BSE (Obtain Immediately):\n- [ ] INFY bulk deal data \u2014 last 12 months (NSE bulk deals archive)\n- [ ] INFY block deal data \u2014 last 12 months\n- [ ] INFY insider trading disclosures filed under Reg. 7(2) \u2014 available on NSE disclosures portal for ISIN INE009A01021\n- [ ] INFY announcements/corporate actions \u2014 correlate with \u20b91,728 peak and today's \u20b91,089 low\n- [ ] Trading window closure notices \u2014 obtain from Infosys Compliance Officer records\n\n### From SEBI:\n- [ ] SEBI SCORES complaint acknowledgement\n- [ ] Any existing investigation order / interim order against INFY (check SEBI website orders section)\n- [ ] SEBI Annual Report disclosures on INFY-related enforcement actions\n\n### From Infosys (MCA21 / Company Records):\n- [ ] MCA21 filing: Director disclosures, **Form MBP-1** (interest disclosures), **Form DIR-8**\n- [ ] Access MCA portal at mca.gov.in \u2014 search \"Infosys\" for CIN: **L85110KA1981PLC013115** (Infosys's known CIN)\n- [ ] Charge documents and shareholding pattern filings\n\n### For Criminal Proceedings (If S.24 SEBI Act invoked):\n- [ ] FIR draft for submission to Economic Offences Wing, Hyderabad or SEBI referral to Special Court\n- [ ] Demat account statements of accused \u2014 obtain via SEBI/court order to NSDL/CDSL for ISIN INE009A01021\n- [ ] Call Data Records (CDR) \u2014 if UPSI was communicated telephonically (court order required)\n- [ ] Email forensics \u2014 Infosys internal communications pre-UPSI event\n\n### For SAT Appeal (If Challenging SEBI Order):\n- [ ] SEBI adjudication order (certified copy)\n- [ ] SAT Appeal under S.15T SEBI Act \u2014 **45 days** from receipt of order\n- [ ] Demand draft for filing fees\n- [ ] Vakalatnama for SAT, Mumbai appearance\n\n---\n\n**\u26a0\ufe0f Critical Deadline Alert:** SEBI interim orders (ex-parte) must be challenged within **15 days** of receipt at SAT under Section 15T. If an ex-parte order has already been issued in Case ID 2727ADA5, immediate SAT intervention is required.\n\n**Note on Mock Data:** The MeriPehchaan/Mee Seva data retrieved is sandbox/mock and has not been used in this analysis. All analysis is based exclusively on the live NSE price data for INFY (ISIN: INE009A01021) retrieved from NSE India's public API.\n\n---\n*Prepared for Case ID: 2727ADA5 | Hyderabad jurisdiction | Based on live NSE data as retrieved*\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : NSE_INDIA, STOCK_EXCHANGE, MCA_COMPANY, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : NSE_INDIA:success | STOCK_EXCHANGE:no_api_key | MCA_COMPANY:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:mock\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
     }
   ],
   "watch_list": []

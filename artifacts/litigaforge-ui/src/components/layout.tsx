@@ -41,7 +41,7 @@ function SidebarContent({
   onNav,
 }: {
   location: string;
-  health: { dummy_mode: boolean; ai_mode?: string } | undefined;
+  health: { dummy_mode: boolean; ai_mode?: string; active_providers?: string[] } | undefined;
   stats: { total_cases: number; total_patterns: number } | undefined;
   onNav?: () => void;
 }) {
@@ -120,10 +120,14 @@ function SidebarContent({
           <span className={cn("text-[10px] font-mono uppercase tracking-widest font-semibold", health?.dummy_mode ? "text-amber-400" : "text-green-400")}>
             {health?.dummy_mode
               ? "Fallback Mode"
+              : health?.ai_mode === "multi"
+              ? `Multi-AI (${(health.active_providers ?? []).length})`
+              : health?.ai_mode === "claude"
+              ? "Claude Sonnet"
               : health?.ai_mode === "gemini"
               ? "Gemini AI"
               : health?.ai_mode === "openai"
-              ? "GPT-4o"
+              ? "GPT-5"
               : "Live Mode"}
           </span>
         </div>
