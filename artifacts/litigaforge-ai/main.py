@@ -102,18 +102,20 @@ async def root():
 
 @router.get("/healthz")
 async def health():
-    openai_key  = bool(os.getenv("OPENAI_API_KEY"))
-    gemini_base = bool(os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL"))
-    if openai_key:
-        ai_mode = "openai"
-    elif gemini_base:
-        ai_mode = "gemini"
+    from ai_brain import get_active_providers
+    active = get_active_providers()
+    # ai_mode: multi | gemini | openai | smart_fallback
+    if len(active) >= 2:
+        ai_mode = "multi"
+    elif active:
+        ai_mode = active[0]
     else:
         ai_mode = "smart_fallback"
     return {
         "status": "ok",
         "service": "LitigaForge AI",
         "ai_mode": ai_mode,
+        "active_providers": active,
         "dummy_mode": ai_mode == "smart_fallback",  # backward compat
     }
 
