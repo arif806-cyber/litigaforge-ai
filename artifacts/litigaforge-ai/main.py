@@ -1,16 +1,16 @@
 """
 LitigaForge AI — FastAPI Server
-Full REST API for legal case forging, watch mode, forge memory, and WhatsApp alerts.
-Supports a configurable BASE_PATH prefix for reverse-proxy deployments.
+Full REST API for legal case forging, watch mode, forge memory, WhatsApp alerts,
+user authentication (register/login/me), and subscription management.
 """
 import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks
+from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,6 +20,11 @@ logger = logging.getLogger("litigaforge.api")
 from litigaforge_engine import forge_case, memory
 from alerts.whatsapp import send_whatsapp_alert, send_hearing_reminder
 from watch_mode import WatchModeManager
+from database import (
+    create_user, get_user_by_email, get_user_by_id,
+    increment_case_count, update_subscription, SUBSCRIPTION_PLANS, TIER_LIMITS,
+)
+from auth import hash_password, verify_password, create_token, get_current_user, require_user
 
 watcher = WatchModeManager(memory=memory, alert_fn=send_whatsapp_alert)
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
@@ -36,7 +41,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LitigaForge AI",
     description="Self-Evolving Legal API Forge for Hyderabad/Telangana Advocates",
-    version="2.0.0",
+    version="3.0.0",
     lifespan=lifespan,
     root_path=BASE_PATH,
 )
@@ -45,7 +50,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 router = APIRouter()
 
 
-# ─── Models ───────────────────────────────────────────────────────────────────
+# ─── Pydantic models ───────────────────────────────────────────────────────────
 
 class ForgeRequest(BaseModel):
     prompt: str
@@ -70,33 +75,31 @@ class HearingReminderRequest(BaseModel):
     party: str
     phone: Optional[str] = None
 
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class UpgradeRequest(BaseModel):
+    tier: str
+
+
+# ─── Root / health ─────────────────────────────────────────────────────────────
 
 @router.get("/")
 async def root():
     docs_path = f"{BASE_PATH}/docs" if BASE_PATH else "/docs"
     return {
         "name": "LitigaForge AI",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "status": "running",
         "watch_mode_active": watcher.is_running,
         "forge_memory": memory.stats(),
         "docs": docs_path,
-        "endpoints": {
-            f"POST {BASE_PATH}/forge": "Forge a legal strategy from a natural-language prompt",
-            f"GET  {BASE_PATH}/cases": "List recent forged cases",
-            f"GET  {BASE_PATH}/cases/{{case_id}}": "Retrieve a specific case",
-            f"GET  {BASE_PATH}/memory/patterns": "View all learned forge patterns",
-            f"GET  {BASE_PATH}/chains": "List all available API chains",
-            f"POST {BASE_PATH}/watch": "Add a case to Watch Mode",
-            f"GET  {BASE_PATH}/watch": "List active watches",
-            f"DELETE {BASE_PATH}/watch/{{watch_id}}": "Deactivate a watch",
-            f"POST {BASE_PATH}/watch/start": "Start Watch Mode scheduler",
-            f"POST {BASE_PATH}/watch/stop": "Stop Watch Mode scheduler",
-            f"POST {BASE_PATH}/alert": "Send a WhatsApp alert",
-            f"POST {BASE_PATH}/alert/hearing": "Send a hearing reminder",
-        },
     }
 
 
@@ -104,7 +107,6 @@ async def root():
 async def health():
     from ai_brain import get_active_providers
     active = get_active_providers()
-    # ai_mode: multi | gemini | openai | smart_fallback
     if len(active) >= 2:
         ai_mode = "multi"
     elif active:
@@ -116,107 +118,93 @@ async def health():
         "service": "LitigaForge AI",
         "ai_mode": ai_mode,
         "active_providers": active,
-        "dummy_mode": ai_mode == "smart_fallback",  # backward compat
+        "dummy_mode": ai_mode == "smart_fallback",
     }
 
 
-@router.get("/sandbox/ping")
-async def sandbox_ping():
-    """
-    Direct connectivity test for all API Setu sandbox endpoints.
-    Sends a minimal POST to each endpoint and reports whether the sandbox
-    is reachable (any HTTP response = connected; 404 = connected but no record).
-    """
-    import requests, uuid
-    from datetime import datetime, timedelta
+# ─── Auth routes ───────────────────────────────────────────────────────────────
 
-    key       = os.getenv("API_SETU_KEY", "demokey123456ABCD789")
-    client_id = os.getenv("API_SETU_CLIENT_ID", "in.gov.sandbox")
-    base      = "https://sandbox.api-setu.in"
-    headers   = {
-        "X-APISETU-APIKEY":   key,
-        "X-APISETU-CLIENTID": client_id,
-        "Content-Type":       "application/json",
-    }
-    now = datetime.utcnow()
-    consent = {
-        "consentId":    str(uuid.uuid4()),
-        "timestamp":    now.isoformat() + "Z",
-        "dataConsumer": {"id": client_id},
-        "dataProvider": {"id": "in.gov.sandbox"},
-        "purpose":      {"description": "LitigaForge sandbox ping"},
-        "user":         {"idType": "mobile", "idNumber": "999900000000", "mobile": "9988776655", "email": "ping@litigaforge.ai"},
-        "data":         {"id": "PING"},
-        "permission":   {"access": "view", "dateRange": {"from": now.isoformat() + "Z", "to": (now + timedelta(days=1)).isoformat() + "Z"}, "frequency": {"unit": "day", "value": 1, "repeats": 1}},
-    }
-    payload = {"txnId": str(uuid.uuid4()), "format": "xml", "certificateParameters": {"ApplicationNo": "IC021921512596"}, "consentArtifact": {"consent": consent, "signature": {"signature": "litigaforge-ping"}}}
+@router.post("/auth/register")
+async def register(req: RegisterRequest):
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if len(req.name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Name is too short")
+    try:
+        user = create_user(
+            email=req.email,
+            name=req.name,
+            password_hash=hash_password(req.password),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    token = create_token(user["id"])
+    return {"token": token, "user": user}
 
-    endpoints = {
-        "mee_seva_tg_incer":  f"{base}/certificate/v3/meesevatg/incer",
-        "mee_seva_tg_rscer":  f"{base}/certificate/v3/meesevatg/rscer",
-        "mee_seva_tg_ctcer":  f"{base}/certificate/v3/meesevatg/ctcer",
-        "transport_ts_drvlc": f"{base}/certificate/v3/transportts/drvlc",
-        "transport_ts_rvcer": f"{base}/certificate/v3/transportts/rvcer",
-        "bpcl_lpg":           f"{base}/certificate/v3/bharatpetroleum/lpgsv",
-    }
 
-    results = {}
-    for name, url in endpoints.items():
-        try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=10)
-            http_status = resp.status_code
-            if http_status == 200:
-                connectivity = "connected_live_data"
-            elif http_status == 404:
-                connectivity = "connected_no_record"
-            elif http_status == 401:
-                connectivity = "connected_auth_failed"
-            else:
-                connectivity = f"connected_http_{http_status}"
-            results[name] = {
-                "reachable":    True,
-                "http_status":  http_status,
-                "connectivity": connectivity,
-                "note": {
-                    200: "Live data returned",
-                    401: "Connected but API key rejected — check API_SETU_KEY",
-                    404: "Connected and authenticated — no record for test parameters (expected in sandbox)",
-                }.get(http_status, f"Connected with HTTP {http_status}"),
-            }
-        except requests.exceptions.ConnectionError:
-            results[name] = {"reachable": False, "http_status": None, "connectivity": "unreachable", "note": "Cannot reach sandbox.api-setu.in — check network"}
-        except requests.exceptions.Timeout:
-            results[name] = {"reachable": False, "http_status": None, "connectivity": "timeout", "note": "Request timed out"}
+@router.post("/auth/login")
+async def login(req: LoginRequest):
+    user = get_user_by_email(req.email)
+    if not user or not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    # Remove password hash from response
+    user.pop("password_hash", None)
+    token = create_token(user["id"])
+    return {"token": token, "user": user}
 
-    all_connected = all(r["reachable"] for r in results.values())
-    auth_ok       = all(r.get("http_status") != 401 for r in results.values() if r["reachable"])
 
-    return {
-        "sandbox_url":    base,
-        "api_key_set":    bool(os.getenv("API_SETU_KEY")),
-        "api_key_demo":   os.getenv("API_SETU_KEY") == "demokey123456ABCD789",
-        "all_reachable":  all_connected,
-        "auth_ok":        auth_ok,
-        "summary": (
-            "All API Setu sandbox endpoints reachable and authenticated. "
-            "404 responses are expected — sandbox proxies real govt DBs, test numbers don't exist there. "
-            "Use real document numbers (real Mee Seva ApplicationNo, real vehicle/DL number) for live data."
-            if all_connected and auth_ok
-            else "Some endpoints unreachable — check network or API key"
-        ),
-        "endpoints": results,
-    }
+@router.get("/auth/me")
+async def me(current_user: dict = Depends(require_user)):
+    return current_user
 
+
+# ─── Subscription routes ───────────────────────────────────────────────────────
+
+@router.get("/subscription/plans")
+async def subscription_plans():
+    return SUBSCRIPTION_PLANS
+
+
+@router.post("/subscription/upgrade")
+async def subscription_upgrade(req: UpgradeRequest, current_user: dict = Depends(require_user)):
+    valid_tiers = [p["id"] for p in SUBSCRIPTION_PLANS]
+    if req.tier not in valid_tiers:
+        raise HTTPException(status_code=400, detail=f"Invalid tier. Choose from: {valid_tiers}")
+    updated = update_subscription(current_user["id"], req.tier)
+    return {"message": f"Subscription updated to {req.tier}", "user": updated}
+
+
+# ─── Forge ─────────────────────────────────────────────────────────────────────
 
 @router.post("/forge")
-async def forge(request: ForgeRequest, background_tasks: BackgroundTasks):
+async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
+                current_user: Optional[dict] = Depends(get_current_user)):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+
+    # Enforce monthly case limits for authenticated users
+    if current_user:
+        tier = current_user.get("subscription_tier", "free")
+        limit = TIER_LIMITS.get(tier, 5)
+        used = current_user.get("cases_this_month", 0)
+        if limit != -1 and used >= limit:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Monthly case limit reached ({limit} cases for {tier} plan). Upgrade your subscription to continue.",
+            )
+
     try:
         result = forge_case(request.prompt)
     except Exception as e:
         logger.exception("Engine error")
         raise HTTPException(status_code=500, detail=f"Engine error: {str(e)}")
+
+    # Increment counter for authenticated users
+    if current_user:
+        try:
+            increment_case_count(current_user["id"])
+        except Exception:
+            logger.warning("Failed to increment case count for user %s", current_user["id"])
 
     if request.notify_whatsapp:
         summary = (
@@ -238,6 +226,8 @@ async def forge(request: ForgeRequest, background_tasks: BackgroundTasks):
         "final_output": result["final_output"],
     }
 
+
+# ─── Cases ─────────────────────────────────────────────────────────────────────
 
 @router.get("/cases")
 async def list_cases(limit: int = 10):
@@ -270,55 +260,61 @@ async def memory_stats():
     return memory.stats()
 
 
+# ─── Chains ────────────────────────────────────────────────────────────────────
+
 @router.get("/chains")
 async def list_chains():
     from api_chains import CHAIN_MAP
+    departments = {
+        "Identity & Tax": [
+            {"name": "GSTIN",        "description": "GST registration status, filing history, taxpayer details"},
+            {"name": "PAN",          "description": "PAN verification, name match, Aadhaar seeding status"},
+            {"name": "DigiLocker",   "description": "Aadhaar, income, domicile certificates via API Setu"},
+            {"name": "MERIPEHCHAAN", "description": "DigiLocker OAuth2 SSO — all citizen documents (NIC/MeitY)"},
+        ],
+        "Courts": [
+            {"name": "eCourts",      "description": "Case search by party name or case number — all Indian courts"},
+        ],
+        "Transport & Vehicle": [
+            {"name": "VAHAN",        "description": "Vehicle RC, owner, insurance, fitness, tax validity"},
+            {"name": "SARATHI",      "description": "Driving licence holder, validity, vehicle classes"},
+            {"name": "TRANSPORT_TS", "description": "Vehicle RC & DL — API Setu sandbox (TS/AP)"},
+        ],
+        "State Services": [
+            {"name": "BPCL_LPG",    "description": "LPG Subscription Voucher — Ministry of Petroleum (BPCL)"},
+            {"name": "MEE_SEVA_TG", "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
+        ],
+        "Finance & Markets": [
+            {"name": "NSE_INDIA",      "description": "NSE India live stock quotes, OHLC, 52-week range — free"},
+            {"name": "STOCK_EXCHANGE", "description": "NSE/BSE financials, shareholding pattern — RapidAPI"},
+            {"name": "FOREX",          "description": "Live INR forex rates USD/GBP/EUR/AED/SAR — ECB free"},
+        ],
+        "Company Registry": [
+            {"name": "MCA_COMPANY", "description": "MCA21 company search — CIN validation"},
+        ],
+        "Banking & Address": [
+            {"name": "IFSC",    "description": "IFSC bank branch verification — RBI registry via Razorpay"},
+            {"name": "PINCODE", "description": "India Post pincode — district, state, post offices"},
+        ],
+    }
+    # Flat list for frontend
+    chains_flat = [c for dept in departments.values() for c in dept]
     return {
         "total_chains": len(CHAIN_MAP),
-        "departments": {
-            "Identity & Tax": [
-                {"name": "GSTIN",        "description": "GST registration status, filing history, taxpayer details — live via RapidAPI"},
-                {"name": "PAN",          "description": "PAN verification, name match, Aadhaar seeding status"},
-                {"name": "DigiLocker",   "description": "Aadhaar, income, domicile certificates via API Setu"},
-                {"name": "MERIPEHCHAAN", "description": "DigiLocker OAuth2 SSO — all citizen documents (NIC/MeitY)"},
-            ],
-            "Courts": [
-                {"name": "eCourts",      "description": "Case search by party name or case number — all Indian courts"},
-            ],
-            "Transport & Vehicle": [
-                {"name": "VAHAN",        "description": "Vehicle RC, owner, insurance, fitness, tax validity"},
-                {"name": "SARATHI",      "description": "Driving licence holder, validity, vehicle classes"},
-                {"name": "TRANSPORT_TS", "description": "Vehicle RC & DL — RapidAPI (real VAHAN) / API Setu sandbox (TS/AP)"},
-            ],
-            "State Services": [
-                {"name": "BPCL_LPG",     "description": "LPG Subscription Voucher — Ministry of Petroleum (BPCL)"},
-                {"name": "MEE_SEVA_TG",  "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
-            ],
-            "Finance & Markets": [
-                {"name": "NSE_INDIA",      "key_required": False,  "description": "NSE India live stock quotes, OHLC, 52-week range, Nifty membership — free, no key"},
-                {"name": "STOCK_EXCHANGE", "key_required": True,   "description": "NSE/BSE financials, shareholding pattern, board meetings, insider trading — RapidAPI (Indian Stock Exchange API2)"},
-                {"name": "FOREX",          "key_required": False,  "description": "Live INR forex rates for USD/GBP/EUR/AED/SAR — ECB/Frankfurter, free, no key"},
-            ],
-            "Company Registry": [
-                {"name": "MCA_COMPANY",    "key_required": False,  "description": "MCA21 company search — CIN validation (offline), OpenCorporates India (free signup key)"},
-            ],
-            "Banking & Address": [
-                {"name": "IFSC",           "key_required": False,  "description": "IFSC bank branch verification — RBI registry via Razorpay, free, no key"},
-                {"name": "PINCODE",        "key_required": False,  "description": "India Post pincode — district, state, all post offices, free, no key"},
-            ],
-        },
+        "chains": chains_flat,
+        "departments": departments,
         "api_keys_status": {
-            "RAPIDAPI_KEY":           "✅ set — Vehicle RC, GSTIN live, Stock Exchange active" if os.getenv("RAPIDAPI_KEY") else "❌ not set — add for Vehicle RC, live GSTIN, Stock Exchange (RapidAPI)",
-            "API_SETU_KEY":           "✅ set — Mee Seva TG, Transport TS, DigiLocker sandbox" if os.getenv("API_SETU_KEY") else "❌ not set",
-            "OPENAI_API_KEY":         "✅ set — AI strategy engine active" if os.getenv("OPENAI_API_KEY") else "⚠️ not set — using built-in legal strategy templates",
-            "NSE_INDIA":              "✅ live — no key (NSE public API)",
-            "FOREX":                  "✅ live — no key (ECB/Frankfurter)",
-            "IFSC":                   "✅ live — no key (RBI/Razorpay)",
-            "PINCODE":                "✅ live — no key (India Post)",
-            "OPENCORPORATES_API_KEY": "✅ set — MCA company search active" if os.getenv("OPENCORPORATES_API_KEY") else "⚠️ not set — CIN validation available offline; signup free at opencorporates.com",
+            "RAPIDAPI_KEY": "✅ set" if os.getenv("RAPIDAPI_KEY") else "❌ not set",
+            "API_SETU_KEY": "✅ set" if os.getenv("API_SETU_KEY") else "❌ not set",
+            "NSE_INDIA":    "✅ live — no key needed",
+            "FOREX":        "✅ live — no key needed",
+            "IFSC":         "✅ live — no key needed",
+            "PINCODE":      "✅ live — no key needed",
         },
     }
 
+
+# ─── Watch mode ────────────────────────────────────────────────────────────────
 
 @router.post("/watch/start")
 async def start_watch():
@@ -351,6 +347,8 @@ async def remove_watch(watch_id: str):
     return watcher.remove_watch(watch_id)
 
 
+# ─── Alerts ────────────────────────────────────────────────────────────────────
+
 @router.post("/alert")
 async def send_alert(request: AlertRequest):
     return send_whatsapp_alert(message=request.message, to=request.phone, alert_type=request.alert_type)
@@ -364,7 +362,34 @@ async def hearing_reminder(request: HearingReminderRequest):
     )
 
 
-# Mount router at BASE_PATH (e.g. /litigaforge) or at root if no prefix
+# ─── Sandbox ping ──────────────────────────────────────────────────────────────
+
+@router.get("/sandbox/ping")
+async def sandbox_ping():
+    import requests, uuid
+    from datetime import datetime, timedelta
+
+    key       = os.getenv("API_SETU_KEY", "demokey123456ABCD789")
+    client_id = os.getenv("API_SETU_CLIENT_ID", "in.gov.sandbox")
+    base      = "https://sandbox.api-setu.in"
+    headers   = {"X-APISETU-APIKEY": key, "X-APISETU-CLIENTID": client_id, "Content-Type": "application/json"}
+    now       = datetime.utcnow()
+    results   = {}
+    endpoints = {
+        "mee_seva_tg_incer":  f"{base}/certificate/v3/meesevatg/incer",
+        "transport_ts_drvlc": f"{base}/certificate/v3/transportts/drvlc",
+    }
+    for name, url in endpoints.items():
+        try:
+            resp = requests.post(url, headers=headers, json={}, timeout=8)
+            results[name] = {"reachable": True, "http_status": resp.status_code}
+        except Exception as e:
+            results[name] = {"reachable": False, "error": str(e)}
+    return {"sandbox_url": base, "endpoints": results}
+
+
+# ─── Mount ─────────────────────────────────────────────────────────────────────
+
 app.include_router(router, prefix=BASE_PATH)
 
 if __name__ == "__main__":

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb } from "lucide-react";
+import { Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb, Crown, LogOut, User, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { ParticleCanvas } from "@/components/graphics/ParticleCanvas";
+import { useAuth, TIER_LABELS, TIER_LIMITS } from "@/lib/auth-context";
 
 const navItems = [
   { href: "/", label: "Forge", icon: Scale },
@@ -13,6 +14,12 @@ const navItems = [
   { href: "/chains", label: "Chains", icon: Link2 },
   { href: "/use-cases", label: "Use Cases", icon: Lightbulb },
 ];
+
+const TIER_COLORS: Record<string, string> = {
+  free: "text-gray-500 bg-gray-100",
+  professional: "text-amber-700 bg-amber-100",
+  advocate_pro: "text-primary bg-primary/10 font-bold",
+};
 
 function AnimatedCounter({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(0);
@@ -32,6 +39,85 @@ function AnimatedCounter({ value }: { value: number }) {
     return () => clearInterval(timer);
   }, [value]);
   return <span>{displayValue}</span>;
+}
+
+function UserPanel({ onNav }: { onNav?: () => void }) {
+  const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (!user) return null;
+
+  const tier = user.subscription_tier;
+  const limit = TIER_LIMITS[tier] ?? 5;
+  const used = user.cases_this_month;
+  const pct = limit === -1 ? 0 : Math.min(100, (used / limit) * 100);
+
+  const handleLogout = () => {
+    logout();
+    if (onNav) onNav();
+    setLocation("/login");
+  };
+
+  const handleSubscription = () => {
+    if (onNav) onNav();
+    setLocation("/subscription");
+  };
+
+  return (
+    <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+      {/* User info */}
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+          <User className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+          <p className="text-[10px] text-gray-400 truncate font-mono">{user.email}</p>
+        </div>
+      </div>
+
+      {/* Tier badge + subscription button */}
+      <button
+        onClick={handleSubscription}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-primary/5 border border-gray-200 hover:border-primary/20 transition-all group"
+      >
+        <div className="flex items-center gap-2">
+          <Crown className="w-3.5 h-3.5 text-primary" />
+          <span className={cn("text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded", TIER_COLORS[tier])}>
+            {TIER_LABELS[tier] ?? tier}
+          </span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-primary transition-colors" />
+      </button>
+
+      {/* Monthly usage bar */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5 text-[10px] font-mono text-gray-400">
+          <span>CASES THIS MONTH</span>
+          <span className="text-gray-600 font-semibold">
+            {used} / {limit === -1 ? "∞" : limit}
+          </span>
+        </div>
+        {limit !== -1 && (
+          <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className={cn("h-full rounded-full transition-all", pct >= 80 ? "bg-red-400" : "bg-primary")}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all text-[11px] font-mono uppercase tracking-widest"
+      >
+        <LogOut className="w-3.5 h-3.5" />
+        Sign Out
+      </button>
+    </div>
+  );
 }
 
 function SidebarContent({
@@ -93,10 +179,10 @@ function SidebarContent({
         })}
       </nav>
 
-      {/* Status footer */}
-      <div className="p-5 border-t border-gray-200 space-y-4 bg-gray-50/80">
+      {/* AI Status */}
+      <div className="px-5 py-4 border-t border-gray-200 bg-gray-50/80">
         {stats && (
-          <div className="space-y-2.5">
+          <div className="space-y-2 mb-4">
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-gray-400 font-mono uppercase tracking-widest">Cases Forged</span>
               <span className="text-primary font-mono text-xs font-bold">
@@ -111,7 +197,7 @@ function SidebarContent({
             </div>
           </div>
         )}
-        <div className="h-px w-full bg-gray-200" />
+        <div className="h-px w-full bg-gray-200 mb-4" />
         <div className="flex items-center gap-2">
           <div className="relative flex items-center justify-center">
             <Activity className={cn("w-3.5 h-3.5", health?.dummy_mode ? "text-amber-600" : "text-green-600")} />
@@ -132,6 +218,9 @@ function SidebarContent({
           </span>
         </div>
       </div>
+
+      {/* User profile panel */}
+      <UserPanel onNav={onNav} />
     </>
   );
 }
@@ -140,6 +229,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [time, setTime] = useState(new Date());
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -188,10 +279,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[10px] font-mono tracking-widest text-gray-400">
-          <Clock className="w-3 h-3 text-primary/70" />
-          <span className="hidden sm:inline">{timeString} IST</span>
-          <span className="sm:hidden">{time.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })}</span>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono tracking-widest text-gray-400">
+            <Clock className="w-3 h-3 text-primary/70" />
+            <span>{timeString} IST</span>
+          </div>
+          {user && (
+            <button
+              onClick={() => { logout(); setLocation("/login"); }}
+              className="hidden md:flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <LogOut className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -200,7 +300,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* ── Desktop sidebar ── */}
         <aside
           data-testid="sidebar"
-          className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-gray-200 flex-col relative z-10"
+          className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-gray-200 flex-col relative z-10 overflow-y-auto"
         >
           <SidebarContent location={location} health={health} stats={stats} />
         </aside>
@@ -229,7 +329,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-gray-200 flex flex-col z-40 md:hidden"
+              className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-gray-200 flex flex-col z-40 md:hidden overflow-y-auto"
             >
               <button
                 className="absolute top-3 right-3 flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
@@ -269,8 +369,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Link
               key={href}
               href={href}
-              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
-              className="flex flex-col items-center justify-center gap-1 min-w-[64px] py-2 rounded-xl transition-all"
+              data-testid={`nav-mobile-${label.toLowerCase().replace(/\s+/g, "-")}`}
+              className="flex flex-col items-center justify-center gap-1 min-w-[60px] py-2 rounded-xl transition-all"
             >
               <div className={cn(
                 "flex items-center justify-center w-10 h-7 rounded-lg transition-all",
@@ -284,6 +384,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+        <Link
+          href="/subscription"
+          data-testid="nav-mobile-subscription"
+          className="flex flex-col items-center justify-center gap-1 min-w-[60px] py-2 rounded-xl transition-all"
+        >
+          <div className={cn(
+            "flex items-center justify-center w-10 h-7 rounded-lg transition-all",
+            location === "/subscription" ? "bg-primary/10" : ""
+          )}>
+            <Crown className={cn("w-5 h-5 transition-colors", location === "/subscription" ? "text-primary" : "text-gray-400")} />
+          </div>
+          <span className={cn("text-[10px] font-mono tracking-widest transition-colors", location === "/subscription" ? "text-primary" : "text-gray-400")}>
+            PLAN
+          </span>
+        </Link>
       </nav>
     </div>
   );
