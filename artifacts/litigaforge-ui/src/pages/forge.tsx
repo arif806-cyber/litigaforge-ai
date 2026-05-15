@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiFetch } from "@/lib/api";
@@ -9,12 +9,11 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScalesHero } from "@/components/graphics/ScalesHero";
 
-interface ChainMapItem { chain: string; status: string; }
 interface ForgeResult {
   status: string;
   case_id: string;
   chains_executed: string[];
-  chain_map: ChainMapItem[];
+  chain_map: { chain: string; status: string }[];
   entities_found: Record<string, string>;
   api_results: Record<string, unknown>;
   meta_suggestions: string[];
@@ -22,18 +21,17 @@ interface ForgeResult {
 }
 
 const ENTITY_CONFIG: Record<string, { label: string; color: string }> = {
-  pan: { label: "PAN", color: "text-violet-400 border-violet-500/30 bg-violet-500/10" },
-  gstin: { label: "GSTIN", color: "text-blue-400 border-blue-500/30 bg-blue-500/10" },
-  vehicle_number: { label: "Vehicle No.", color: "text-green-400 border-green-500/30 bg-green-500/10" },
-  party_name: { label: "Party", color: "text-amber-400 border-amber-500/30 bg-amber-500/10" },
-  case_number: { label: "Case No.", color: "text-rose-400 border-red-500/30 bg-red-500/10" },
-  state_code: { label: "State", color: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10" },
-  location: { label: "Location", color: "text-teal-400 border-teal-500/30 bg-teal-500/10" },
-  case_type: { label: "Case Type", color: "text-fuchsia-400 border-pink-500/30 bg-pink-500/10" },
-  dl_number: { label: "DL No.", color: "text-indigo-400 border-indigo-500/30 bg-indigo-500/10" },
-  aadhaar: { label: "Aadhaar", color: "text-orange-400 border-orange-500/30 bg-orange-500/10" },
+  pan:            { label: "PAN",       color: "text-violet-700 border-violet-200 bg-violet-50" },
+  gstin:          { label: "GSTIN",     color: "text-blue-700 border-blue-200 bg-blue-50" },
+  vehicle_number: { label: "Vehicle No.", color: "text-green-700 border-green-200 bg-green-50" },
+  party_name:     { label: "Party",     color: "text-amber-700 border-amber-200 bg-amber-50" },
+  case_number:    { label: "Case No.",  color: "text-rose-700 border-rose-200 bg-rose-50" },
+  state_code:     { label: "State",     color: "text-cyan-700 border-cyan-200 bg-cyan-50" },
+  location:       { label: "Location",  color: "text-teal-700 border-teal-200 bg-teal-50" },
+  case_type:      { label: "Case Type", color: "text-fuchsia-700 border-fuchsia-200 bg-fuchsia-50" },
+  dl_number:      { label: "DL No.",    color: "text-indigo-700 border-indigo-200 bg-indigo-50" },
+  aadhaar:        { label: "Aadhaar",   color: "text-orange-700 border-orange-200 bg-orange-50" },
 };
-
 
 const EXAMPLE_PROMPTS = [
   { text: "My client Ramesh Kumar with PAN ABCDE1234F and GSTIN 36ABCDE1234F1Z5 has a property dispute in Hyderabad. Vehicle TS09EA1234 involved.", hotkey: "1" },
@@ -59,7 +57,6 @@ export default function Forge() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
-  // Pre-fill from Use Cases page
   useEffect(() => {
     const prefill = sessionStorage.getItem("forge_prefill");
     if (prefill) {
@@ -104,20 +101,20 @@ export default function Forge() {
 
   return (
     <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
-      
-      {/* Header with hero illustration */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
+
+      {/* Header */}
       <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 flex items-start justify-between">
         <div>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3"
+            className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3"
           >
             <Zap className="w-6 h-6 text-primary" />
             The Forge
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
@@ -132,7 +129,7 @@ export default function Forge() {
           transition={{ delay: 0.2, duration: 0.8 }}
           className="flex-shrink-0 hidden lg:block"
         >
-          <ScalesHero className="w-56 h-44 opacity-80" />
+          <ScalesHero className="w-56 h-44 opacity-70" />
         </motion.div>
       </div>
 
@@ -142,7 +139,7 @@ export default function Forge() {
           <div className="relative group">
             <div className={cn(
               "absolute -inset-0.5 rounded-xl blur transition duration-1000",
-              focused || prompt ? "bg-primary/30 opacity-100" : "bg-white/5 opacity-0 group-hover:opacity-100"
+              focused || prompt ? "bg-primary/20 opacity-100" : "bg-gray-200 opacity-0 group-hover:opacity-100"
             )} />
             <Textarea
               data-testid="input-prompt"
@@ -152,8 +149,8 @@ export default function Forge() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe the case facts here. Include PAN, GSTIN, vehicle numbers, or names..."
               className={cn(
-                "relative min-h-[120px] md:min-h-[160px] font-mono text-sm md:text-base resize-none bg-black/60 border-white/10 text-white placeholder:text-muted-foreground/50 rounded-xl p-4 md:p-5 shadow-2xl transition-all",
-                focused && "border-primary/50 shadow-[0_0_30px_rgba(251,191,36,0.1)]"
+                "relative min-h-[120px] md:min-h-[160px] font-mono text-sm md:text-base resize-none bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-xl p-4 md:p-5 shadow-sm transition-all",
+                focused && "border-primary/50 shadow-[0_0_20px_rgba(180,120,20,0.08)]"
               )}
               disabled={forge.isPending}
             />
@@ -161,16 +158,16 @@ export default function Forge() {
 
           <AnimatePresence>
             {!prompt && !result && !forge.isPending && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="space-y-3 overflow-hidden"
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-8 h-px bg-white/10" />
+                  <span className="w-8 h-px bg-gray-200" />
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">Suggested Inputs</p>
-                  <span className="flex-1 h-px bg-white/10" />
+                  <span className="flex-1 h-px bg-gray-200" />
                 </div>
                 <div className="grid gap-2">
                   {EXAMPLE_PROMPTS.map((ex, i) => (
@@ -179,12 +176,12 @@ export default function Forge() {
                       type="button"
                       data-testid={`example-prompt-${i}`}
                       onClick={() => setPrompt(ex.text)}
-                      className="group flex items-center justify-between text-left text-sm border border-white/5 rounded-lg px-4 py-3 bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/10 transition-all"
+                      className="group flex items-center justify-between text-left text-sm border border-gray-200 rounded-lg px-4 py-3 bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition-all"
                     >
-                      <span className="text-muted-foreground group-hover:text-white transition-colors">{ex.text}</span>
+                      <span className="text-gray-500 group-hover:text-gray-900 transition-colors">{ex.text}</span>
                       <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity ml-4 flex-shrink-0">
-                        <kbd className="bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-white">⌘</kbd>
-                        <kbd className="bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-white">{ex.hotkey}</kbd>
+                        <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-mono text-gray-700">⌘</kbd>
+                        <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-mono text-gray-700">{ex.hotkey}</kbd>
                       </div>
                     </button>
                   ))}
@@ -199,26 +196,26 @@ export default function Forge() {
               type="submit"
               disabled={!prompt.trim() || forge.isPending}
               className={cn(
-                "h-12 md:h-14 px-6 md:px-8 rounded-xl font-bold text-sm md:text-base tracking-wide transition-all shadow-xl overflow-hidden relative w-full sm:w-auto",
+                "h-12 md:h-14 px-6 md:px-8 rounded-xl font-bold text-sm md:text-base tracking-wide transition-all shadow-sm overflow-hidden relative w-full sm:w-auto",
                 prompt.trim() && !forge.isPending
-                  ? "bg-primary text-primary-foreground hover:scale-[1.02] shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:shadow-[0_0_30px_rgba(251,191,36,0.5)]"
-                  : "bg-white/5 text-white/40 cursor-not-allowed"
+                  ? "bg-primary text-primary-foreground hover:scale-[1.02] shadow-[0_4px_14px_rgba(180,120,20,0.25)] hover:shadow-[0_6px_20px_rgba(180,120,20,0.35)]"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
               )}
             >
               {prompt.trim() && !forge.isPending && (
-                <div className="absolute inset-0 shimmer-gradient animate-shimmer opacity-30" />
+                <div className="absolute inset-0 shimmer-gradient animate-shimmer opacity-20" />
               )}
               <span className="relative z-10 flex items-center gap-2">
                 <Scale className="w-5 h-5" />
                 INITIATE FORGE
               </span>
             </Button>
-            
+
             {result && (
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 md:h-14 px-6 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium w-full sm:w-auto"
+                className="h-12 md:h-14 px-6 rounded-xl border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium w-full sm:w-auto"
                 onClick={() => { setResult(null); setPrompt(""); }}
               >
                 Reset Canvas
@@ -228,8 +225,8 @@ export default function Forge() {
         </form>
 
         {forge.isError && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl glass-panel border-destructive/50 bg-destructive/10 rounded-xl p-6 flex items-start gap-4">
-            <div className="p-2 bg-destructive/20 rounded-full flex-shrink-0">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl glass-panel border-destructive/40 bg-destructive/5 rounded-xl p-6 flex items-start gap-4">
+            <div className="p-2 bg-destructive/10 rounded-full flex-shrink-0">
               <AlertTriangle className="w-6 h-6 text-destructive" />
             </div>
             <div>
@@ -242,7 +239,7 @@ export default function Forge() {
         {forge.isPending ? (
           <div className="max-w-4xl w-full"><PipelineLoading /></div>
         ) : result ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-5xl"
@@ -260,12 +257,8 @@ function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase:
 
   const container = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15 }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.15 } }
   };
-
   const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
@@ -284,7 +277,7 @@ function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase:
         <button
           data-testid="link-view-case"
           onClick={onViewCase}
-          className="flex items-center gap-2 text-sm text-white bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-colors font-medium"
+          className="flex items-center gap-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-4 py-2 rounded-lg transition-colors font-medium"
         >
           Open Case File <ChevronRight className="w-4 h-4" />
         </button>
@@ -294,11 +287,11 @@ function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase:
       {entities.length > 0 && (
         <motion.div variants={item} className="space-y-3">
           <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <span className="w-4 h-px bg-white/20" /> Extracted Entities
+            <span className="w-4 h-px bg-gray-300" /> Extracted Entities
           </h3>
           <div className="flex flex-wrap gap-3">
             {entities.map(([key, value]) => {
-              const config = ENTITY_CONFIG[key] || { label: key, color: "text-white border-white/20 bg-white/5" };
+              const config = ENTITY_CONFIG[key] || { label: key, color: "text-gray-700 border-gray-200 bg-gray-50" };
               return (
                 <div
                   key={key}
@@ -306,7 +299,7 @@ function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase:
                   className={cn("flex items-center gap-2 text-sm border rounded-lg px-3 py-2 shadow-sm", config.color)}
                 >
                   <span className="opacity-70 text-xs font-medium uppercase tracking-wide">{config.label}</span>
-                  <span className="w-px h-3 bg-current opacity-20" />
+                  <span className="w-px h-3 bg-current opacity-30" />
                   <span className="font-mono font-bold">{value}</span>
                 </div>
               );
@@ -319,15 +312,15 @@ function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase:
       {result.final_output && (
         <motion.div variants={item} className="space-y-3">
           <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <span className="w-4 h-px bg-white/20" /> Final Synthesis
+            <span className="w-4 h-px bg-gray-300" /> Legal Strategy
           </h3>
           <div className="glass-panel p-8 rounded-2xl border-l-4 border-l-primary relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
               <Scale className="w-64 h-64 text-primary" />
             </div>
             <div
               data-testid="text-final-output"
-              className="relative z-10 text-base md:text-lg text-white/90 leading-relaxed font-serif whitespace-pre-wrap"
+              className="relative z-10 text-base md:text-lg text-gray-800 leading-relaxed font-serif whitespace-pre-wrap"
             >
               {result.final_output}
             </div>
