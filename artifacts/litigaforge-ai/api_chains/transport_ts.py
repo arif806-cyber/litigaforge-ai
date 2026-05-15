@@ -154,67 +154,98 @@ def _mock_rc(reg_no: str, chasis_no: str, party_name: str) -> dict:
 # ─── API callers ──────────────────────────────────────────────────────────────
 
 def _call_dl(dl_no: str, party_name: str) -> dict:
-    if not os.getenv("API_SETU_KEY"):
-        return _mock_dl(dl_no, party_name)
+    # ── Priority 1: API Setu (DL lookup — RapidAPI doesn't cover DL yet) ──────
+    if os.getenv("API_SETU_KEY"):
+        use_prod = os.getenv("TRANSPORT_TS_USE_PROD", "false").lower() == "true"
+        url = f"{PROD_BASE if use_prod else SANDBOX_BASE}/drvlc"
+        payload = {
+            "txnId": str(uuid.uuid4()),
+            "format": "xml",
+            "certificateParameters": {"dlno": dl_no},
+            "consentArtifact": {"consent": _consent(dl_no), "signature": {"signature": "litigaforge"}},
+        }
+        result = safe_post(url, _headers(), payload, timeout=15)
+        if not result["success"]:
+            is_404    = result.get("error_type") == "record_not_found"
+            connected = result.get("sandbox_connected", False)
+            status_label = "sandbox_connected_no_record" if (connected and is_404) else ("connection_failed" if not connected else "api_error")
+            logger.warning(f"[TRANSPORT_TS] DL {status_label}: {result['error']}")
+            return {
+                "chain":   "TRANSPORT_TS_DL",
+                "status":  status_label,
+                "dl_number": dl_no,
+                "sandbox_connected": connected,
+                "api_error": result["error"],
+                "note": (
+                    "API Setu sandbox connected — DL not found in SARATHI national database. "
+                    "Provide the exact DL number as printed on the licence."
+                ) if (connected and is_404) else f"API Setu unreachable — {result['error']}",
+            }
+        return {**result["data"], "chain": "TRANSPORT_TS_DL", "status": "success",
+                "source": "Parivahan Sewa — Ministry of Road Transport & Highways"}
 
-    use_prod = os.getenv("TRANSPORT_TS_USE_PROD", "false").lower() == "true"
-    url = f"{PROD_BASE if use_prod else SANDBOX_BASE}/drvlc"
-    payload = {
-        "txnId": str(uuid.uuid4()),
-        "format": "xml",
-        "certificateParameters": {"dlno": dl_no},
-        "consentArtifact": {"consent": _consent(dl_no), "signature": {"signature": "litigaforge"}},
+    # ── No key: clear error, no fake data ─────────────────────────────────────
+    return {
+        "chain":     "TRANSPORT_TS_DL",
+        "status":    "no_api_key",
+        "dl_number": dl_no,
+        "note":      (
+            "No DL API key configured. "
+            "Add API_SETU_KEY (from api.setu.in) for live Driving Licence verification via SARATHI."
+        ),
     }
-    result = safe_post(url, _headers(), payload, timeout=15)
-    if not result["success"]:
-        is_404    = result.get("error_type") == "record_not_found"
-        connected = result.get("sandbox_connected", False)
-        status_label = "sandbox_connected_no_record" if (connected and is_404) else ("connection_failed" if not connected else "api_error")
-        logger.warning(f"[TRANSPORT_TS] DL {status_label}: {result['error']}")
-        r = _mock_dl(dl_no, party_name)
-        r["status"]           = status_label
-        r["sandbox_connected"] = connected
-        r["api_error"]        = result["error"]
-        r["note"] = (
-            "Sandbox API connected (sandbox.api-setu.in) — DL number not found in Parivahan database. "
-            "Provide a real Telangana DL number for live verification."
-            if (connected and is_404) else f"Sandbox unreachable — {result['error']}"
-        )
-        return r
-    return {**result["data"], "chain": "TRANSPORT_TS_DL", "status": "success",
-            "source": "Parivahan Sewa — Ministry of Road Transport & Highways"}
 
 
 def _call_rc(reg_no: str, chasis_no: str, party_name: str) -> dict:
-    if not os.getenv("API_SETU_KEY"):
-        return _mock_rc(reg_no, chasis_no, party_name)
+    # ── Priority 1: RapidAPI (real VAHAN data, works today) ───────────────────
+    if os.getenv("RAPIDAPI_KEY"):
+        from .rapidapi_vehicle import lookup_vehicle_rc
+        result = lookup_vehicle_rc(reg_no)
+        logger.info(f"[TRANSPORT_TS] RapidAPI RC status={result.get('status')} for {reg_no}")
+        return result
 
-    use_prod = os.getenv("TRANSPORT_TS_USE_PROD", "false").lower() == "true"
-    url = f"{PROD_BASE if use_prod else SANDBOX_BASE}/rvcer"
-    payload = {
-        "txnId": str(uuid.uuid4()),
-        "format": "xml",
-        "certificateParameters": {"reg_no": reg_no, "chasis_no": chasis_no or ""},
-        "consentArtifact": {"consent": _consent(reg_no), "signature": {"signature": "litigaforge"}},
+    # ── Priority 2: API Setu sandbox/production ───────────────────────────────
+    if os.getenv("API_SETU_KEY"):
+        use_prod = os.getenv("TRANSPORT_TS_USE_PROD", "false").lower() == "true"
+        url = f"{PROD_BASE if use_prod else SANDBOX_BASE}/rvcer"
+        payload = {
+            "txnId": str(uuid.uuid4()),
+            "format": "xml",
+            "certificateParameters": {"reg_no": reg_no, "chasis_no": chasis_no or ""},
+            "consentArtifact": {"consent": _consent(reg_no), "signature": {"signature": "litigaforge"}},
+        }
+        result = safe_post(url, _headers(), payload, timeout=15)
+        if not result["success"]:
+            is_404    = result.get("error_type") == "record_not_found"
+            connected = result.get("sandbox_connected", False)
+            status_label = "sandbox_connected_no_record" if (connected and is_404) else ("connection_failed" if not connected else "api_error")
+            logger.warning(f"[TRANSPORT_TS] RC {status_label}: {result['error']}")
+            return {
+                "chain":               "TRANSPORT_TS_RC",
+                "status":              status_label,
+                "registration_number": reg_no,
+                "sandbox_connected":   connected,
+                "api_error":           result["error"],
+                "note": (
+                    "API Setu sandbox connected — vehicle not found in VAHAN national database. "
+                    "The vehicle may be in state RTO only (not synced to VAHAN). "
+                    "Add RAPIDAPI_KEY for broader coverage, or get a production API Setu key."
+                ) if (connected and is_404) else f"API Setu unreachable — {result['error']}",
+            }
+        return {**result["data"], "chain": "TRANSPORT_TS_RC", "status": "success",
+                "source": "Parivahan Sewa — Ministry of Road Transport & Highways"}
+
+    # ── No key: return clear error, no fake data ──────────────────────────────
+    return {
+        "chain":               "TRANSPORT_TS_RC",
+        "status":              "no_api_key",
+        "registration_number": reg_no,
+        "note":                (
+            "No vehicle API key configured. "
+            "Add RAPIDAPI_KEY (free, instant) for real VAHAN data. "
+            "Sign up at rapidapi.com → search 'RTO Vehicle Information India' → subscribe → add key."
+        ),
     }
-    result = safe_post(url, _headers(), payload, timeout=15)
-    if not result["success"]:
-        is_404    = result.get("error_type") == "record_not_found"
-        connected = result.get("sandbox_connected", False)
-        status_label = "sandbox_connected_no_record" if (connected and is_404) else ("connection_failed" if not connected else "api_error")
-        logger.warning(f"[TRANSPORT_TS] RC {status_label}: {result['error']}")
-        r = _mock_rc(reg_no, chasis_no, party_name)
-        r["status"]           = status_label
-        r["sandbox_connected"] = connected
-        r["api_error"]        = result["error"]
-        r["note"] = (
-            "Sandbox API connected (sandbox.api-setu.in) — vehicle number not found in Parivahan database. "
-            "Provide a real registered vehicle number for live RC verification."
-            if (connected and is_404) else f"Sandbox unreachable — {result['error']}"
-        )
-        return r
-    return {**result["data"], "chain": "TRANSPORT_TS_RC", "status": "success",
-            "source": "Parivahan Sewa — Ministry of Road Transport & Highways"}
 
 
 # ─── Main chain function ──────────────────────────────────────────────────────
@@ -269,10 +300,23 @@ def fetch_transport_ts(
     rc_valid = results.get("vehicle_rc", {}).get("legal_relevance", {}).get("ownership_verified")
     ins_valid = results.get("vehicle_rc", {}).get("legal_relevance", {}).get("insurance_valid")
 
+    has_rapidapi = bool(os.getenv("RAPIDAPI_KEY"))
+    has_apisetu  = bool(os.getenv("API_SETU_KEY"))
+    if has_rapidapi:
+        data_source = "RapidAPI / VAHAN (Ministry of Road Transport & Highways)"
+        status_label = "live"
+    elif has_apisetu:
+        data_source = "API Setu Sandbox / Parivahan Sewa"
+        status_label = "sandbox"
+    else:
+        data_source = "No API key configured"
+        status_label = "no_api_key"
+
     return {
         "chain":    "TRANSPORT_TS",
-        "status":   "mock" if not os.getenv("API_SETU_KEY") else "success",
+        "status":   status_label,
         "provider": "State Transport Department, Telangana — via Parivahan Sewa (MoRTH)",
+        "data_source": data_source,
         "results":  results,
         "documents_verified": list(results.keys()),
         "legal_relevance_summary": {
@@ -293,7 +337,9 @@ def fetch_transport_ts(
             ),
         },
         "note": (
-            "Mock data — set API_SETU_KEY + API_SETU_CLIENT_ID for live verification"
-            if not os.getenv("API_SETU_KEY") else "Live data from Telangana Transport Dept"
+            "Live data from VAHAN via RapidAPI" if has_rapidapi
+            else "API Setu sandbox connected — real vehicle numbers return live data"
+            if has_apisetu else
+            "Add RAPIDAPI_KEY (free, instant at rapidapi.com) for real vehicle data"
         ),
     }
