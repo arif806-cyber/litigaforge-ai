@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Info, Link2, Zap } from "lucide-react";
+import { AlertTriangle, Link2, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ChainDiagram } from "@/components/graphics/ChainDiagram";
@@ -12,19 +12,23 @@ interface Chain {
 }
 
 const CHAIN_COLORS: Record<string, { badge: string; border: string; glow: string }> = {
-  GSTIN: { badge: "text-blue-400 bg-blue-500/10 border-blue-500/30", border: "group-hover:border-blue-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]" },
-  PAN: { badge: "text-violet-400 bg-violet-500/10 border-violet-500/30", border: "group-hover:border-violet-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(139,92,246,0.15)]" },
-  DigiLocker: { badge: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30", border: "group-hover:border-cyan-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(6,182,212,0.15)]" },
-  eCourts: { badge: "text-amber-400 bg-amber-500/10 border-amber-500/30", border: "group-hover:border-amber-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]" },
-  VAHAN: { badge: "text-green-400 bg-green-500/10 border-green-500/30", border: "group-hover:border-green-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(34,197,94,0.15)]" },
-  SARATHI: { badge: "text-teal-400 bg-teal-500/10 border-teal-500/30", border: "group-hover:border-teal-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(20,184,166,0.15)]" },
-  BPCL_LPG: { badge: "text-orange-400 bg-orange-500/10 border-orange-500/30", border: "group-hover:border-orange-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]" },
-  MERIPEHCHAAN: { badge: "text-pink-400 bg-pink-500/10 border-pink-500/30", border: "group-hover:border-pink-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(236,72,153,0.15)]" },
-  MEE_SEVA_TG: { badge: "text-red-400 bg-red-500/10 border-red-500/30", border: "group-hover:border-red-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(239,68,68,0.15)]" },
-  TRANSPORT_TS: { badge: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30", border: "group-hover:border-indigo-500/50", glow: "group-hover:shadow-[0_0_20px_rgba(99,102,241,0.15)]" },
+  GSTIN:        { badge: "text-blue-700 bg-blue-50 border-blue-200",     border: "group-hover:border-blue-400",   glow: "group-hover:shadow-[0_0_16px_rgba(59,130,246,0.12)]" },
+  PAN:          { badge: "text-violet-700 bg-violet-50 border-violet-200", border: "group-hover:border-violet-400", glow: "group-hover:shadow-[0_0_16px_rgba(139,92,246,0.12)]" },
+  DigiLocker:   { badge: "text-cyan-700 bg-cyan-50 border-cyan-200",     border: "group-hover:border-cyan-400",   glow: "group-hover:shadow-[0_0_16px_rgba(6,182,212,0.12)]" },
+  eCourts:      { badge: "text-amber-700 bg-amber-50 border-amber-200",  border: "group-hover:border-amber-400",  glow: "group-hover:shadow-[0_0_16px_rgba(245,158,11,0.12)]" },
+  VAHAN:        { badge: "text-green-700 bg-green-50 border-green-200",  border: "group-hover:border-green-400",  glow: "group-hover:shadow-[0_0_16px_rgba(34,197,94,0.12)]" },
+  SARATHI:      { badge: "text-teal-700 bg-teal-50 border-teal-200",     border: "group-hover:border-teal-400",   glow: "group-hover:shadow-[0_0_16px_rgba(20,184,166,0.12)]" },
+  BPCL_LPG:    { badge: "text-orange-700 bg-orange-50 border-orange-200", border: "group-hover:border-orange-400", glow: "group-hover:shadow-[0_0_16px_rgba(249,115,22,0.12)]" },
+  MERIPEHCHAAN: { badge: "text-pink-700 bg-pink-50 border-pink-200",     border: "group-hover:border-pink-400",   glow: "group-hover:shadow-[0_0_16px_rgba(236,72,153,0.12)]" },
+  MEE_SEVA_TG:  { badge: "text-red-700 bg-red-50 border-red-200",       border: "group-hover:border-red-400",    glow: "group-hover:shadow-[0_0_16px_rgba(239,68,68,0.12)]" },
+  TRANSPORT_TS: { badge: "text-indigo-700 bg-indigo-50 border-indigo-200", border: "group-hover:border-indigo-400", glow: "group-hover:shadow-[0_0_16px_rgba(99,102,241,0.12)]" },
 };
 
-const DEFAULT_COLOR = { badge: "text-white bg-white/5 border-white/20", border: "group-hover:border-white/40", glow: "group-hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]" };
+const DEFAULT_COLOR = {
+  badge: "text-gray-700 bg-gray-100 border-gray-300",
+  border: "group-hover:border-gray-400",
+  glow: "group-hover:shadow-[0_0_16px_rgba(0,0,0,0.06)]",
+};
 
 export default function Chains() {
   const { data, isLoading, isError, error } = useQuery({
@@ -46,8 +50,8 @@ export default function Chains() {
     <div className="h-full flex flex-col relative">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
 
-      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05]">
-        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-gray-200">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
           <Link2 className="w-6 h-6 text-primary" />
           Data Pipelines
         </h1>
@@ -66,10 +70,10 @@ export default function Chains() {
             className="glass-panel rounded-xl p-6 space-y-3"
           >
             <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              <span className="w-4 h-px bg-white/20" /> Execution Architecture
+              <span className="w-4 h-px bg-gray-300" /> Execution Architecture
             </p>
             <div className="overflow-x-auto -mx-2 px-2">
-              <ChainDiagram className="w-full min-w-[480px] opacity-80" />
+              <ChainDiagram className="w-full min-w-[480px] opacity-70" />
             </div>
           </motion.div>
 
@@ -81,24 +85,24 @@ export default function Chains() {
               data-testid="mode-notice"
               className={cn(
                 "relative overflow-hidden flex items-center gap-4 px-6 py-4 rounded-xl border glass-panel",
-                health.dummy_mode ? "border-amber-500/30" : "border-green-500/30"
+                health.dummy_mode ? "border-amber-300" : "border-green-300"
               )}
             >
-              <div className={cn("absolute inset-0 opacity-10 animate-pulse-slow", health.dummy_mode ? "bg-amber-500" : "bg-green-500")} />
-              <div className={cn("p-2 rounded-full", health.dummy_mode ? "bg-amber-500/20 text-amber-400" : "bg-green-500/20 text-green-400")}>
+              <div className={cn("absolute inset-0 opacity-5 animate-pulse-slow", health.dummy_mode ? "bg-amber-400" : "bg-green-400")} />
+              <div className={cn("p-2 rounded-full", health.dummy_mode ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700")}>
                 <Zap className="w-5 h-5" />
               </div>
               <div>
-                <h4 className={cn("font-bold font-mono tracking-wide", health.dummy_mode ? "text-amber-400" : "text-green-400")}>
+                <h4 className={cn("font-bold font-mono tracking-wide", health.dummy_mode ? "text-amber-700" : "text-green-700")}>
                   {health.dummy_mode
                     ? "FALLBACK MODE ACTIVE"
                     : (health as any).ai_mode === "gemini"
                     ? "GEMINI AI ACTIVE"
                     : (health as any).ai_mode === "openai"
-                    ? "GPT-4o ACTIVE"
+                    ? "GPT-5 ACTIVE"
                     : "LIVE MODE ACTIVE"}
                 </h4>
-                <p className="text-sm text-white/70 mt-0.5">
+                <p className="text-sm text-gray-600 mt-0.5">
                   {health.dummy_mode
                     ? "Using smart regex + data-driven templates. Set OPENAI_API_KEY or configure Gemini for full AI synthesis."
                     : (health as any).ai_mode === "gemini"
@@ -112,14 +116,14 @@ export default function Chains() {
           {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="chains-loading">
               {[...Array(8)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-xl bg-white/5" />
+                <Skeleton key={i} className="h-32 w-full rounded-xl bg-gray-100" />
               ))}
             </div>
           )}
 
           {isError && (
-            <div className="glass-panel border-destructive/50 bg-destructive/10 rounded-xl p-6 flex items-start gap-4">
-              <div className="p-2 bg-destructive/20 rounded-full flex-shrink-0">
+            <div className="glass-panel border-destructive/40 bg-destructive/5 rounded-xl p-6 flex items-start gap-4">
+              <div className="p-2 bg-destructive/10 rounded-full flex-shrink-0">
                 <AlertTriangle className="w-6 h-6 text-destructive" />
               </div>
               <div>
@@ -132,7 +136,7 @@ export default function Chains() {
           {data && (
             <>
               <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                <span className="w-4 h-px bg-white/20" /> {data.total_chains} Available Pipelines
+                <span className="w-4 h-px bg-gray-300" /> {data.total_chains} Available Pipelines
               </p>
 
               <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,7 +148,7 @@ export default function Chains() {
                       variants={item}
                       data-testid={`chain-card-${chain.name}`}
                       className={cn(
-                        "group glass-panel rounded-xl p-6 flex flex-col gap-4 transition-all duration-300 cursor-default border-white/[0.08]",
+                        "group glass-panel rounded-xl p-6 flex flex-col gap-4 transition-all duration-300 cursor-default border-gray-200",
                         colors.border,
                         colors.glow
                       )}
@@ -153,20 +157,20 @@ export default function Chains() {
                         <span className={cn("px-3 py-1 rounded text-xs font-mono font-bold tracking-widest border transition-colors", colors.badge)}>
                           {chain.name}
                         </span>
-                        <div className="flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
-                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                        <div className="flex gap-1 opacity-20 group-hover:opacity-60 transition-opacity">
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                         </div>
                       </div>
-                      <p className="text-sm text-white/60 leading-relaxed">{chain.description}</p>
+                      <p className="text-sm text-gray-600 leading-relaxed">{chain.description}</p>
                     </motion.div>
                   );
                 })}
               </motion.div>
 
               {data.note && (
-                <p className="text-xs text-muted-foreground/40 font-mono text-center pt-8">{data.note}</p>
+                <p className="text-xs text-muted-foreground/60 font-mono text-center pt-8">{data.note}</p>
               )}
             </>
           )}

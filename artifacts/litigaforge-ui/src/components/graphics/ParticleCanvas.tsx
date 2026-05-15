@@ -17,8 +17,8 @@ export function ParticleCanvas() {
 
     let animId: number;
     let particles: Particle[] = [];
-    const COUNT = 70;
-    const MAX_DIST = 140;
+    const COUNT = 55;
+    const MAX_DIST = 130;
 
     const resize = () => {
       canvas.width = canvas.offsetWidth * window.devicePixelRatio;
@@ -33,10 +33,10 @@ export function ParticleCanvas() {
       particles = Array.from({ length: COUNT }, () => ({
         x: Math.random() * w(),
         y: Math.random() * h(),
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: (Math.random() - 0.5) * 0.25,
-        r: Math.random() * 1.8 + 0.4,
-        alpha: Math.random() * 0.45 + 0.1,
+        vx: (Math.random() - 0.5) * 0.22,
+        vy: (Math.random() - 0.5) * 0.22,
+        r: Math.random() * 1.4 + 0.3,
+        alpha: Math.random() * 0.25 + 0.06,
       }));
     };
 
@@ -53,7 +53,7 @@ export function ParticleCanvas() {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(251,191,36,${p.alpha})`;
+        ctx.fillStyle = `rgba(180,140,60,${p.alpha})`;
         ctx.fill();
       }
 
@@ -63,12 +63,12 @@ export function ParticleCanvas() {
           const dy = particles[i].y - particles[j].y;
           const d = Math.hypot(dx, dy);
           if (d < MAX_DIST) {
-            const op = (1 - d / MAX_DIST) * 0.07;
+            const op = (1 - d / MAX_DIST) * 0.04;
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(251,191,36,${op})`;
-            ctx.lineWidth = 0.6;
+            ctx.strokeStyle = `rgba(180,140,60,${op})`;
+            ctx.lineWidth = 0.5;
             ctx.stroke();
           }
         }
@@ -95,7 +95,7 @@ export function ParticleCanvas() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity: 0.55 }}
+      style={{ opacity: 0.5 }}
     />
   );
 }

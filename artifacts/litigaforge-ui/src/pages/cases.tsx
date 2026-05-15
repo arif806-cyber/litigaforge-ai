@@ -32,10 +32,10 @@ export default function Cases() {
 
   return (
     <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
 
-      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-white/[0.05]">
-        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-gray-200">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
           <FileText className="w-6 h-6 text-primary" />
           Case Archives
         </h1>
@@ -48,14 +48,14 @@ export default function Cases() {
         {isLoading && (
           <div className="space-y-4" data-testid="cases-loading">
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-xl bg-white/5" />
+              <Skeleton key={i} className="h-24 w-full rounded-xl bg-gray-100" />
             ))}
           </div>
         )}
 
         {isError && (
-          <div className="glass-panel border-destructive/50 bg-destructive/10 rounded-xl p-6 flex items-start gap-4">
-            <div className="p-2 bg-destructive/20 rounded-full flex-shrink-0">
+          <div className="glass-panel border-destructive/40 bg-destructive/5 rounded-xl p-6 flex items-start gap-4">
+            <div className="p-2 bg-destructive/10 rounded-full flex-shrink-0">
               <AlertTriangle className="w-6 h-6 text-destructive" />
             </div>
             <div>
@@ -73,7 +73,7 @@ export default function Cases() {
             className="flex flex-col items-center justify-center py-16 text-center"
           >
             <EmptyStateArt className="w-56 h-44 mb-4" />
-            <h3 className="text-xl font-bold text-white tracking-wide">No Cases Forged Yet</h3>
+            <h3 className="text-xl font-bold text-gray-900 tracking-wide">No Cases Forged Yet</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-sm">
               Initiate your first legal strategy on the Forge page to populate the archives.
             </p>
@@ -84,7 +84,7 @@ export default function Cases() {
           <div className="max-w-5xl space-y-6 pb-20">
             <div className="flex items-center justify-between">
               <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                <span className="w-4 h-px bg-white/20" /> Timeline
+                <span className="w-4 h-px bg-gray-300" /> Timeline
               </p>
               <span data-testid="text-total-cases" className="text-xs font-mono text-primary bg-primary/10 px-3 py-1 rounded-full font-bold">
                 {data.total} records
@@ -102,17 +102,17 @@ export default function Cases() {
                   <Link
                     href={`/cases/${c.case_id}`}
                     data-testid={`card-case-${c.case_id}`}
-                    className="group flex items-center justify-between glass-panel p-4 md:p-5 rounded-xl hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.8)] transition-all duration-300 cursor-pointer"
+                    className="group flex items-center justify-between glass-panel p-4 md:p-5 rounded-xl hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md transition-all duration-300 cursor-pointer"
                   >
                     <div className="flex-1 min-w-0 pr-3">
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-sm font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">{c.case_id}</span>
-                        <span className="text-[10px] text-white/30 font-mono hidden sm:inline">{formatTime(c.timestamp)}</span>
+                        <span className="text-sm font-mono font-bold text-primary">{c.case_id}</span>
+                        <span className="text-[10px] text-gray-400 font-mono hidden sm:inline">{formatTime(c.timestamp)}</span>
                       </div>
-                      <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{c.prompt_preview}</p>
-                      <span className="text-[10px] text-white/30 font-mono mt-1.5 block sm:hidden">{formatTime(c.timestamp)}</span>
+                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{c.prompt_preview}</p>
+                      <span className="text-[10px] text-gray-400 font-mono mt-1.5 block sm:hidden">{formatTime(c.timestamp)}</span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-primary flex-shrink-0 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary flex-shrink-0 transition-colors" />
                   </Link>
                 </motion.div>
               ))}
