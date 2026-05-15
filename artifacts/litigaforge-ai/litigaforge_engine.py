@@ -2,7 +2,9 @@
 LitigaForge AI Engine — LangGraph-powered legal API orchestration.
 4-node pipeline: Entity Extractor → Orchestrator → Chain Executor → Meta Agent
 
-DUMMY MODE: Works fully without any API keys. Set OPENAI_API_KEY for real AI output.
+Intelligence: Gemini AI via Replit AI Integrations (free, no user key needed).
+Fallback: Smart regex + data-driven strategy templates.
+Optional: Set OPENAI_API_KEY to use GPT-4o instead of Gemini.
 """
 import os
 import uuid
@@ -18,6 +20,7 @@ from dotenv import load_dotenv
 from api_chains import CHAIN_MAP
 from forge_memory import ForgeMemory
 from alerts.whatsapp import send_whatsapp_alert
+from ai_brain import smart_extract_entities, smart_legal_strategy
 
 load_dotenv()
 logger = logging.getLogger("litigaforge.engine")
@@ -25,18 +28,27 @@ logger = logging.getLogger("litigaforge.engine")
 memory = ForgeMemory()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-DUMMY_MODE = not OPENAI_API_KEY
+GEMINI_BASE    = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "")
+# AI_MODE: "openai" | "gemini" | "smart_fallback"
+if OPENAI_API_KEY:
+    AI_MODE = "openai"
+elif GEMINI_BASE:
+    AI_MODE = "gemini"
+else:
+    AI_MODE = "smart_fallback"
 
-if not DUMMY_MODE:
+DUMMY_MODE = (AI_MODE == "smart_fallback")
+
+if AI_MODE == "openai":
     from langchain_openai import ChatOpenAI
-    llm = ChatOpenAI(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-        temperature=0.3,
-        api_key=OPENAI_API_KEY,
-    )
+    llm = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o"), temperature=0.3, api_key=OPENAI_API_KEY)
+    logger.info("AI MODE: OpenAI GPT-4o")
+elif AI_MODE == "gemini":
+    llm = None
+    logger.info("AI MODE: Gemini 2.5 Flash via Replit AI Integrations (free)")
 else:
     llm = None
-    logger.info("DUMMY MODE active — using built-in realistic legal data (no API keys needed)")
+    logger.info("AI MODE: Smart fallback (Gemini base URL not found)")
 
 
 # ─── Dummy LLM Responses ─────────────────────────────────────────────────────
@@ -326,43 +338,41 @@ class LitigaState(TypedDict):
 # ─── Node 1: Entity Extractor ─────────────────────────────────────────────────
 
 def entity_extractor(state: LitigaState) -> LitigaState:
-    logger.info(f"[{state['case_id']}] Extracting entities (dummy={DUMMY_MODE})")
+    logger.info(f"[{state['case_id']}] Extracting entities (AI_MODE={AI_MODE})")
 
-    if DUMMY_MODE:
-        entities = _dummy_extract_entities(state["user_prompt"])
-    else:
-        prompt = f"""
-You are a legal entity extraction specialist for Indian law.
+    if AI_MODE == "openai" and llm:
+        prompt = f"""You are a legal entity extraction specialist for Indian law.
 Extract from the user prompt (return null for missing):
 - gstin, pan, aadhaar, vehicle_number, dl_number
-- ifsc_code, pincode, company_name (listed NSE/BSE company)
-- party_name, opponent_name, case_number, case_type
+- ifsc_code, pincode, cin, company_name (NSE/BSE listed), stock_symbol
+- currency, party_name, opponent_name, case_number, case_type
 - state_code (2-letter: TS, AP, MH...), location
+- intent: stock_lookup | gstin_lookup | vehicle_lookup | ifsc_lookup | pincode_lookup | forex_lookup | company_lookup | legal_case | general
 
+IMPORTANT: If user mentions any company or stock/share/NSE/BSE/market → set company_name and intent=stock_lookup.
 Respond ONLY with valid JSON. No markdown.
-User Prompt: {state['user_prompt']}
-"""
+User Prompt: {state['user_prompt']}"""
         try:
             response = llm.invoke(prompt)
-            raw = response.content.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            entities = json.loads(raw.strip())
+            raw = response.content.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+            entities = json.loads(raw)
         except Exception as e:
-            logger.warning(f"Entity extraction failed ({e}), using dummy fallback")
-            entities = _dummy_extract_entities(state["user_prompt"])
+            logger.warning(f"OpenAI entity extraction failed ({e}), using AI brain fallback")
+            entities = smart_extract_entities(state["user_prompt"])
+    else:
+        # Gemini or smart_fallback — both handled by ai_brain
+        entities = smart_extract_entities(state["user_prompt"])
 
-    state["extracted_entities"] = {k: v for k, v in entities.items() if v}
-    logger.info(f"[{state['case_id']}] Entities: {list(state['extracted_entities'].keys())}")
+    state["extracted_entities"] = {k: v for k, v in entities.items() if v is not None and v != ""}
+    logger.info(f"[{state['case_id']}] Entities extracted: {list(state['extracted_entities'].keys())}")
+    logger.info(f"[{state['case_id']}] Intent: {state['extracted_entities'].get('intent', 'unknown')}")
     return state
 
 
 # ─── Node 2: Orchestrator ─────────────────────────────────────────────────────
 
 def orchestrator(state: LitigaState) -> LitigaState:
-    logger.info(f"[{state['case_id']}] Planning chains (dummy={DUMMY_MODE})")
+    logger.info(f"[{state['case_id']}] Planning chains (AI_MODE={AI_MODE})")
 
     if DUMMY_MODE:
         valid = _dummy_plan_chains(state["extracted_entities"])
@@ -439,44 +449,32 @@ def execute_chains(state: LitigaState) -> LitigaState:
 # ─── Node 4: Meta Agent ───────────────────────────────────────────────────────
 
 def meta_agent(state: LitigaState) -> LitigaState:
-    logger.info(f"[{state['case_id']}] Running Meta Agent (dummy={DUMMY_MODE})")
+    logger.info(f"[{state['case_id']}] Running Meta Agent (AI_MODE={AI_MODE})")
 
-    if DUMMY_MODE:
-        strategy_text = _dummy_legal_strategy(
-            state["user_prompt"], state["extracted_entities"],
-            state["api_results"], state["case_id"]
-        )
-        suggestions = _dummy_suggestions(state["user_prompt"])
-    else:
+    if AI_MODE == "openai" and llm:
         past = memory.get_relevant_patterns(state["user_prompt"], limit=3)
         memory_ctx = "\n".join(f"- {p['prompt_snippet']} → {p['meta_suggestions']}" for p in past) or "First case."
-        prompt = f"""
-You are LitigaForge Meta Agent — a senior Indian legal strategist AI with expertise in Telangana/AP law.
+        prompt = f"""You are LitigaForge Meta Agent — a senior Indian legal strategist AI with expertise in Telangana/AP law.
 CASE ID: {state['case_id']}
 PROMPT: {state['user_prompt']}
-ENTITIES: {state['extracted_entities']}
+INTENT: {state['extracted_entities'].get('intent', 'legal_case')}
+ENTITIES: {json.dumps(state['extracted_entities'], default=str)}
 API RESULTS:
-{json.dumps(state['api_results'], indent=2, default=str)}
+{json.dumps(state['api_results'], indent=2, default=str)[:5000]}
 FORGE MEMORY: {memory_ctx}
 
-Write a professional legal strategy with:
-## Case Summary
-## Legal Strengths
-## Legal Risks & Red Flags
-## Strategy Recommendations (cite Indian laws/acts/sections)
-## Document Checklist
-## Recommended Next Steps (within 7 days)
-"""
+Write a professional legal strategy STRICTLY based on the actual API results above.
+Use real data — numbers, names, dates from the results. DO NOT use generic templates.
+Structure: ## Summary | ## Key Findings from Data | ## Legal Analysis | ## Recommended Actions | ## Document Checklist"""
         try:
             response = llm.invoke(prompt)
             strategy_text = response.content
         except Exception as e:
-            logger.warning(f"Meta agent LLM failed ({e}), using dummy")
-            strategy_text = _dummy_legal_strategy(
+            logger.warning(f"OpenAI meta agent failed ({e}), using AI brain")
+            strategy_text = smart_legal_strategy(
                 state["user_prompt"], state["extracted_entities"],
                 state["api_results"], state["case_id"]
             )
-
         try:
             sug = llm.invoke(
                 f"Extract 1-3 creative 'Unthought Chain' ideas as a JSON array of short strings.\n"
@@ -485,6 +483,13 @@ Write a professional legal strategy with:
             suggestions = json.loads(sug.content.strip().strip("```json").strip("```").strip())
         except Exception:
             suggestions = _dummy_suggestions(state["user_prompt"])
+    else:
+        # Gemini or smart fallback — both via ai_brain
+        strategy_text = smart_legal_strategy(
+            state["user_prompt"], state["extracted_entities"],
+            state["api_results"], state["case_id"]
+        )
+        suggestions = _dummy_suggestions(state["user_prompt"])
 
     disclaimer = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

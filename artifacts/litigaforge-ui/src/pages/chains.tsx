@@ -90,12 +90,20 @@ export default function Chains() {
               </div>
               <div>
                 <h4 className={cn("font-bold font-mono tracking-wide", health.dummy_mode ? "text-amber-400" : "text-green-400")}>
-                  {health.dummy_mode ? "SIMULATION MODE ACTIVE" : "LIVE MODE ACTIVE"}
+                  {health.dummy_mode
+                    ? "FALLBACK MODE ACTIVE"
+                    : (health as any).ai_mode === "gemini"
+                    ? "GEMINI AI ACTIVE"
+                    : (health as any).ai_mode === "openai"
+                    ? "GPT-4o ACTIVE"
+                    : "LIVE MODE ACTIVE"}
                 </h4>
                 <p className="text-sm text-white/70 mt-0.5">
                   {health.dummy_mode
-                    ? "Chains are currently returning synthesized mock data. Configure API keys to enable live payload extraction."
-                    : "Chains are connected directly to live government and institutional APIs."}
+                    ? "Using smart regex + data-driven templates. Set OPENAI_API_KEY or configure Gemini for full AI synthesis."
+                    : (health as any).ai_mode === "gemini"
+                    ? "Powered by Gemini 2.5 Flash (free, via Replit AI Integrations). Entity extraction and strategy synthesis are AI-driven."
+                    : "Chains are connected directly to live government and institutional APIs with AI synthesis."}
                 </p>
               </div>
             </motion.div>

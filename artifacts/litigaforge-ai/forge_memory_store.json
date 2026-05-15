@@ -176,6 +176,103 @@
         "Activate Watch Mode on eCourts for automatic hearing date alerts"
       ],
       "outcome_summary": "## Case Summary\nThis case involves Ramesh Kumar from Hyderabad seeking legal resolution for a Cheque Bounce matter.\nAn existing case (RC/142/2024) was found in eCourts with next hearing on 2026-06-10.\nPAN verification status: True \u2014 identity confirmed.\n\n\n\n## Legal Strengths\n1. **Identity & Documenta"
+    },
+    {
+      "id": 11,
+      "timestamp": "2026-05-15T00:56:55.235904",
+      "prompt_snippet": "search Infosys stock",
+      "chains_used": [
+        "NSE_INDIA",
+        "STOCK_EXCHANGE",
+        "MCA_COMPANY",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "## Summary \u2014 LitigaForge Analysis\n**Query**: search Infosys stock\n**Departments Queried**: NSE_INDIA, MERIPEHCHAAN, MEE_SEVA_TG\n**Location**: Hyderabad  |  **Case Type**: General Legal Matter\n**Case ID**: 713CA9E3\n## Stock Market Data \u2014 Infosys Limited\n\n**Live Quote (NSE India)**\n- Current Price: \u20b91"
+    },
+    {
+      "id": 12,
+      "timestamp": "2026-05-15T00:58:27.960184",
+      "prompt_snippet": "Infosys stock",
+      "chains_used": [
+        "NSE_INDIA",
+        "STOCK_EXCHANGE",
+        "MCA_COMPANY",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "## Summary \u2014 LitigaForge Analysis\n**Query**: Infosys stock\n**Departments Queried**: NSE_INDIA, MERIPEHCHAAN, MEE_SEVA_TG\n**Location**: Hyderabad  |  **Case Type**: General Legal Matter\n**Case ID**: D58F709C\n## Stock Market Data \u2014 Infosys Limited\n\n**Live Quote (NSE India)**\n- Current Price: \u20b91094.1\n-"
+    },
+    {
+      "id": 13,
+      "timestamp": "2026-05-15T01:00:35.495139",
+      "prompt_snippet": "search Infosys stock",
+      "chains_used": [
+        "NSE_INDIA",
+        "STOCK_EXCHANGE",
+        "MCA_COMPANY",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "As a senior advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, I have reviewed the retrieved data concerning Infosys Limited (INFY). While the user's query is generic (\"search Infosys stock\"), the available NSE data provides critical information that can be leveraged i"
+    },
+    {
+      "id": 14,
+      "timestamp": "2026-05-15T01:01:12.859427",
+      "prompt_snippet": "Cheque bounce case \u2014 bank IFSC SBIN0020149 Hyderabad",
+      "chains_used": [
+        "IFSC",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "## Summary\n\nThe user's query indicates a cheque bounce case in Hyderabad, but the provided IFSC code `SBIN0020149` for State Bank of India, N.I.T. Branch, is located in **Warangal, Telangana**, not Hyderabad. This is a critical jurisdictional discrepancy that must be addressed immediately. The legal"
+    },
+    {
+      "id": 15,
+      "timestamp": "2026-05-15T01:01:40.334420",
+      "prompt_snippet": "Property dispute at pincode 500001 Hyderabad",
+      "chains_used": [
+        "PINCODE",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "As a senior advocate with two decades of experience in the High Courts of Telangana and Andhra Pradesh, I have reviewed the provided data concerning a property dispute at pincode 500001, Hyderabad. My analysis focuses on leveraging the retrieved information for a robust legal strategy.\n\n## Summary\n\n"
+    },
+    {
+      "id": 16,
+      "timestamp": "2026-05-15T01:02:06.975211",
+      "prompt_snippet": "GST fraud case GSTIN 36AAAAA0000A1ZA Telangana",
+      "chains_used": [
+        "GSTIN",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts",
+        "Cross-chain GSTIN + PAN + eCourts for combined tax + civil dispute strategy"
+      ],
+      "outcome_summary": "As a senior advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, I have reviewed the provided information regarding the GST fraud case (Case ID: F070D482) concerning GSTIN `36AAAAA0000A1ZA` in Telangana.\n\n## Summary\n\nThe core of this case is an alleged GST fraud associat"
     }
   ],
   "cases": [
@@ -3239,6 +3336,1689 @@
         }
       },
       "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 8D01F555 [DUMMY MODE \u2014 Add OPENAI_API_KEY for real AI output]\n============================================================\n\n## Case Summary\nThis case involves Ramesh Kumar from Hyderabad seeking legal resolution for a Cheque Bounce matter.\nAn existing case (RC/142/2024) was found in eCourts with next hearing on 2026-06-10.\nPAN verification status: True \u2014 identity confirmed.\n\n\n\n## Legal Strengths\n1. **Identity & Documentation Verified** \u2014 PAN is active and Aadhaar-seeded, establishing clear identity of the party.\n2. **Government Records Support Claim** \u2014 DigiLocker documents (Income Certificate, Domicile Certificate) are digitally verified and admissible as evidence under the IT Act 2000, Section 65B.\n3. **Prior Case Precedent** \u2014 eCourts search reveals related case history that can be used to demonstrate pattern of conduct by the opposing party.\n4. **Jurisdiction Established** \u2014 Case falls clearly under the jurisdiction of courts in Hyderabad, Telangana, with applicable state-specific laws.\n5. **GST Compliance Record** \u2014 GST filings are up to date, strengthening financial credibility of the client.\n\n## Legal Risks & Red Flags\n1. **Limitation Period** \u2014 Verify that the case is filed within the limitation period under the Limitation Act 1963. Rent disputes: 3 years from date of default.\n2. **Pending Returns** \u2014 Any unfiled GST returns may be used by opposing counsel to question financial standing.\n3. **Documentary Gaps** \u2014 Ensure original rent agreement / lease deed is available. Digital copies alone may require additional certification.\n4. **Opposing Party Absconding** \u2014 If the opposing party is not traceable, service of notice may require court permission for substituted service (Order V, Rule 20 CPC).\n\n## Strategy Recommendations\n1. **File Eviction Petition** under Section 10 of the Telangana Buildings (Lease, Rent and Eviction) Control Act, 1960 before the Rent Control Court, Hyderabad.\n2. **Send Legal Notice** via registered post + WhatsApp (for digital trail) under Section 106 of the Transfer of Property Act, 1882 \u2014 give 15-day notice to vacate.\n3. **Attach DigiLocker Documents** as certified digital evidence under Section 65B of the Indian Evidence Act, 1872.\n4. **File GST Dispute** separately before the GST Appellate Authority under Section 107 of the CGST Act, 2017 \u2014 do not club with civil suit.\n5. **Apply for Interim Relief** under Order XXXIX Rules 1 & 2 of CPC to restrain the respondent from alienating the property pending disposal.\n6. **Engage a Process Server** immediately to ensure timely service of summons on the respondent.\n\n## Document Checklist\n- Original Rent Agreement / Lease Deed (mandatory)\n- Proof of non-payment of rent (bank statements, demand notices)\n- Aadhaar Card (verified via DigiLocker)\n- Income Certificate (verified via DigiLocker)\n- GST Registration Certificate (GSTIN verified)\n- Property Tax receipts (to establish ownership)\n- Previous court orders, if any (from eCourts)\n- WhatsApp/email communication records with the tenant\n\n## Recommended Next Steps (within 7 days)\n1. Day 1-2: Obtain certified copies of all DigiLocker documents\n2. Day 2: Draft and send Legal Notice via registered AD post\n3. Day 3: File Eviction Petition in Rent Control Court, Hyderabad\n4. Day 4: Apply for interim stay order\n5. Day 5-6: Collect proof of delivery of legal notice\n6. Day 7: Appear before court for first hearing date allocation\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : STOCK_EXCHANGE, IFSC, PINCODE, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : STOCK_EXCHANGE:no_api_key | IFSC:success | PINCODE:error | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:mock\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "713CA9E3",
+      "timestamp": "2026-05-15T00:56:55.242233",
+      "prompt": "search Infosys stock",
+      "api_results": {
+        "NSE_INDIA": {
+          "chain": "NSE_INDIA",
+          "status": "success",
+          "symbol": "INFY",
+          "data_source": "NSE India (National Stock Exchange) \u2014 live public API, no key",
+          "results": {
+            "live_quote": {
+              "symbol": "INFY",
+              "company": "Infosys Limited",
+              "isin": "INE009A01021",
+              "industry": "Computers - Software & Consulting",
+              "series": "EQ",
+              "last_price": 1094.1,
+              "open": 1119.8,
+              "high": 1121.9,
+              "low": 1089,
+              "close_prev": 1123.1,
+              "change": -29,
+              "pct_change": -2.582138723176921,
+              "week_52_high": 1728,
+              "week_52_low": 1089,
+              "market_cap": null,
+              "face_value": null,
+              "listing_date": "1995-02-08"
+            },
+            "nifty50_member": true
+          },
+          "legal_relevance": {
+            "applicable_laws": [
+              "SEBI Act 1992 \u2014 securities fraud, market manipulation",
+              "SEBI (Prohibition of Insider Trading) Regulations 2015",
+              "Companies Act 2013 S.447 \u2014 fraud in listed companies",
+              "IBC 2016 \u2014 market value for corporate insolvency proceedings",
+              "FEMA 1999 \u2014 FII/FPI shareholding limits"
+            ],
+            "use_cases": [
+              "Live share price for court-ordered asset valuation (divorce, partition)",
+              "Price history for insider trading investigation (SEBI PIT)",
+              "52-week range for NPA attachment \u2014 current market value",
+              "Announcements for corporate fraud evidence",
+              "Nifty 50 membership \u2014 credibility of company in proceedings"
+            ]
+          }
+        },
+        "STOCK_EXCHANGE": {
+          "chain": "STOCK_EXCHANGE",
+          "status": "no_api_key",
+          "note": "Add RAPIDAPI_KEY secret. Subscribe free at rapidapi.com \u2192 'Indian Stock Exchange API2'."
+        },
+        "MCA_COMPANY": {
+          "chain": "MCA_COMPANY",
+          "data_source": "MCA21 / OpenCorporates India",
+          "status": "no_api_key",
+          "search_query": "infosys",
+          "note": "Add OPENCORPORATES_API_KEY (free at opencorporates.com/api_accounts/new) for live company registry search. CIN structural validation is available without a key.",
+          "mca_direct_link": "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+          "efiling_link": "https://efiling.mca.gov.in/eFiling/helpdeskSearch",
+          "legal_relevance": {
+            "applicable_laws": [
+              "Companies Act 2013 \u2014 S.7 (formation), S.271 (winding up)",
+              "IBC 2016 \u2014 corporate insolvency, NCLT proceedings",
+              "PMLA 2002 \u2014 shell company investigations",
+              "SEBI Act \u2014 listed company regulatory action"
+            ],
+            "notes": "CIN (Corporate Identification Number) is essential for any litigation against a company. Verify existence, registered address, and status before filing. Director details and charges are available on MCA21 portal."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC02BBB699557E",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC02F79E161F77",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02E1B1E0841C",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 713CA9E3 [AI-Generated]\n============================================================\n\n## Summary \u2014 LitigaForge Analysis\n**Query**: search Infosys stock\n**Departments Queried**: NSE_INDIA, MERIPEHCHAAN, MEE_SEVA_TG\n**Location**: Hyderabad  |  **Case Type**: General Legal Matter\n**Case ID**: 713CA9E3\n## Stock Market Data \u2014 Infosys Limited\n\n**Live Quote (NSE India)**\n- Current Price: \u20b91094.1\n- Today's Change: -2.582138723176921%\n- 52-Week High: \u20b91728  |  52-Week Low: \u20b91089\n- Nifty 50 Member: Yes\n\n**Legal Significance**\nThis market data is relevant for:\n- **Asset Valuation** \u2014 Share price used in divorce/partition proceedings (Family Courts Act)\n- **Insider Trading** \u2014 SEBI (Prohibition of Insider Trading) Regulations 2015 \u2014 trade 60 days before price-sensitive information is material\n- **NPA/DRT Attachment** \u2014 Current market cap determines if attachment order is proportionate\n- **Contempt / SEBI Order** \u2014 Verify if suspended trading has resumed in violation of SEBI orders\n\n**SEBI Complaint Process**\n1. File complaint at SEBI SCORES portal (scores.sebi.gov.in)\n2. Attach trade history screenshots + company announcements as evidence\n3. Cite SEBI Act 1992 S.11, S.11B for market manipulation\n4. For insider trading: SEBI PIT Regulations 2015, Reg.4\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : NSE_INDIA, STOCK_EXCHANGE, MCA_COMPANY, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : NSE_INDIA:success | STOCK_EXCHANGE:no_api_key | MCA_COMPANY:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "D58F709C",
+      "timestamp": "2026-05-15T00:58:27.965317",
+      "prompt": "Infosys stock",
+      "api_results": {
+        "NSE_INDIA": {
+          "chain": "NSE_INDIA",
+          "status": "success",
+          "symbol": "INFY",
+          "data_source": "NSE India (National Stock Exchange) \u2014 live public API, no key",
+          "results": {
+            "live_quote": {
+              "symbol": "INFY",
+              "company": "Infosys Limited",
+              "isin": "INE009A01021",
+              "industry": "Computers - Software & Consulting",
+              "series": "EQ",
+              "last_price": 1094.1,
+              "open": 1119.8,
+              "high": 1121.9,
+              "low": 1089,
+              "close_prev": 1123.1,
+              "change": -29,
+              "pct_change": -2.582138723176921,
+              "week_52_high": 1728,
+              "week_52_low": 1089,
+              "market_cap": null,
+              "face_value": null,
+              "listing_date": "1995-02-08"
+            },
+            "nifty50_member": true
+          },
+          "legal_relevance": {
+            "applicable_laws": [
+              "SEBI Act 1992 \u2014 securities fraud, market manipulation",
+              "SEBI (Prohibition of Insider Trading) Regulations 2015",
+              "Companies Act 2013 S.447 \u2014 fraud in listed companies",
+              "IBC 2016 \u2014 market value for corporate insolvency proceedings",
+              "FEMA 1999 \u2014 FII/FPI shareholding limits"
+            ],
+            "use_cases": [
+              "Live share price for court-ordered asset valuation (divorce, partition)",
+              "Price history for insider trading investigation (SEBI PIT)",
+              "52-week range for NPA attachment \u2014 current market value",
+              "Announcements for corporate fraud evidence",
+              "Nifty 50 membership \u2014 credibility of company in proceedings"
+            ]
+          }
+        },
+        "STOCK_EXCHANGE": {
+          "chain": "STOCK_EXCHANGE",
+          "status": "no_api_key",
+          "note": "Add RAPIDAPI_KEY secret. Subscribe free at rapidapi.com \u2192 'Indian Stock Exchange API2'."
+        },
+        "MCA_COMPANY": {
+          "chain": "MCA_COMPANY",
+          "data_source": "MCA21 / OpenCorporates India",
+          "status": "no_api_key",
+          "search_query": "infosys",
+          "note": "Add OPENCORPORATES_API_KEY (free at opencorporates.com/api_accounts/new) for live company registry search. CIN structural validation is available without a key.",
+          "mca_direct_link": "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+          "efiling_link": "https://efiling.mca.gov.in/eFiling/helpdeskSearch",
+          "legal_relevance": {
+            "applicable_laws": [
+              "Companies Act 2013 \u2014 S.7 (formation), S.271 (winding up)",
+              "IBC 2016 \u2014 corporate insolvency, NCLT proceedings",
+              "PMLA 2002 \u2014 shell company investigations",
+              "SEBI Act \u2014 listed company regulatory action"
+            ],
+            "notes": "CIN (Corporate Identification Number) is essential for any litigation against a company. Verify existence, registered address, and status before filing. Director details and charges are available on MCA21 portal."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC022A56458435",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC020F3C7D162E",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC0288221247F8",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE D58F709C [AI-Generated]\n============================================================\n\n## Summary \u2014 LitigaForge Analysis\n**Query**: Infosys stock\n**Departments Queried**: NSE_INDIA, MERIPEHCHAAN, MEE_SEVA_TG\n**Location**: Hyderabad  |  **Case Type**: General Legal Matter\n**Case ID**: D58F709C\n## Stock Market Data \u2014 Infosys Limited\n\n**Live Quote (NSE India)**\n- Current Price: \u20b91094.1\n- Today's Change: -2.582138723176921%\n- 52-Week High: \u20b91728  |  52-Week Low: \u20b91089\n- Nifty 50 Member: Yes\n\n**Legal Significance**\nThis market data is relevant for:\n- **Asset Valuation** \u2014 Share price used in divorce/partition proceedings (Family Courts Act)\n- **Insider Trading** \u2014 SEBI (Prohibition of Insider Trading) Regulations 2015 \u2014 trade 60 days before price-sensitive information is material\n- **NPA/DRT Attachment** \u2014 Current market cap determines if attachment order is proportionate\n- **Contempt / SEBI Order** \u2014 Verify if suspended trading has resumed in violation of SEBI orders\n\n**SEBI Complaint Process**\n1. File complaint at SEBI SCORES portal (scores.sebi.gov.in)\n2. Attach trade history screenshots + company announcements as evidence\n3. Cite SEBI Act 1992 S.11, S.11B for market manipulation\n4. For insider trading: SEBI PIT Regulations 2015, Reg.4\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : NSE_INDIA, STOCK_EXCHANGE, MCA_COMPANY, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : NSE_INDIA:success | STOCK_EXCHANGE:no_api_key | MCA_COMPANY:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "AFB0D840",
+      "timestamp": "2026-05-15T01:00:35.501418",
+      "prompt": "search Infosys stock",
+      "api_results": {
+        "NSE_INDIA": {
+          "chain": "NSE_INDIA",
+          "status": "success",
+          "symbol": "INFY",
+          "data_source": "NSE India (National Stock Exchange) \u2014 live public API, no key",
+          "results": {
+            "live_quote": {
+              "symbol": "INFY",
+              "company": "Infosys Limited",
+              "isin": "INE009A01021",
+              "industry": "Computers - Software & Consulting",
+              "series": "EQ",
+              "last_price": 1094.1,
+              "open": 1119.8,
+              "high": 1121.9,
+              "low": 1089,
+              "close_prev": 1123.1,
+              "change": -29,
+              "pct_change": -2.582138723176921,
+              "week_52_high": 1728,
+              "week_52_low": 1089,
+              "market_cap": null,
+              "face_value": null,
+              "listing_date": "1995-02-08"
+            },
+            "nifty50_member": true
+          },
+          "legal_relevance": {
+            "applicable_laws": [
+              "SEBI Act 1992 \u2014 securities fraud, market manipulation",
+              "SEBI (Prohibition of Insider Trading) Regulations 2015",
+              "Companies Act 2013 S.447 \u2014 fraud in listed companies",
+              "IBC 2016 \u2014 market value for corporate insolvency proceedings",
+              "FEMA 1999 \u2014 FII/FPI shareholding limits"
+            ],
+            "use_cases": [
+              "Live share price for court-ordered asset valuation (divorce, partition)",
+              "Price history for insider trading investigation (SEBI PIT)",
+              "52-week range for NPA attachment \u2014 current market value",
+              "Announcements for corporate fraud evidence",
+              "Nifty 50 membership \u2014 credibility of company in proceedings"
+            ]
+          }
+        },
+        "STOCK_EXCHANGE": {
+          "chain": "STOCK_EXCHANGE",
+          "status": "no_api_key",
+          "note": "Add RAPIDAPI_KEY secret. Subscribe free at rapidapi.com \u2192 'Indian Stock Exchange API2'."
+        },
+        "MCA_COMPANY": {
+          "chain": "MCA_COMPANY",
+          "data_source": "MCA21 / OpenCorporates India",
+          "status": "no_api_key",
+          "search_query": "infosys",
+          "note": "Add OPENCORPORATES_API_KEY (free at opencorporates.com/api_accounts/new) for live company registry search. CIN structural validation is available without a key.",
+          "mca_direct_link": "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+          "efiling_link": "https://efiling.mca.gov.in/eFiling/helpdeskSearch",
+          "legal_relevance": {
+            "applicable_laws": [
+              "Companies Act 2013 \u2014 S.7 (formation), S.271 (winding up)",
+              "IBC 2016 \u2014 corporate insolvency, NCLT proceedings",
+              "PMLA 2002 \u2014 shell company investigations",
+              "SEBI Act \u2014 listed company regulatory action"
+            ],
+            "notes": "CIN (Corporate Identification Number) is essential for any litigation against a company. Verify existence, registered address, and status before filing. Director details and charges are available on MCA21 portal."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC026B698DCE18",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC029EEC17D90F",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02B4B09935D9",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE AFB0D840 [AI-Generated]\n============================================================\n\nAs a senior advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, I have reviewed the retrieved data concerning Infosys Limited (INFY). While the user's query is generic (\"search Infosys stock\"), the available NSE data provides critical information that can be leveraged in various legal contexts.\n\n## Summary\n\nThe data provides a live quote for Infosys Limited (symbol: INFY) from the National Stock Exchange (NSE). As of the last update, the share price is \u20b91094.1, reflecting a significant daily decline of \u20b929 (-2.58%). The company is a Nifty 50 constituent, indicating its prominence and liquidity. Crucially, the current price of \u20b91094.1 is at its 52-week low, which is \u20b91089.\n\n## Key Findings\n\n1.  **Company Identification:** Infosys Limited, ISIN: INE009A01021, listed on NSE under symbol INFY, series EQ.\n2.  **Current Market Performance:**\n    *   **Last Traded Price:** \u20b91094.1\n    *   **Change:** -\u20b929.00 (-2.58%)\n    *   **Open:** \u20b91119.80\n    *   **High:** \u20b91121.90\n    *   **Low:** \u20b91089.00\n    *   **Previous Close:** \u20b91123.10\n3.  **52-Week Range:** The stock has traded between a 52-week high of \u20b91728.00 and a 52-week low of \u20b91089.00. The current price of \u20b91094.1 is very close to its 52-week low.\n4.  **Market Status:** Infosys Limited is a member of the Nifty 50 index, signifying its large market capitalization and significant influence on the Indian stock market.\n5.  **Listing Date:** The company was listed on 1995-02-08.\n\n## Legal Analysis\n\nThe retrieved stock data, though seemingly straightforward, holds significant legal relevance in several potential scenarios:\n\n1.  **Asset Valuation for Litigation:**\n    *   **Divorce/Partition Suits:** In cases involving division of marital assets or partition of joint family property, the current market value of shares held by parties is crucial. The last traded price of \u20b91094.1 per share for INFY would be the primary figure for valuation as per **Section 7 of the Wealth Tax Act, 1957 (though repealed, principles of fair market value persist in other statutes)** and general principles of asset valuation in civil law. The proximity to the 52-week low (\u20b91089) might be a point of contention for either party arguing for a higher or lower valuation.\n    *   **NPA Attachment/Recovery Proceedings:** For banks or financial institutions seeking to attach shares as part of Non-Performing Asset (NPA) recovery, the current market value (\u20b91094.1) and the 52-week range (\u20b91089 - \u20b91728) are vital for assessing the realizable value of the security. This is relevant under **Section 13 of the SARFAESI Act, 2002**, for enforcement of security interest, or under **Order XXI, Rule 46A of the Code of Civil Procedure, 1908**, for attachment of shares.\n2.  **Corporate Insolvency Proceedings (IBC, 2016):** The market value of shares can be a factor in determining the overall financial health and valuation of a corporate debtor under the **Insolvency and Bankruptcy Code, 2016**. While not directly determining insolvency, the share price trend and market capitalization (if available) contribute to the holistic assessment by the Committee of Creditors (CoC) and the National Company Law Tribunal (NCLT).\n3.  **Securities Fraud and Market Manipulation (SEBI Act, 1992):** The detailed price movements (open, high, low, close, change) and the 52-week range are foundational for any investigation into potential market manipulation or insider trading. Sudden, unexplained price movements or trading volumes around significant corporate announcements could trigger scrutiny under the **SEBI (Prohibition of Insider Trading) Regulations, 2015**, and **SEBI Act, 1992, particularly Sections 12A, 15G, and 15HA**. The fact that INFY is a Nifty 50 member makes it a highly scrutinized stock by SEBI.\n4.  **Companies Act, 2013:** While the current data doesn't directly indicate fraud, the market performance of a listed company like Infosys is always under the purview of **Section 447 of the Companies Act, 2013**, which deals with punishment for fraud. Any misrepresentation affecting share price could lead to action.\n5.  **FEMA, 1999:** For foreign institutional investors (FIIs) or foreign portfolio investors (FPIs), shareholding limits are prescribed under the **Foreign Exchange Management Act, 1999 (FEMA)**. The market price determines the value of their holdings and compliance with these limits.\n\n**Missing Information (MCA Data):** It is important to note that the MCA Company data could not be retrieved due to a missing API key. For any litigation directly involving Infosys Limited as a party, obtaining its Corporate Identification Number (CIN), registered address, and current status from the MCA21 portal is **absolutely critical** for proper identification and service of legal notices or summons. Without this, any action against the company itself would be procedurally deficient.\n\n## Recommended Actions\n\nGiven the generic nature of the query, the following actions are recommended based on potential legal scenarios where this stock data would be relevant:\n\n1.  **For Asset Valuation:** If this data is required for asset valuation in a civil suit (e.g., divorce, partition, debt recovery), obtain a certified copy of the live quote or a historical price chart from NSE or a reputable financial data provider. Prepare an affidavit detailing the valuation based on the last traded price of \u20b91094.1.\n2.  **For Debt Recovery/Attachment:** If shares of Infosys Limited are to be attached or sold for debt recovery, immediately secure the current market value (\u20b91094.1) and monitor price fluctuations. File an application under **Order XXI, Rule 46A of the CPC** for attachment, specifying the number of shares and their current market value.\n3.  **For Regulatory Compliance/Investigation:** If this data is part of an investigation into market misconduct, collaborate with financial experts to analyze trading patterns, volumes, and news events around significant price changes (e.g., the current drop to near 52-week low). This would be crucial for building a case under SEBI regulations.\n4.  **Company Due Diligence (if company is a party):** If Infosys Limited is a party to any legal proceedings, immediately obtain its CIN, registered office address, and status from the MCA21 portal (mca.gov.in) to ensure proper identification and service. This is a prerequisite for filing any suit or petition against the company.\n\n## Document Checklist\n\n1.  **NSE Live Quote for INFY:** The retrieved data showing symbol INFY, company Infosys Limited, ISIN INE009A01021, last price \u20b91094.1, 52-week high \u20b91728, 52-week low \u20b91089.\n2.  **Historical Price Data (if relevant):** For detailed analysis of price trends or specific dates, obtain historical data for INFY from NSE.\n3.  **Certified Extracts from MCA21 Portal (Crucial for litigation against the company):**\n    *   Company Master Data (CIN, Registered Address, Status).\n    *   Details of Directors.\n    *   Charges Registered (if any).\n4.  **Relevant Court Orders/Petitions:** Depending on the specific legal case (e.g., divorce petition, recovery suit, SEBI complaint).\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : NSE_INDIA, STOCK_EXCHANGE, MCA_COMPANY, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : NSE_INDIA:success | STOCK_EXCHANGE:no_api_key | MCA_COMPANY:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "049E4233",
+      "timestamp": "2026-05-15T01:01:12.866292",
+      "prompt": "Cheque bounce case \u2014 bank IFSC SBIN0020149 Hyderabad",
+      "api_results": {
+        "IFSC": {
+          "chain": "IFSC",
+          "status": "success",
+          "data_source": "RBI IFSC Registry via Razorpay (free, no key)",
+          "ifsc_code": "SBIN0020149",
+          "bank_name": "State Bank of India",
+          "branch": "N I T BR",
+          "address": "IEMKDKZIPEMIDWGLWGL",
+          "city": "WARANGAL",
+          "district": "WARANGAL",
+          "state": "ANDHRA PRADESH",
+          "contact": "+918702459149",
+          "micr_code": "506002030",
+          "rtgs_enabled": true,
+          "neft_enabled": true,
+          "imps_enabled": true,
+          "upi_enabled": true,
+          "swift_code": "SBININBBH14",
+          "raw": {
+            "MICR": "506002030",
+            "BRANCH": "N I T BR",
+            "ADDRESS": "IEMKDKZIPEMIDWGLWGL",
+            "STATE": "ANDHRA PRADESH",
+            "CONTACT": "+918702459149",
+            "UPI": true,
+            "RTGS": true,
+            "CITY": "WARANGAL",
+            "CENTRE": "WARANGAL",
+            "DISTRICT": "WARANGAL",
+            "NEFT": true,
+            "IMPS": true,
+            "SWIFT": "SBININBBH14",
+            "ISO3166": "IN-AP",
+            "BANK": "State Bank of India",
+            "BANKCODE": "SBIN",
+            "IFSC": "SBIN0020149"
+          },
+          "legal_relevance": {
+            "bank_verified": true,
+            "notes": "IFSC SBIN0020149 verified against RBI registry. Critical in cheque bounce cases (NI Act S.138) to establish drawee bank. Use for attachment orders (CPC Order XXI), fraud tracing, and loan disputes."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC020D3CDB265C",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC02677C33CE81",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02CB9C201822",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 049E4233 [AI-Generated]\n============================================================\n\n## Summary\n\nThe user's query indicates a cheque bounce case in Hyderabad, but the provided IFSC code `SBIN0020149` for State Bank of India, N.I.T. Branch, is located in **Warangal, Telangana**, not Hyderabad. This is a critical jurisdictional discrepancy that must be addressed immediately. The legal strategy will focus on correctly establishing jurisdiction and the necessary steps under the Negotiable Instruments Act, 1881.\n\n## Key Findings\n\n1.  **Bank Branch Location Discrepancy**: The IFSC `SBIN0020149` corresponds to the State Bank of India, N.I.T. Branch. While the API data states \"STATE: ANDHRA PRADESH\" for Warangal, it is a well-established fact that **Warangal is located in Telangana**. The branch address is \"IEMKDKZIPEMIDWGLWGL\", contact number is +918702459149, and the MICR code is 506002030.\n2.  **Digital Identity Verification (Mock Data)**: The MeriPehchaan data, though mock, illustrates the potential to access verified digital documents like Aadhaar, PAN, and Driving Licence for a \"Citizen (Mock)\". These documents are stated to be admissible under Section 65B of the Information Technology Act, 2000.\n3.  **Mee Seva Data (Sandbox)**: The Mee Seva Telangana API indicates a sandbox connection but no record found for an Income Certificate (Application No. IC020D3CDB26). This is not directly relevant to the cheque bounce case at this stage.\n\n## Legal Analysis\n\n1.  **Jurisdiction under NI Act, 1881**:\n    *   The primary issue is the correct jurisdiction for filing a complaint under Section 138 of the Negotiable Instruments Act, 1881. As per Section 142(2) of the NI Act, as clarified by the Supreme Court in *Dashrath Rupsingh Rathod v. State of Maharashtra & Anr.* (2014) and subsequent amendments, the offence under Section 138 is deemed to have been committed at the place where the branch of the bank on which the cheque has been drawn is situated.\n    *   Since the drawee bank (State Bank of India, N.I.T. Branch) is located in **Warangal, Telangana**, the appropriate court for filing the complaint would be the Judicial Magistrate of First Class (JMFC) or Metropolitan Magistrate (MM) court having territorial jurisdiction over Warangal, Telangana. Filing the case in Hyderabad would be incorrect and could lead to dismissal on grounds of lack of jurisdiction.\n2.  **Admissibility of Digital Evidence**: Should there be a need to prove the identity or address of the drawer, the MeriPehchaan data highlights that digital documents obtained through platforms like DigiLocker are admissible in court as electronic records under Section 65B of the Information Technology Act, 2000, provided the conditions therein are met. This can streamline the process of proving foundational facts.\n3.  **Elements of Section 138 NI Act**: To successfully prosecute a cheque bounce case, the following conditions must be met:\n    *   The cheque must have been issued for the discharge, in whole or in part, of any debt or other liability.\n    *   The cheque must have been presented to the bank within its period of validity (usually three months from the date of issue).\n    *   The cheque must have been returned unpaid by the bank due to insufficient funds or that it exceeds the amount arranged to be paid from that account by an agreement made with the bank.\n    *   A legal notice demanding payment must be issued to the drawer within 30 days of receiving the \"cheque return memo\" from the bank.\n    *   The drawer must fail to make payment of the cheque amount to the payee within 15 days of receiving the legal notice.\n    *   A complaint must be filed before the competent court within one month from the date on which the cause of action arises (i.e., after the expiry of the 15-day notice period).\n\n## Recommended Actions\n\n1.  **Immediate Jurisdictional Correction**: Advise the client that the complaint for the cheque bounce case must be filed in the appropriate court in **Warangal, Telangana**, not Hyderabad, given that the drawee bank (SBI, N.I.T. Branch, IFSC: SBIN0020149) is located there.\n2.  **Verify Bank Details**: Double-check the exact physical address of State Bank of India, N.I.T. Branch, Warangal, Telangana, to ensure accurate details for the legal notice and complaint. The contact number +918702459149 can be used for initial verification.\n3.  **Draft and Dispatch Legal Notice**: Prepare a comprehensive legal notice under Section 138 of the NI Act, clearly stating the cheque details, the amount, the reason for dishonour, and demanding payment within 15 days. Ensure it is sent to the correct address of the drawer via registered post with acknowledgment due or speed post.\n4.  **Monitor Notice Period**: Strictly track the 15-day period from the date of receipt of the legal notice by the drawer.\n5.  **Prepare and File Complaint**: If payment is not received within the 15-day period, prepare the criminal complaint under Section 138 read with Section 142 of the NI Act, along with an affidavit of evidence, and file it before the competent Judicial Magistrate of First Class / Metropolitan Magistrate Court in Warangal, Telangana, within the statutory period of one month.\n6.  **Identity and Address Proof**: If the identity or address of the drawer becomes an issue, explore obtaining verified digital documents through platforms like DigiLocker/MeriPehchaan, which can be submitted as evidence under the IT Act, 2000.\n\n## Document Checklist\n\n1.  Original dishonoured cheque.\n2.  Original Cheque Return Memo/Slip from the bank (indicating reason for dishonour).\n3.  Copy of the Legal Notice issued to the drawer.\n4.  Postal/Courier receipt for sending the legal notice.\n5.  Acknowledgment card or proof of delivery of the legal notice.\n6.  Any underlying documents proving the debt or liability (e.g., invoice, loan agreement, promissory note).\n7.  Bank statement of the payee's account showing the presentation and dishonour of the cheque.\n8.  Identity and address proof of the complainant.\n9.  (If applicable) Verified digital documents of the drawer obtained through official channels, admissible under Section 65B of the IT Act, 2000.\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : IFSC, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : IFSC:success | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "85BAF06E",
+      "timestamp": "2026-05-15T01:01:40.344996",
+      "prompt": "Property dispute at pincode 500001 Hyderabad",
+      "api_results": {
+        "PINCODE": {
+          "chain": "PINCODE",
+          "status": "success",
+          "data_source": "India Post Pincode API (free, no key)",
+          "pincode": "500001",
+          "district": "Hyderabad",
+          "division": "Hyderabad City",
+          "region": "Hyderabad City",
+          "state": "Telangana",
+          "country": "India",
+          "post_offices": [
+            {
+              "name": "Gandhi Bhawan (Hyderabad)",
+              "branch_type": "Sub Post Office",
+              "delivery_status": "Non-Delivery",
+              "taluk": null,
+              "district": "Hyderabad"
+            },
+            {
+              "name": "Hyderabad ",
+              "branch_type": "Head Post Office",
+              "delivery_status": "Delivery",
+              "taluk": null,
+              "district": "Hyderabad"
+            },
+            {
+              "name": "Moazzampura",
+              "branch_type": "Sub Post Office",
+              "delivery_status": "Non-Delivery",
+              "taluk": null,
+              "district": "Hyderabad"
+            },
+            {
+              "name": "Seetharampet",
+              "branch_type": "Sub Post Office",
+              "delivery_status": "Non-Delivery",
+              "taluk": null,
+              "district": "Hyderabad"
+            },
+            {
+              "name": "State Bank Of Hyderabad",
+              "branch_type": "Sub Post Office",
+              "delivery_status": "Non-Delivery",
+              "taluk": null,
+              "district": "Hyderabad"
+            }
+          ],
+          "total_offices": 5,
+          "legal_relevance": {
+            "jurisdiction_state": "Telangana",
+            "jurisdiction_district": "Hyderabad",
+            "notes": "Pincode 500001 \u2192 Hyderabad, Telangana. Used to establish territorial jurisdiction (CPC S.20), verify address for summons service, and confirm landlord/tenant location in eviction cases."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC025DC988E873",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC0254CC2C25E5",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02B50C1C1AC0",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE 85BAF06E [AI-Generated]\n============================================================\n\nAs a senior advocate with two decades of experience in the High Courts of Telangana and Andhra Pradesh, I have reviewed the provided data concerning a property dispute at pincode 500001, Hyderabad. My analysis focuses on leveraging the retrieved information for a robust legal strategy.\n\n## Summary\n\nThe property dispute falls squarely within the territorial jurisdiction of the Civil Courts in Hyderabad, Telangana. While specific details of the dispute and parties are pending, the available data confirms the jurisdictional locus and highlights the significant advantage of utilizing digital identity and document verification services like MeriPehchaan for litigation purposes, ensuring swift and legally admissible submission of essential records.\n\n## Key Findings\n\n1.  **Jurisdictional Clarity:** The property is located within Pincode 500001, which unequivocally corresponds to **Hyderabad District, Telangana State**. This establishes the appropriate territorial jurisdiction for any legal proceedings related to the property. The \"Hyderabad Head Post Office\" serves this area, confirming it as a central location.\n2.  **Digital Identity & Document Verification (MeriPehchaan):** The MeriPehchaan data, though mock, demonstrates the capability to retrieve a comprehensive set of verified digital documents for a citizen, including:\n    *   Aadhaar Card (issued 2019-03-15)\n    *   PAN Card (issued 2015-07-22)\n    *   Driving Licence (TS14-XXXXXXXXXX, issued 2018-11-05, valid till 2038-11-04)\n    *   Income Certificate (Telangana Revenue Dept., issued 2024-01-10, valid till 2025-01-09)\n    *   Domicile Certificate (Telangana Revenue Dept., issued 2023-06-18)\n    *   Caste Certificate (Telangana Revenue Dept., issued 2022-09-01)\n    These documents are explicitly noted as \"Admissible under IT Act 2000 Section 65B as government-certified digital records\" and can be submitted directly in court without physical copy attestation.\n3.  **Mee Seva (Telangana) Connectivity:** An attempt to fetch an Income Certificate via Mee Seva Telangana resulted in a \"record_not_found\" error for the sandbox user. This indicates that while the system can connect to Mee Seva, specific record retrieval requires precise applicant details and verification against the issuer's database.\n\n## Legal Analysis\n\n1.  **Territorial Jurisdiction:** As per **Section 16 of the Code of Civil Procedure, 1908 (CPC)**, suits relating to immovable property shall be instituted in the Court within the local limits of whose jurisdiction the property is situated. Given the pincode 500001, the property is located in Hyderabad District, Telangana. Therefore, the Civil Courts (e.g., Senior Civil Judge Court, District Court) in Hyderabad, Telangana, hold exclusive territorial jurisdiction over this property dispute.\n2.  **Admissibility of Electronic Records:** The availability of verified digital documents through MeriPehchaan is a significant procedural advantage. Under **Section 65B of the Information Technology Act, 2000**, electronic records, when produced from a computer system that has been regularly used, can be admitted as evidence without further proof or production of the original document, provided certain conditions are met. The explicit mention that these are \"government-certified digital records\" and can be submitted directly implies compliance with the requirements of Section 65B, simplifying the evidentiary process for identity and address proofs of parties.\n3.  **Proof of Identity and Residence:** The Aadhaar Card, PAN Card, and Driving Licence retrieved via MeriPehchaan serve as robust proofs of identity and address for any party involved in the dispute. The Domicile Certificate issued by the Revenue Department, Government of Telangana, further solidifies residency claims within the state.\n4.  **Income and Caste Certificates:** While not directly central to a property dispute unless specific aspects like court fee exemptions (based on income) or claims under specific land laws (which might consider caste/community) are involved, their digital availability through MeriPehchaan streamlines the process if such issues arise. The Mee Seva \"record_not_found\" for the Income Certificate highlights the need for precise data input when querying government databases directly, even if the document exists in DigiLocker.\n\n## Recommended Actions\n\n1.  **Ascertain Specifics of the Dispute:** Immediately gather precise details of the property (Survey Number, Patta Number, Title Deed details, extent of land/property) and the exact nature of the dispute (e.g., title, possession, partition, injunction, specific performance, declaration).\n2.  **Identify All Parties:** Obtain full names, addresses, and contact details of all plaintiffs and defendants involved. For each party, attempt to retrieve their digital documents via MeriPehchaan (if they consent to sharing their authorization code) to establish identity and address proofs.\n3.  **Draft the Plaint/Written Statement:** Based on the property details and nature of the dispute, prepare a comprehensive plaint (if initiating the suit) or written statement (if defending). Ensure all jurisdictional facts (Hyderabad, Telangana) are clearly pleaded.\n4.  **Leverage Digital Documents:** For filing, utilize the MeriPehchaan facility to obtain verified digital copies of Aadhaar, PAN, and other relevant certificates for the parties. These can be directly submitted to the court, reducing the need for physical attestations and expediting the process.\n5.  **Address Mee Seva Discrepancy (If Income Certificate is Critical):** If an Income Certificate is crucial for the case (e.g., for court fee exemption under Order XXXIII CPC), and a direct Mee Seva query fails, rely on the MeriPehchaan-fetched Income Certificate. If that's also unavailable or outdated, advise the client to apply for a fresh Income Certificate through Mee Seva with accurate details.\n6.  **Court Fees and Valuation:** Based on the nature of the property dispute and its valuation, determine the appropriate court fees payable under the Telangana Court Fees and Suits Valuation Act, 1956.\n\n## Document Checklist\n\nTo proceed with the property dispute, the following documents will be essential:\n\n1.  **Property Documents:**\n    *   Original Sale Deed / Title Deeds / Gift Deed / Will / Partition Deed (as applicable)\n    *   Encumbrance Certificate for the property\n    *   Property Tax Receipts\n    *   Electricity Bills / Water Bills (for possession proof)\n    *   Survey Maps / Cadastral Maps (if available)\n    *   Pahani / ROR-1B documents (for agricultural land)\n    *   Any relevant correspondence or agreements pertaining to the dispute.\n2.  **Identity and Address Proofs of Parties (Plaintiff(s) and Defendant(s)):**\n    *   **Aadhaar Card (Digital copy via MeriPehchaan)**\n    *   **PAN Card (Digital copy via MeriPehchaan)**\n    *   **Driving Licence (Digital copy via MeriPehchaan)**\n    *   **Domicile Certificate (Digital copy via MeriPehchaan, if applicable)**\n    *   Voter ID Card\n    *   Passport\n3.  **Income Certificate (if applicable for court fee exemption or other specific claims):**\n    *   **Digital copy via MeriPehchaan (issued 2024-01-10, valid till 2025-01-09)**\n    *   If not available or outdated, a freshly applied certificate from Mee Seva.\n4.  **Caste Certificate (if applicable for specific claims):**\n    *   **Digital copy via MeriPehchaan (issued 2022-09-01)**\n5.  **Affidavits:** Drafted affidavits from the parties supporting their claims.\n\nThis strategy ensures that we leverage modern digital infrastructure for efficient litigation while adhering strictly to the procedural and evidentiary laws applicable in Telangana.\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS  : PINCODE, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : PINCODE:success | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+    },
+    {
+      "case_id": "F070D482",
+      "timestamp": "2026-05-15T01:02:06.982330",
+      "prompt": "GST fraud case GSTIN 36AAAAA0000A1ZA Telangana",
+      "api_results": {
+        "GSTIN": {
+          "chain": "GSTIN",
+          "status": "no_api_key",
+          "gstin": "36AAAAA0000A1ZA",
+          "note": "Add RAPIDAPI_KEY and subscribe to 'GST Return Status' on rapidapi.com for live GSTIN lookup. Free tier available."
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC028DE474907E",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC021503348C96",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC022842D656A4",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "16-11-2025",
+                "valid_till": "16-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name or case_number"
+        }
+      },
+      "final_output": "\ud83d\udd25 LITIGAFORGE AI \u2014 CASE F070D482 [AI-Generated]\n============================================================\n\nAs a senior advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, I have reviewed the provided information regarding the GST fraud case (Case ID: F070D482) concerning GSTIN `36AAAAA0000A1ZA` in Telangana.\n\n## Summary\n\nThe core of this case is an alleged GST fraud associated with GSTIN `36AAAAA0000A1ZA` in Telangana. While the GSTIN itself is identified, **crucially, no live GST compliance or return data could be retrieved** due to an API key limitation. Therefore, a direct analysis of the GST fraud based on real-time GST records is currently not possible.\n\nHowever, extensive *mock* identity and background verification data for a \"Citizen (Mock)\" has been retrieved via MeriPehchaan, indicating a robust digital identity profile. This data, if corresponding to an actual individual involved in the fraud, is legally admissible. Additionally, *mock* Mee Seva certificate data for an \"Applicant (Mock)\" in Hyderabad, Kukatpally, Telangana, suggests potential financial information, though live records were not found.\n\n## Key Findings\n\n1.  **GSTIN Identification:** The GSTIN in question is `36AAAAA0000A1ZA`, located in Telangana.\n    *   **Limitation:** The API for live GSTIN lookup returned `\"status\": \"no_api_key\"`, meaning no actual GST return status, registration details, or compliance history could be accessed for this GSTIN.\n2.  **Mock Citizen Identity (MeriPehchaan):** Comprehensive *mock* identity documents for a \"Citizen (Mock)\" (`sub: \"dummy-citizen-001\"`) have been retrieved, including:\n    *   Aadhaar Card (`XXXX-XXXX-1234`, issued 2019-03-15)\n    *   PAN Card (`ABCDE1234F`, issued 2015-07-22)\n    *   Driving Licence (`TS14-XXXXXXXXXX`, valid till 2038-11-04)\n    *   Telangana Government issued Income Certificate (issued 2024-01-10), Domicile Certificate (issued 2023-06-18), and Caste Certificate (issued 2022-09-01).\n    *   All these documents are marked as \"verified\" and are digitally available.\n3.  **Legal Admissibility of Digital Documents:** The MeriPehchaan data explicitly states that these digital records are \"Admissible under IT Act 2000 Section 65B as government-certified digital records\" and \"Can be submitted directly in court without physical copy attestation.\"\n4.  **Mock Mee Seva Certificates (Telangana):**\n    *   *Mock* data for an \"Income Certificate\" and \"Residence Certificate\" for an \"Applicant (Mock)\" in \"Hyderabad, Kukatpally, Telangana\" was provided.\n    *   The *mock* Income Certificate indicates an annual income of \"\u20b94,50,000\" from \"Salaried Employment\", falling under the \"Below \u20b98 Lakh (EWS/OBC eligible)\" category.\n    *   **Limitation:** The Mee Seva API returned `\"status\": \"sandbox_connected_no_record\"` and an `HTTP 404` error, indicating that no live record was found for the provided (mock) application numbers.\n\n## Legal Analysis\n\n1.  **GST Fraud Allegation (Limited Data):** Without live GSTIN data for `36AAAAA0000A1ZA`, it is impossible to ascertain the nature or extent of the alleged GST fraud from the retrieved information. We cannot verify registration status, return filing, input tax credit claims, or tax liabilities.\n2.  **Identity and Culpability:** If the \"Citizen (Mock)\" is identified as a proprietor, director, partner, or key individual associated with the GSTIN `36AAAAA0000A1ZA` or the alleged fraudulent activities, their verified digital identity documents (Aadhaar, PAN) become critical. These documents can be used to establish their legal identity, link them to bank accounts, property, and other financial instruments relevant to the fraud investigation.\n3.  **Evidentiary Value of Digital Records:** The explicit mention of admissibility under **Section 65B of the Information Technology Act, 2000**, for the MeriPehchaan documents is a significant advantage. This means that once the \"Citizen (Mock)\" is identified as a real person involved, their digital records from DigiLocker can be directly presented in court as evidence without the need for physical attestation, streamlining the legal process.\n4.  **Jurisdiction:** The GSTIN is in Telangana, and the Mee Seva mock data points to Hyderabad, Kukatpally, Telangana. This confirms that the appropriate jurisdiction for legal proceedings would be within the State of Telangana, specifically the courts in Hyderabad.\n5.  **Financial Standing (Potential Relevance):** While the Mee Seva income data is mock, if a real income certificate for an implicated individual confirms an income of \u20b94,50,000, it could be relevant for:\n    *   Assessing their financial capacity for potential penalties or recovery of fraudulent gains.\n    *   Determining eligibility for legal aid under the **Legal Services Authorities Act, 1987**, or court fee waivers under the **Telangana Court Fees and Suits Valuation Act**.\n\n## Recommended Actions\n\n1.  **Immediate Priority: Obtain Live GSTIN Data:**\n    *   **Action:** Secure a RapidAPI key and integrate it to retrieve the live \"GST Return Status\" for `36AAAAA0000A1ZA`.\n    *   **Purpose:** This will provide the actual legal name of the entity, its registration status, date of registration, principal place of business, return filing history, and any cancellation or suspension details. This is fundamental to understanding the nature and scale of the alleged GST fraud.\n2.  **Identify the \"Citizen (Mock)\":**\n    *   **Action:** Determine the actual identity of the individual represented by the \"Citizen (Mock)\" data. Is this the proprietor, a partner, a director, an authorized signatory, or a key person involved in the alleged fraud related to `36AAAAA0000A1ZA`?\n    *   **Purpose:** Link the verified digital identity (Aadhaar, PAN) to the GSTIN and the fraudulent activities.\n3.  **Leverage Digital Identity for Investigation:**\n    *   **Action:** Once the individual is identified, use their Aadhaar (`XXXX-XXXX-1234`) and PAN (`ABCDE1234F`) details to trace bank accounts, property holdings, and other financial assets that may be linked to the fraudulent proceeds.\n    *   **Purpose:** Gather evidence for financial trail and asset recovery.\n4.  **Investigate Actual Mee Seva Records (if applicable):**\n    *   **Action:** If the \"Citizen (Mock)\" is a party, attempt to retrieve their *actual* Income and Residence Certificates from Mee Seva using their real application numbers.\n    *   **Purpose:** Verify their declared income, residential address, and other details that might corroborate or contradict other evidence in the fraud case.\n5.  **Liaise with GST Authorities:**\n    *   **Action:** File a formal complaint or assist the investigating agency (e.g., Directorate General of GST Intelligence - DGGI) with all available information, including the GSTIN and the identified individual's details.\n    *   **Purpose:** Initiate or support a formal investigation into the GST fraud under the **Central Goods and Services Tax Act, 2017**, particularly sections related to fraudulent input tax credit claims (Section 16), tax evasion (Section 122), and criminal offenses (Section 132).\n\n## Document Checklist\n\n1.  **Live GSTIN Data for `36AAAAA0000A1ZA`:** (To be obtained post API key integration)\n    *   GST registration certificate.\n    *   GST return filing history (GSTR-1, GSTR-3B, GSTR-9).\n    *   Ledger details (Electronic Cash Ledger, Electronic Credit Ledger).\n2.  **Certified Digital Copies of Identity Documents:** (If \"Citizen (Mock)\" is identified as a real person involved)\n    *   Aadhaar Card (in.gov.uidai-ADHAR-XXXXXXXX1234)\n    *   PAN Card (in.gov.incometax-PANCRD-ABCDE1234F)\n    *   Driving Licence (in.gov.sarathi-DRVLC-TS14XXXXXXXXXX)\n    *   Income Certificate (in.gov.telangana-INCOME-2024XXXXXX)\n    *   Domicile Certificate (in.gov.telangana-DOMICILE-2023XXXXXX)\n    *   Caste Certificate (in.gov.telangana-CASTE-2022XXXXXX)\n3.  **Actual Mee Seva Certificates:** (If retrieved for the identified individual)\n    *   Income Certificate\n    *   Residence Certificate\n4.  **FIR/Complaint:** Copy of the First Information Report or formal complaint filed regarding the GST fraud.\n5.  **Supporting Evidence:** Any invoices, e-way bills, bank statements, or other financial records related to the alleged fraudulent transactions.\n\n============================================================\nUNTHOUGHT CHAINS:\n  \u2192 Activate Watch Mode on eCourts for automatic hearing date alerts\n  \u2192 Cross-chain GSTIN + PAN + eCourts for combined tax + civil dispute strategy\n\nCHAINS  : GSTIN, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS  : GSTIN:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n============================================================\n\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMANDATORY LEGAL DISCLAIMER \u2014 ADVOCATES ACT 1961\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nLitigaForge AI output is AI-generated and must be independently\nverified by the licensed advocate. It does NOT constitute legal advice.\nThe advocate bears full responsibility under the Advocates Act 1961\nand Bar Council of India Rules.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
     }
   ],
   "watch_list": []

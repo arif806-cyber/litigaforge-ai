@@ -41,7 +41,7 @@ function SidebarContent({
   onNav,
 }: {
   location: string;
-  health: { dummy_mode: boolean } | undefined;
+  health: { dummy_mode: boolean; ai_mode?: string } | undefined;
   stats: { total_cases: number; total_patterns: number } | undefined;
   onNav?: () => void;
 }) {
@@ -118,7 +118,13 @@ function SidebarContent({
             <div className={cn("absolute inset-0 blur-sm rounded-full", health?.dummy_mode ? "bg-amber-400/30 animate-pulse" : "bg-green-400/30 animate-pulse")} />
           </div>
           <span className={cn("text-[10px] font-mono uppercase tracking-widest font-semibold", health?.dummy_mode ? "text-amber-400" : "text-green-400")}>
-            {health?.dummy_mode ? "Dummy Mode" : "Live Mode"}
+            {health?.dummy_mode
+              ? "Fallback Mode"
+              : health?.ai_mode === "gemini"
+              ? "Gemini AI"
+              : health?.ai_mode === "openai"
+              ? "GPT-4o"
+              : "Live Mode"}
           </span>
         </div>
       </div>
