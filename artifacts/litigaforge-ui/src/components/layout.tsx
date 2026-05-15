@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Scale, FileText, Link2, Activity, Clock, Menu, X } from "lucide-react";
+import { Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/", label: "Forge", icon: Scale },
   { href: "/cases", label: "Cases", icon: FileText },
   { href: "/chains", label: "Chains", icon: Link2 },
+  { href: "/use-cases", label: "Use Cases", icon: Lightbulb },
 ];
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -40,7 +41,7 @@ function SidebarContent({
   onNav,
 }: {
   location: string;
-  health: { dummy_mode: boolean } | undefined;
+  health: { dummy_mode: boolean; ai_mode?: string } | undefined;
   stats: { total_cases: number; total_patterns: number } | undefined;
   onNav?: () => void;
 }) {
@@ -117,7 +118,13 @@ function SidebarContent({
             <div className={cn("absolute inset-0 blur-sm rounded-full", health?.dummy_mode ? "bg-amber-400/30 animate-pulse" : "bg-green-400/30 animate-pulse")} />
           </div>
           <span className={cn("text-[10px] font-mono uppercase tracking-widest font-semibold", health?.dummy_mode ? "text-amber-400" : "text-green-400")}>
-            {health?.dummy_mode ? "Dummy Mode" : "Live Mode"}
+            {health?.dummy_mode
+              ? "Fallback Mode"
+              : health?.ai_mode === "gemini"
+              ? "Gemini AI"
+              : health?.ai_mode === "openai"
+              ? "GPT-4o"
+              : "Live Mode"}
           </span>
         </div>
       </div>

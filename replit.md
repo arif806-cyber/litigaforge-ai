@@ -14,6 +14,7 @@ Legal AI tool for Telangana & AP advocates — extracts entities from case facts
 
 - Frontend: React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter
 - Backend: Python 3.12, FastAPI, LangGraph, LangChain, Uvicorn
+- AI: Gemini 2.5 Flash via Replit AI Integrations (free, no key needed) — entity extraction + strategy synthesis
 - Mobile: Expo (React Native), Expo Router, NativeWind — in `deployable/mobile/`
 - Fonts: Space Grotesk + JetBrains Mono (Google Fonts)
 
@@ -23,7 +24,8 @@ Legal AI tool for Telangana & AP advocates — extracts entities from case facts
 - `artifacts/litigaforge-ui/src/components/` — layout.tsx, graphics/ (ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt)
 - `artifacts/litigaforge-ui/src/lib/api.ts` — all API calls; BASE = "/litigaforge"
 - `artifacts/litigaforge-ai/main.py` — FastAPI app, all routes, router mounted at BASE_PATH
-- `artifacts/litigaforge-ai/api_chains/` — 10 government API chain modules
+- `artifacts/litigaforge-ai/api_chains/` — 16 government API chain modules
+- `artifacts/litigaforge-ai/ai_brain.py` — Gemini AI entity extractor + data-driven strategy synthesiser
 - `artifacts/litigaforge-ai/alerts/whatsapp.py` — Twilio WhatsApp integration
 - `artifacts/litigaforge-ai/watch_mode/` — background case watcher scheduler
 - `artifacts/litigaforge-ai/forge_memory/` — case storage and pattern learning
@@ -44,7 +46,7 @@ Legal AI tool for Telangana & AP advocates — extracts entities from case facts
 
 | Secret | Where to get it | Enables |
 |---|---|---|
-| `OPENAI_API_KEY` | platform.openai.com | Live LangGraph AI synthesis (without it: pre-built strategies) |
+| `OPENAI_API_KEY` | platform.openai.com | Optional GPT-4o override (Gemini is already free and active — not needed) |
 | `TWILIO_ACCOUNT_SID` | twilio.com console | WhatsApp alerts |
 | `TWILIO_AUTH_TOKEN` | twilio.com console | WhatsApp alerts |
 | `TWILIO_FROM_NUMBER` | Twilio sandbox: `whatsapp:+14155238886` | WhatsApp sender |
@@ -68,7 +70,8 @@ To go live on all API Setu chains: register at api.setu.in, get approved credent
 ## Architecture decisions
 
 - `BASE_PATH=/litigaforge`: backend router mounts all routes at this prefix; proxy routes `/litigaforge/*` to port 5000; now set via shared env var, not inline workflow command
-- Dummy mode for AI: all 10 chains return realistic mock data when `OPENAI_API_KEY` is absent; chains themselves use `API_SETU_KEY` independently
+- AI layer: `ai_brain.py` calls Gemini 2.5 Flash directly via Replit's proxy (`AI_INTEGRATIONS_GEMINI_BASE_URL`). No OpenAI needed. Endpoint: `POST {BASE}/models/gemini-2.5-flash:generateContent` (no version prefix)
+- AI fallback chain: Gemini → smart regex + data-driven templates. Never generic output — strategy always reads real chain results
 - Sandbox mode: Mee Seva TG and Transport TS call `sandbox.api-setu.in` when `API_SETU_KEY` is set (even the demo key)
 - Tailwind v4: NEVER use `@apply dark` — use `document.documentElement.classList.add("dark")` in main.tsx
 - Mobile layout: sidebar hidden on mobile, replaced by hamburger drawer + fixed bottom tab bar (h-16); main content has `pb-16 md:pb-0`

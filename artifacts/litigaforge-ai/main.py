@@ -102,7 +102,20 @@ async def root():
 
 @router.get("/healthz")
 async def health():
-    return {"status": "ok", "service": "LitigaForge AI", "dummy_mode": not os.getenv("OPENAI_API_KEY")}
+    openai_key  = bool(os.getenv("OPENAI_API_KEY"))
+    gemini_base = bool(os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL"))
+    if openai_key:
+        ai_mode = "openai"
+    elif gemini_base:
+        ai_mode = "gemini"
+    else:
+        ai_mode = "smart_fallback"
+    return {
+        "status": "ok",
+        "service": "LitigaForge AI",
+        "ai_mode": ai_mode,
+        "dummy_mode": ai_mode == "smart_fallback",  # backward compat
+    }
 
 
 @router.get("/sandbox/ping")
