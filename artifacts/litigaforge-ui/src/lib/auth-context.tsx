@@ -7,6 +7,7 @@ export interface User {
   email: string;
   name: string;
   subscription_tier: "free" | "professional" | "advocate_pro";
+  user_type: "advocate" | "client";
   cases_this_month: number;
   month_reset_date: string;
   created_at: string;
@@ -17,7 +18,7 @@ interface AuthCtx {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, user_type?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -74,10 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user);
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, user_type = "advocate") => {
     const data = await authFetch("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, user_type }),
     });
     localStorage.setItem("lf_token", data.token);
     setToken(data.token);

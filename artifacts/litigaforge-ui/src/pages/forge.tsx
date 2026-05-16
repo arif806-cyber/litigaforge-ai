@@ -311,9 +311,11 @@ function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase:
       {/* Strategy Block */}
       {result.final_output && (
         <motion.div variants={item} className="space-y-3">
-          <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <span className="w-4 h-px bg-gray-300" /> Legal Strategy
-          </h3>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <span className="w-4 h-px bg-gray-300" /> Legal Strategy
+            </h3>
+          </div>
           <div className="glass-panel p-8 rounded-2xl border-l-4 border-l-primary relative overflow-hidden">
             <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
               <Scale className="w-64 h-64 text-primary" />

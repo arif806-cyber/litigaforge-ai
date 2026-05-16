@@ -12,6 +12,10 @@ import UseCases from "@/pages/use-cases";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Subscription from "@/pages/subscription";
+import AdvocateDashboard from "@/pages/advocate-dashboard";
+import Templates from "@/pages/templates";
+import Draft from "@/pages/draft";
+import Research from "@/pages/research";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -45,13 +49,15 @@ function Router() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Redirect logged-in users away from auth pages
   useEffect(() => {
     if (!loading && user) {
       const path = window.location.pathname;
       const base = import.meta.env.BASE_URL.replace(/\/$/, "");
       const rel = path.replace(base, "") || "/";
-      if (rel === "/login" || rel === "/register") setLocation("/");
+      if (rel === "/login" || rel === "/register") {
+        // Advocates go to dashboard, clients go to forge
+        setLocation(user.user_type === "advocate" ? "/dashboard" : "/");
+      }
     }
   }, [user, loading, setLocation]);
 
@@ -62,10 +68,14 @@ function Router() {
       <Route>
         <Layout>
           <Switch>
-            <Route path="/" component={() => <ProtectedRoute component={Forge} />} />
-            <Route path="/cases" component={() => <ProtectedRoute component={Cases} />} />
+            <Route path="/"          component={() => <ProtectedRoute component={Forge} />} />
+            <Route path="/dashboard" component={() => <ProtectedRoute component={AdvocateDashboard} />} />
+            <Route path="/templates" component={() => <ProtectedRoute component={Templates} />} />
+            <Route path="/draft"     component={() => <ProtectedRoute component={Draft} />} />
+            <Route path="/research"  component={() => <ProtectedRoute component={Research} />} />
+            <Route path="/cases"     component={() => <ProtectedRoute component={Cases} />} />
             <Route path="/cases/:id" component={() => <ProtectedRoute component={CaseDetail} />} />
-            <Route path="/chains" component={() => <ProtectedRoute component={Chains} />} />
+            <Route path="/chains"    component={() => <ProtectedRoute component={Chains} />} />
             <Route path="/use-cases" component={() => <ProtectedRoute component={UseCases} />} />
             <Route path="/subscription" component={() => <ProtectedRoute component={Subscription} />} />
             <Route component={NotFound} />

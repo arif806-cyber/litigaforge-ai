@@ -79,6 +79,16 @@ class RegisterRequest(BaseModel):
     name: str
     email: str
     password: str
+    user_type: str = "advocate"
+
+class DraftRequest(BaseModel):
+    template_id: str
+    variables: dict = {}
+    custom_instructions: str = ""
+
+class ResearchRequest(BaseModel):
+    query: str
+    jurisdiction: str = "Telangana"
 
 class LoginRequest(BaseModel):
     email: str
@@ -130,11 +140,14 @@ async def register(req: RegisterRequest):
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     if len(req.name.strip()) < 2:
         raise HTTPException(status_code=400, detail="Name is too short")
+    valid_types = ("advocate", "client")
+    user_type = req.user_type if req.user_type in valid_types else "advocate"
     try:
         user = create_user(
             email=req.email,
             name=req.name,
             password_hash=hash_password(req.password),
+            user_type=user_type,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -215,6 +228,23 @@ async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
             send_whatsapp_alert, message=summary, to=request.advocate_phone, alert_type="forge"
         )
 
+    # Extract which AI provider generated the strategy (from header line)
+    import re as _re
+    _provider_match = _re.search(r'\[([^\]]+)\|', result["final_output"])
+    _provider_raw = _provider_match.group(1).strip() if _provider_match else "Smart Template"
+    if "Claude" in _provider_raw:
+        ai_provider = "claude"
+        ai_provider_label = "Claude Sonnet 4-6"
+    elif "GPT" in _provider_raw or "gpt" in _provider_raw:
+        ai_provider = "openai"
+        ai_provider_label = "GPT-4o"
+    elif "Gemini" in _provider_raw:
+        ai_provider = "gemini"
+        ai_provider_label = "Gemini 2.5 Flash"
+    else:
+        ai_provider = "template"
+        ai_provider_label = "Smart Template"
+
     return {
         "status": "success",
         "case_id": result["case_id"],
@@ -224,6 +254,8 @@ async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
         "api_results": result["api_results"],
         "meta_suggestions": result["meta_suggestions"],
         "final_output": result["final_output"],
+        "ai_provider": ai_provider,
+        "ai_provider_label": ai_provider_label,
     }
 
 
@@ -386,6 +418,194 @@ async def sandbox_ping():
         except Exception as e:
             results[name] = {"reachable": False, "error": str(e)}
     return {"sandbox_url": base, "endpoints": results}
+
+
+# ─── Templates ─────────────────────────────────────────────────────────────────
+
+LEGAL_TEMPLATES = [
+    {"id": "cheque_bounce_notice",    "title": "Cheque Bounce Legal Notice",     "law": "NI Act S.138",            "category": "Criminal",  "desc": "Statutory demand notice for dishonoured cheque."},
+    {"id": "bail_application",        "title": "Bail Application",               "law": "CrPC S.437",              "category": "Criminal",  "desc": "Regular bail before Magistrate."},
+    {"id": "anticipatory_bail",       "title": "Anticipatory Bail",              "law": "CrPC S.438",              "category": "Criminal",  "desc": "Pre-arrest bail from Sessions Court / HC."},
+    {"id": "criminal_complaint",      "title": "Criminal Complaint / FIR",       "law": "CrPC S.154/200",          "category": "Criminal",  "desc": "Complaint to Magistrate or police."},
+    {"id": "revision_petition",       "title": "Revision Petition",              "law": "CrPC S.397",              "category": "Criminal",  "desc": "Revision against subordinate criminal court order."},
+    {"id": "rent_eviction",           "title": "Rent Eviction Notice",           "law": "TS Buildings (Rent) Act", "category": "Civil",     "desc": "Eviction notice for rent arrears or breach."},
+    {"id": "money_recovery",          "title": "Money Recovery Suit",            "law": "CPC Order 37",            "category": "Civil",     "desc": "Summary suit for recovery of money."},
+    {"id": "injunction",              "title": "Injunction Application",         "law": "CPC Order 39 R.1-2",      "category": "Civil",     "desc": "Interim injunction to restrain defendant."},
+    {"id": "property_plaint",         "title": "Property Dispute Plaint",        "law": "CPC S.26 / Order 7",      "category": "Civil",     "desc": "Suit for declaration, possession, or partition."},
+    {"id": "appeal_memo",             "title": "Appeal Memo",                    "law": "CPC S.96 / CrPC S.374",   "category": "Civil",     "desc": "Memorandum of appeal against decree."},
+    {"id": "consumer_complaint",      "title": "Consumer Complaint",             "law": "COPRA 2019",              "category": "Consumer",  "desc": "Complaint before Consumer Commission."},
+    {"id": "insurance_complaint",     "title": "Insurance Claim Complaint",      "law": "IRDAI Act",               "category": "Consumer",  "desc": "Complaint for wrongful claim rejection."},
+    {"id": "divorce_petition",        "title": "Divorce Petition",               "law": "HMA S.13",                "category": "Family",    "desc": "Petition for divorce on statutory grounds."},
+    {"id": "maintenance_application", "title": "Maintenance Application",        "law": "HMA S.24 / CrPC S.125",   "category": "Family",    "desc": "Application for interim or permanent maintenance."},
+    {"id": "child_custody",           "title": "Child Custody Petition",         "law": "Guardians & Wards Act",   "category": "Family",    "desc": "Petition for custody of minor child."},
+    {"id": "gst_dispute_reply",       "title": "GST Dispute Reply",              "law": "CGST Act 2017",           "category": "Tax",       "desc": "Reply to GST Show Cause Notice."},
+    {"id": "income_tax_appeal",       "title": "Income Tax Appeal",              "law": "IT Act S.246A",           "category": "Tax",       "desc": "Appeal before CIT(A)."},
+    {"id": "nclt_insolvency",         "title": "NCLT Insolvency Petition",       "law": "IBC 2016 S.7/9",          "category": "Corporate", "desc": "Petition under IBC by financial/operational creditor."},
+    {"id": "company_petition",        "title": "Company Law Petition",           "law": "Companies Act 2013",      "category": "Corporate", "desc": "Petition for oppression, mismanagement, winding up."},
+    {"id": "sale_agreement",          "title": "Property Sale Agreement",        "law": "Transfer of Property Act","category": "Property",  "desc": "Agreement for sale/purchase of immovable property."},
+    {"id": "power_of_attorney",       "title": "Power of Attorney (General)",    "law": "Powers of Attorney Act",  "category": "Property",  "desc": "Authorising agent for property matters."},
+    {"id": "leave_license",           "title": "Leave & License Agreement",      "law": "TS Rent Act",             "category": "Property",  "desc": "Temporary licensed occupation of premises."},
+    {"id": "partnership_deed",        "title": "Partnership Deed",               "law": "Indian Partnership Act",  "category": "Property",  "desc": "Deed constituting a partnership firm."},
+    {"id": "rti_application",         "title": "RTI Application",                "law": "RTI Act 2005 S.6",        "category": "Other",     "desc": "Application for information from public authority."},
+    {"id": "vakalathnama",            "title": "Vakalathnama",                   "law": "Advocates Act 1961",      "category": "Other",     "desc": "Power to plead given to advocate in court."},
+    {"id": "writ_petition",           "title": "Writ Petition",                  "law": "Art. 226 / 32 Const.",    "category": "Other",     "desc": "Petition before HC/SC for enforcement of rights."},
+    {"id": "mact_petition",           "title": "Motor Accident Claim",           "law": "MV Act 1988 S.166",       "category": "Other",     "desc": "Claim petition before MACT."},
+    {"id": "legal_notice_general",    "title": "Legal Notice (General)",         "law": "Limitation Act",          "category": "Civil",     "desc": "Formal legal notice for any civil demand."},
+]
+
+
+@router.get("/templates")
+async def list_templates(category: Optional[str] = None):
+    templates = LEGAL_TEMPLATES
+    if category and category.lower() != "all":
+        templates = [t for t in templates if t["category"].lower() == category.lower()]
+    return {"total": len(templates), "templates": templates}
+
+
+# ─── AI Drafting ────────────────────────────────────────────────────────────────
+
+@router.post("/draft")
+async def draft_document(req: DraftRequest, current_user: Optional[dict] = Depends(get_current_user)):
+    template = next((t for t in LEGAL_TEMPLATES if t["id"] == req.template_id), None)
+    if not template:
+        raise HTTPException(status_code=404, detail=f"Template '{req.template_id}' not found")
+
+    from ai_brain import _call_claude, _call_openai, _call_gemini, _init_providers, get_active_providers
+    _init_providers()
+    active = get_active_providers()
+
+    system = """You are a senior Indian advocate drafting a formal legal document.
+
+Write a complete, court-ready legal document based on the template and variables provided.
+- Use proper legal formatting and language
+- Include all relevant Indian law citations, section numbers, and case references
+- Address the document to the correct court/authority
+- Include proper cause title, prayer, and advocate signature block
+- Use formal Indian legal drafting conventions (Honourable Court, Respectfully submitted, etc.)
+- The document must be complete and ready to file — no placeholders"""
+
+    vars_text = "\n".join(f"- {k.replace('_', ' ').title()}: {v}" for k, v in req.variables.items())
+    user_prompt = f"""Draft a complete {template['title']} under {template['law']}.
+
+Template Details:
+{template['desc']}
+
+Provided Information:
+{vars_text}
+
+{f'Additional Instructions: {req.custom_instructions}' if req.custom_instructions else ''}
+
+Write the complete legal document now."""
+
+    draft = None
+    if "claude" in active:
+        draft = _call_claude(system, user_prompt, temperature=0.2, max_tokens=4000)
+    if not draft and "openai" in active:
+        draft = _call_openai(system, user_prompt, temperature=0.2, max_tokens=4000)
+    if not draft and "gemini" in active:
+        draft = _call_gemini(system, user_prompt, temperature=0.2, max_tokens=4000)
+
+    if not draft:
+        vars_list = "\n".join(f"  {k.replace('_', ' ').title()}: {v}" for k, v in req.variables.items())
+        draft = f"""[AI DRAFT — {template['title']} | {template['law']}]
+
+{"="*60}
+
+IN THE ________________________________
+(Appropriate Court / Authority)
+
+SUBJECT: {template['title'].upper()}
+
+PARTIES:
+{vars_list}
+
+RESPECTFULLY SUBMITTED:
+
+This document is filed under {template['law']} and sets forth the following:
+
+[AI providers temporarily unavailable. Please retry in a moment, or use the Forge for full legal strategy.]
+
+Submitted by,
+Advocate for the Petitioner/Complainant
+Bar Council Registration No.: ___________
+Date: {__import__('datetime').date.today().strftime('%d-%m-%Y')}"""
+
+    return {
+        "draft": draft,
+        "template": template,
+        "ai_provider": active[0] if active else "template",
+    }
+
+
+# ─── Legal Research ─────────────────────────────────────────────────────────────
+
+@router.post("/research")
+async def legal_research(req: ResearchRequest, current_user: Optional[dict] = Depends(get_current_user)):
+    from ai_brain import _call_claude, _call_openai, _call_gemini, _init_providers, get_active_providers
+    _init_providers()
+    active = get_active_providers()
+
+    system = f"""You are a senior Indian legal researcher specialising in {req.jurisdiction} courts, with encyclopaedic knowledge of Indian statutes and Supreme Court / High Court judgments.
+
+Answer the legal research query with:
+1. A clear, authoritative answer (2-4 paragraphs)
+2. Exact citations of landmark cases (case name, year, AIR/SCC/SCR citation where possible)
+3. Relevant statute sections with precise sub-section numbers
+4. Practical implication for an advocate in {req.jurisdiction}
+
+Format your response as:
+ANSWER:
+[your legal analysis]
+
+KEY STATUTES:
+[bullet list of statute sections, one per line, format: "Act Name, Section X — description"]
+
+CITATIONS:
+[numbered list of case citations, format: "Case Name v. Case Name (Year) Volume AIR/SCC page"]
+
+Be precise, cite only real Indian cases and statutes. If unsure of a citation, omit it."""
+
+    answer_text = None
+    if "claude" in active:
+        answer_text = _call_claude(system, f"Research query: {req.query}\nJurisdiction: {req.jurisdiction}", temperature=0.2, max_tokens=3000)
+    if not answer_text and "openai" in active:
+        answer_text = _call_openai(system, f"Research query: {req.query}\nJurisdiction: {req.jurisdiction}", temperature=0.2, max_tokens=3000)
+    if not answer_text and "gemini" in active:
+        answer_text = _call_gemini(system, f"Research query: {req.query}\nJurisdiction: {req.jurisdiction}", temperature=0.2, max_tokens=3000)
+
+    if not answer_text:
+        return {
+            "answer": f"AI research providers are temporarily unavailable. Please use the Forge for comprehensive legal analysis on: {req.query}",
+            "citations": [],
+            "key_statutes": [],
+            "jurisdiction": req.jurisdiction,
+        }
+
+    import re as _re
+    answer_part = ""
+    statutes = []
+    citations = []
+
+    answer_match = _re.search(r'ANSWER:\s*(.*?)(?=KEY STATUTES:|CITATIONS:|$)', answer_text, _re.DOTALL)
+    if answer_match:
+        answer_part = answer_match.group(1).strip()
+    else:
+        answer_part = answer_text
+
+    statutes_match = _re.search(r'KEY STATUTES:\s*(.*?)(?=CITATIONS:|$)', answer_text, _re.DOTALL)
+    if statutes_match:
+        statutes = [s.strip().lstrip("•-* ") for s in statutes_match.group(1).strip().split("\n") if s.strip() and len(s.strip()) > 5]
+
+    citations_match = _re.search(r'CITATIONS:\s*(.*?)$', answer_text, _re.DOTALL)
+    if citations_match:
+        citations = [c.strip().lstrip("0123456789. ") for c in citations_match.group(1).strip().split("\n") if c.strip() and len(c.strip()) > 5]
+
+    return {
+        "answer": answer_part or answer_text,
+        "citations": citations[:8],
+        "key_statutes": statutes[:6],
+        "jurisdiction": req.jurisdiction,
+    }
 
 
 # ─── Mount ─────────────────────────────────────────────────────────────────────

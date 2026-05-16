@@ -71,15 +71,15 @@ SUBSCRIPTION_PLANS = [
 
 # ── User CRUD ──────────────────────────────────────────────────────────────────
 
-def create_user(email: str, name: str, password_hash: str) -> dict:
+def create_user(email: str, name: str, password_hash: str, user_type: str = "advocate") -> dict:
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                """INSERT INTO users (email, name, password_hash)
-                   VALUES (%s, %s, %s)
-                   RETURNING id, email, name, subscription_tier, created_at""",
-                (email.lower().strip(), name.strip(), password_hash),
+                """INSERT INTO users (email, name, password_hash, user_type)
+                   VALUES (%s, %s, %s, %s)
+                   RETURNING id, email, name, subscription_tier, user_type, created_at""",
+                (email.lower().strip(), name.strip(), password_hash, user_type),
             )
             row = dict(cur.fetchone())
             row["created_at"] = str(row["created_at"])
@@ -98,7 +98,7 @@ def get_user_by_email(email: str) -> dict | None:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """SELECT id, email, name, password_hash, subscription_tier,
-                          cases_this_month, month_reset_date
+                          cases_this_month, month_reset_date, user_type
                    FROM users WHERE email=%s""",
                 (email.lower().strip(),),
             )
@@ -114,7 +114,7 @@ def get_user_by_id(user_id: int) -> dict | None:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """SELECT id, email, name, subscription_tier,
-                          cases_this_month, month_reset_date, created_at
+                          cases_this_month, month_reset_date, created_at, user_type
                    FROM users WHERE id=%s""",
                 (user_id,),
             )
