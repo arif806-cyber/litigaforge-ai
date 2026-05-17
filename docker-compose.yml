@@ -1,0 +1,83 @@
+version: "3.9"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LitigaForge AI — Docker Compose (AWS EC2 / Self-Hosted)
+#
+# Quick start:
+#   1. cp .env.example .env
+#   2. nano .env              # set your API keys + passwords
+#   3. docker compose up -d   # builds and starts everything
+#   4. Open http://<EC2-PUBLIC-IP>
+#
+# Services:
+#   postgres  — PostgreSQL 15 database
+#   backend   — Python FastAPI (LitigaForge AI engine on /litigaforge)
+#   nginx     — Nginx reverse proxy + built React frontend on /
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: litigaforge_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       litigaforge
+      POSTGRES_USER:     litigaforge
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U litigaforge -d litigaforge"]
+      interval: 5s
+      timeout:  5s
+      retries:  10
+
+  # ─── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context:    ./artifacts/litigaforge-ai
+      dockerfile: Dockerfile
+    container_name: litigaforge_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL:  postgresql://litigaforge:${DB_PASSWORD}@postgres:5432/litigaforge
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT:           8000
+      BASE_PATH:      /litigaforge
+
+      # ── AI Provider Keys (set at least one) ─────────────────────────────────
+      # Get from: https://console.anthropic.com/
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Get from: https://platform.openai.com/api-keys
+      OPENAI_API_KEY:    ${OPENAI_API_KEY:-}
+      # Get from: https://aistudio.google.com/app/apikey
+      GOOGLE_API_KEY:    ${GOOGLE_API_KEY:-}
+
+      # ── Optional: Twilio WhatsApp alerts ────────────────────────────────────
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN:  ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM:        ${TWILIO_FROM:-}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  # ─── Nginx (Frontend + Reverse Proxy) ───────────────────────────────────────
+  nginx:
+    build:
+      context:    .
+      dockerfile: nginx/Dockerfile
+    container_name: litigaforge_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+    name: litigaforge_pgdata

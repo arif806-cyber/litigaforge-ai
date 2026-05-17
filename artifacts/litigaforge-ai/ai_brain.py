@@ -1,42 +1,81 @@
 """
-LitigaForge AI Brain — Multi-model intelligence layer (all free via Replit).
+LitigaForge AI Brain — Multi-model intelligence layer.
 
 Three AI providers, each doing what it does best:
-  • Gemini 2.5 Flash  — fast entity extraction & intent detection
-  • Claude Sonnet 4-6 — deep legal strategy synthesis (best structured writing)
-  • GPT-5-mini        — fallback strategy when Claude is busy
+  - Gemini 2.5 Flash  — fast entity extraction & intent detection
+  - Claude Sonnet 4-6 — deep legal strategy synthesis (best structured writing)
+  - GPT-4o            — fallback strategy when Claude is busy
 
-Cascade for entity extraction : Gemini → regex
-Cascade for strategy synthesis: Claude → GPT-5 → Gemini → smart data template
+Cascade for entity extraction : Gemini -> regex fallback
+Cascade for strategy synthesis: Claude -> GPT-4o -> Gemini -> smart data template
 
-No API keys needed from the user — all provisioned free via Replit AI Integrations.
+TWO deployment modes (auto-detected):
+
+  1. Replit (free, no keys needed) — uses Replit AI Integration proxy:
+       AI_INTEGRATIONS_ANTHROPIC_BASE_URL / AI_INTEGRATIONS_ANTHROPIC_API_KEY
+       AI_INTEGRATIONS_GEMINI_BASE_URL    / AI_INTEGRATIONS_GEMINI_API_KEY
+       AI_INTEGRATIONS_OPENAI_BASE_URL    / AI_INTEGRATIONS_OPENAI_API_KEY
+
+  2. AWS / Self-hosted — uses direct vendor API keys in .env:
+       ANTHROPIC_API_KEY   (https://console.anthropic.com/)
+       OPENAI_API_KEY      (https://platform.openai.com/api-keys)
+       GOOGLE_API_KEY      (https://aistudio.google.com/app/apikey)
 """
 import os
 import re
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import requests as _req
 
 logger = logging.getLogger("litigaforge.ai_brain")
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Provider registry — lazy-initialised on first call
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Provider registry — lazy-initialised on first call ────────────────────────
+_providers: Dict[str, dict] = {}
 
-_providers: Dict[str, dict] = {}   # name → {base, ready, ...}
+
+def _resolve_provider(
+    replit_base_env: str,
+    replit_key_env: str,
+    direct_key_env: str,
+    direct_base_url: str,
+) -> tuple[str, str]:
+    """
+    Return (base_url, api_key) for a provider.
+    Priority: Replit AI Integrations proxy → direct vendor API key.
+    """
+    replit_base = os.getenv(replit_base_env, "").rstrip("/")
+    replit_key  = os.getenv(replit_key_env, "")
+    if replit_base:
+        return replit_base, replit_key
+
+    direct_key = os.getenv(direct_key_env, "")
+    if direct_key:
+        return direct_base_url.rstrip("/"), direct_key
+
+    return "", ""
 
 
 def _init_providers():
-    """Probe all three providers once and cache their readiness."""
+    """
+    Probe all three AI providers once and cache readiness.
+
+    Supports two modes (auto-detected):
+      - Replit: uses AI_INTEGRATIONS_* proxy env vars (free, no keys needed)
+      - AWS/self-hosted: uses ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY
+    """
     global _providers
     if _providers:
         return
 
-    # ── Gemini ──────────────────────────────────────────────────────────────
-    gemini_base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
-    gemini_key  = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "")
+    # ── Gemini 2.5 Flash ──────────────────────────────────────────────────────
+    gemini_base, gemini_key = _resolve_provider(
+        "AI_INTEGRATIONS_GEMINI_BASE_URL",
+        "AI_INTEGRATIONS_GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "https://generativelanguage.googleapis.com/v1beta",
+    )
     gemini_ready = False
     if gemini_base:
         try:
@@ -44,16 +83,21 @@ def _init_providers():
             hdrs = {"x-goog-api-key": gemini_key, "Content-Type": "application/json"}
             body = {"contents": [{"role": "user", "parts": [{"text": "ping"}]}],
                     "generationConfig": {"maxOutputTokens": 5}}
-            r = _req.post(url, json=body, headers=hdrs, timeout=6)
+            r = _req.post(url, json=body, headers=hdrs, timeout=10)
             gemini_ready = r.status_code == 200
         except Exception:
             pass
     _providers["gemini"] = {"base": gemini_base, "key": gemini_key, "ready": gemini_ready}
-    logger.info(f"[AI_BRAIN] Gemini: {'✓ ready' if gemini_ready else '✗ unavailable'}")
+    mode = "Replit proxy" if os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL") else "direct API key"
+    logger.info(f"[AI_BRAIN] Gemini 2.5 Flash ({mode}): {'READY' if gemini_ready else 'unavailable'}")
 
-    # ── Claude ───────────────────────────────────────────────────────────────
-    claude_base = os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "").rstrip("/")
-    claude_key  = os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
+    # ── Claude Sonnet 4-6 ─────────────────────────────────────────────────────
+    claude_base, claude_key = _resolve_provider(
+        "AI_INTEGRATIONS_ANTHROPIC_BASE_URL",
+        "AI_INTEGRATIONS_ANTHROPIC_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "https://api.anthropic.com/v1",
+    )
     claude_ready = False
     if claude_base:
         try:
@@ -61,46 +105,51 @@ def _init_providers():
                     "Content-Type": "application/json"}
             body = {"model": "claude-sonnet-4-6", "max_tokens": 10,
                     "messages": [{"role": "user", "content": "ping"}]}
-            r = _req.post(f"{claude_base}/messages", json=body, headers=hdrs, timeout=6)
+            r = _req.post(f"{claude_base}/messages", json=body, headers=hdrs, timeout=10)
             claude_ready = r.status_code == 200
         except Exception:
             pass
     _providers["claude"] = {"base": claude_base, "key": claude_key, "ready": claude_ready}
-    logger.info(f"[AI_BRAIN] Claude Sonnet 4-6: {'✓ ready' if claude_ready else '✗ unavailable'}")
+    mode = "Replit proxy" if os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL") else "direct API key"
+    logger.info(f"[AI_BRAIN] Claude Sonnet 4-6 ({mode}): {'READY' if claude_ready else 'unavailable'}")
 
-    # ── OpenAI GPT-5 ─────────────────────────────────────────────────────────
-    openai_base = os.getenv("AI_INTEGRATIONS_OPENAI_BASE_URL", "").rstrip("/")
-    openai_key  = os.getenv("AI_INTEGRATIONS_OPENAI_API_KEY", "")
+    # ── OpenAI GPT-4o ─────────────────────────────────────────────────────────
+    openai_base, openai_key = _resolve_provider(
+        "AI_INTEGRATIONS_OPENAI_BASE_URL",
+        "AI_INTEGRATIONS_OPENAI_API_KEY",
+        "OPENAI_API_KEY",
+        "https://api.openai.com/v1",
+    )
     openai_ready = False
     if openai_base:
         try:
             hdrs = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
-            body = {"model": "gpt-5-mini",
+            body = {"model": "gpt-4o",
                     "messages": [{"role": "user", "content": "ping"}],
-                    "max_completion_tokens": 5}
-            r = _req.post(f"{openai_base}/chat/completions", json=body, headers=hdrs, timeout=6)
+                    "max_tokens": 5}
+            r = _req.post(f"{openai_base}/chat/completions", json=body, headers=hdrs, timeout=10)
             openai_ready = r.status_code == 200
         except Exception:
             pass
     _providers["openai"] = {"base": openai_base, "key": openai_key, "ready": openai_ready}
-    logger.info(f"[AI_BRAIN] OpenAI GPT-5-mini: {'✓ ready' if openai_ready else '✗ unavailable'}")
+    mode = "Replit proxy" if os.getenv("AI_INTEGRATIONS_OPENAI_BASE_URL") else "direct API key"
+    logger.info(f"[AI_BRAIN] OpenAI GPT-4o ({mode}): {'READY' if openai_ready else 'unavailable'}")
 
     ready_count = sum(1 for p in _providers.values() if p["ready"])
-    logger.info(f"[AI_BRAIN] {ready_count}/3 AI providers active")
+    replit_mode = any(os.getenv(f"AI_INTEGRATIONS_{p}_BASE_URL") for p in ["ANTHROPIC", "GEMINI", "OPENAI"])
+    deploy_mode = "Replit AI Integrations" if replit_mode else "Direct API Keys (AWS/self-hosted)"
+    logger.info(f"[AI_BRAIN] {ready_count}/3 providers active | Mode: {deploy_mode}")
 
 
-def get_active_providers() -> list[str]:
-    """Return names of all ready providers."""
+def get_active_providers() -> list:
     _init_providers()
     return [name for name, p in _providers.items() if p["ready"]]
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Low-level callers — one per provider
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Low-level callers ─────────────────────────────────────────────────────────
 
 def _call_gemini(system: str, user: str, temperature: float = 0.2,
-                 max_tokens: int = 8192) -> str | None:
+                 max_tokens: int = 8192) -> Optional[str]:
     _init_providers()
     p = _providers.get("gemini", {})
     if not p.get("ready"):
@@ -113,9 +162,9 @@ def _call_gemini(system: str, user: str, temperature: float = 0.2,
         "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
     }
     try:
-        r = _req.post(url, json=body, headers=hdrs, timeout=50)
+        r = _req.post(url, json=body, headers=hdrs, timeout=60)
         if r.status_code != 200:
-            logger.warning(f"[GEMINI] HTTP {r.status_code}: {r.text[:150]}")
+            logger.warning(f"[GEMINI] HTTP {r.status_code}: {r.text[:200]}")
             return None
         text = (r.json().get("candidates", [{}])[0]
                          .get("content", {})
@@ -128,23 +177,19 @@ def _call_gemini(system: str, user: str, temperature: float = 0.2,
 
 
 def _call_claude(system: str, user: str, temperature: float = 0.3,
-                 max_tokens: int = 8000) -> str | None:
+                 max_tokens: int = 8000) -> Optional[str]:
     _init_providers()
     p = _providers.get("claude", {})
     if not p.get("ready"):
         return None
     hdrs = {"x-api-key": p["key"], "anthropic-version": "2023-06-01",
             "Content-Type": "application/json"}
-    body = {
-        "model": "claude-sonnet-4-6",
-        "max_tokens": max_tokens,
-        "system": system,
-        "messages": [{"role": "user", "content": user}],
-    }
+    body = {"model": "claude-sonnet-4-6", "max_tokens": max_tokens,
+            "system": system, "messages": [{"role": "user", "content": user}]}
     try:
         r = _req.post(f"{p['base']}/messages", json=body, headers=hdrs, timeout=90)
         if r.status_code != 200:
-            logger.warning(f"[CLAUDE] HTTP {r.status_code}: {r.text[:150]}")
+            logger.warning(f"[CLAUDE] HTTP {r.status_code}: {r.text[:200]}")
             return None
         content = r.json().get("content", [])
         text = " ".join(c.get("text", "") for c in content if c.get("type") == "text")
@@ -155,24 +200,20 @@ def _call_claude(system: str, user: str, temperature: float = 0.3,
 
 
 def _call_openai(system: str, user: str, temperature: float = 0.3,
-                 max_tokens: int = 8000) -> str | None:
+                 max_tokens: int = 8000) -> Optional[str]:
     _init_providers()
     p = _providers.get("openai", {})
     if not p.get("ready"):
         return None
     hdrs = {"Authorization": f"Bearer {p['key']}", "Content-Type": "application/json"}
-    body = {
-        "model": "gpt-5-mini",
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user",   "content": user},
-        ],
-        "max_completion_tokens": max_tokens,
-    }
+    body = {"model": "gpt-4o",
+            "messages": [{"role": "system", "content": system},
+                          {"role": "user", "content": user}],
+            "max_tokens": max_tokens, "temperature": temperature}
     try:
         r = _req.post(f"{p['base']}/chat/completions", json=body, headers=hdrs, timeout=90)
         if r.status_code != 200:
-            logger.warning(f"[OPENAI] HTTP {r.status_code}: {r.text[:150]}")
+            logger.warning(f"[OPENAI] HTTP {r.status_code}: {r.text[:200]}")
             return None
         text = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
         return text.strip() or None
@@ -181,16 +222,11 @@ def _call_openai(system: str, user: str, temperature: float = 0.3,
         return None
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Entity Extraction — Gemini leads (fast), regex fallback
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Entity Extraction ─────────────────────────────────────────────────────────
 
 EXTRACT_SYSTEM = """You are an expert legal entity extractor for Indian law cases.
 
-Given ANY user input — a legal case description, a casual stock query, a vehicle lookup,
-a GST question, or anything else — extract ALL relevant entities.
-
-Return ONLY valid JSON with these fields (use null for missing):
+Extract ALL relevant entities from the user input and return ONLY valid JSON:
 {
   "gstin": "15-char GSTIN or null",
   "pan": "10-char PAN or null",
@@ -200,29 +236,25 @@ Return ONLY valid JSON with these fields (use null for missing):
   "ifsc_code": "11-char IFSC or null",
   "pincode": "6-digit pincode or null",
   "cin": "21-char CIN or null",
-  "company_name": "NSE/BSE listed company name in lowercase (infosys, tcs, reliance, wipro, etc.) or null",
+  "company_name": "NSE/BSE listed company name in lowercase or null",
   "stock_symbol": "NSE symbol like INFY, TCS etc. or null",
-  "currency": "Foreign currency code if mentioned (USD, GBP, AED etc.) or null",
+  "currency": "Foreign currency code (USD, GBP, AED etc.) or null",
   "party_name": "Person/company name as party or null",
   "opponent_name": "Opposing party name or null",
   "case_number": "Case number if any or null",
   "case_type": "Detected case type or null",
   "state_code": "2-letter Indian state code (TS, AP, MH, DL, KA...) or TS by default",
   "location": "City or district name or null",
-  "intent": "One of: stock_lookup | gstin_lookup | vehicle_lookup | ifsc_lookup | pincode_lookup | forex_lookup | company_lookup | legal_case | general",
+  "intent": "stock_lookup | gstin_lookup | vehicle_lookup | ifsc_lookup | pincode_lookup | forex_lookup | company_lookup | legal_case | general",
   "primary_query": "What the user is primarily asking for in one sentence"
 }
 
-CRITICAL RULES:
-- Any mention of a stock/share/NSE/BSE/market/company price → company_name + intent=stock_lookup
-- Common companies: infosys, tcs, reliance, wipro, hdfc, icici, sbi, adani, ongc, bajaj, mahindra, maruti, itc, airtel, sun pharma, dr reddy, cipla, titan, nestle, axis bank, kotak, l&t, ultratech, asian paints, hul, zomato, paytm, nykaa
-- IFSC pattern: 4 letters + 0 + 6 alphanumeric (SBIN0000001, HDFC0001234)
-- Default state_code is TS (Telangana) if not mentioned
-- Return ONLY the JSON object, no markdown, no explanation"""
+RULES: Any mention of stock/share/NSE/BSE/market -> intent=stock_lookup + company_name.
+Default state_code is TS. Return ONLY JSON, no markdown."""
 
 
 def smart_extract_entities(prompt: str) -> Dict[str, Any]:
-    """Extract entities — Gemini leads (fast), regex fallback."""
+    """Extract entities — Gemini 2.5 Flash leads, regex fallback."""
     raw = _call_gemini(EXTRACT_SYSTEM, f"Extract entities from: {prompt}",
                        temperature=0.1, max_tokens=1024)
     if raw:
@@ -235,17 +267,15 @@ def smart_extract_entities(prompt: str) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"[AI_BRAIN] Gemini entity JSON parse failed: {e}")
 
-    logger.info("[AI_BRAIN] Using enhanced regex fallback for entity extraction")
+    logger.info("[AI_BRAIN] Using regex fallback for entity extraction")
     return _regex_extract_entities(prompt)
 
 
 def _regex_extract_entities(prompt: str) -> Dict[str, Any]:
-    """Enhanced regex entity extraction — comprehensive fallback."""
     entities: Dict[str, Any] = {}
     p  = prompt.strip()
     pl = p.lower()
 
-    # Structured identifiers
     m = re.search(r'\b\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]\b', p)
     if m: entities["gstin"] = m.group()
     m = re.search(r'\b[A-Z]{5}\d{4}[A-Z]\b', p)
@@ -256,47 +286,27 @@ def _regex_extract_entities(prompt: str) -> Dict[str, Any]:
     if m: entities["ifsc_code"] = m.group()
     m = re.search(r'(?<!\d)([1-9]\d{5})(?!\d)', p)
     if m: entities["pincode"] = m.group(1)
-    m = re.search(r'\b[UL]\d{5}[A-Z]{2}\d{4}(?:PLC|PTC|OPC|FLC|GOI|NPL|ULL|ULT)\d{6}\b', p)
-    if m: entities["cin"] = m.group()
 
-    # Company / stock intent
     COMPANIES = {
-        "infosys": "infosys", "infy": "infosys", "tcs": "tcs", "tata consultancy": "tcs",
-        "reliance": "reliance", "ril": "reliance", "wipro": "wipro",
-        "hdfc bank": "hdfc", "hdfc": "hdfc", "icici bank": "icici", "icici": "icici",
-        "state bank": "sbi", "sbi": "sbi", "bajaj finance": "bajaj", "bajaj": "bajaj",
-        "adani": "adani", "ongc": "ongc", "ntpc": "ntpc", "coal india": "coal india",
-        "mahindra": "mahindra", "m&m": "mahindra", "maruti": "maruti", "itc": "itc",
-        "airtel": "airtel", "bharti airtel": "airtel", "sun pharma": "sun pharma",
-        "dr reddy": "dr reddy", "cipla": "cipla", "hero motocorp": "hero motocorp",
-        "axis bank": "axis bank", "kotak": "kotak", "l&t": "l&t", "larsen": "l&t",
-        "ultratech": "ultratech", "asian paints": "asian paints",
-        "hindustan unilever": "hul", "hul": "hul", "nestle": "nestle", "titan": "titan",
-        "zomato": "zomato", "swiggy": "swiggy", "paytm": "paytm", "nykaa": "nykaa",
-        "tata motors": "tata motors", "tata steel": "tata steel",
-        "power grid": "power grid", "bpcl": "bpcl", "ioc": "ioc",
-        "indian oil": "ioc", "hpcl": "hpcl",
+        "infosys": "infosys", "tcs": "tcs", "reliance": "reliance",
+        "wipro": "wipro", "hdfc": "hdfc", "icici": "icici", "sbi": "sbi",
+        "bajaj": "bajaj", "adani": "adani", "ongc": "ongc", "mahindra": "mahindra",
+        "maruti": "maruti", "itc": "itc", "airtel": "airtel",
+        "sun pharma": "sun pharma", "dr reddy": "dr reddy", "cipla": "cipla",
+        "titan": "titan", "zomato": "zomato", "paytm": "paytm",
+        "axis bank": "axis bank", "kotak": "kotak", "ntpc": "ntpc",
+        "power grid": "power grid", "bpcl": "bpcl", "hpcl": "hpcl",
     }
     for kw, canonical in COMPANIES.items():
         if kw in pl:
             entities["company_name"] = canonical
             break
-    if "company_name" not in entities:
-        m = re.search(
-            r'(?:stock|share|price|quote|nse|bse|search|lookup|find|check|'
-            r'tell me about|info(?:rmation)?\s+(?:of|about|on))\s+(?:of\s+)?'
-            r'([A-Za-z][A-Za-z\s&\.]{2,30}?)(?:\s+(?:stock|share|price|ltd|limited|pvt|corp))?'
-            r'(?:\s|$|\.|\?|,)', pl)
-        if m:
-            candidate = m.group(1).strip()
-            if len(candidate) >= 2 and candidate not in ("the", "an", "a", "my", "is", "are"):
-                entities["company_name"] = candidate
 
-    STOCK_SIGNALS = ["stock", "share", "nse", "bse", "market", "price", "listed", "dividend",
-                     "ipo", "trading", "investor", "securities", "equity", "portfolio", "sensex", "nifty"]
+    STOCK_SIGNALS = ["stock", "share", "nse", "bse", "market", "price", "listed",
+                     "dividend", "ipo", "trading", "equity", "sensex", "nifty"]
     if "company_name" in entities or any(s in pl for s in STOCK_SIGNALS):
         entities["intent"] = "stock_lookup"
-    elif entities.get("gstin"):    entities["intent"] = "gstin_lookup"
+    elif entities.get("gstin"):          entities["intent"] = "gstin_lookup"
     elif entities.get("vehicle_number"): entities["intent"] = "vehicle_lookup"
     elif entities.get("ifsc_code"):      entities["intent"] = "ifsc_lookup"
     elif entities.get("pincode"):        entities["intent"] = "pincode_lookup"
@@ -306,27 +316,20 @@ def _regex_extract_entities(prompt: str) -> Dict[str, Any]:
         "eviction": "Rent Eviction", "rent": "Rent Eviction", "gst": "GST Dispute",
         "cheque": "Cheque Bounce", "divorce": "Matrimonial", "property": "Property Dispute",
         "motor": "Motor Accident", "accident": "Motor Accident", "criminal": "Criminal",
-        "writ": "Writ Petition", "securities": "Securities Fraud", "insider": "Insider Trading",
-        "npa": "NPA / DRT", "drt": "NPA / DRT", "insolvency": "Insolvency",
-        "bank fraud": "Bank Fraud", "cheating": "Cheating / Fraud",
+        "writ": "Writ Petition", "npa": "NPA / DRT", "drt": "NPA / DRT",
+        "insolvency": "Insolvency", "bank fraud": "Bank Fraud",
     }
     for kw, ct in CASE_TYPES.items():
-        if kw in pl: entities["case_type"] = ct; break
-
-    for pat in [
-        r'client\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
-        r'for\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
-        r'(?:Mr\.|Mrs\.|Dr\.|Adv\.)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)',
-    ]:
-        m = re.search(pat, p)
-        if m: entities["party_name"] = m.group(1); break
+        if kw in pl:
+            entities["case_type"] = ct
+            break
 
     STATE_MAP = {
-        "hyderabad": "TS", "telangana": "TS", "secunderabad": "TS", "warangal": "TS",
-        "mumbai": "MH", "pune": "MH", "nagpur": "MH", "delhi": "DL", "new delhi": "DL",
-        "bangalore": "KA", "bengaluru": "KA", "chennai": "TN", "kolkata": "WB",
-        "ahmedabad": "GJ", "vizag": "AP", "visakhapatnam": "AP", "vijayawada": "AP",
-        "andhra": "AP", "amaravati": "AP",
+        "hyderabad": "TS", "telangana": "TS", "warangal": "TS", "secunderabad": "TS",
+        "mumbai": "MH", "pune": "MH", "delhi": "DL", "new delhi": "DL",
+        "bangalore": "KA", "bengaluru": "KA", "chennai": "TN",
+        "kolkata": "WB", "ahmedabad": "GJ",
+        "vizag": "AP", "visakhapatnam": "AP", "vijayawada": "AP", "andhra": "AP",
     }
     for city, code in STATE_MAP.items():
         if city in pl:
@@ -339,33 +342,27 @@ def _regex_extract_entities(prompt: str) -> Dict[str, Any]:
     return entities
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Strategy Synthesis — Claude leads, GPT-5 → Gemini → smart template fallback
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Strategy Synthesis ────────────────────────────────────────────────────────
 
 STRATEGY_SYSTEM = """You are a senior Indian advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, Supreme Court, and SEBI/NCLT/DRT tribunals.
 
-You have been given:
-1. The user's original query / case facts
-2. Real data retrieved from government APIs and databases
-
-Your task: Write a sharp, actionable legal strategy STRICTLY based on the actual data retrieved.
+Write a sharp, actionable legal strategy STRICTLY based on the actual government API data provided.
 
 MANDATORY RULES:
 - NEVER use generic template text. Every section must reference actual data values.
-- If stock/NSE data: lead with live price, 52-week range, financial health implications
-- If IFSC/bank data: use actual branch name, address, MICR code in your NI Act S.138 analysis
-- If GSTIN data: use actual registration status, return filing record in CGST Act analysis
-- If pincode data: use actual district and state for jurisdiction (CPC S.20)
-- If vehicle data: use actual RC details for motor accident / insurance analysis
-- Quote actual Indian laws with section numbers in every recommendation
-- Structure your output with these exact headings:
-  ## Summary
-  ## Key Findings from Government Data
-  ## Legal Analysis
-  ## Recommended Actions (within 7 days)
-  ## Document Checklist
-- Be concise, precise, and immediately actionable for a practicing advocate"""
+- If stock/NSE data: lead with live price, 52-week range, financial health implications.
+- If IFSC/bank data: use actual branch name, address, MICR code in NI Act S.138 analysis.
+- If GSTIN data: use actual registration status, return filing record in CGST Act analysis.
+- If pincode data: use actual district/state for jurisdiction (CPC S.20).
+- If vehicle data: use actual RC details for motor accident / insurance analysis.
+- Quote actual Indian laws with section numbers in every recommendation.
+
+Structure with EXACTLY these headings:
+## Summary
+## Key Findings from Government Data
+## Legal Analysis
+## Recommended Actions (within 7 days)
+## Document Checklist"""
 
 
 def smart_legal_strategy(
@@ -375,66 +372,58 @@ def smart_legal_strategy(
     case_id: str,
 ) -> str:
     """
-    Generate intelligent, data-driven legal strategy.
-    Cascade: Claude Sonnet → GPT-5-mini → Gemini → smart template
+    Generate data-driven legal strategy.
+    Cascade: Claude Sonnet 4-6 -> GPT-4o -> Gemini 2.5 Flash -> smart template
+    All providers are free via Replit AI Integrations — no user API keys needed.
     """
     _init_providers()
     active = get_active_providers()
 
-    intent    = entities.get("intent", "legal_case")
-    company   = entities.get("company_name", "")
-    case_type = entities.get("case_type", "General")
-    location  = entities.get("location", "Hyderabad")
-
-    # Build compact data summary (only non-skipped results)
     data_summary = {
         chain: result for chain, result in api_results.items()
         if isinstance(result, dict) and result.get("status") not in ("skipped", None)
     }
 
-    context = f"""User Query / Case Facts:
-{prompt}
+    context = (
+        f"User Query / Case Facts:\n{prompt}\n\n"
+        f"Detected Intent: {entities.get('intent', 'legal_case')}\n"
+        f"Company/Entity: {entities.get('company_name', 'Not specified')}\n"
+        f"Case Type: {entities.get('case_type', 'General')}\n"
+        f"Location: {entities.get('location', 'Hyderabad')}\n"
+        f"Case ID: {case_id}\n"
+        f"Active AI Providers: {', '.join(active) if active else 'None (template fallback)'}\n\n"
+        f"Real Government API Data Retrieved:\n"
+        f"{json.dumps(data_summary, indent=2, default=str)[:7000]}"
+    )
 
-Detected Intent: {intent}
-Company/Entity: {company or 'Not specified'}
-Case Type: {case_type}
-Location: {location}
-Case ID: {case_id}
-Active AI Providers: {', '.join(active)}
-
-Real Government API Data Retrieved:
-{json.dumps(data_summary, indent=2, default=str)[:7000]}
-"""
-
-    # 1️⃣ Try Claude Sonnet 4-6 — best for structured legal documents
+    # 1. Claude Sonnet 4-6
     if "claude" in active:
         logger.info(f"[AI_BRAIN] Strategy via Claude Sonnet 4-6 (case {case_id})")
         result = _call_claude(STRATEGY_SYSTEM, context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
-            return f"🔥 LITIGAFORGE AI — CASE {case_id} [Claude Sonnet 4-6]\n{'='*60}\n\n{result}"
+            return (f"LITIGAFORGE AI — CASE {case_id} "
+                    f"[Claude Sonnet 4-6 | Replit AI Integrations]\n{'='*60}\n\n{result}")
 
-    # 2️⃣ Try OpenAI GPT-5-mini
+    # 2. OpenAI GPT-4o
     if "openai" in active:
-        logger.info(f"[AI_BRAIN] Strategy via GPT-5-mini (case {case_id})")
+        logger.info(f"[AI_BRAIN] Strategy via GPT-4o (case {case_id})")
         result = _call_openai(STRATEGY_SYSTEM, context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
-            return f"🔥 LITIGAFORGE AI — CASE {case_id} [GPT-5]\n{'='*60}\n\n{result}"
+            return (f"LITIGAFORGE AI — CASE {case_id} "
+                    f"[GPT-4o | Replit AI Integrations]\n{'='*60}\n\n{result}")
 
-    # 3️⃣ Try Gemini 2.5 Flash
+    # 3. Gemini 2.5 Flash
     if "gemini" in active:
         logger.info(f"[AI_BRAIN] Strategy via Gemini 2.5 Flash (case {case_id})")
         result = _call_gemini(STRATEGY_SYSTEM, context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
-            return f"🔥 LITIGAFORGE AI — CASE {case_id} [Gemini 2.5 Flash]\n{'='*60}\n\n{result}"
+            return (f"LITIGAFORGE AI — CASE {case_id} "
+                    f"[Gemini 2.5 Flash | Replit AI Integrations]\n{'='*60}\n\n{result}")
 
-    # 4️⃣ Smart data-driven template — never generic
-    logger.info(f"[AI_BRAIN] All AI providers failed — using smart data template (case {case_id})")
+    # 4. Smart data-driven template fallback
+    logger.info(f"[AI_BRAIN] All AI providers unavailable — smart template (case {case_id})")
     return _smart_fallback_strategy(prompt, entities, api_results, case_id)
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Smart data-driven fallback — reads real chain results, never generic text
-# ──────────────────────────────────────────────────────────────────────────────
 
 def _smart_fallback_strategy(
     prompt: str,
@@ -442,112 +431,88 @@ def _smart_fallback_strategy(
     api_results: Dict[str, Any],
     case_id: str,
 ) -> str:
-    intent    = entities.get("intent", "legal_case")
-    company   = entities.get("company_name", "")
     location  = entities.get("location", "Hyderabad")
     case_type = entities.get("case_type", "General Legal Matter")
+    company   = entities.get("company_name", "")
     sections  = []
 
-    # Stock / NSE
     nse = api_results.get("NSE_INDIA", {})
     if nse.get("status") == "success" and company:
         q     = (nse.get("results", {}).get("live_quote") or {})
-        price = q.get("last_price", "—")
-        chg   = q.get("pct_change", "—")
-        w52h  = q.get("week_52_high", "—")
-        w52l  = q.get("week_52_low", "—")
+        price = q.get("last_price", "N/A")
+        chg   = q.get("pct_change", "N/A")
+        w52h  = q.get("week_52_high", "N/A")
+        w52l  = q.get("week_52_low", "N/A")
         cname = q.get("company", company.title())
-        sections.append(f"""## Key Findings from Government Data
+        sections.append(
+            f"## Key Findings from Government Data\n\n"
+            f"**NSE Live — {cname}**: Rs.{price} ({chg}%) | 52W: Rs.{w52l}–{w52h}\n\n"
+            f"## Legal Analysis\n\n"
+            f"- Asset Valuation (Family Courts Act) — share price on petition date\n"
+            f"- Insider Trading — SEBI PIT Regulations 2015, Reg.4\n"
+            f"- NPA/DRT Attachment — market cap for proportionality\n\n"
+            f"## Recommended Actions (within 7 days)\n"
+            f"1. File at SEBI SCORES portal (scores.sebi.gov.in)\n"
+            f"2. Cite SEBI Act 1992 S.11, S.11B for market manipulation\n"
+            f"3. Obtain certified NSE/BSE trade reports for evidence"
+        )
 
-**NSE Live Quote — {cname}**
-- Current Price: ₹{price}  |  Today's Change: {chg}%
-- 52-Week High: ₹{w52h}  |  52-Week Low: ₹{w52l}
-- Nifty 50 Member: {'Yes' if nse.get('results', {}).get('nifty50_member') else 'No'}
-
-## Legal Analysis
-
-This market data is actionable in:
-- **Asset Valuation** (Family Courts Act) — share price on petition date
-- **Insider Trading** — SEBI PIT Regulations 2015, Reg.4 — trades within 60 days of UPSI
-- **NPA/DRT Attachment** — market cap determines proportionality of attachment orders
-- **Contempt/SEBI Orders** — verify suspended trading has not resumed (SEBI Act S.11B)
-
-## Recommended Actions (within 7 days)
-1. File complaint at SEBI SCORES portal (scores.sebi.gov.in) — attach trade history
-2. Cite SEBI Act 1992 S.11, S.11B for market manipulation
-3. Obtain certified NSE/BSE trade reports for evidence""")
-
-    # IFSC / Bank
     ifsc = api_results.get("IFSC", {})
     if ifsc.get("status") == "success":
-        sections.append(f"""## Key Findings from Government Data
+        sections.append(
+            f"## Key Findings from Government Data\n\n"
+            f"**Bank Branch (RBI)**: {ifsc.get('bank_name')} — {ifsc.get('branch')}, "
+            f"{ifsc.get('city')}, {ifsc.get('state')} | MICR: {ifsc.get('micr_code', 'N/A')}\n\n"
+            f"## Legal Analysis — NI Act S.138\n\n"
+            f"- Drawee bank confirmed — essential for prosecution\n"
+            f"- File complaint in court of payee's bank jurisdiction (NI Act S.142)\n\n"
+            f"## Recommended Actions (within 7 days)\n"
+            f"1. Send statutory demand notice within 30 days of dishonour\n"
+            f"2. File complaint within 30 days of expiry of 15-day notice period"
+        )
 
-**Bank Branch Verified (RBI Registry)**
-- Bank: {ifsc.get('bank_name')}  |  Branch: {ifsc.get('branch')}
-- Address: {ifsc.get('address')}, {ifsc.get('city')}, {ifsc.get('state')}
-- MICR: {ifsc.get('micr_code', '—')}  |  RTGS: {ifsc.get('rtgs_enabled')}  |  NEFT: {ifsc.get('neft_enabled')}
-
-## Legal Analysis — NI Act S.138
-
-1. Drawee bank confirmed as **{ifsc.get('bank_name')}, {ifsc.get('branch')}** — essential for prosecution
-2. Cross-verify MICR code {ifsc.get('micr_code', '—')} against the dishonoured cheque leaf
-3. File complaint in court of payee's bank jurisdiction (NI Act S.142)
-
-## Recommended Actions (within 7 days)
-1. Send statutory demand notice within 30 days of dishonour (NI Act S.138 proviso)
-2. File complaint within 30 days of expiry of 15-day notice period
-3. Attach bank certificate of dishonour + IFSC verification printout""")
-
-    # Pincode
     pin = api_results.get("PINCODE", {})
     if pin.get("status") == "success":
-        sections.append(f"""## Key Findings from Government Data
+        sections.append(
+            f"## Key Findings from Government Data\n\n"
+            f"**Address (India Post)**: {pin.get('pincode')} — {pin.get('district')}, "
+            f"{pin.get('state')}\n\n"
+            f"## Legal Analysis\n\n"
+            f"- Jurisdiction: Courts in {pin.get('district')}, {pin.get('state')} (CPC S.20)"
+        )
 
-**Address Verified (India Post)**
-- Pincode: {pin.get('pincode')}  |  District: {pin.get('district')}  |  State: {pin.get('state')}
-- Post Offices in zone: {pin.get('total_offices')}
-
-## Legal Analysis — Jurisdiction
-- Territorial jurisdiction: Courts in **{pin.get('district')}, {pin.get('state')}** (CPC S.20)
-- Sub-Registrar for property documents: {pin.get('district')} district office
-- For summons service: any post office in this pincode zone (CPC Order V)""")
-
-    # GSTIN
     gstin = api_results.get("GSTIN", {})
     if gstin.get("status") == "success":
-        status = gstin.get('registration_status', '')
-        sections.append(f"""## Key Findings from Government Data
+        status = gstin.get("registration_status", "")
+        sections.append(
+            f"## Key Findings from Government Data\n\n"
+            f"**GSTIN (GSTN)**: {gstin.get('legal_name')} | Status: {status} | "
+            f"Type: {gstin.get('taxpayer_type')}\n\n"
+            f"## Legal Analysis — CGST Act 2017\n\n"
+            f"- {'Active — use for compliance verification' if 'active' in status.lower() else 'Inactive — grounds for attachment under CGST Act S.83'}"
+        )
 
-**GSTIN Verified (GSTN Portal)**
-- Legal Name: {gstin.get('legal_name')}
-- Status: **{status}**  |  Type: {gstin.get('taxpayer_type')}
-- Jurisdiction: {gstin.get('state_jurisdiction')}
-- Last Return: {gstin.get('last_return_period')} ({gstin.get('last_return_status')})
-- Pending Returns: {gstin.get('pending_returns', 0)}
+    active_chains = [
+        k for k, v in api_results.items()
+        if isinstance(v, dict) and v.get("status") not in ("skipped", "no_api_key", "error")
+    ]
 
-## Legal Analysis — CGST Act 2017
-- {'✅ Active — use for compliance verification' if 'active' in status.lower() else '⚠️ Inactive/suspended — grounds for attachment under CGST Act S.83'}
-- Pending returns admissible as evidence of financial irregularity (CGST Act S.132)""")
-
-    active_chains = [k for k, v in api_results.items()
-                     if isinstance(v, dict) and v.get("status") not in ("skipped", "no_api_key", "error")]
-
-    header = (f"🔥 LITIGAFORGE AI — CASE {case_id} [AI-Generated]\n"
-              f"{'='*60}\n\n"
-              f"## Summary\n"
-              f"**Query**: {prompt[:200]}\n"
-              f"**Departments Queried**: {', '.join(active_chains) or 'General'}\n"
-              f"**Location**: {location}  |  **Case Type**: {case_type}\n")
+    header = (
+        f"LITIGAFORGE AI — CASE {case_id} [Smart Template Fallback]\n"
+        f"{'='*60}\n\n"
+        f"## Summary\n"
+        f"**Query**: {prompt[:200]}\n"
+        f"**APIs Queried**: {', '.join(active_chains) or 'None'}\n"
+        f"**Location**: {location} | **Type**: {case_type}\n\n"
+    )
 
     if sections:
         return header + "\n\n".join(sections)
 
     return header + (
-        "\nNo specific identifiers detected. Include GSTIN, vehicle number, IFSC, "
-        "company name, or pincode for targeted AI analysis.\n\n"
-        "**Example queries:**\n"
-        "- `search Infosys stock` → live NSE data + legal strategy\n"
-        "- `Cheque bounce IFSC SBIN0020149` → bank verification + NI Act S.138\n"
-        "- `GSTIN 36AAAAA0000A1ZA fraud case` → live GSTIN + CGST Act strategy\n"
-        "- `Vehicle TS09EA1234 accident Hyderabad` → VAHAN + SARATHI + motor accident law"
+        "No identifiers detected. Add GSTIN, vehicle number, IFSC, company name, or pincode.\n\n"
+        "Examples:\n"
+        "- 'search Infosys stock' -> live NSE + legal strategy\n"
+        "- 'Cheque bounce IFSC SBIN0020149' -> bank verification + NI Act S.138\n"
+        "- 'GSTIN 36AAAAA0000A1ZA fraud' -> live GSTIN + CGST Act strategy"
     )
