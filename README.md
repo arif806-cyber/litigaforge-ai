@@ -260,7 +260,7 @@ Set these in Replit Secrets / shared env vars, or in `.env` for Docker.
 | MeriPehchaan | meripehchaan.gov.in | Mock — needs OAuth credentials |
 | GSTIN | GSTN | Mock |
 | PAN | Income Tax / NSDL | Mock |
-| eCourts | NIC eCourts | Mock |
+| eCourts | **Live** — `webapi.ecourtsindia.com` | Partner API (Bearer token). CNR lookup, case search, hearing history, orders
 | VAHAN | Parivahan | Mock |
 | SARATHI | Parivahan | Mock |
 | DigiLocker | NIC | Mock |

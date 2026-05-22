@@ -79,7 +79,7 @@ Legal AI platform for Telangana & AP advocates — extracts entities from case f
 | `ADVOCATE_WHATSAPP` | Your number e.g. `whatsapp:+919876543210` | WhatsApp recipient |
 | `MERIPEHCHAAN_CLIENT_ID` | meripehchaan.gov.in | Live DigiLocker OAuth |
 | `MERIPEHCHAAN_CLIENT_SECRET` | meripehchaan.gov.in | Live DigiLocker OAuth |
-| `ECOURTS_API_KEY` | api.ecourts.gov.in | Live eCourts case lookup |
+| `ECOURTS_API_KEY` | webapi.ecourtsindia.com/dashboard/settings?activate=partner | Live eCourts case lookup (CNR, search, orders)
 
 ## API Chain Status
 
@@ -91,7 +91,8 @@ Legal AI platform for Telangana & AP advocates — extracts entities from case f
 | FOREX | **Live sandbox** | `sandbox.api-setu.in` |
 | BPCL LPG | Sandbox-ready | Needs `API_SETU_KEY` |
 | MeriPehchaan | Mock | Needs OAuth client credentials |
-| GSTIN, PAN, eCourts, VAHAN, SARATHI, DigiLocker, MCA Company, IFSC, Pincode | Mock | Realistic fake data |
+| eCourts | **Live** | `webapi.ecourtsindia.com` — CNR lookup, case search, orders |
+| GSTIN, PAN, VAHAN, SARATHI, DigiLocker, MCA Company, IFSC, Pincode | Mock | Realistic fake data |
 
 To go live on all API Setu chains: register at api.setu.in, get approved credentials, replace `API_SETU_KEY`, set `MEESEVA_USE_PROD=true`.
 

@@ -69,14 +69,14 @@ function Router() {
             <Route path="/"             component={() => <ProtectedRoute component={Forge} />} />
             <Route path="/cases"        component={() => <ProtectedRoute component={Cases} />} />
             <Route path="/cases/:id"    component={() => <ProtectedRoute component={CaseDetail} />} />
-            <Route path="/chains"       component={() => <ProtectedRoute component={Chains} />} />
-            <Route path="/use-cases"    component={() => <ProtectedRoute component={UseCases} />} />
-            <Route path="/subscription" component={() => <ProtectedRoute component={Subscription} />} />
-            <Route path="/ask"          component={() => <ProtectedRoute component={Ask} />} />
-            <Route path="/review"       component={() => <ProtectedRoute component={Review} />} />
-            <Route path="/judgments"    component={() => <ProtectedRoute component={Judgments} />} />
-            <Route path="/lawyers"      component={() => <ProtectedRoute component={LawyersPage} />} />
-            <Route path="/legal-aid"    component={() => <ProtectedRoute component={LegalAid} />} />
+            <Route path="/chains"       component={Chains} />
+            <Route path="/use-cases"    component={UseCases} />
+            <Route path="/subscription" component={Subscription} />
+            <Route path="/ask"          component={Ask} />
+            <Route path="/review"       component={Review} />
+            <Route path="/judgments"    component={Judgments} />
+            <Route path="/lawyers"      component={LawyersPage} />
+            <Route path="/legal-aid"    component={LegalAid} />
             <Route component={NotFound} />
           </Switch>
         </Layout>
