@@ -357,8 +357,29 @@ export default function LawyersPage() {
                 <LawyerCard key={lawyer.id} lawyer={lawyer} />
               ))}
               {(data?.lawyers ?? []).length === 0 && (
-                <div className="col-span-2 text-center py-16 text-gray-400 font-mono text-sm">
-                  No advocates found for the selected filters.
+                <div className="col-span-2 text-center py-16">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 mb-4">
+                    <Search className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-sm font-medium mb-1">No advocates found</p>
+                  <p className="text-gray-400 text-xs max-w-sm mx-auto mb-4">
+                    The directory is currently empty. Be the first to list your profile.
+                  </p>
+                  {user ? (
+                    <button
+                      onClick={() => setShowRegister(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" /> List Your Profile
+                    </button>
+                  ) : (
+                    <a
+                      href="/register"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" /> Sign Up & List Your Profile
+                    </a>
+                  )}
                 </div>
               )}
             </div>
