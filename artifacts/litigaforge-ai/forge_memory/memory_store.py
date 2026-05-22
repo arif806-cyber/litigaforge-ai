@@ -48,6 +48,7 @@ class ForgeMemory:
 
     def save_case(self, case_id: str, prompt: str, api_results: Dict, final_output: str):
         data = self._read()
+        data.setdefault("cases", [])
         data["cases"].append({
             "case_id": case_id,
             "timestamp": datetime.utcnow().isoformat(),
