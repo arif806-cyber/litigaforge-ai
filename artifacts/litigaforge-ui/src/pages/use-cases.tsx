@@ -39,7 +39,7 @@ const USE_CASES: UseCase[] = [
       { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
     ],
     prompt:
-      "My client Ramesh Kumar with PAN ABCDE1234F has a property dispute in Hyderabad against Suresh Reddy (PAN XYZAB5678G). The property at Plot No. 45, Banjara Hills is in contention. Opposite party has a GSTIN 36ABCDE1234F1Z5. Suspected forged sale deed dated 2019. Need to verify both PANs, check for any existing court cases, and build a civil suit strategy.",
+      "Describe your property dispute with party PAN numbers, property location, and any suspected documentation issues. The Forge will verify identities, check court records, and build a civil suit strategy.",
   },
   {
     id: "accident",
@@ -60,7 +60,7 @@ const USE_CASES: UseCase[] = [
       { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
     ],
     prompt:
-      "Client Lakshmi Devi was involved in a road accident on NH-65 near Vijayawada on 15-March-2024. The offending vehicle bearing registration TS09EA1234 was driven by one Kiran Kumar holding DL No. TS0920230001234. Need to verify RC details, insurance status, fitness certificate, driver licence validity, and vehicle class authorisation for filing a Motor Accident Claims Tribunal (MACT) petition.",
+      "Describe your road accident case with vehicle registration number, driver licence details, and accident location. The Forge will verify RC, DL, and insurance status for your MACT petition.",
   },
   {
     id: "gst",
@@ -81,7 +81,7 @@ const USE_CASES: UseCase[] = [
       { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
     ],
     prompt:
-      "My client M/s Sri Lakshmi Enterprises has been issued a show-cause notice by GST department under Section 74 CGST Act for alleged fraudulent ITC claims. GSTIN: 36AABCL9603R1ZM, PAN: AABCL9603R. Case filed at City Civil Court Hyderabad — Case No. CC 2345/2024. Need full filing history analysis, ITC reconciliation discrepancies, and defence strategy.",
+      "Describe your GST dispute with GSTIN, PAN, case number, and court details. The Forge will analyse filing history, identify discrepancies, and build your defence strategy.",
   },
   {
     id: "criminal",
@@ -101,7 +101,7 @@ const USE_CASES: UseCase[] = [
       { name: "DigiLocker", color: "text-cyan-700 bg-cyan-50 border-cyan-200" },
     ],
     prompt:
-      "My client Venkat Rao is the accused in Case No. CC 1234/2024 at City Civil Court Hyderabad under IPC Sections 420 and 120B. FIR No. 456/2024 at Banjara Hills Police Station. Client has been in judicial custody for 45 days. Need full case history, orders passed, identify procedural delays for anticipatory bail / regular bail application, and any grounds for discharge petition.",
+      "Describe your criminal case with case number, court, FIR details, IPC sections, and custody status. The Forge will pull full case history and identify bail or discharge grounds.",
   },
   {
     id: "mee-seva",
@@ -122,7 +122,7 @@ const USE_CASES: UseCase[] = [
       { name: "MERIPEHCHAAN", color: "text-pink-700 bg-pink-50 border-pink-200" },
     ],
     prompt:
-      "My client Padmavathi (Aadhaar: 1234-5678-9012) from Warangal belongs to BC-A category. Her caste certificate (Application No. MEE1234567) issued by Mee Seva Telangana has been rejected by the State Government for EAMCET fee reimbursement. The certificate exists in DigiLocker. Need to verify the certificate authenticity against Mee Seva database and build grounds for Writ Petition in Telangana High Court under Article 226.",
+      "Describe your certificate dispute with Aadhaar number, certificate type, application number, and rejection reason. The Forge will verify authenticity and build grounds for your Writ Petition.",
   },
   {
     id: "watch",
@@ -140,7 +140,7 @@ const USE_CASES: UseCase[] = [
       { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
     ],
     prompt:
-      "I need to set up Watch Mode for the following active cases: Case No. OS 234/2024 at Hyderabad City Civil Court (party: Narayana Rao vs State Bank), Case No. CC 890/2024 at Vijayawada District Court (party: Meena Kumari vs Union of India), and Case No. CS 45/2024 at Warangal Sessions Court (party: Ravi Shankar). Monitor all three for next hearing dates and order updates. Send WhatsApp alerts to advocate at +919876543210.",
+      "List your active cases with case numbers, courts, and parties. Set up Watch Mode to monitor hearing dates and order updates with WhatsApp alerts.",
   },
   {
     id: "loan",
@@ -161,7 +161,7 @@ const USE_CASES: UseCase[] = [
       { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
     ],
     prompt:
-      "My client State Bank of Hyderabad has a Non-Performing Asset (NPA) against M/s Vijaya Constructions. Borrower details — PAN: AABCV1234F, GSTIN: 36AABCV1234F1Z5, outstanding loan: Rs. 2.35 Crore. Last payment: January 2023. Need to verify if the business is active, check for any insolvency or winding-up petitions already filed, identify assets, and draft DRT petition strategy under SARFAESI Act Sections 13(2) and 13(4).",
+      "Describe your loan recovery case with borrower PAN, GSTIN, outstanding amount, and last payment date. The Forge will verify business status and build your DRT petition strategy.",
   },
 ];
 

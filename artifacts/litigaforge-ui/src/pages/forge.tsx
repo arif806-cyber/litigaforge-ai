@@ -34,9 +34,9 @@ const ENTITY_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const EXAMPLE_PROMPTS = [
-  { text: "My client Ramesh Kumar with PAN ABCDE1234F and GSTIN 36ABCDE1234F1Z5 has a property dispute in Hyderabad. Vehicle TS09EA1234 involved.", hotkey: "1" },
-  { text: "Client Lakshmi Devi, DL No. TS0920230001234, met with an accident in Vijayawada. Need RC and DL verification.", hotkey: "2" },
-  { text: "GST fraud case — GSTIN 29AABCU9603R1ZM and PAN AABCU9603R, case filed at City Civil Court Hyderabad.", hotkey: "3" },
+  { text: "Property dispute case — enter party PAN numbers, GSTIN, property location, and any suspected forged documents.", hotkey: "1" },
+  { text: "Road accident / MACT case — enter vehicle registration, driver licence number, accident location, and date.", hotkey: "2" },
+  { text: "GST dispute case — enter GSTIN, PAN, case number, court details, and department notice sections.", hotkey: "3" },
 ];
 
 function PipelineLoading() {

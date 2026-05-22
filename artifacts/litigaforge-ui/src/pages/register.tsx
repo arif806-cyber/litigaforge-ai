@@ -56,7 +56,7 @@ export default function Register() {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
-                placeholder="Adv. Ramesh Kumar"
+                placeholder="Adv. Full Name"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition"
               />
             </div>
@@ -68,7 +68,7 @@ export default function Register() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                placeholder="advocate@example.com"
+                placeholder="your@email.com"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition"
               />
             </div>

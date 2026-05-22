@@ -156,67 +156,6 @@ def increment_case_count(user_id: int) -> dict:
     finally:
         conn.close()
 
-
-def seed_lawyers() -> int:
-    """Idempotent seed: inserts 12 realistic TG/AP advocates if table is empty."""
-    LAWYERS = [
-        ("Adv. K. Venkata Ramaiah", "+919876543210", "vramaiah@litigaforge.in", "TS/1234/2020",
-         "Hyderabad", ["Property & Real Estate", "Civil Matters", "RERA"], ["Telugu", "English"],
-         18, 4.7, "Senior advocate specializing in property disputes, landlord-tenant matters, and RERA compliance across Telangana.", True),
-        ("Adv. Smt. Padmaja Reddy", "+919912345678", "padmaja@litigaforge.in", "TS/5678/2018",
-         "Hyderabad", ["Family Law", "Criminal Defense", "NDPS"], ["Telugu", "English", "Hindi"],
-         22, 4.9, "Leading family law advocate with expertise in divorce, child custody, domestic violence cases, and criminal defense.", True),
-        ("Adv. Suresh Babu Naidu", "+919988776655", "snaidu@litigaforge.in", "TS/9012/2021",
-         "Warangal", ["Criminal Defense", "Motor Accident Claims", "Consumer Forum"], ["Telugu", "English", "Hindi"],
-         14, 4.5, "Criminal law specialist based in Warangal. Extensive experience in bail applications, motor accident claims, and consumer disputes.", True),
-        ("Adv. Dr. Ayesha Begum", "+919955443322", "ayesha@litigaforge.in", "TS/3456/2019",
-         "Hyderabad", ["GST & Tax", "Corporate Law", "Banking & Finance"], ["English", "Urdu", "Hindi"],
-         16, 4.6, "Taxation expert with LLM in Commercial Law. Handles GST disputes, corporate restructuring, and banking litigation for SMEs.", True),
-        ("Adv. Ramesh Kumar Goud", "+919944332211", "rkgoud@litigaforge.in", "TS/7890/2017",
-         "Karimnagar", ["Labour Law", "Civil Matters", "Revenue Law"], ["Telugu", "English"],
-         20, 4.4, "Labour law advocate serving Karimnagar and surrounding districts. Specializes in industrial disputes, land revenue, and civil appeals.", True),
-        ("Adv. Lakshmi Devi Sharma", "+919933221100", "lsharma@litigaforge.in", "TS/2345/2022",
-         "Rangareddy", ["Family Law", "Property & Real Estate", "Consumer Forum"], ["Telugu", "Hindi", "English"],
-         12, 4.3, "Rising star in family law with strong property litigation skills. Practices across Rangareddy and Hyderabad districts.", True),
-        ("Adv. Mohammed Imran Khan", "+919922110099", "imran@litigaforge.in", "TS/6789/2016",
-         "Nizamabad", ["Criminal Defense", "Civil Matters", "Motor Accident Claims"], ["Urdu", "Telugu", "English"],
-         25, 4.8, "Veteran criminal defense counsel with 25 years at the bar. Known for meticulous case preparation and strong courtroom advocacy.", True),
-        ("Adv. Sreeja Katakam", "+919911009988", "sreeja@litigaforge.in", "TS/4567/2023",
-         "Khammam", ["GST & Tax", "Labour Law", "Banking & Finance"], ["Telugu", "English"],
-         10, 4.2, "Young advocate bringing fresh energy to tax and labour disputes in Khammam district. Former law clerk at High Court.", True),
-        ("Adv. Gopalakrishna Raju", "+919900998877", "graju@litigaforge.in", "TS/8901/2015",
-         "Nalgonda", ["Civil Matters", "Property & Real Estate", "Revenue Law"], ["Telugu", "English", "Hindi"],
-         28, 4.9, "Senior civil advocate with deep expertise in land disputes, revenue appeals, and property partition cases in Nalgonda district.", True),
-        ("Adv. Fatima Sultana", "+919889977665", "fatima@litigaforge.in", "TS/1122/2020",
-         "Medak", ["Family Law", "Criminal Defense", "NDPS"], ["Urdu", "Telugu", "English", "Hindi"],
-         15, 4.5, "Compassionate family law advocate also handling criminal defense and NDPS matters. Multilingual practice serving diverse communities.", True),
-        ("Adv. Bhanu Prakash Choudhary", "+919877665544", "bhanu@litigaforge.in", "TS/3344/2018",
-         "Adilabad", ["Corporate Law", "Banking & Finance", "Insolvency"], ["Telugu", "English", "Hindi"],
-         19, 4.6, "Corporate and banking law specialist. Handles insolvency proceedings, company law disputes, and financial restructuring for businesses.", True),
-        ("Adv. Vijaya Lakshmi Iyer", "+919866554433", "viyer@litigaforge.in", "TS/5566/2021",
-         "Mahbubnagar", ["Intellectual Property", "Corporate Law", "GST & Tax"], ["English", "Telugu", "Tamil"],
-         13, 4.4, "IP law advocate with experience in trademark disputes, copyright infringement, and technology contracts. Serves Mahbubnagar region.", True),
-    ]
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM lawyers")
-            if cur.fetchone()[0] > 0:
-                return 0
-            for l in LAWYERS:
-                cur.execute(
-                    """INSERT INTO lawyers
-                       (name, phone, email, bar_number, district, practice_areas, languages, experience_years, rating, bio, verified)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    l,
-                )
-            conn.commit()
-            return len(LAWYERS)
-    finally:
-        conn.close()
-
-
 def update_subscription(user_id: int, tier: str) -> dict:
     conn = get_conn()
     try:

@@ -249,7 +249,7 @@ export default function Subscription() {
           )}
 
           <p className="text-xs text-center text-muted-foreground font-mono">
-            Upgrades take effect immediately. Payment integration coming soon — plans activate instantly for demo purposes.
+            Upgrades take effect immediately. Payment integration coming soon.
           </p>
         </div>
       </div>

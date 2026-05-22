@@ -561,5 +561,4 @@ def forge_case(user_prompt: str) -> dict:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    result = forge_case("Forge strategy for rent eviction + GST dispute - client Ramesh Reddy, Kukatpally")
-    print(result["final_output"])
+    print("Run via main.py or API, not directly.")

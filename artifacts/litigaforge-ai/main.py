@@ -33,15 +33,6 @@ BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Seed lawyer directory if empty
-    from database import seed_lawyers
-    try:
-        seeded = seed_lawyers()
-        if seeded > 0:
-            logger.info("Seeded %s advocate profiles into lawyer directory", seeded)
-    except Exception as e:
-        logger.warning("Lawyer seeding skipped: %s", e)
-
     if os.getenv("WATCH_MODE_AUTO_START", "false").lower() == "true":
         watcher.start()
     yield
