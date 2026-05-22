@@ -33,6 +33,15 @@ BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Seed lawyer directory if empty
+    from database import seed_lawyers
+    try:
+        seeded = seed_lawyers()
+        if seeded > 0:
+            logger.info("Seeded %s advocate profiles into lawyer directory", seeded)
+    except Exception as e:
+        logger.warning("Lawyer seeding skipped: %s", e)
+
     if os.getenv("WATCH_MODE_AUTO_START", "false").lower() == "true":
         watcher.start()
     yield
@@ -305,12 +314,13 @@ async def list_chains():
         "chains": chains_flat,
         "departments": departments,
         "api_keys_status": {
-            "RAPIDAPI_KEY": "✅ set" if os.getenv("RAPIDAPI_KEY") else "❌ not set",
-            "API_SETU_KEY": "✅ set" if os.getenv("API_SETU_KEY") else "❌ not set",
-            "NSE_INDIA":    "✅ live — no key needed",
-            "FOREX":        "✅ live — no key needed",
-            "IFSC":         "✅ live — no key needed",
-            "PINCODE":      "✅ live — no key needed",
+            "RAPIDAPI_KEY":  "✅ set" if os.getenv("RAPIDAPI_KEY") else "❌ not set",
+            "API_SETU_KEY":  "✅ set" if os.getenv("API_SETU_KEY") else "❌ not set",
+            "ECOURTS_API_KEY": "✅ live" if os.getenv("ECOURTS_API_KEY") else "❌ not set",
+            "NSE_INDIA":     "✅ live — no key needed",
+            "FOREX":         "✅ live — no key needed",
+            "IFSC":          "✅ live — no key needed",
+            "PINCODE":       "✅ live — no key needed",
         },
     }
 

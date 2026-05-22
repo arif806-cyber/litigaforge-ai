@@ -182,7 +182,9 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
           {/* API results — only show chains that returned live data */}
           {(() => {
             const liveResults = Object.entries(apiResults).filter(
-              ([, data]) => typeof data === "object" && data !== null && (data as Record<string, unknown>).status === "success"
+              ([, data]) =>
+                typeof data === "object" && data !== null &&
+                ["success", "live"].includes((data as Record<string, unknown>).status as string)
             );
             if (liveResults.length === 0) return null;
             return (
