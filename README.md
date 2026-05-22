@@ -27,11 +27,16 @@ LitigaForge AI is a full-stack legal platform that takes a plain-language descri
 ## Features
 
 - **The Forge** — paste case facts, get a full legal strategy with entity extraction, chain orchestration, and multi-AI synthesis
+- **Legal Q&A with AI** — ask any legal question, Claude/Gemini answers instantly with applicable Indian law, Telangana/AP procedure, and next steps. Community knowledge base of past Q&As
+- **Document Analyzer** — paste contract/FIR/sale deed/petition text; AI identifies legal risks, missing clauses, jurisdiction issues, and recommends amendments. Risk score 1–10
+- **Judgment Finder** — search Indian case law by keyword/court; AI finds 5 relevant precedents with real citations and plain-language summaries. Direct links to IndianKanoon
+- **Lawyer Directory** — searchable directory of Telangana & AP advocates. Filter by district, practice area, language. Verified advocate profiles with contact details. Self-registration for advocates
+- **Free Legal Aid Finder** — NALSA/TSLSA eligibility wizard (income + category check). Instant DLSA contact info for all 8 Telangana districts + helplines (15100, 181, 1098)
 - **16 Government API Chains** — GSTIN, PAN, eCourts, VAHAN, SARATHI, DigiLocker, BPCL LPG, MeriPehchaan, Mee Seva Telangana, Transport TS, NSE India, Stock Exchange, FOREX, MCA Company, IFSC, and Pincode
 - **Multi-AI Cascade** — Claude Sonnet 4-6 (strategy) → Gemini 2.5 Flash (entities) → GPT-5 (fallback) — all free via Replit AI Integrations
 - **User Accounts** — register / login with bcrypt-hashed passwords and 30-day JWT sessions
 - **Subscription Tiers** — Free (5 cases/month), Professional ₹999/mo (50 cases, Gemini AI), Advocate Pro ₹2,499/mo (unlimited, full Multi-AI)
-- **PostgreSQL Database** — persistent user accounts, subscription history, monthly usage tracking
+- **PostgreSQL Database** — persistent user accounts, subscription history, monthly usage tracking, legal questions, and advocate profiles
 - **Use Cases** — 7 interactive scenario cards (Property, MACT, GST Fraud, Criminal, Mee Seva, Watch Mode, NPA/DRT)
 - **Case Memory** — every forged case is stored and searchable; AI learns patterns over time
 - **Watch Mode** — background scheduler monitors cases and parties for court date changes
@@ -51,6 +56,11 @@ LitigaForge AI is a full-stack legal platform that takes a plain-language descri
 | Database | PostgreSQL (Replit managed) — users, subscriptions, case memory |
 | Auth | bcrypt password hashing, JWT (python-jose), 30-day tokens |
 | Mobile | Expo (React Native), Expo Router, NativeWind |
+| Legal Q&A | Claude Sonnet 4-6 / Gemini 2.5 Flash — instant answers with cited law |
+| Doc Analyzer | AI risk scoring, clause extraction, Indian jurisdiction analysis |
+| Judgments | AI precedent search + IndianKanoon direct links |
+| Lawyer Directory | PostgreSQL + full-text search, verified profiles |
+| Free Legal Aid | Eligibility wizard + static TSLSA/NALSA contact data |
 | Fonts | Space Grotesk, JetBrains Mono |
 
 ---
@@ -70,7 +80,12 @@ litigaforge-ai/
 │   │       │   ├── cases.tsx        # Case browser
 │   │       │   ├── chains.tsx       # API chain status
 │   │       │   ├── case-detail.tsx  # Single case view
-│   │       │   └── use-cases.tsx    # Scenario cards
+│   │       │   ├── use-cases.tsx    # Scenario cards
+│   │       │   ├── ask.tsx          # Legal Q&A — ask questions, AI answers, community Q&A
+│   │       │   ├── review.tsx       # Document Analyzer — risk scoring, clause analysis
+│   │       │   ├── judgments.tsx    # Judgment Finder — precedent search + IndianKanoon links
+│   │       │   ├── lawyers.tsx      # Lawyer Directory — advocate profiles + registration
+│   │       │   └── legal-aid.tsx    # Free Legal Aid — eligibility wizard + helplines
 │   │       ├── components/
 │   │       │   ├── layout.tsx       # Sidebar, topbar, mobile nav, user panel
 │   │       │   └── graphics/        # ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
@@ -81,6 +96,7 @@ litigaforge-ai/
 │   │
 │   └── litigaforge-ai/              # Python FastAPI backend
 │       ├── main.py                  # All routes (auth, forge, cases, chains, watch, alerts)
+│       ├── extra_routes.py          # Legal Q&A, Doc Analyzer, Judgments, Lawyers, Legal Aid
 │       ├── database.py              # PostgreSQL CRUD (psycopg2)
 │       ├── auth.py                  # bcrypt hashing, JWT create/decode, FastAPI deps
 │       ├── litigaforge_engine.py    # Forge orchestration
@@ -435,6 +451,18 @@ All backend routes are prefixed with `/litigaforge`.
 | `GET` | `/litigaforge/chains` | None | List all 16 API chains with status |
 | `GET` | `/litigaforge/memory/patterns` | None | Learned forge patterns |
 | `GET` | `/litigaforge/memory/stats` | None | Case and pattern counts |
+
+### Community Services
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/litigaforge/ask` | None | Ask a legal question — AI answers instantly |
+| `GET` | `/litigaforge/ask` | None | Browse past Q&As (optional `?category=` filter) |
+| `POST` | `/litigaforge/document/analyze` | None | Analyze document text — risk score, missing clauses, recommendations |
+| `POST` | `/litigaforge/judgments/search` | None | Search case law — AI returns 5 precedents with IndianKanoon links |
+| `GET` | `/litigaforge/lawyers` | None | Search advocate directory (district, area, language, text) |
+| `POST` | `/litigaforge/lawyers/register` | Bearer | Register as an advocate (login required) |
+| `GET` | `/litigaforge/legal-aid/contacts` | None | NALSA helpline + all 8 TSLSA DLSA contacts |
 
 ### Watch Mode
 
