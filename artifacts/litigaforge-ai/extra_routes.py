@@ -15,10 +15,11 @@ from typing import List, Optional
 import psycopg2
 import psycopg2.extras
 import requests as _req
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from auth import get_current_user
+from rate_limit import limiter
 
 logger = logging.getLogger("litigaforge.extra")
 router = APIRouter()
@@ -99,7 +100,9 @@ class QuestionRequest(BaseModel):
 
 
 @router.post("/ask")
+@limiter.limit("20/minute")
 async def ask_legal_question(req: QuestionRequest,
+                             request: Request,
                              current_user: Optional[dict] = Depends(get_current_user)):
     if len(req.question.strip()) < 10:
         raise HTTPException(400, "Question is too short")
@@ -190,7 +193,8 @@ class DocumentRequest(BaseModel):
 
 
 @router.post("/document/analyze")
-async def analyze_document(req: DocumentRequest):
+@limiter.limit("10/minute")
+async def analyze_document(req: DocumentRequest, request: Request):
     text = req.document_text.strip()
     if len(text) < 50:
         raise HTTPException(400, "Document text is too short to analyse")
@@ -244,7 +248,8 @@ class JudgmentSearchRequest(BaseModel):
 
 
 @router.post("/judgments/search")
-async def search_judgments(req: JudgmentSearchRequest):
+@limiter.limit("10/minute")
+async def search_judgments(req: JudgmentSearchRequest, request: Request):
     if len(req.query.strip()) < 5:
         raise HTTPException(400, "Search query too short")
 
@@ -466,8 +471,10 @@ class MatchRequest(BaseModel):
 
 
 @router.post("/match/find-lawyers")
+@limiter.limit("10/minute")
 async def ai_match_lawyers(
     req: MatchRequest,
+    request: Request,
     current_user: Optional[dict] = Depends(get_current_user),
 ):
     if not current_user:

@@ -8,12 +8,13 @@ import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 
 load_dotenv()
+from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger("litigaforge.api")
 
@@ -175,6 +176,8 @@ app = FastAPI(
     lifespan=lifespan,
     root_path=BASE_PATH,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 router = APIRouter()
@@ -255,7 +258,8 @@ async def health():
 # ─── Auth routes ───────────────────────────────────────────────────────────────
 
 @router.post("/auth/register")
-async def register(req: RegisterRequest):
+@limiter.limit("3/minute")
+async def register(req: RegisterRequest, request: Request):
     if len(req.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     if len(req.name.strip()) < 2:
@@ -273,7 +277,8 @@ async def register(req: RegisterRequest):
 
 
 @router.post("/auth/login")
-async def login(req: LoginRequest):
+@limiter.limit("5/minute")
+async def login(req: LoginRequest, request: Request):
     user = get_user_by_email(req.email)
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
@@ -307,8 +312,9 @@ async def subscription_upgrade(req: UpgradeRequest, current_user: dict = Depends
 # ─── Forge ─────────────────────────────────────────────────────────────────────
 
 @router.post("/forge")
+@limiter.limit("10/minute")
 async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
-                current_user: Optional[dict] = Depends(get_current_user)):
+                current_user: Optional[dict] = Depends(get_current_user), fastapi_request: Request = None):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 

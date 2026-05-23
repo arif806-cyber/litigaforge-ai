@@ -13,3 +13,5 @@ psycopg2-binary==2.9.12
 python-jose==3.5.0
 passlib==1.7.4
 bcrypt==5.0.0
+slowapi==0.1.9
+limits==3.14.0
