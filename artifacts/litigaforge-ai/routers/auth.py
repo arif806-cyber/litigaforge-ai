@@ -23,6 +23,7 @@ class RegisterRequest(BaseModel):
     name: str
     email: str
     password: str
+    role: str = "client"
 
 
 class LoginRequest(BaseModel):
@@ -48,6 +49,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
             email=req.email,
             name=safe_name,
             password_hash=hash_password(req.password),
+            role=req.role,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

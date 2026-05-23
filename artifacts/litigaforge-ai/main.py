@@ -90,6 +90,7 @@ async def lifespan(app: FastAPI):
                 cases_this_month INTEGER DEFAULT 0,
                 month_reset_date DATE DEFAULT CURRENT_DATE,
                 is_superuser BOOLEAN DEFAULT FALSE,
+                role TEXT DEFAULT 'client',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -137,6 +138,7 @@ async def lifespan(app: FastAPI):
             )
         """)
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT FALSE")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
@@ -197,6 +199,7 @@ async def lifespan(app: FastAPI):
                 description TEXT,
                 client_name TEXT,
                 court_name TEXT,
+                cnr_number TEXT,
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -215,10 +218,11 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # ── Migration: add notes column if missing ──
+        # ── Migrations ──
         try:
             await conn.execute("ALTER TABLE lawyer_documents ADD COLUMN IF NOT EXISTS notes TEXT")
-            logger.info("Migration: notes column added to lawyer_documents")
+            await conn.execute("ALTER TABLE lawyer_cases ADD COLUMN IF NOT EXISTS cnr_number TEXT")
+            logger.info("Migration: notes + cnr columns added")
         except Exception as me:
             logger.warning("Migration check: %s", me)
 

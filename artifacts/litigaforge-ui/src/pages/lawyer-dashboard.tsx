@@ -41,7 +41,7 @@ const COURTS = [
 interface LawyerCase {
   id: number; lawyer_id: number; title: string; case_type: string;
   description: string; client_name: string; court_name: string;
-  status: string; created_at: string; documents?: LawyerDoc[];
+  cnr_number: string; status: string; created_at: string; documents?: LawyerDoc[];
 }
 
 interface LawyerDoc {
@@ -439,6 +439,11 @@ export default function LawyerDashboard() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
                                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
+                                {c.cnr_number && (
+                                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F0F9FF", color: "#0284C7", border: "1px solid #BAE6FD" }}>
+                                    <FileText className="w-2.5 h-2.5" /> CNR: {c.cnr_number}
+                                  </span>
+                                )}
                                 {/* Status changer dropdown */}
                                 <div className="relative inline-block">
                                   <button
@@ -846,6 +851,11 @@ function CaseFolderModal({
                   caseData.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                     : caseData.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200"
                     : "bg-amber-50 text-amber-600 border border-amber-200")}>{caseData.status.toUpperCase()}</span>
+                {caseData.cnr_number && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F0F9FF", color: "#0284C7", border: "1px solid #BAE6FD" }}>
+                    <FileText className="w-2.5 h-2.5" /> CNR: {caseData.cnr_number}
+                  </span>
+                )}
                 <span className="text-[11px] text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{caseData.court_name || "No court"}</span>
               </div>
               <p className="text-[12px] text-gray-500 mt-1">{caseData.description || "No description"}</p>
@@ -988,6 +998,7 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
   const [caseType, setCaseType] = useState(initialCase?.case_type ?? CASE_TYPES[0]);
   const [clientName, setClientName] = useState(initialCase?.client_name ?? "");
   const [courtName, setCourtName] = useState(initialCase?.court_name ?? COURTS[0]);
+  const [cnrNumber, setCnrNumber] = useState(initialCase?.cnr_number ?? "");
   const [description, setDescription] = useState(initialCase?.description ?? "");
   const [status, setStatus] = useState(initialCase?.status ?? "active");
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
@@ -996,7 +1007,7 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onSubmit({ title, case_type: caseType, client_name: clientName, court_name: courtName, description, status });
+    onSubmit({ title, case_type: caseType, client_name: clientName, court_name: courtName, cnr_number: cnrNumber, description, status });
   };
 
   return (
@@ -1038,10 +1049,17 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
           )}
         </div>
       </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-1">Client Name</label>
-        <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g., Ravi Shankar"
-          className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "#E2E8F0" }} />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Client Name</label>
+          <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g., Ravi Shankar"
+            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "#E2E8F0" }} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">CNR Number</label>
+          <input value={cnrNumber} onChange={(e) => setCnrNumber(e.target.value)} placeholder="e.g., AP0101234567890"
+            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "#E2E8F0" }} />
+        </div>
       </div>
       <div>
         <label className="block text-xs font-semibold text-gray-700 mb-1">Description</label>

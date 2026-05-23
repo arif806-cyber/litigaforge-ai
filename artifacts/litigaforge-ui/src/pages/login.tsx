@@ -39,7 +39,6 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      setLocation("/");
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {

@@ -25,6 +25,7 @@ import Matches from "@/pages/matches";
 import LegalChat from "@/pages/legal-chat";
 import AdminPage from "@/pages/admin";
 import LawyerDashboard from "@/pages/lawyer-dashboard";
+import ClientDashboard from "@/pages/client-dashboard";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -75,6 +76,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
+      <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
       <Route>
         <Layout>
           <Switch>

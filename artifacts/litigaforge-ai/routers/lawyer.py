@@ -28,6 +28,7 @@ class CreateCaseRequest(BaseModel):
     description: str = ""
     client_name: str = ""
     court_name: str = ""
+    cnr_number: str = ""
     status: str = "active"
 
 class CreateDocRequest(BaseModel):
@@ -55,15 +56,16 @@ async def create_lawyer_case(
         safe_desc = sanitize_text(req.description, max_length=2000, field_name="description")
         safe_client = sanitize_text(req.client_name, max_length=100, field_name="client_name")
         safe_court = sanitize_text(req.court_name, max_length=100, field_name="court_name")
+        safe_cnr = sanitize_text(req.cnr_number, max_length=20, field_name="cnr_number")
         safe_status = sanitize_text(req.status, max_length=20, field_name="status")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     row = await fetchrow(
-        """INSERT INTO lawyer_cases (lawyer_id, title, case_type, description, client_name, court_name, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id, lawyer_id, title, case_type, description, client_name, court_name, status, created_at""",
-        current_user["id"], safe_title, safe_type, safe_desc, safe_client, safe_court, safe_status,
+        """INSERT INTO lawyer_cases (lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at""",
+        current_user["id"], safe_title, safe_type, safe_desc, safe_client, safe_court, safe_cnr, safe_status,
     )
     row["created_at"] = str(row["created_at"])
     logger.info("lawyer %s created case %s", current_user["id"], row["id"])
@@ -79,13 +81,13 @@ async def list_lawyer_cases(
         raise HTTPException(401, "Login required")
     if status:
         rows = await fetch(
-            """SELECT id, lawyer_id, title, case_type, description, client_name, court_name, status, created_at
+            """SELECT id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at
                FROM lawyer_cases WHERE lawyer_id = $1 AND status = $2 ORDER BY created_at DESC""",
             current_user["id"], status,
         )
     else:
         rows = await fetch(
-            """SELECT id, lawyer_id, title, case_type, description, client_name, court_name, status, created_at
+            """SELECT id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at
                FROM lawyer_cases WHERE lawyer_id = $1 ORDER BY created_at DESC""",
             current_user["id"],
         )
@@ -182,15 +184,16 @@ async def update_lawyer_case(
         safe_desc = sanitize_text(req.description, max_length=2000, field_name="description")
         safe_client = sanitize_text(req.client_name, max_length=100, field_name="client_name")
         safe_court = sanitize_text(req.court_name, max_length=100, field_name="court_name")
+        safe_cnr = sanitize_text(req.cnr_number, max_length=20, field_name="cnr_number")
         safe_status = sanitize_text(req.status, max_length=20, field_name="status")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     row = await fetchrow(
-        """UPDATE lawyer_cases SET title = $1, case_type = $2, description = $3, client_name = $4, court_name = $5, status = $6
-           WHERE id = $7 AND lawyer_id = $8
-           RETURNING id, lawyer_id, title, case_type, description, client_name, court_name, status, created_at""",
-        safe_title, safe_type, safe_desc, safe_client, safe_court, safe_status, case_id, current_user["id"],
+        """UPDATE lawyer_cases SET title = $1, case_type = $2, description = $3, client_name = $4, court_name = $5, cnr_number = $6, status = $7
+           WHERE id = $8 AND lawyer_id = $9
+           RETURNING id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at""",
+        safe_title, safe_type, safe_desc, safe_client, safe_court, safe_cnr, safe_status, case_id, current_user["id"],
     )
     row["created_at"] = str(row["created_at"])
     logger.info("lawyer %s updated case %s", current_user["id"], case_id)

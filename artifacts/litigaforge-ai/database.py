@@ -121,13 +121,13 @@ SUBSCRIPTION_PLANS = [
 
 # ── User CRUD ─────────────────────────────────────────────────────────────────────────────────────
 
-async def create_user(email: str, name: str, password_hash: str) -> dict:
+async def create_user(email: str, name: str, password_hash: str, role: str = "client") -> dict:
     try:
         row = await fetchrow(
-            """INSERT INTO users (email, name, password_hash)
-               VALUES ($1, $2, $3)
-               RETURNING id, email, name, subscription_tier, created_at""",
-            email.lower().strip(), name.strip(), password_hash,
+            """INSERT INTO users (email, name, password_hash, role)
+               VALUES ($1, $2, $3, $4)
+               RETURNING id, email, name, subscription_tier, role, created_at""",
+            email.lower().strip(), name.strip(), password_hash, role,
         )
         row["created_at"] = str(row["created_at"])
         return row
@@ -138,7 +138,7 @@ async def create_user(email: str, name: str, password_hash: str) -> dict:
 async def get_user_by_email(email: str) -> dict | None:
     row = await fetchrow(
         """SELECT id, email, name, password_hash, subscription_tier,
-                  cases_this_month, month_reset_date, is_superuser
+                  cases_this_month, month_reset_date, is_superuser, role
            FROM users WHERE email = $1""",
         email.lower().strip(),
     )
@@ -148,7 +148,7 @@ async def get_user_by_email(email: str) -> dict | None:
 async def get_user_by_id(user_id: int) -> dict | None:
     row = await fetchrow(
         """SELECT id, email, name, subscription_tier,
-                  cases_this_month, month_reset_date, is_superuser, created_at
+                  cases_this_month, month_reset_date, is_superuser, role, created_at
            FROM users WHERE id = $1""",
         user_id,
     )

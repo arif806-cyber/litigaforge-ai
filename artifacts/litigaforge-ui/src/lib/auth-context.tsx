@@ -11,6 +11,7 @@ export interface User {
   cases_this_month: number;
   month_reset_date: string;
   is_superuser: boolean;
+  role: "client" | "lawyer";
   created_at: string;
 }
 
@@ -19,7 +20,7 @@ interface AuthCtx {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -72,12 +73,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
     }
     setUser(data.user);
+    // Redirect based on role
+    const role = data.user?.role ?? "client";
+    window.location.href = role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, role: string = "client") => {
     const data = await authFetch("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, role }),
     });
     if (data.token) {
       localStorage.setItem("lf_token", data.token);

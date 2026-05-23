@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Scale, Loader2, AlertTriangle, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Scale, Loader2, AlertTriangle, Eye, EyeOff, CheckCircle2, User, Briefcase } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { useAuth } from "@/lib/auth-context";
 import { motion } from "framer-motion";
@@ -14,6 +14,7 @@ export default function Register() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [role, setRole] = useState<"client" | "lawyer">("client");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const passwordStrong = password.length >= 8;
@@ -35,8 +36,8 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      await register(name, email, password);
-      setLocation("/");
+      await register(name, email, password, role);
+      setLocation(role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {
@@ -62,6 +63,22 @@ export default function Register() {
 
         <div className="bg-card rounded-2xl border border-border shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole("client")}
+                className={`flex items-center gap-2 justify-center px-4 py-3 rounded-xl border font-medium transition-all ${role === "client" ? "border-[#1a2744] bg-[#1a2744] text-white shadow" : "border-input bg-background text-muted-foreground hover:border-[#1a2744]/30"}`}
+              >
+                <User className="w-4 h-4" /> Client
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("lawyer")}
+                className={`flex items-center gap-2 justify-center px-4 py-3 rounded-xl border font-medium transition-all ${role === "lawyer" ? "border-[#1a2744] bg-[#1a2744] text-white shadow" : "border-input bg-background text-muted-foreground hover:border-[#1a2744]/30"}`}
+              >
+                <Briefcase className="w-4 h-4" /> Lawyer
+              </button>
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Full Name</label>
               <input
