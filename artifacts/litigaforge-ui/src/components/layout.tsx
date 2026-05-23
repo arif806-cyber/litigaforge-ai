@@ -4,7 +4,7 @@ import {
   Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
   Crown, LogOut, User, ChevronRight, MessageSquare, FileSearch,
   BookOpen, Users, Heart, Sun, Moon, Plus, Gavel, MessageSquareText,
-  AlertTriangle, Shield
+  AlertTriangle, Shield, Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ const mainNav = [
   { href: "/my-cases",  label: "My Cases",    icon: FileText },
   { href: "/lawyers",   label: "Find Lawyer", icon: Users },
   { href: "/matches",   label: "Matches",     icon: Gavel },
+  { href: "/lawyer-dashboard", label: "Lawyer Dashboard", icon: Star },
 ];
 
 const serviceNav = [
