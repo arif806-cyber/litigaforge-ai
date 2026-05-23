@@ -1,0 +1,204 @@
+Migrate the database layer from synchronous psycopg2 to async asyncpg.
+This stops FastAPI's event loop from blocking on every DB call, which 
+is critical when handling concurrent AI forge requests.
+
+Do not change any route logic, response shapes, or business logic.
+Only change how database connections and queries are made.
+
+═══════════════════════════════════════
+PART A — DEPENDENCIES
+═══════════════════════════════════════
+
+1. In requirements.txt:
+   - Remove: psycopg2 (or psycopg2-binary)
+   - Add: asyncpg
+
+═══════════════════════════════════════
+PART B — DATABASE CONNECTION (database.py)
+═══════════════════════════════════════
+
+2. Rewrite database.py completely:
+
+   import asyncpg
+   import os
+   from typing import Any
+
+   _pool: asyncpg.Pool | None = None
+
+   async def get_pool() -> asyncpg.Pool:
+       global _pool
+       if _pool is None:
+           _pool = await asyncpg.create_pool(
+               dsn=os.environ["DATABASE_URL"],
+               min_size=2,
+               max_size=10,
+               command_timeout=30,
+               statement_cache_size=0  # required for pgbouncer/Replit
+           )
+       return _pool
+
+   async def close_pool():
+       global _pool
+       if _pool:
+           await _pool.close()
+           _pool = None
+
+   async def fetchrow(query: str, *args) -> dict | None:
+       pool = await get_pool()
+       async with pool.acquire() as conn:
+           row = await conn.fetchrow(query, *args)
+           return dict(row) if row else None
+
+   async def fetch(query: str, *args) -> list[dict]:
+       pool = await get_pool()
+       async with pool.acquire() as conn:
+           rows = await conn.fetch(query, *args)
+           return [dict(r) for r in rows]
+
+   async def execute(query: str, *args) -> str:
+       pool = await get_pool()
+       async with pool.acquire() as conn:
+           return await conn.execute(query, *args)
+
+   async def fetchval(query: str, *args) -> Any:
+       pool = await get_pool()
+       async with pool.acquire() as conn:
+           return await conn.fetchval(query, *args)
+
+   async def executemany(query: str, args_list: list) -> None:
+       pool = await get_pool()
+       async with pool.acquire() as conn:
+           await conn.executemany(query, args_list)
+
+3. In main.py, wire pool lifecycle to FastAPI app events:
+
+   from database import get_pool, close_pool
+
+   @app.on_event("startup")
+   async def startup():
+       await get_pool()   # initialise pool on startup
+       print("✓ Database pool initialised")
+
+   @app.on_event("shutdown")
+   async def shutdown():
+       await close_pool()
+       print("✓ Database pool closed")
+
+═══════════════════════════════════════
+PART C — UPDATE ALL QUERY CALLS
+═══════════════════════════════════════
+
+4. asyncpg uses $1, $2, $3 placeholders — NOT %s like psycopg2.
+   Go through every SQL query in:
+   - main.py
+   - extra_routes.py
+   - auth.py
+   - litigaforge_engine.py
+   - ai_brain.py
+   And replace every %s placeholder with $1, $2, $3... in order.
+
+   Example:
+   BEFORE: cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+   AFTER:  await fetchrow("SELECT * FROM users WHERE email = $1", email)
+
+5. Replace every psycopg2 pattern with the new async helpers:
+
+   BEFORE (psycopg2 pattern):
+   conn = get_db_connection()
+   cursor = conn.cursor()
+   cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+   user = cursor.fetchone()
+   cursor.close()
+   conn.close()
+
+   AFTER (asyncpg pattern):
+   user = await fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+
+   BEFORE (fetch multiple rows):
+   cursor.execute("SELECT * FROM lawyers WHERE verified = %s", (True,))
+   lawyers = cursor.fetchall()
+
+   AFTER:
+   lawyers = await fetch("SELECT * FROM lawyers WHERE verified = $1", True)
+
+   BEFORE (insert and get id):
+   cursor.execute("INSERT INTO users (...) VALUES (%s) RETURNING id", (...))
+   new_id = cursor.fetchone()[0]
+   conn.commit()
+
+   AFTER:
+   new_id = await fetchval(
+       "INSERT INTO users (...) VALUES ($1) RETURNING id", ...
+   )
+
+   BEFORE (update/delete with no return):
+   cursor.execute("UPDATE users SET tier = %s WHERE id = %s", (tier, id))
+   conn.commit()
+
+   AFTER:
+   await execute("UPDATE users SET tier = $1 WHERE id = $2", tier, id)
+
+6. Make ALL route functions that touch the database async:
+   - Add async def to any route function that was def
+   - Add await before every database call
+   - Add await before every AI call (these should already be async)
+
+   Example:
+   BEFORE: def get_user(user_id: int):
+   AFTER:  async def get_user(user_id: int):
+
+═══════════════════════════════════════
+PART D — TRANSACTIONS
+═══════════════════════════════════════
+
+7. For any operation that does multiple writes that must succeed 
+   together (e.g. create user + create subscription record), 
+   use an explicit transaction:
+
+   pool = await get_pool()
+   async with pool.acquire() as conn:
+       async with conn.transaction():
+           user_id = await conn.fetchval(
+               "INSERT INTO users (...) VALUES ($1, $2) RETURNING id",
+               email, name
+           )
+           await conn.execute(
+               "INSERT INTO subscriptions (user_id, tier) VALUES ($1, $2)",
+               user_id, "free"
+           )
+
+   Identify all places where multiple inserts/updates happen 
+   together and wrap them in transactions this way.
+
+═══════════════════════════════════════
+PART E — REMOVE ALL psycopg2 IMPORTS
+═══════════════════════════════════════
+
+8. Search every .py file for:
+   - import psycopg2
+   - from psycopg2 import ...
+   - psycopg2.connect(...)
+   And remove all of them. There should be zero psycopg2 references 
+   left after this migration.
+
+9. Search for any remaining cursor.execute, cursor.fetchone, 
+   cursor.fetchall, conn.commit, conn.close patterns and replace 
+   them all — none should remain.
+
+═══════════════════════════════════════
+PART F — VERIFY
+═══════════════════════════════════════
+
+10. After migration, test these flows end to end:
+    - Register a new user
+    - Login
+    - Run a forge request
+    - Post a case requirement
+    - Search lawyers
+    - Check subscription tier
+
+    If any route throws "coroutine was never awaited" it means 
+    an async call is missing its await — fix each one found.
+
+Do not change any API response shapes, business logic, 
+authentication checks, or frontend code.

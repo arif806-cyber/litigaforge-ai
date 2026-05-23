@@ -1,19 +1,69 @@
 """
-PostgreSQL database layer for LitigaForge AI.
+PostgreSQL database layer for LitigaForge AI — asyncpg.
 Handles users, subscriptions, and case counting.
 """
 import os
-import psycopg2
-import psycopg2.extras
+from typing import Any
+
+import asyncpg
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+_pool: asyncpg.Pool | None = None
 
 
-def get_conn():
-    return psycopg2.connect(DATABASE_URL)
+async def get_pool() -> asyncpg.Pool:
+    global _pool
+    if _pool is None:
+        _pool = await asyncpg.create_pool(
+            dsn=DATABASE_URL,
+            min_size=2,
+            max_size=10,
+            command_timeout=30,
+            statement_cache_size=0,  # required for pgbouncer / Replit
+        )
+    return _pool
 
 
-# ── Tier config ────────────────────────────────────────────────────────────────
+async def close_pool() -> None:
+    global _pool
+    if _pool:
+        await _pool.close()
+        _pool = None
+
+
+async def fetchrow(query: str, *args) -> dict | None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(query, *args)
+        return dict(row) if row else None
+
+
+async def fetch(query: str, *args) -> list[dict]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(query, *args)
+        return [dict(r) for r in rows]
+
+
+async def execute(query: str, *args) -> str:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.execute(query, *args)
+
+
+async def fetchval(query: str, *args) -> Any:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(query, *args)
+
+
+async def executemany(query: str, args_list: list) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(query, args_list)
+
+
+# ── Tier config ────────────────────────────────────────────────────────────────────────────────
 
 TIER_LIMITS = {
     "free": 5,
@@ -69,107 +119,78 @@ SUBSCRIPTION_PLANS = [
 ]
 
 
-# ── User CRUD ──────────────────────────────────────────────────────────────────
+# ── User CRUD ─────────────────────────────────────────────────────────────────────────────────────
 
-def create_user(email: str, name: str, password_hash: str) -> dict:
-    conn = get_conn()
+async def create_user(email: str, name: str, password_hash: str) -> dict:
     try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """INSERT INTO users (email, name, password_hash)
-                   VALUES (%s, %s, %s)
-                   RETURNING id, email, name, subscription_tier, created_at""",
-                (email.lower().strip(), name.strip(), password_hash),
-            )
-            row = dict(cur.fetchone())
-            row["created_at"] = str(row["created_at"])
-            conn.commit()
-            return row
-    except psycopg2.errors.UniqueViolation:
-        conn.rollback()
+        row = await fetchrow(
+            """INSERT INTO users (email, name, password_hash)
+               VALUES ($1, $2, $3)
+               RETURNING id, email, name, subscription_tier, created_at""",
+            email.lower().strip(), name.strip(), password_hash,
+        )
+        row["created_at"] = str(row["created_at"])
+        return row
+    except asyncpg.exceptions.UniqueViolationError:
         raise ValueError("Email already registered")
-    finally:
-        conn.close()
 
 
-def get_user_by_email(email: str) -> dict | None:
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """SELECT id, email, name, password_hash, subscription_tier,
-                          cases_this_month, month_reset_date, is_superuser
-                   FROM users WHERE email=%s""",
-                (email.lower().strip(),),
+async def get_user_by_email(email: str) -> dict | None:
+    row = await fetchrow(
+        """SELECT id, email, name, password_hash, subscription_tier,
+                  cases_this_month, month_reset_date, is_superuser
+           FROM users WHERE email = $1""",
+        email.lower().strip(),
+    )
+    return row
+
+
+async def get_user_by_id(user_id: int) -> dict | None:
+    row = await fetchrow(
+        """SELECT id, email, name, subscription_tier,
+                  cases_this_month, month_reset_date, is_superuser, created_at
+           FROM users WHERE id = $1""",
+        user_id,
+    )
+    if not row:
+        return None
+    row["created_at"] = str(row["created_at"])
+    row["month_reset_date"] = str(row["month_reset_date"])
+    return row
+
+
+async def increment_case_count(user_id: int) -> dict:
+    row = await fetchrow(
+        """UPDATE users
+           SET cases_this_month = CASE
+                 WHEN month_reset_date < date_trunc('month', CURRENT_DATE)
+                 THEN 1
+                 ELSE cases_this_month + 1
+               END,
+               month_reset_date = CASE
+                 WHEN month_reset_date < date_trunc('month', CURRENT_DATE)
+                 THEN CURRENT_DATE
+                 ELSE month_reset_date
+               END
+           WHERE id = $1
+           RETURNING cases_this_month, subscription_tier""",
+        user_id,
+    )
+    return dict(row)
+
+
+async def update_subscription(user_id: int, tier: str) -> dict:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                "UPDATE users SET subscription_tier = $1 WHERE id = $2 RETURNING id, email, name, subscription_tier",
+                tier, user_id,
             )
-            row = cur.fetchone()
-            return dict(row) if row else None
-    finally:
-        conn.close()
-
-
-def get_user_by_id(user_id: int) -> dict | None:
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """SELECT id, email, name, subscription_tier,
-                          cases_this_month, month_reset_date, is_superuser, created_at
-                   FROM users WHERE id=%s""",
-                (user_id,),
+            await conn.execute(
+                "INSERT INTO subscriptions (user_id, tier) VALUES ($1, $2)",
+                user_id, tier,
             )
-            row = cur.fetchone()
-            if not row:
-                return None
             d = dict(row)
-            d["created_at"] = str(d["created_at"])
-            d["month_reset_date"] = str(d["month_reset_date"])
+            d["created_at"] = str(row.get("created_at", ""))
             return d
-    finally:
-        conn.close()
-
-
-def increment_case_count(user_id: int) -> dict:
-    """Increment monthly case count, resetting if it's a new month."""
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """UPDATE users
-                   SET cases_this_month = CASE
-                         WHEN month_reset_date < date_trunc('month', CURRENT_DATE)
-                         THEN 1
-                         ELSE cases_this_month + 1
-                       END,
-                       month_reset_date = CASE
-                         WHEN month_reset_date < date_trunc('month', CURRENT_DATE)
-                         THEN CURRENT_DATE
-                         ELSE month_reset_date
-                       END
-                   WHERE id=%s
-                   RETURNING cases_this_month, subscription_tier""",
-                (user_id,),
-            )
-            row = cur.fetchone()
-            conn.commit()
-            return dict(row)
-    finally:
-        conn.close()
-
-def update_subscription(user_id: int, tier: str) -> dict:
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                "UPDATE users SET subscription_tier=%s WHERE id=%s RETURNING id, email, name, subscription_tier",
-                (tier, user_id),
-            )
-            row = dict(cur.fetchone())
-            cur.execute(
-                "INSERT INTO subscriptions (user_id, tier) VALUES (%s, %s)",
-                (user_id, tier),
-            )
-            conn.commit()
-            return row
-    finally:
-        conn.close()

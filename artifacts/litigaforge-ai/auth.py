@@ -78,23 +78,23 @@ def _token_dependency(request: Request) -> str | None:
     return _extract_token(request)
 
 
-def get_current_user(token: str | None = Depends(_token_dependency)) -> dict | None:
+async def get_current_user(token: str | None = Depends(_token_dependency)) -> dict | None:
     """Optional auth — returns None if no token provided."""
     if not token:
         return None
     user_id = decode_token(token)
-    user = get_user_by_id(user_id)
+    user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
 
-def require_user(token: str | None = Depends(_token_dependency)) -> dict:
+async def require_user(token: str | None = Depends(_token_dependency)) -> dict:
     """Strict auth — raises 401 if no valid token."""
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
     user_id = decode_token(token)
-    user = get_user_by_id(user_id)
+    user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user

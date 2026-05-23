@@ -12,8 +12,6 @@ from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends,
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
-import psycopg2
-import psycopg2.extras
 
 load_dotenv()
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
@@ -24,8 +22,9 @@ from litigaforge_engine import forge_case, memory
 from alerts.whatsapp import send_whatsapp_alert, send_hearing_reminder
 from watch_mode import WatchModeManager
 from database import (
-    create_user, get_user_by_email, get_user_by_id, get_conn,
+    create_user, get_user_by_email, get_user_by_id, get_pool, close_pool,
     increment_case_count, update_subscription, SUBSCRIPTION_PLANS, TIER_LIMITS,
+    fetch, fetchrow, execute, fetchval,
 )
 from auth import hash_password, verify_password, create_token, get_current_user, require_user, set_auth_cookie, clear_auth_cookie
 from payments import create_order, verify_payment, PLAN_PRICES
@@ -37,12 +36,11 @@ BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-initialize database tables on first startup
+    pool = await get_pool()
+    conn = await pool.acquire()
     try:
-        from database import get_conn
-        conn = get_conn()
-        cur = conn.cursor()
-        cur.execute("""
+        # Auto-initialize database tables on first startup
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 email TEXT UNIQUE NOT NULL,
@@ -54,7 +52,7 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        cur.execute("""
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS subscriptions (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
@@ -65,7 +63,7 @@ async def lifespan(app: FastAPI):
                 payment_ref TEXT
             )
         """)
-        cur.execute("""
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS legal_questions (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
@@ -76,7 +74,7 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        cur.execute("""
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS lawyers (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -97,16 +95,11 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # Migrate existing lawyers table with new columns
-        try:
-            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
-            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
-            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
-            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending'")
-            conn.commit()
-        except Exception:
-            conn.rollback()
-        cur.execute("""
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending'")
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS case_requirements (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -120,7 +113,7 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        cur.execute("""
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS matches (
                 id SERIAL PRIMARY KEY,
                 case_requirement_id INTEGER REFERENCES case_requirements(id) ON DELETE CASCADE,
@@ -135,7 +128,7 @@ async def lifespan(app: FastAPI):
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        cur.execute("""
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_threads (
                 id SERIAL PRIMARY KEY,
                 match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
@@ -143,7 +136,7 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        cur.execute("""
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
                 id SERIAL PRIMARY KEY,
                 thread_id INTEGER REFERENCES chat_threads(id) ON DELETE CASCADE,
@@ -153,18 +146,11 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        conn.commit()
-        cur.close()
-        conn.close()
         logger.info("Database tables initialized")
     except Exception as e:
         logger.warning("DB init check: %s", e)
-        try:
-            conn.rollback()
-            cur.close()
-            conn.close()
-        except Exception:
-            pass
+    finally:
+        await pool.release(conn)
 
     assert os.environ.get("SESSION_SECRET"), \
         "SESSION_SECRET is required — set it in Replit Secrets"
@@ -176,6 +162,7 @@ async def lifespan(app: FastAPI):
         watcher.start()
     yield
     watcher.stop()
+    await close_pool()
 
 
 app = FastAPI(
@@ -287,7 +274,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     if len(req.name.strip()) < 2:
         raise HTTPException(status_code=400, detail="Name is too short")
     try:
-        user = create_user(
+        user = await create_user(
             email=req.email,
             name=req.name,
             password_hash=hash_password(req.password),
@@ -302,7 +289,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 @router.post("/auth/login")
 @limiter.limit("5/minute")
 async def login(req: LoginRequest, request: Request, response: Response):
-    user = get_user_by_email(req.email)
+    user = await get_user_by_email(req.email)
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     # Remove password hash from response
@@ -366,21 +353,18 @@ async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(r
     if not ok:
         raise HTTPException(status_code=400, detail="Payment verification failed")
     # Update user tier and record subscription
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE users SET subscription_tier=%s WHERE id=%s",
-                (req.tier, current_user["id"]),
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "UPDATE users SET subscription_tier=$1 WHERE id=$2",
+                req.tier, current_user["id"],
             )
-            cur.execute(
+            await conn.execute(
                 """INSERT INTO subscriptions (user_id, tier, started_at, status, payment_ref)
-                   VALUES (%s, %s, NOW(), 'active', %s)""",
-                (current_user["id"], req.tier, req.razorpay_payment_id),
+                   VALUES ($1, $2, NOW(), 'active', $3)""",
+                current_user["id"], req.tier, req.razorpay_payment_id,
             )
-            conn.commit()
-    finally:
-        conn.close()
     return {"success": True, "tier": req.tier, "payment_id": req.razorpay_payment_id}
 
 
@@ -419,7 +403,7 @@ async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
     # Increment counter for authenticated users
     if current_user:
         try:
-            increment_case_count(current_user["id"])
+            await increment_case_count(current_user["id"])
         except Exception:
             logger.warning("Failed to increment case count for user %s", current_user["id"])
 
@@ -612,37 +596,25 @@ from auth import get_superuser
 
 @router.get("/admin/lawyers/pending")
 async def admin_pending_lawyers(current_user: dict = Depends(get_superuser)):
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """SELECT id, name, email, phone, bar_number, district, practice_areas,
-                          experience_years, created_at
-                   FROM lawyers WHERE verified = FALSE
-                   ORDER BY created_at DESC"""
-            )
-            rows = [dict(r) for r in cur.fetchall()]
-            for r in rows:
-                r["created_at"] = str(r["created_at"])
-            return {"total": len(rows), "lawyers": rows}
-    finally:
-        conn.close()
+    rows = await fetch(
+        """SELECT id, name, email, phone, bar_number, district, practice_areas,
+                  experience_years, created_at
+           FROM lawyers WHERE verified = FALSE
+           ORDER BY created_at DESC""",
+    )
+    for r in rows:
+        r["created_at"] = str(r["created_at"])
+    return {"total": len(rows), "lawyers": rows}
 
 
 @router.post("/admin/lawyers/{lawyer_id}/approve")
 async def admin_approve_lawyer(lawyer_id: int, current_user: dict = Depends(get_superuser)):
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE lawyers SET verified = TRUE, verification_status = 'verified' WHERE id = %s RETURNING id",
-                (lawyer_id,),
-            )
-            if not cur.fetchone():
-                raise HTTPException(status_code=404, detail="Lawyer not found")
-            conn.commit()
-    finally:
-        conn.close()
+    row = await fetchrow(
+        "UPDATE lawyers SET verified = TRUE, verification_status = 'verified' WHERE id = $1 RETURNING id",
+        lawyer_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Lawyer not found")
     return {"success": True, "lawyer_id": lawyer_id, "status": "verified"}
 
 
@@ -652,18 +624,12 @@ class RejectRequest(BaseModel):
 
 @router.post("/admin/lawyers/{lawyer_id}/reject")
 async def admin_reject_lawyer(lawyer_id: int, req: RejectRequest, current_user: dict = Depends(get_superuser)):
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE lawyers SET verification_status = 'rejected' WHERE id = %s RETURNING id",
-                (lawyer_id,),
-            )
-            if not cur.fetchone():
-                raise HTTPException(status_code=404, detail="Lawyer not found")
-            conn.commit()
-    finally:
-        conn.close()
+    row = await fetchrow(
+        "UPDATE lawyers SET verification_status = 'rejected' WHERE id = $1 RETURNING id",
+        lawyer_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Lawyer not found")
     return {"success": True, "lawyer_id": lawyer_id, "status": "rejected", "reason": req.reason}
 
 
@@ -673,33 +639,21 @@ async def admin_list_users(
     limit: int = 50,
     current_user: dict = Depends(get_superuser),
 ):
-    conn = get_conn()
-    try:
-        offset = max((page - 1) * limit, 0)
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """SELECT id, name, email, subscription_tier,
-                          cases_this_month, is_superuser, created_at
-                   FROM users ORDER BY created_at DESC LIMIT %s OFFSET %s""",
-                (limit, offset),
-            )
-            rows = [dict(r) for r in cur.fetchall()]
-            for r in rows:
-                r["created_at"] = str(r["created_at"])
-            return {"page": page, "limit": limit, "users": rows}
-    finally:
-        conn.close()
+    offset = max((page - 1) * limit, 0)
+    rows = await fetch(
+        """SELECT id, name, email, subscription_tier,
+                  cases_this_month, is_superuser, created_at
+           FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2""",
+        limit, offset,
+    )
+    for r in rows:
+        r["created_at"] = str(r["created_at"])
+    return {"page": page, "limit": limit, "users": rows}
 
 
 @router.post("/admin/users/{user_id}/reset-usage")
 async def admin_reset_usage(user_id: int, current_user: dict = Depends(get_superuser)):
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("UPDATE users SET cases_this_month = 0 WHERE id = %s", (user_id,))
-            conn.commit()
-    finally:
-        conn.close()
+    await execute("UPDATE users SET cases_this_month = 0 WHERE id = $1", user_id)
     return {"success": True}
 
 
