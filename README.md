@@ -47,6 +47,7 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 - **WhatsApp Alerts** — hearing reminders and forge results via Twilio WhatsApp
 - **Sandbox Mode** — Mee Seva TG and Transport TS make live calls to `sandbox.api-setu.in` using the public demo key
 - **Light / White UI** — clean white backgrounds, amber/gold accent, particle canvas, Framer Motion animations, fully mobile-responsive
+- **AI Safety Guardrails** — prompt injection detection (15 attack patterns), input sanitization on every route, Pydantic v2 field validators, unoverridable legal system prompt wrapper, automatic "not legal advice" disclaimer on every AI response, AI output validation against jailbreak red flags
 - **Platform Disclaimer** — mandatory first-visit acknowledgment and persistent footer: "This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
 
 ---
@@ -58,6 +59,7 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 | Frontend | React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter |
 | Backend | Python 3.12, FastAPI, Uvicorn, asyncpg, LangGraph, LangChain, slowapi (rate limiting), razorpay |
 | AI | Gemini 2.5 Flash + Claude Sonnet 4-6 + GPT-5 — all free via Replit AI Integrations |
+| AI Safety | `sanitizer.py` (injection detection), `ai_safety.py` (system prompt wrapper + disclaimer + output validation), `models.py` (Pydantic v2 field validators) |
 | Database | PostgreSQL (Replit managed) — users, subscriptions, case memory |
 | Auth | bcrypt password hashing, JWT (python-jose), 30-day tokens, httpOnly cookies + Bearer fallback |
 | Mobile | Expo (React Native), Expo Router, NativeWind |
@@ -110,13 +112,17 @@ litigaforge-ai/
 │   │           └── utils.ts
 │   │
 │   └── litigaforge-ai/              # Python FastAPI backend
-│       ├── main.py                  # FastAPI app: lifespan, CORS, rate limits, mounts 9 routers
+│       ├── main.py                  # FastAPI app: lifespan, CORS, rate limits, request logging middleware, mounts 9 routers
 │       ├── database.py              # PostgreSQL async pool (asyncpg): fetch, fetchrow, execute
 │       ├── auth.py                  # bcrypt hashing, JWT create/decode, cookie-first auth + Bearer fallback
 │       ├── payments.py              # Razorpay integration: create_order, verify_payment
 │       ├── rate_limit.py            # slowapi limiter + custom 429 exception handler
 │       ├── litigaforge_engine.py    # Forge orchestration
-│       ├── ai_brain.py              # Multi-AI cascade (Claude → Gemini → GPT-5) + matching engine
+│       ├── ai_brain.py              # Multi-AI cascade (Claude → Gemini → GPT-5) + safety wrapper + matching engine
+│       ├── sanitizer.py             # Prompt injection detection, text sanitization, identifier validation
+│       ├── ai_safety.py             # System prompt wrapper, disclaimer injection, AI output validation
+│       ├── models.py                # Pydantic v2 request validators with field-level injection checks
+│       ├── logger.py                # Structured JSON logging (production) + readable format (dev)
 │       ├── requirements.txt
 │       ├── routers/                 # 9 modular FastAPI routers
 │       │   ├── auth.py              # Register, login, logout, me
@@ -531,6 +537,19 @@ Browser / Mobile App
              (users, subs, cases, lawyers,
                   matches, chat_messages)
 ```
+
+**AI Safety Layer** — every AI call is wrapped before and after:
+```
+User Input → sanitizer.py (injection detection + text cleaning)
+            → ai_safety.py (unoverridable system prompt wrapper)
+            → AI Provider (Claude / Gemini / GPT-5)
+            → ai_safety.py (output validation + disclaimer injection)
+            → Router response
+```
+- `sanitizer.py` — detects 15 prompt injection patterns, strips control characters, enforces max lengths, validates identifiers (PAN, GSTIN, bar number)
+- `ai_safety.py` — injects legal system prompt that cannot be overridden, appends "not legal advice" disclaimer to every response, validates output for jailbreak red flags
+- `models.py` — Pydantic v2 `field_validator` injection checks on all request models (Forge, Ask, Document, Chat, Judgment, Lawyer)
+- Applied across all 6 routers: `forge.py`, `community.py`, `chat.py`, `matching.py`, `auth.py`, `admin.py`
 
 ---
 
