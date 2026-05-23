@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,8 @@ function RiskScoreBadge({ score }: { score: number }) {
     : score >= 4 ? "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
     : "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800";
   const label = score >= 7 ? "High Risk" : score >= 4 ? "Medium Risk" : "Low Risk";
-  return (
+  return (<>
+      <SEOHelmet title="Document Analyzer" description="AI-powered contract and document risk analysis." canonical="/review" />
     <div className={cn("inline-flex items-center gap-4 px-5 py-3 rounded-2xl border", color)}>
       <span className="text-3xl font-bold tracking-tighter">{score}<span className="text-lg opacity-50">/10</span></span>
       <div className="text-left border-l border-current/20 pl-4">
@@ -47,7 +49,7 @@ function RiskScoreBadge({ score }: { score: number }) {
         <div className="text-sm font-semibold">{label}</div>
       </div>
     </div>
-  );
+  </>);
 }
 
 export default function Review() {

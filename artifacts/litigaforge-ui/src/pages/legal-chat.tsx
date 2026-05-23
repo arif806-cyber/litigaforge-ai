@@ -5,6 +5,7 @@ import {
   Send, Loader2, Bot, User, FileText, MessageSquare,
   Scale, BookOpen, Gavel, ArrowRight, Plus
 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -74,7 +75,8 @@ export default function LegalChat() {
   };
 
   if (!user) {
-    return (
+    return (<>
+      <SEOHelmet title="AI Legal Chat" description="Interactive legal drafting assistant with AI templates." canonical="/legal-chat" />
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
           <Bot className="w-12 h-12 text-muted-foreground mx-auto" />
@@ -82,7 +84,7 @@ export default function LegalChat() {
           <Button onClick={() => window.location.href = "/login"}>Sign In</Button>
         </div>
       </div>
-    );
+    </>);
   }
 
   return (

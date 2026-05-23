@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth, TIER_LABELS } from "@/lib/auth-context";
 import { CheckCircle2, Zap, Crown, Star, Loader2, AlertTriangle } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,8 @@ export default function Subscription() {
   const limit = currentTier === "advocate_pro" ? -1 : (currentTier === "professional" ? 50 : 5);
   const used = user?.cases_this_month ?? 0;
 
-  return (
+  return (<>
+      <SEOHelmet title="Subscription Plans" description="Upgrade to Professional or Advocate Pro plans." canonical="/subscription" />
     <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
       <div className="mb-12 text-center max-w-2xl mx-auto">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight flex items-center justify-center gap-3 mb-4">
@@ -325,5 +327,5 @@ export default function Subscription() {
         )}
       </div>
     </div>
-  );
+  </>);
 }

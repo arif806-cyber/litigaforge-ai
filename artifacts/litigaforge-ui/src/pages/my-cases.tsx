@@ -5,6 +5,7 @@ import {
   FileText, MapPin, Clock, EyeOff, ArrowRight, Plus,
   Search, Filter, Loader2, AlertTriangle
 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -26,7 +27,8 @@ export default function MyCases() {
   });
 
   if (!user) {
-    return (
+    return (<>
+      <SEOHelmet title="My Cases" description="Track your posted cases, match proposals, and lawyer responses." canonical="/my-cases" />
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto" />
@@ -34,7 +36,7 @@ export default function MyCases() {
           <Button onClick={() => window.location.href = "/login"}>Sign In</Button>
         </div>
       </div>
-    );
+    </>);
   }
 
   const cases = data?.cases ?? [];

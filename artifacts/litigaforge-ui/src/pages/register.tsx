@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Scale, Loader2, AlertTriangle, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { useAuth } from "@/lib/auth-context";
 import { motion } from "framer-motion";
 
@@ -43,7 +44,8 @@ export default function Register() {
     }
   };
 
-  return (
+  return (<>
+      <SEOHelmet title="Create Account" description="Create your LitigaForge AI account and start using legal tools." canonical="/register" />
     <div className="min-h-screen bg-muted/30 flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -143,5 +145,5 @@ export default function Register() {
         </div>
       </motion.div>
     </div>
-  );
+  </>);
 }

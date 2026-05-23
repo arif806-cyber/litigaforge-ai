@@ -6,6 +6,7 @@ import {
   UserCheck, MapPin, Star, Briefcase, Clock, Check, X,
   Loader2, MessageSquare, ArrowLeft, Sparkles, Zap, AlertTriangle
 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -16,7 +17,8 @@ function MatchCard({ match, onAccept, onDecline, isClient }: {
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  return (
+  return (<>
+      <SEOHelmet title="AI Matching" description="View AI-scored lawyer matches with explanations for your cases." canonical="/matches" />
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -94,7 +96,7 @@ function MatchCard({ match, onAccept, onDecline, isClient }: {
         </div>
       </div>
     </motion.div>
-  );
+  </>);
 }
 
 export default function Matches() {

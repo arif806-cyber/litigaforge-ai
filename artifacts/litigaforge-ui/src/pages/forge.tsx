@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScalesHero } from "@/components/graphics/ScalesHero";
@@ -40,7 +41,8 @@ const EXAMPLE_PROMPTS = [
 ];
 
 function PipelineLoading() {
-  return (
+  return (<>
+      <SEOHelmet title="The Forge" description="Transform case facts into legal entities, government API chains, and AI-generated strategy." canonical="/" />
     <div className="flex flex-col items-center justify-center py-32 space-y-6">
       <div className="relative w-16 h-16 flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-primary relative z-10" />
@@ -49,7 +51,7 @@ function PipelineLoading() {
       <p className="text-lg font-medium text-foreground tracking-tight">Synthesizing Strategy...</p>
       <p className="text-sm text-muted-foreground">Extracting entities and running API chains</p>
     </div>
-  );
+  </>);
 }
 
 export default function Forge() {

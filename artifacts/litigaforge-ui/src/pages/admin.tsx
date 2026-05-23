@@ -8,6 +8,7 @@ import {
   Shield, CheckCircle, XCircle, RotateCcw, Users, Briefcase,
   Search, Loader2, AlertTriangle, Clock
 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -42,11 +43,12 @@ export default function AdminPage() {
   const queryClient = useQueryClient();
 
   if (loading) {
-    return (
+    return (<>
+      <SEOHelmet title="Admin Dashboard" description="Manage lawyer verifications, users, and platform administration." canonical="/admin" />
       <div className="h-full flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
-    );
+    </>);
   }
 
   if (!user?.is_superuser) {

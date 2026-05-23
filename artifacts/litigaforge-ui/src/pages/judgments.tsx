@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,8 @@ export default function Judgments() {
 
   const selectedCourt = COURTS.find(c => c.id === court) ?? COURTS[0];
 
-  return (
+  return (<>
+      <SEOHelmet title="Judgment Finder" description="Search case law precedents with IndianKanoon links." canonical="/judgments" />
     <div className="max-w-5xl mx-auto px-4 py-8 md:px-8 md:py-12">
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
@@ -253,5 +255,5 @@ export default function Judgments() {
         )}
       </div>
     </div>
-  );
+  </>);
 }

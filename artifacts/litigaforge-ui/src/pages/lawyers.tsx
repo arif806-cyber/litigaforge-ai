@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 
 const DISTRICTS = [

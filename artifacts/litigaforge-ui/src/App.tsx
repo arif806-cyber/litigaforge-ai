@@ -27,6 +27,9 @@ import AdminPage from "@/pages/admin";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SkipLink } from "@/components/SkipLink";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import { SEOHelmet } from "@/components/SEOHelmet";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -150,6 +153,9 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <SEOHelmet />
+              <SkipLink />
+              <KeyboardShortcuts />
               <FirstVisitDisclaimer />
               <Router />
             </WouterRouter>

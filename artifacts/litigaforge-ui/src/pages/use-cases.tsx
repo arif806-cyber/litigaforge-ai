@@ -5,6 +5,7 @@ import {
   Home, Car, Receipt, Shield, FileCheck, Eye, Landmark,
   ArrowRight, Zap, ChevronRight, Lightbulb
 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 
 interface UseCase {
   id: string;
@@ -158,7 +159,8 @@ export default function UseCases() {
     setLocation("/");
   }
 
-  return (
+  return (<>
+      <SEOHelmet title="Use Cases" description="Interactive scenario cards for real-world legal situations." canonical="/use-cases" />
     <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
@@ -247,5 +249,5 @@ export default function UseCases() {
         })}
       </motion.div>
     </div>
-  );
+  </>);
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Scale, Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 
 export default function Login() {

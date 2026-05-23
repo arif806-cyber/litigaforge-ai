@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Heart, Phone, Globe, MapPin, ChevronRight, CheckCircle2, XCircle, ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -91,7 +92,8 @@ export default function LegalAid() {
 
   const dlsa = contacts?.districts.find(d => d.district === district);
 
-  return (
+  return (<>
+      <SEOHelmet title="Free Legal Aid" description="NALSA eligibility wizard and DLSA helplines." canonical="/legal-aid" />
     <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12">
       <div className="mb-10 text-center max-w-2xl mx-auto">
          <div className="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-6">
@@ -301,5 +303,5 @@ export default function LegalAid() {
         )}
       </div>
     </div>
-  );
+  </>);
 }

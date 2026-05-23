@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ArrowLeft, AlertTriangle, FileText, Database, Scale, LayoutList } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -40,14 +41,15 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
   });
 
   if (isLoading) {
-    return (
+    return (<>
+      <SEOHelmet title="Case Details" description="View full chain results, strategy, and entities for a specific case." canonical="/cases" />
       <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12 space-y-6" data-testid="case-loading">
         <Skeleton className="h-10 w-32 bg-card rounded-lg" />
         <Skeleton className="h-12 w-64 bg-card rounded-lg" />
         <Skeleton className="h-32 w-full bg-card rounded-xl" />
         <Skeleton className="h-64 w-full bg-card rounded-xl" />
       </div>
-    );
+    </>);
   }
 
   if (isError) {

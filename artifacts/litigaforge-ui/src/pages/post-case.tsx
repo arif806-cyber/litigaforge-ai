@@ -5,6 +5,7 @@ import {
   Send, FileText, MapPin, Coins, EyeOff, ChevronDown,
   Briefcase, Scale, Home, Users, Heart, Truck, Landmark, Shield
 } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
@@ -80,7 +81,8 @@ export default function PostCase() {
   };
 
   if (!user) {
-    return (
+    return (<>
+      <SEOHelmet title="Post a Case" description="Post your legal case requirements and get AI-matched with lawyers." canonical="/post-case" />
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto" />
@@ -89,7 +91,7 @@ export default function PostCase() {
           <Button onClick={() => setLocation("/login")}>Sign In</Button>
         </div>
       </div>
-    );
+    </>);
   }
 
   return (

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Link2, Zap, Database } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ChainDiagram } from "@/components/graphics/ChainDiagram";
@@ -42,7 +43,8 @@ export default function Chains() {
   const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
   const item = { hidden: { opacity: 0, scale: 0.95, y: 10 }, show: { opacity: 1, scale: 1, y: 0 } };
 
-  return (
+  return (<>
+      <SEOHelmet title="API Chains" description="Explore 16 government API integrations for legal intelligence." canonical="/chains" />
     <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
@@ -166,5 +168,5 @@ export default function Chains() {
         )}
       </div>
     </div>
-  );
+  </>);
 }

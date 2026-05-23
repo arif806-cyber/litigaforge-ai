@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,8 @@ function QACard({ item }: { item: QAItem }) {
   const [expanded, setExpanded] = useState(false);
   const color = CAT_COLORS[item.category] ?? CAT_COLORS.general;
 
-  return (
+  return (<>
+      <SEOHelmet title="Legal Q&A" description="Ask any legal question and get instant AI-powered answers." canonical="/ask" />
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -92,7 +94,7 @@ function QACard({ item }: { item: QAItem }) {
         )}
       </AnimatePresence>
     </motion.div>
-  );
+  </>);
 }
 
 export default function Ask() {

@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, ChevronRight, AlertTriangle, ArrowRight } from "lucide-react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 import { EmptyStateArt } from "@/components/graphics/EmptyStateArt";
 
@@ -30,7 +31,8 @@ export default function Cases() {
     staleTime: 10000,
   });
 
-  return (
+  return (<>
+      <SEOHelmet title="Case History" description="Browse all previously forged legal cases with entity extraction and chain results." canonical="/cases" />
     <div className="max-w-5xl mx-auto px-4 py-8 md:px-8 md:py-12">
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
@@ -124,5 +126,5 @@ export default function Cases() {
         )}
       </div>
     </div>
-  );
+  </>);
 }
