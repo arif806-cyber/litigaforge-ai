@@ -52,9 +52,26 @@ async def subscription_create_order(req: CreateOrderRequest, current_user: dict 
 async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(require_user)):
     if req.tier not in PLAN_PRICES:
         raise HTTPException(status_code=400, detail="Invalid tier")
+
+    # Fetch Razorpay order and verify amount matches expected tier price
+    expected_amount = PLAN_PRICES[req.tier]
+    try:
+        order = __import__("payments").client.order.fetch(req.razorpay_order_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to fetch order from payment provider")
+    actual_amount = order.get("amount")
+    if actual_amount != expected_amount:
+        logger.warning(
+            "Tier/amount mismatch: user=%s tier=%s expected=%s actual=%s",
+            current_user["id"], req.tier, expected_amount, actual_amount,
+        )
+        raise HTTPException(status_code=400, detail="Payment amount does not match selected tier")
+
+    # Verify signature
     ok = verify_payment(req.razorpay_order_id, req.razorpay_payment_id, req.razorpay_signature)
     if not ok:
         raise HTTPException(status_code=400, detail="Payment verification failed")
+
     # Update user tier and record subscription
     pool = await get_pool()
     async with pool.acquire() as conn:
