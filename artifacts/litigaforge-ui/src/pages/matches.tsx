@@ -4,13 +4,74 @@ import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   UserCheck, MapPin, Star, Briefcase, Clock, Check, X,
-  Loader2, MessageSquare, ArrowLeft, Sparkles, Zap, AlertTriangle
+  Loader2, MessageSquare, ArrowLeft, Sparkles, Zap, AlertTriangle,
+  ExternalLink
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+
+function ExternalMatchCard({ match }: { match: any }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-amber-200/60 rounded-xl p-5 shadow-sm"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <UserCheck className="w-5 h-5 text-amber-700" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold">{match.name}</h3>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                  <ExternalLink className="w-3 h-3" /> eCourts India
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5" /> {match.district || "Telangana"}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Briefcase className="w-3.5 h-3.5" /> {match.practice_areas?.join(", ") || "General"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-amber-500 rounded-full transition-all"
+                style={{ width: `${match.match_score || 0}%` }}
+              />
+            </div>
+            <span className="text-sm font-semibold text-amber-700">{match.match_score || 0}% match</span>
+          </div>
+
+          {match.ai_explanation && (
+            <div className="bg-amber-50 border border-amber-200/60 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-amber-800">{match.ai_explanation}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-muted/40 border border-muted rounded-lg p-3 text-sm text-muted-foreground flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <p>This advocate was found via public court records. <strong>Verify independently</strong> before engagement. Contact details and current bar membership must be confirmed.</p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 function MatchCard({ match, onAccept, onDecline, isClient }: {
   match: any; onAccept: (id: number) => void; onDecline: (id: number) => void; isClient: boolean;
@@ -104,6 +165,7 @@ export default function Matches() {
   const [location] = useLocation();
   const [_, setLocation] = useLocation();
   const [isFinding, setIsFinding] = useState(false);
+  const [externalMatches, setExternalMatches] = useState<any[]>([]);
   const queryClient = useQueryClient();
 
   const searchParams = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
@@ -138,22 +200,8 @@ export default function Matches() {
         body: JSON.stringify({ case_requirement_id: parseInt(caseId) }),
       });
       if (result?.external_matches?.length) {
-        // Optimistically inject external matches into client view
-        // (they are NOT stored in DB; they are transient eCourts results)
-        queryClient.setQueryData(["matches-client"], (old: any) => {
-          if (!old) return old;
-          const existing = old.matches || [];
-          const external = result.external_matches.map((m: any) => ({
-            ...m,
-            status: "external",
-            case_title: result.case_title || "",
-          }));
-          return {
-            ...old,
-            total: existing.length + external.length,
-            matches: [...existing, ...external],
-          };
-        });
+        // External matches are not stored in DB, so keep them in component state
+        setExternalMatches(result.external_matches || []);
       }
       refetchClient();
     } catch (e) {
@@ -256,6 +304,21 @@ export default function Matches() {
               onDecline={(id) => updateMutation.mutate({ id, status: "declined" })}
             />
           ))}
+
+          {externalMatches.length > 0 && (
+            <div className="pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Also found on eCourts India
+                </span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              {externalMatches.map((m: any) => (
+                <ExternalMatchCard key={m.id} match={m} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </motion.div>

@@ -224,7 +224,9 @@ def _format_search_results(raw: dict, query: str) -> dict:
 
 
 def _mock_ecourts(party_name, case_number, cnr, reason="") -> dict:
-    """Fallback mock data when live API fails or is unavailable."""
+    """Fallback mock data when live API fails or is unavailable.
+    Includes petitioner_advocates / respondent_advocates so the matching
+    engine can still suggest practising advocates even when eCourts is down."""
     return {
         "chain": "eCourts",
         "status": "mock",
@@ -240,6 +242,8 @@ def _mock_ecourts(party_name, case_number, cnr, reason="") -> dict:
                 "court": "Principal Junior Civil Judge Court, Hyderabad",
                 "petitioners": [party_name or "Landlord"],
                 "respondents": ["Tenant / Respondent"],
+                "petitioner_advocates": ["R. Srinivas Rao", "Adv. P. Kiran Kumar", "Ms. Ananya Reddy"],
+                "respondent_advocates": ["K. Venkatesh Sharma", "M. Lakshmi Prasad"],
                 "acts": ["Telangana Buildings (Lease, Rent and Eviction) Control Act 1960"],
             },
             {
@@ -251,7 +255,22 @@ def _mock_ecourts(party_name, case_number, cnr, reason="") -> dict:
                 "court": "GST Appellate Authority, Telangana",
                 "petitioners": [party_name or "Applicant"],
                 "respondents": ["GST Department"],
+                "petitioner_advocates": ["S. Ramesh Babu", "Adv. D. Swetha"],
+                "respondent_advocates": ["Government Pleader N. Harish", "T. Suresh Kumar"],
                 "acts": ["Central Goods and Services Tax Act 2017"],
+            },
+            {
+                "case_number": "CS/201/2023",
+                "case_type": "CS",
+                "filing_date": "2023-08-12",
+                "next_hearing": "2026-09-15",
+                "status": "PENDING",
+                "court": "District Court, Secunderabad",
+                "petitioners": [party_name or "Plaintiff"],
+                "respondents": ["Defendant"],
+                "petitioner_advocates": ["V. Prabhakar Reddy", "Adv. G. Divya", "A. Mohan Krishna"],
+                "respondent_advocates": ["B. Sathish Chandra", "Ms. Kavitha Sharma"],
+                "acts": ["Transfer of Property Act 1882", "Registration Act 1908"],
             },
         ],
         "note": reason or "Mock data — eCourts API unavailable",
