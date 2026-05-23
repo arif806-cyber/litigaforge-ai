@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -104,6 +104,7 @@ export default function Matches() {
   const [location] = useLocation();
   const [_, setLocation] = useLocation();
   const [isFinding, setIsFinding] = useState(false);
+  const queryClient = useQueryClient();
 
   const searchParams = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
   const caseId = searchParams.get("case");
@@ -132,10 +133,28 @@ export default function Matches() {
     if (!caseId) return;
     setIsFinding(true);
     try {
-      await apiFetch("/match/find-lawyers", {
+      const result = await apiFetch("/match/find-lawyers", {
         method: "POST",
         body: JSON.stringify({ case_requirement_id: parseInt(caseId) }),
       });
+      if (result?.external_matches?.length) {
+        // Optimistically inject external matches into client view
+        // (they are NOT stored in DB; they are transient eCourts results)
+        queryClient.setQueryData(["matches-client"], (old: any) => {
+          if (!old) return old;
+          const existing = old.matches || [];
+          const external = result.external_matches.map((m: any) => ({
+            ...m,
+            status: "external",
+            case_title: result.case_title || "",
+          }));
+          return {
+            ...old,
+            total: existing.length + external.length,
+            matches: [...existing, ...external],
+          };
+        });
+      }
       refetchClient();
     } catch (e) {
       console.error(e);
