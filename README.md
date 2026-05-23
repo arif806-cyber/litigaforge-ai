@@ -56,7 +56,7 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 | Layer | Technology |
 |---|---|
 | Frontend | React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter |
-| Backend | Python 3.12, FastAPI, Uvicorn, LangGraph, LangChain, slowapi (rate limiting), razorpay |
+| Backend | Python 3.12, FastAPI, Uvicorn, asyncpg, LangGraph, LangChain, slowapi (rate limiting), razorpay |
 | AI | Gemini 2.5 Flash + Claude Sonnet 4-6 + GPT-5 — all free via Replit AI Integrations |
 | Database | PostgreSQL (Replit managed) — users, subscriptions, case memory |
 | Auth | bcrypt password hashing, JWT (python-jose), 30-day tokens, httpOnly cookies + Bearer fallback |
@@ -94,26 +94,40 @@ litigaforge-ai/
 │   │       │   ├── review.tsx         # Document Analyzer — risk scoring, clause analysis
 │   │       │   ├── judgments.tsx      # Judgment Finder — precedent search + IndianKanoon links
 │   │       │   ├── lawyers.tsx        # Lawyer Directory — advocate profiles + registration
-│   │       │   └── legal-aid.tsx      # Free Legal Aid — eligibility wizard + helplines
+│   │       │   ├── legal-aid.tsx      # Free Legal Aid — eligibility wizard + helplines
+│   │       │   └── admin.tsx          # Admin panel — lawyer verification, user management
 │   │       ├── components/
-│   │       │   ├── layout.tsx           # Sidebar, topbar, mobile nav, user panel
-│   │       │   ├── legal-disclaimer.tsx # Footer disclaimer on every page
-│   │       │   └── graphics/            # ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
+│   │       │   ├── layout.tsx            # Sidebar, topbar, mobile nav, user panel
+│   │       │   ├── legal-disclaimer.tsx  # Footer disclaimer on every page
+│   │       │   ├── graphics/             # ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
+│   │       │   ├── ErrorBoundary.tsx     # Per-route error isolation (prevents one broken page from crashing the sidebar)
+│   │       │   ├── LoadingSpinner.tsx    # Full-screen spinner with message overlay
+│   │       │   ├── EmptyState.tsx        # Illustrated empty state with action button
+│   │       │   └── ErrorMessage.tsx      # Styled inline error banner with retry CTA
 │   │       └── lib/
-│   │           ├── api.ts           # apiFetch (auto-attaches Bearer token)
-│   │           ├── auth-context.tsx # AuthProvider, useAuth hook
+│   │           ├── api.ts                # apiFetch (auto-attaches Bearer token); improved error parsing
+│   │           ├── auth-context.tsx      # AuthProvider, useAuth hook; loading state prevents login flash
 │   │           └── utils.ts
 │   │
 │   └── litigaforge-ai/              # Python FastAPI backend
-│       ├── main.py                  # All routes (auth, forge, cases, chains, watch, alerts)
-│       ├── extra_routes.py          # Legal Q&A, Doc Analyzer, Judgments, Lawyers, Legal Aid, Case Matching, AI Chat
-│       ├── database.py              # PostgreSQL CRUD (psycopg2)
-│       ├── auth.py                  # bcrypt hashing, JWT create/decode, cookie-first auth, FastAPI deps
+│       ├── main.py                  # FastAPI app: lifespan, CORS, rate limits, mounts 9 routers
+│       ├── database.py              # PostgreSQL async pool (asyncpg): fetch, fetchrow, execute
+│       ├── auth.py                  # bcrypt hashing, JWT create/decode, cookie-first auth + Bearer fallback
 │       ├── payments.py              # Razorpay integration: create_order, verify_payment
-│       ├── rate_limit.py            # slowapi limiter + custom exception handler
+│       ├── rate_limit.py            # slowapi limiter + custom 429 exception handler
 │       ├── litigaforge_engine.py    # Forge orchestration
 │       ├── ai_brain.py              # Multi-AI cascade (Claude → Gemini → GPT-5) + matching engine
 │       ├── requirements.txt
+│       ├── routers/                 # 9 modular FastAPI routers
+│       │   ├── auth.py              # Register, login, logout, me
+│       │   ├── forge.py             # The Forge, cases, memory, chains, healthz
+│       │   ├── subscription.py      # Plans, Razorpay create-order, verify
+│       │   ├── matching.py          # Post requirements, AI find-lawyers, match management
+│       │   ├── chat.py              # AI legal drafting chat, match-based messaging threads
+│       │   ├── community.py         # Legal Q&A, Doc Analyzer, Judgments, Lawyers, Legal Aid
+│       │   ├── watch.py             # Watch mode start/stop/add/list/remove
+│       │   ├── alerts.py            # WhatsApp alerts, hearing reminders
+│       │   └── admin.py             # Pending lawyer verification, approve/reject, user management
 │       ├── api_chains/              # 16 government API chain modules
 │       │   ├── gstin.py             # GST Network
 │       │   ├── pan.py               # PAN verification
@@ -159,10 +173,11 @@ litigaforge-ai/
 
 ### How auth works
 
-- **Register** at `/register` — name, email, password (min 8 chars). Account created in PostgreSQL, returns a 30-day JWT.
+- **Register** at `/register` — name, email, password (min 8 chars, with live strength indicator). Account created in PostgreSQL, returns a 30-day JWT.
 - **Login** at `/login` — email + password. Verifies bcrypt hash, returns JWT.
-- JWT is stored in `localStorage` (`lf_token`) and automatically attached to every API request.
+- JWT is stored in `localStorage` (`lf_token`) and automatically attached to every API request via `apiFetch`.
 - All main pages are protected — unauthenticated users are redirected to `/login`.
+- Auth state has a loading spinner to prevent the login page from flashing during initial token verification.
 - The sidebar shows the logged-in user's name, email, tier badge, monthly usage bar, and Sign Out button.
 
 ### Subscription tiers
@@ -527,8 +542,8 @@ All backend routes are prefixed with `/litigaforge`.
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `POST` | `/litigaforge/auth/register` | None | Create account — sets httpOnly cookie, returns user |
-| `POST` | `/litigaforge/auth/login` | None | Login — sets httpOnly cookie, returns user |
+| `POST` | `/litigaforge/auth/register` | None | Create account — sets httpOnly cookie + returns JWT |
+| `POST` | `/litigaforge/auth/login` | None | Login — sets httpOnly cookie + returns JWT |
 | `GET` | `/litigaforge/auth/me` | Cookie / Bearer | Current user info |
 | `POST` | `/litigaforge/auth/logout` | Cookie / Bearer | Clear auth cookie |
 
