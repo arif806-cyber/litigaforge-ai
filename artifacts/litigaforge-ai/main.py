@@ -12,6 +12,8 @@ from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends,
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
+import psycopg2
+import psycopg2.extras
 
 load_dotenv()
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
