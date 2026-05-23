@@ -13,8 +13,27 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const validate = () => {
+    setEmailError("");
+    setPasswordError("");
+    let ok = true;
+    if (!email.includes("@") || !email.includes(".")) {
+      setEmailError("Enter a valid email address");
+      ok = false;
+    }
+    if (password.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      ok = false;
+    }
+    return ok;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setError("");
     setLoading(true);
     try {
@@ -49,11 +68,14 @@ export default function Login() {
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setEmailError(""); }}
                 required
                 placeholder="advocate@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                className={`w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${emailError ? "border-destructive focus:ring-destructive" : "border-input"}`}
               />
+              {emailError && (
+                <p className="text-xs text-destructive mt-1">{emailError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -62,11 +84,14 @@ export default function Login() {
                 <input
                   type={showPass ? "text" : "password"}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => { setPassword(e.target.value); setPasswordError(""); }}
                   required
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-12"
+                  className={`w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-12 ${passwordError ? "border-destructive focus:ring-destructive" : "border-input"}`}
                 />
+                {passwordError && (
+                  <p className="text-xs text-destructive mt-1">{passwordError}</p>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowPass(v => !v)}

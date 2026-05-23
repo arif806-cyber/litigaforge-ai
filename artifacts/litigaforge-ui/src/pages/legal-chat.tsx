@@ -175,8 +175,11 @@ export default function LegalChat() {
                 target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
               }}
             />
+            <p className="absolute right-3 bottom-1 text-[10px] text-muted-foreground tabular-nums pointer-events-none">
+              {input.length} / 1,000
+            </p>
           </div>
-          <Button type="submit" disabled={isTyping || !input.trim()} size="icon" className="h-12 w-12 rounded-xl flex-shrink-0">
+          <Button type="submit" disabled={isTyping || !input.trim() || input.length > 1000} size="icon" className="h-12 w-12 rounded-xl flex-shrink-0">
             <Send className="w-5 h-5" />
           </Button>
         </form>

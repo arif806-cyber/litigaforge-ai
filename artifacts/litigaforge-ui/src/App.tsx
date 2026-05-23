@@ -26,10 +26,11 @@ import LegalChat from "@/pages/legal-chat";
 import AdminPage from "@/pages/admin";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, staleTime: 10000 },
+    queries: { retry: 2, staleTime: 30000 },
   },
 });
 
@@ -73,21 +74,21 @@ function Router() {
         <Layout>
           <Switch>
             <Route path="/"             component={() => <ProtectedRoute component={Forge} />} />
-            <Route path="/cases"        component={() => <ProtectedRoute component={Cases} />} />
-            <Route path="/cases/:id"    component={() => <ProtectedRoute component={CaseDetail} />} />
-            <Route path="/chains"       component={Chains} />
-            <Route path="/use-cases"    component={UseCases} />
-            <Route path="/subscription" component={Subscription} />
-            <Route path="/ask"          component={Ask} />
-            <Route path="/review"       component={Review} />
-            <Route path="/judgments"    component={Judgments} />
-            <Route path="/lawyers"      component={LawyersPage} />
-            <Route path="/legal-aid"    component={LegalAid} />
-            <Route path="/post-case"    component={() => <ProtectedRoute component={PostCase} />} />
-            <Route path="/my-cases"     component={() => <ProtectedRoute component={MyCases} />} />
-            <Route path="/matches"      component={() => <ProtectedRoute component={Matches} />} />
-            <Route path="/legal-chat"   component={() => <ProtectedRoute component={LegalChat} />} />
-            <Route path="/admin"         component={() => <ProtectedRoute component={AdminPage} />} />
+            <Route path="/cases"        component={() => <ErrorBoundary section="cases"><ProtectedRoute component={Cases} /></ErrorBoundary>} />
+            <Route path="/cases/:id"    component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
+            <Route path="/chains"       component={() => <ErrorBoundary section="chains"><Chains /></ErrorBoundary>} />
+            <Route path="/use-cases"    component={() => <ErrorBoundary section="use-cases"><UseCases /></ErrorBoundary>} />
+            <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
+            <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
+            <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
+            <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />
+            <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />
+            <Route path="/legal-aid"    component={() => <ErrorBoundary section="legal-aid"><LegalAid /></ErrorBoundary>} />
+            <Route path="/post-case"    component={() => <ErrorBoundary section="post-case"><ProtectedRoute component={PostCase} /></ErrorBoundary>} />
+            <Route path="/my-cases"     component={() => <ErrorBoundary section="my-cases"><ProtectedRoute component={MyCases} /></ErrorBoundary>} />
+            <Route path="/matches"      component={() => <ErrorBoundary section="matches"><ProtectedRoute component={Matches} /></ErrorBoundary>} />
+            <Route path="/legal-chat"   component={() => <ErrorBoundary section="legal-chat"><ProtectedRoute component={LegalChat} /></ErrorBoundary>} />
+            <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

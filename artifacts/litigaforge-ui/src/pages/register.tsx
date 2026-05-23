@@ -13,12 +13,24 @@ export default function Register() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const passwordStrong = password.length >= 8;
+  const hasVariety = /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+  const strength = password.length >= 12 && hasVariety ? "strong" : password.length >= 8 ? "fair" : password.length > 0 ? "weak" : "";
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (name.trim().length < 2) errs.name = "Name must be at least 2 characters";
+    if (!email.includes("@") || !email.includes(".")) errs.email = "Enter a valid email address";
+    if (password.length < 8) errs.password = "Password must be at least 8 characters";
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passwordStrong) { setError("Password must be at least 8 characters"); return; }
+    if (!validate()) return;
     setError("");
     setLoading(true);
     try {
@@ -53,11 +65,12 @@ export default function Register() {
               <input
                 type="text"
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => { setName(e.target.value); setFieldErrors(p => ({ ...p, name: "" })); }}
                 required
                 placeholder="Adv. Full Name"
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                className={`w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${fieldErrors.name ? "border-destructive focus:ring-destructive" : "border-input"}`}
               />
+              {fieldErrors.name && <p className="text-xs text-destructive mt-1">{fieldErrors.name}</p>}
             </div>
 
             <div className="space-y-2">
@@ -65,11 +78,12 @@ export default function Register() {
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: "" })); }}
                 required
                 placeholder="advocate@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                className={`w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${fieldErrors.email ? "border-destructive focus:ring-destructive" : "border-input"}`}
               />
+              {fieldErrors.email && <p className="text-xs text-destructive mt-1">{fieldErrors.email}</p>}
             </div>
 
             <div className="space-y-2">
@@ -78,10 +92,10 @@ export default function Register() {
                 <input
                   type={showPass ? "text" : "password"}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => { setPassword(e.target.value); setFieldErrors(p => ({ ...p, password: "" })); }}
                   required
                   placeholder="Min. 8 characters"
-                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-12"
+                  className={`w-full px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-12 ${fieldErrors.password ? "border-destructive focus:ring-destructive" : "border-input"}`}
                 />
                 <button
                   type="button"
@@ -92,11 +106,12 @@ export default function Register() {
                 </button>
               </div>
               {password.length > 0 && (
-                <div className={`flex items-center gap-1.5 mt-2 text-xs font-medium ${passwordStrong ? "text-green-600 dark:text-green-500" : "text-amber-600 dark:text-amber-500"}`}>
+                <div className={`flex items-center gap-1.5 mt-2 text-xs font-medium ${strength === "strong" ? "text-green-600 dark:text-green-500" : strength === "fair" ? "text-amber-600 dark:text-amber-500" : "text-red-500 dark:text-red-400"}`}>
                   <CheckCircle2 className="w-4 h-4" />
-                  {passwordStrong ? "Strong password" : "Use at least 8 characters"}
+                  {strength === "strong" ? "Strong — excellent" : strength === "fair" ? "Fair — add uppercase, number & symbol for stronger" : "Weak — use at least 8 characters"}
                 </div>
               )}
+              {fieldErrors.password && <p className="text-xs text-destructive mt-1">{fieldErrors.password}</p>}
             </div>
 
             {error && (

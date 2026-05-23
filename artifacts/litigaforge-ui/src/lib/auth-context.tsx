@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const BASE = "/litigaforge";
 
@@ -86,6 +87,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setUser(null);
   };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <LoadingSpinner message="Starting LitigaForge AI..." />
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser }}>

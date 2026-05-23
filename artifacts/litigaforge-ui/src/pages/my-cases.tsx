@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
   FileText, MapPin, Clock, EyeOff, ArrowRight, Plus,
-  Search, Filter, Loader2
+  Search, Filter, Loader2, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
@@ -19,7 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function MyCases() {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["my-cases"],
     queryFn: () => apiFetch("/cases/requirements/mine"),
     enabled: !!user,
@@ -63,6 +63,15 @@ export default function MyCases() {
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-destructive" />
+          </div>
+          <h3 className="text-lg font-semibold text-destructive">Failed to load your cases</h3>
+          <p className="text-sm text-muted-foreground max-w-md text-center">{(error as Error)?.message ?? "Please try again."}</p>
+          <Button variant="outline" onClick={() => refetch()}>Retry</Button>
         </div>
       ) : cases.length === 0 ? (
         <div className="bg-card border border-card-border rounded-xl p-12 text-center space-y-4">

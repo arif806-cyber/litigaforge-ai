@@ -4,7 +4,7 @@ import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   UserCheck, MapPin, Star, Briefcase, Clock, Check, X,
-  Loader2, MessageSquare, ArrowLeft, Sparkles, Zap
+  Loader2, MessageSquare, ArrowLeft, Sparkles, Zap, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
@@ -106,13 +106,13 @@ export default function Matches() {
   const searchParams = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
   const caseId = searchParams.get("case");
 
-  const { data: clientMatches, isLoading: clientLoading, refetch: refetchClient } = useQuery({
+  const { data: clientMatches, isLoading: clientLoading, isError: clientError, error: clientErrorData, refetch: refetchClient } = useQuery({
     queryKey: ["matches-client"],
     queryFn: () => apiFetch("/matches/client"),
     enabled: !!user,
   });
 
-  const { data: lawyerMatches, isLoading: lawyerLoading } = useQuery({
+  const { data: lawyerMatches, isLoading: lawyerLoading, isError: lawyerError, error: lawyerErrorData } = useQuery({
     queryKey: ["matches-lawyer"],
     queryFn: () => apiFetch("/matches/lawyer"),
     enabled: !!user,
@@ -195,6 +195,17 @@ export default function Matches() {
       {clientLoading || lawyerLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : clientError || lawyerError ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-destructive" />
+          </div>
+          <h3 className="text-lg font-semibold text-destructive">Failed to load matches</h3>
+          <p className="text-sm text-muted-foreground max-w-md text-center">
+            {(clientErrorData as Error)?.message ?? (lawyerErrorData as Error)?.message ?? "Please try again."}
+          </p>
+          <Button variant="outline" onClick={() => refetchClient()}>Retry</Button>
         </div>
       ) : matches.length === 0 ? (
         <div className="bg-card border border-card-border rounded-xl p-12 text-center space-y-4">

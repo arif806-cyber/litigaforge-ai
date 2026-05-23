@@ -42,12 +42,20 @@ export default function PostCase() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!title.trim()) errs.title = "Please enter a case title.";
+    else if (title.trim().length < 5) errs.title = "Title must be at least 5 characters.";
+    if (!caseType) errs.caseType = "Please select a case type.";
+    if (description.length > 2000) errs.description = "Description must not exceed 2,000 characters.";
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !caseType) {
-      setError("Please enter a title and select a case type.");
-      return;
-    }
+    if (!validate()) return;
     setSubmitting(true);
     setError("");
     try {
@@ -102,20 +110,33 @@ export default function PostCase() {
           <label className="text-sm font-medium">Case Title <span className="text-destructive">*</span></label>
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (fieldErrors.title) setFieldErrors(prev => ({ ...prev, title: "" }));
+            }}
             placeholder="e.g., Property dispute with neighbour in Banjara Hills"
-            className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className={cn(
+              "w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2",
+              fieldErrors.title ? "border-destructive focus:ring-destructive/50" : "border-input focus:ring-ring"
+            )}
             data-testid="case-title-input"
           />
+          {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
         </div>
 
         <div className="space-y-2">
           <label className="text-sm font-medium">Case Type <span className="text-destructive">*</span></label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className={cn(
+            "grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-lg p-1",
+            fieldErrors.caseType ? "border border-destructive bg-destructive/5" : ""
+          )}>
             {CASE_TYPES.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setCaseType(id)}
+                onClick={() => {
+                  setCaseType(id);
+                  if (fieldErrors.caseType) setFieldErrors(prev => ({ ...prev, caseType: "" }));
+                }}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-all",
                   caseType === id
@@ -129,19 +150,32 @@ export default function PostCase() {
               </button>
             ))}
           </div>
+          {fieldErrors.caseType && <p className="text-xs text-destructive">{fieldErrors.caseType}</p>}
         </div>
 
         <div className="space-y-2">
           <label className="text-sm font-medium">Description</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              if (fieldErrors.description) setFieldErrors(prev => ({ ...prev, description: "" }));
+            }}
             placeholder="Describe the situation in detail. Include relevant dates, parties involved, and what outcome you seek."
             rows={5}
-            className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            className={cn(
+              "w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 resize-none",
+              fieldErrors.description ? "border-destructive focus:ring-destructive/50" : "border-input focus:ring-ring"
+            )}
             data-testid="case-description-input"
           />
-          <p className="text-xs text-muted-foreground">Be specific. Lawyers need details to assess your case.</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Be specific. Lawyers need details to assess your case.</p>
+            <p className={cn("text-xs tabular-nums", description.length > 2000 ? "text-destructive font-semibold" : "text-muted-foreground")}>
+              {description.length} / 2,000
+            </p>
+          </div>
+          {fieldErrors.description && <p className="text-xs text-destructive">{fieldErrors.description}</p>}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

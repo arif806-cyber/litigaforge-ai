@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion } from "lucide-react";
+import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -101,7 +101,7 @@ export default function Ask() {
   const [browseCategory, setBrowseCategory] = useState("all");
   const [answer, setAnswer] = useState<{ question: string; answer: string; category: string } | null>(null);
 
-  const { data: qaList, refetch } = useQuery<{ questions: QAItem[]; total: number }>({
+  const { data: qaList, refetch, isLoading: qaLoading, isError: qaError, error: qaErrorData } = useQuery<{ questions: QAItem[]; total: number }>({
     queryKey: ["questions", browseCategory],
     queryFn: () => apiFetch(`/ask?limit=20${browseCategory !== "all" ? `&category=${browseCategory}` : ""}`),
     staleTime: 30000,
@@ -239,14 +239,28 @@ export default function Ask() {
           </div>
 
           <div className="space-y-4">
-            {(qaList?.questions ?? []).length === 0 && (
+            {qaLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            )}
+            {qaError && (
+              <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-6 flex items-start gap-4">
+                <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0" />
+                <div>
+                  <h4 className="text-destructive font-semibold">Failed to load questions</h4>
+                  <p className="text-sm text-destructive/80 mt-1">{(qaErrorData as Error)?.message ?? "Please try again."}</p>
+                </div>
+              </div>
+            )}
+            {!qaLoading && !qaError && (qaList?.questions ?? []).length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 bg-card border border-border rounded-2xl border-dashed">
                 <FileQuestion className="w-12 h-12 text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground font-medium">No questions yet in this category.</p>
                 <p className="text-sm text-muted-foreground mt-1">Be the first to ask!</p>
               </div>
             )}
-            {(qaList?.questions ?? []).map(item => (
+            {!qaLoading && !qaError && (qaList?.questions ?? []).map(item => (
               <QACard key={item.id} item={item} />
             ))}
           </div>

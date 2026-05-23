@@ -1,0 +1,437 @@
+Harden the React frontend for production. Add error boundaries, 
+loading states, empty states, and defensive null checks throughout.
+Do not change any styling, page layouts, or backend code.
+
+═══════════════════════════════════════
+PART A — GLOBAL ERROR BOUNDARY
+═══════════════════════════════════════
+
+1. Create artifacts/litigaforge-ui/src/components/ErrorBoundary.tsx:
+
+   import { Component, ReactNode } from "react"
+
+   interface Props { 
+     children: ReactNode
+     fallback?: ReactNode
+     section?: string
+   }
+   interface State { hasError: boolean; error?: Error }
+
+   export class ErrorBoundary extends Component<Props, State> {
+     state: State = { hasError: false }
+
+     static getDerivedStateFromError(error: Error): State {
+       return { hasError: true, error }
+     }
+
+     componentDidCatch(error: Error, info: any) {
+       console.error(`[ErrorBoundary:${this.props.section}]`, error, info)
+     }
+
+     render() {
+       if (this.state.hasError) {
+         return this.props.fallback ?? (
+           <div style={{
+             padding: "2rem",
+             textAlign: "center",
+             color: "var(--color-text-secondary)"
+           }}>
+             <p style={{ fontSize: 15, marginBottom: 8 }}>
+               Something went wrong loading this section.
+             </p>
+             <button
+               onClick={() => this.setState({ hasError: false })}
+               style={{ fontSize: 13 }}
+             >
+               Try again
+             </button>
+           </div>
+         )
+       }
+       return this.props.children
+     }
+   }
+
+2. In App.tsx (or root layout), wrap the entire app in ErrorBoundary:
+
+   import { ErrorBoundary } from "@/components/ErrorBoundary"
+
+   <ErrorBoundary section="app-root">
+     <AuthProvider>
+       <Router>
+         ... all routes ...
+       </Router>
+     </AuthProvider>
+   </ErrorBoundary>
+
+3. Also wrap each major page individually in its own ErrorBoundary
+   inside the router so one broken page cannot crash the sidebar/nav:
+
+   In the route definitions, wrap each component:
+   <ErrorBoundary section="forge">  <ForgePage />  </ErrorBoundary>
+   <ErrorBoundary section="cases">  <CasesPage />  </ErrorBoundary>
+   <ErrorBoundary section="chat">   <ChatPage />   </ErrorBoundary>
+   <ErrorBoundary section="ask">    <AskPage />    </ErrorBoundary>
+   ... repeat for every page ...
+
+═══════════════════════════════════════
+PART B — SHARED UI COMPONENTS
+═══════════════════════════════════════
+
+4. Create artifacts/litigaforge-ui/src/components/LoadingSpinner.tsx:
+
+   export function LoadingSpinner({ 
+     message = "Loading..." 
+   }: { message?: string }) {
+     return (
+       <div style={{
+         display: "flex",
+         flexDirection: "column",
+         alignItems: "center",
+         justifyContent: "center",
+         padding: "3rem",
+         gap: 12,
+         color: "var(--color-text-secondary)",
+         fontSize: 14
+       }}>
+         <div style={{
+           width: 28,
+           height: 28,
+           border: "2px solid var(--color-border-tertiary)",
+           borderTopColor: "#D97706",
+           borderRadius: "50%",
+           animation: "spin 0.8s linear infinite"
+         }} />
+         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+         <span>{message}</span>
+       </div>
+     )
+   }
+
+5. Create artifacts/litigaforge-ui/src/components/EmptyState.tsx:
+
+   export function EmptyState({
+     icon = "📭",
+     title,
+     description,
+     action
+   }: {
+     icon?: string
+     title: string
+     description?: string
+     action?: { label: string; onClick: () => void }
+   }) {
+     return (
+       <div style={{
+         display: "flex",
+         flexDirection: "column",
+         alignItems: "center",
+         justifyContent: "center",
+         padding: "3rem 1.5rem",
+         textAlign: "center",
+         gap: 8
+       }}>
+         <span style={{ fontSize: 32 }}>{icon}</span>
+         <p style={{
+           fontSize: 15,
+           fontWeight: 500,
+           margin: 0,
+           color: "var(--color-text-primary)"
+         }}>{title}</p>
+         {description && (
+           <p style={{
+             fontSize: 13,
+             margin: 0,
+             color: "var(--color-text-secondary)",
+             maxWidth: 320,
+             lineHeight: 1.5
+           }}>{description}</p>
+         )}
+         {action && (
+           <button
+             onClick={action.onClick}
+             style={{ marginTop: 8, fontSize: 13 }}
+           >
+             {action.label}
+           </button>
+         )}
+       </div>
+     )
+   }
+
+6. Create artifacts/litigaforge-ui/src/components/ErrorMessage.tsx:
+
+   export function ErrorMessage({
+     error,
+     onRetry
+   }: {
+     error: string | Error | unknown
+     onRetry?: () => void
+   }) {
+     const message = error instanceof Error
+       ? error.message
+       : typeof error === "string"
+       ? error
+       : "An unexpected error occurred"
+
+     return (
+       <div style={{
+         padding: "1rem 1.25rem",
+         background: "var(--color-background-danger)",
+         border: "0.5px solid var(--color-border-danger)",
+         borderRadius: 8,
+         display: "flex",
+         alignItems: "flex-start",
+         gap: 10,
+         fontSize: 14,
+         color: "var(--color-text-danger)"
+       }}>
+         <span>⚠</span>
+         <div style={{ flex: 1 }}>
+           <span>{message}</span>
+           {onRetry && (
+             <button
+               onClick={onRetry}
+               style={{
+                 marginLeft: 12,
+                 fontSize: 13,
+                 color: "var(--color-text-danger)"
+               }}
+             >
+               Retry
+             </button>
+           )}
+         </div>
+       </div>
+     )
+   }
+
+═══════════════════════════════════════
+PART C — TANSTACK QUERY HARDENING
+═══════════════════════════════════════
+
+7. In every page that uses useQuery, make sure all three states 
+   are handled. Apply this pattern consistently across ALL pages:
+
+   const { data, isLoading, isError, error, refetch } = useQuery({
+     queryKey: ["key"],
+     queryFn: () => apiFetch("/litigaforge/..."),
+     retry: 2,
+     staleTime: 30_000,
+   })
+
+   if (isLoading) return <LoadingSpinner message="Loading cases..." />
+   if (isError)   return <ErrorMessage error={error} onRetry={refetch} />
+   if (!data || data.length === 0) return (
+     <EmptyState
+       icon="📂"
+       title="No cases yet"
+       description="Cases you post will appear here"
+       action={{ label: "Post a case", onClick: () => navigate("/post-case") }}
+     />
+   )
+
+   Apply this pattern to these pages specifically:
+   - cases.tsx        → loading/error/empty for case list
+   - my-cases.tsx     → loading/error/empty for client cases
+   - matches.tsx      → loading/error/empty for match proposals
+   - lawyers.tsx      → loading/error/empty for lawyer directory
+   - ask.tsx          → loading/error/empty for Q&A list
+   - legal-chat.tsx   → loading/error/empty for chat threads
+   - judgments.tsx    → loading/error for search results
+   - review.tsx       → loading/error for analysis results
+   - chains.tsx       → loading/error for chain status
+   - forge.tsx        → loading/error for forge result
+
+8. For useMutation (forge, post case, send message, etc.),
+   handle isPending and isError on every mutation:
+
+   const forgeMutation = useMutation({
+     mutationFn: (data) => apiFetch("/litigaforge/forge", {
+       method: "POST",
+       body: JSON.stringify(data)
+     }),
+     onError: (error) => {
+       setSubmitError(error.message ?? "Forge failed. Please try again.")
+     }
+   })
+
+   - Disable submit buttons while isPending is true
+   - Show a spinner inside the button while isPending:
+     <button disabled={forgeMutation.isPending}>
+       {forgeMutation.isPending ? "Forging..." : "Forge case"}
+     </button>
+   - Show ErrorMessage below the form if isError is true
+   - Clear the error when the user starts editing again
+
+═══════════════════════════════════════
+PART D — NULL SAFETY & DEFENSIVE CHECKS
+═══════════════════════════════════════
+
+9. Audit every page for unsafe property access and fix with 
+   optional chaining. Common patterns to find and fix:
+
+   BEFORE: {user.name}
+   AFTER:  {user?.name ?? "—"}
+
+   BEFORE: {cases.map(c => c.title)}
+   AFTER:  {(cases ?? []).map(c => c?.title ?? "Untitled")}
+
+   BEFORE: {lawyer.practice_areas.join(", ")}
+   AFTER:  {(lawyer?.practice_areas ?? []).join(", ")}
+
+   BEFORE: {match.match_score}%
+   AFTER:  {match?.match_score ?? 0}%
+
+   BEFORE: {case.created_at.toLocaleDateString()}
+   AFTER:  {case?.created_at
+             ? new Date(case.created_at).toLocaleDateString("en-IN")
+             : "—"}
+
+   Find and fix ALL instances of direct property access on values 
+   that come from API responses — these can always be null/undefined 
+   if the API is slow, returns unexpected data, or partially fails.
+
+10. In auth-context.tsx, guard the initial auth check:
+
+    useEffect(() => {
+      apiFetch("/litigaforge/auth/me")
+        .then(user => {
+          if (user && user.id) setUser(user)
+        })
+        .catch(() => {
+          setUser(null)  // not logged in — do not throw
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    }, [])
+
+    While loading is true, show a full-screen spinner instead of 
+    redirecting to /login — prevents flash of login page on refresh:
+
+    if (loading) return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}>
+        <LoadingSpinner message="Starting LitigaForge AI..." />
+      </div>
+    )
+
+═══════════════════════════════════════
+PART E — FORM VALIDATION
+═══════════════════════════════════════
+
+11. Add client-side validation to these forms before they call 
+    the API — show inline error messages, do not rely on backend 
+    error messages alone:
+
+    pages/login.tsx:
+    - Email must be valid format (regex or .includes("@"))
+    - Password must be at least 8 characters
+    - Show error inline below each field, not as an alert()
+
+    pages/register.tsx:
+    - Name must be at least 2 characters
+    - Email must be valid format
+    - Password must be at least 8 characters
+    - Show a password strength indicator (weak/fair/strong)
+      based on length and character variety
+
+    pages/post-case.tsx:
+    - Title required, minimum 10 characters
+    - Case type required (must select from dropdown)
+    - Description required, minimum 30 characters
+    - Location required
+    - Show character count below description field
+
+    pages/lawyers.tsx (registration form):
+    - Name required
+    - Bar number required (format hint: BCI/TS/YYYY/XXXXX)
+    - District required
+    - At least one practice area required
+    - Experience years must be a positive number
+
+12. In pages/forge.tsx, add a character counter and minimum 
+    length check on the prompt textarea:
+    - Minimum 20 characters before the Forge button enables
+    - Show "X characters — add more detail for better results" 
+      below 100 characters
+    - Show "Good detail level" above 100 characters
+    - Show "Excellent" above 300 characters
+    - Maximum 5000 characters with a counter showing X/5000
+
+═══════════════════════════════════════
+PART F — GLOBAL API ERROR HANDLING
+═══════════════════════════════════════
+
+13. In lib/api.ts, update apiFetch to handle errors properly:
+
+    export async function apiFetch(
+      path: string,
+      options: RequestInit = {}
+    ) {
+      const res = await fetch(path, {
+        ...options,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      })
+
+      if (res.status === 401) {
+        // session expired — clear user and redirect to login
+        window.location.href = "/login"
+        return
+      }
+
+      if (res.status === 429) {
+        throw new Error("Too many requests. Please wait a moment.")
+      }
+
+      if (res.status === 403) {
+        throw new Error("You do not have permission to do this.")
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(
+          body?.detail ?? `Request failed (${res.status})`
+        )
+      }
+
+      return res.json()
+    }
+
+14. Add a global toast notification system for success/error 
+    messages so users always get feedback:
+
+    Create components/Toast.tsx:
+    - A fixed-position container at bottom-right of screen
+      (position: fixed, bottom: 24px, right: 24px, z-index: 1000)
+    - Toasts slide in from the right, auto-dismiss after 4 seconds
+    - Three variants: success (green), error (red), info (blue)
+    - Maximum 3 toasts visible at once — oldest dismisses first
+
+    Create a useToast() hook:
+    const { toast } = useToast()
+    toast.success("Case posted successfully")
+    toast.error("Forge failed — please try again")
+    toast.info("Connecting to eCourts API...")
+
+    Use toast notifications for:
+    - Successful forge → toast.success("Case forged successfully")
+    - Successful login → toast.success("Welcome back, {name}")
+    - Rate limit hit → toast.error("Too many requests...")
+    - Payment success → toast.success("Subscription upgraded!")
+    - Match accepted → toast.success("Lawyer connected!")
+    - Any API error → toast.error(error.message)
+
+Do not change any page layout, color scheme, routing, 
+backend code, or existing component structure.
+Only add the error handling, loading states, and validation 
+described above.
