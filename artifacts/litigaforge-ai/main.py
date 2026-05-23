@@ -188,6 +188,32 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS lawyer_cases (
+                id SERIAL PRIMARY KEY,
+                lawyer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                case_type TEXT NOT NULL,
+                description TEXT,
+                client_name TEXT,
+                court_name TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS lawyer_documents (
+                id SERIAL PRIMARY KEY,
+                lawyer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                case_id INTEGER REFERENCES lawyer_cases(id) ON DELETE SET NULL,
+                filename TEXT NOT NULL,
+                file_type TEXT DEFAULT 'pdf',
+                file_url TEXT,
+                content_text TEXT,
+                ai_summary TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         logger.info("Database tables initialized")
     except Exception as e:
         logger.warning("DB init check: %s", e)
@@ -237,6 +263,7 @@ from routers import (
     auth_router, forge_router, subscription_router,
     matching_router, chat_router, community_router,
     watch_router, alerts_router, admin_router,
+    lawyer_router,
 )
 
 app.include_router(auth_router,         prefix=BASE_PATH)
@@ -248,6 +275,7 @@ app.include_router(community_router,   prefix=BASE_PATH)
 app.include_router(watch_router,       prefix=BASE_PATH)
 app.include_router(alerts_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
+app.include_router(lawyer_router,      prefix=BASE_PATH)
 
 
 if __name__ == "__main__":
