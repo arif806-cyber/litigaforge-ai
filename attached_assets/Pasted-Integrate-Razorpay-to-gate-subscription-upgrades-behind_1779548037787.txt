@@ -1,0 +1,137 @@
+Integrate Razorpay to gate subscription upgrades behind real payments.
+Currently POST /litigaforge/subscription/upgrade switches tiers for free 
+with no payment — fix this completely.
+
+BACKEND (artifacts/litigaforge-ai/):
+
+1. Add to requirements.txt:
+   - razorpay
+
+2. Add to environment variables / Replit Secrets:
+   - RAZORPAY_KEY_ID
+   - RAZORPAY_KEY_SECRET
+
+3. Create a new file artifacts/litigaforge-ai/payments.py:
+
+   import razorpay, os
+   client = razorpay.Client(auth=(
+       os.environ["RAZORPAY_KEY_ID"],
+       os.environ["RAZORPAY_KEY_SECRET"]
+   ))
+
+   PLAN_PRICES = {
+       "professional": 99900,   # ₹999 in paise
+       "advocate_pro": 249900   # ₹2499 in paise
+   }
+
+   def create_order(tier: str, user_id: int) -> dict:
+       amount = PLAN_PRICES.get(tier)
+       if not amount:
+           raise ValueError(f"Invalid tier: {tier}")
+       order = client.order.create({
+           "amount": amount,
+           "currency": "INR",
+           "receipt": f"lf_{user_id}_{tier}",
+           "notes": {"user_id": str(user_id), "tier": tier}
+       })
+       return order
+
+   def verify_payment(
+       razorpay_order_id: str,
+       razorpay_payment_id: str,
+       razorpay_signature: str
+   ) -> bool:
+       try:
+           client.utility.verify_payment_signature({
+               "razorpay_order_id": razorpay_order_id,
+               "razorpay_payment_id": razorpay_payment_id,
+               "razorpay_signature": razorpay_signature
+           })
+           return True
+       except Exception:
+           return False
+
+4. In main.py, replace the existing subscription routes with these two:
+
+   POST /litigaforge/subscription/create-order  (Bearer required)
+   Request body: { "tier": "professional" | "advocate_pro" }
+   - Call payments.create_order(tier, current_user.id)
+   - Return: { "order_id": "...", "amount": 99900, "currency": "INR",
+               "key_id": os.environ["RAZORPAY_KEY_ID"] }
+
+   POST /litigaforge/subscription/verify  (Bearer required)
+   Request body: {
+     "razorpay_order_id": "...",
+     "razorpay_payment_id": "...",
+     "razorpay_signature": "...",
+     "tier": "professional" | "advocate_pro"
+   }
+   - Call payments.verify_payment(...) with the three Razorpay fields
+   - If verification fails: return HTTP 400 {"detail": "Payment verification failed"}
+   - If verification passes:
+       * Update users table: SET subscription_tier = tier WHERE id = user_id
+       * Insert into subscriptions table: tier, started_at=NOW(), 
+         status='active', payment_ref=razorpay_payment_id
+       * Return: {"success": true, "tier": tier, "payment_id": razorpay_payment_id}
+
+   REMOVE or DISABLE the old POST /litigaforge/subscription/upgrade route
+   entirely — return HTTP 410 Gone if called.
+
+FRONTEND (artifacts/litigaforge-ui/src/pages/subscription.tsx):
+
+5. Replace the current upgrade button logic with a two-step Razorpay flow:
+
+   Step 1 — on "Upgrade" button click:
+   - Call POST /litigaforge/subscription/create-order with the chosen tier
+   - Load the Razorpay checkout script dynamically if not already loaded:
+     const script = document.createElement("script")
+     script.src = "https://checkout.razorpay.com/v1/checkout.js"
+     document.body.appendChild(script)
+
+   Step 2 — open Razorpay modal:
+   const options = {
+     key: data.key_id,
+     amount: data.amount,
+     currency: "INR",
+     name: "LitigaForge AI",
+     description: tier === "professional" 
+       ? "Professional Plan — ₹999/month" 
+       : "Advocate Pro — ₹2,499/month",
+     order_id: data.order_id,
+     handler: async function (response) {
+       // Step 3 — verify on success
+       const verify = await apiFetch("/litigaforge/subscription/verify", {
+         method: "POST",
+         body: JSON.stringify({
+           razorpay_order_id: response.razorpay_order_id,
+           razorpay_payment_id: response.razorpay_payment_id,
+           razorpay_signature: response.razorpay_signature,
+           tier: tier
+         })
+       })
+       if (verify.success) {
+         // refresh auth context to pick up new tier
+         await refreshUser()
+         showSuccessMessage("Subscription upgraded successfully!")
+       }
+     },
+     prefill: { name: user.name, email: user.email },
+     theme: { color: "#D97706" }  // amber to match LitigaForge brand
+   }
+   const rzp = new window.Razorpay(options)
+   rzp.open()
+
+6. Add a loading/disabled state on the upgrade button while the order 
+   is being created so users cannot double-click.
+
+7. Show a clear error message if create-order or verify fails.
+
+8. Add a note below each paid plan:
+   "Powered by Razorpay. Your payment is secure and encrypted."
+
+Do not change plan pricing display, plan feature lists, or any other 
+page layout. Only add the payment flow.
+
+IMPORTANT: Before going live, add your actual RAZORPAY_KEY_ID and 
+RAZORPAY_KEY_SECRET in Replit Secrets. Use Razorpay test keys 
+(rzp_test_...) during development — no real money is charged.

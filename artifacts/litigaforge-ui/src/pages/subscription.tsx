@@ -33,6 +33,8 @@ export default function Subscription() {
   const queryClient = useQueryClient();
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [razorpayError, setRazorpayError] = useState<string | null>(null);
 
   const { data: plans, isLoading } = useQuery<Plan[]>({
     queryKey: ["subscription-plans"],
@@ -40,25 +42,89 @@ export default function Subscription() {
     staleTime: 300000,
   });
 
-  const upgrade = useMutation({
+  const loadRazorpayScript = () => new Promise<void>((resolve, reject) => {
+    if (document.getElementById("razorpay-script")) { resolve(); return; }
+    const script = document.createElement("script");
+    script.id = "razorpay-script";
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Razorpay checkout"));
+    document.body.appendChild(script);
+  });
+
+  const createOrder = useMutation({
     mutationFn: (tier: string) =>
-      apiFetch("/subscription/upgrade", {
+      apiFetch("/subscription/create-order", {
         method: "POST",
         body: JSON.stringify({ tier }),
       }),
-    onSuccess: async (_, tier) => {
-      await refreshUser();
-      queryClient.invalidateQueries({ queryKey: ["health"] });
-      setSuccess(TIER_LABELS[tier] ?? tier);
-      setUpgrading(null);
-    },
-    onError: () => setUpgrading(null),
   });
 
-  const handleUpgrade = (tier: string) => {
+  const verifyPayment = useMutation({
+    mutationFn: (payload: object) =>
+      apiFetch("/subscription/verify", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+  });
+
+  const handleUpgrade = async (tier: string) => {
     setUpgrading(tier);
     setSuccess(null);
-    upgrade.mutate(tier);
+    setError(null);
+    setRazorpayError(null);
+
+    try {
+      await loadRazorpayScript();
+      const orderData = await createOrder.mutateAsync(tier);
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "LitigaForge AI",
+        description:
+          tier === "professional"
+            ? "Professional Plan \u2014 \u20b9999/month"
+            : "Advocate Pro \u2014 \u20b92,499/month",
+        order_id: orderData.order_id,
+        handler: async (response: any) => {
+          try {
+            const verify = await verifyPayment.mutateAsync({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              tier,
+            });
+            if (verify.success) {
+              await refreshUser();
+              queryClient.invalidateQueries({ queryKey: ["health"] });
+              setSuccess(TIER_LABELS[tier] ?? tier);
+              setUpgrading(null);
+            } else {
+              setRazorpayError("Payment verification failed. Please contact support.");
+              setUpgrading(null);
+            }
+          } catch (e: any) {
+            setRazorpayError(e.message || "Payment verification failed.");
+            setUpgrading(null);
+          }
+        },
+        prefill: { name: user?.name ?? "", email: user?.email ?? "" },
+        theme: { color: "#D97706" },
+        modal: {
+          ondismiss: () => {
+            setUpgrading(null);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (e: any) {
+      setError(e.message || "Failed to start payment. Please try again.");
+      setUpgrading(null);
+    }
   };
 
   const currentTier = user?.subscription_tier ?? "free";
@@ -104,7 +170,7 @@ export default function Subscription() {
               <p className="text-3xl font-bold text-foreground font-mono flex items-baseline md:justify-end gap-1">
                 {used}
                 <span className="text-base text-muted-foreground font-sans font-medium mb-0.5">
-                  / {limit === -1 ? "∞" : limit} cases
+                  / {limit === -1 ? "\u221e" : limit} cases
                 </span>
               </p>
               {limit !== -1 && (
@@ -128,10 +194,17 @@ export default function Subscription() {
           </motion.div>
         )}
 
-        {upgrade.isError && (
+        {error && (
           <div className="max-w-3xl mx-auto flex items-center justify-center gap-3 bg-destructive/10 border border-destructive/20 rounded-2xl px-6 py-5 text-destructive">
             <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-            <span className="font-semibold text-lg">Upgrade failed. Please try again or contact support.</span>
+            <span className="font-semibold text-lg">{error}</span>
+          </div>
+        )}
+
+        {razorpayError && (
+          <div className="max-w-3xl mx-auto flex items-center justify-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl px-6 py-5 text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-6 h-6 flex-shrink-0" />
+            <span className="font-semibold text-lg">{razorpayError}</span>
           </div>
         )}
 
@@ -221,7 +294,7 @@ export default function Subscription() {
 
                   <Button
                     onClick={() => !isCurrent && handleUpgrade(plan.id)}
-                    disabled={isCurrent || isUpgrading || upgrade.isPending}
+                    disabled={isCurrent || isUpgrading || createOrder.isPending}
                     variant={isCurrent ? "outline" : (plan.id === "advocate_pro" ? "default" : "default")}
                     size="lg"
                     className={cn(
@@ -230,7 +303,7 @@ export default function Subscription() {
                     )}
                   >
                     {isUpgrading ? (
-                      <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Processing…</>
+                      <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Processing\u2026</>
                     ) : isCurrent ? (
                       "Your Current Plan"
                     ) : plan.price_inr === 0 ? (
@@ -239,15 +312,17 @@ export default function Subscription() {
                       `Upgrade to ${plan.name}`
                     )}
                   </Button>
+
+                  {plan.price_inr > 0 && (
+                    <p className="text-xs text-muted-foreground text-center mt-3 font-medium">
+                      Powered by Razorpay. Your payment is secure and encrypted.
+                    </p>
+                  )}
                 </motion.div>
               );
             })}
           </motion.div>
         )}
-
-        <p className="text-sm text-center text-muted-foreground font-medium">
-          Upgrades take effect immediately. Payment integration coming soon in Sandbox mode.
-        </p>
       </div>
     </div>
   );

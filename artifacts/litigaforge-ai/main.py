@@ -26,6 +26,7 @@ from database import (
     increment_case_count, update_subscription, SUBSCRIPTION_PLANS, TIER_LIMITS,
 )
 from auth import hash_password, verify_password, create_token, get_current_user, require_user, set_auth_cookie, clear_auth_cookie
+from payments import create_order, verify_payment, PLAN_PRICES
 from extra_routes import router as extra_router
 
 watcher = WatchModeManager(memory=memory, alert_fn=send_whatsapp_alert)
@@ -317,13 +318,64 @@ async def subscription_plans():
     return SUBSCRIPTION_PLANS
 
 
+class CreateOrderRequest(BaseModel):
+    tier: str
+
+
+@router.post("/subscription/create-order")
+async def subscription_create_order(req: CreateOrderRequest, current_user: dict = Depends(require_user)):
+    if req.tier not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Invalid tier. Choose professional or advocate_pro")
+    try:
+        order = create_order(req.tier, current_user["id"])
+    except Exception as e:
+        logger.error(f"Razorpay order creation failed: {e}")
+        raise HTTPException(status_code=500, detail="Payment service unavailable. Please try again later.")
+    return {
+        "order_id": order["id"],
+        "amount": order["amount"],
+        "currency": order["currency"],
+        "key_id": os.environ.get("RAZORPAY_KEY_ID", ""),
+    }
+
+
+class VerifyRequest(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+    tier: str
+
+
+@router.post("/subscription/verify")
+async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(require_user)):
+    if req.tier not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Invalid tier")
+    ok = verify_payment(req.razorpay_order_id, req.razorpay_payment_id, req.razorpay_signature)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Payment verification failed")
+    # Update user tier and record subscription
+    from database import get_conn
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET subscription_tier=%s WHERE id=%s",
+                (req.tier, current_user["id"]),
+            )
+            cur.execute(
+                """INSERT INTO subscriptions (user_id, tier, started_at, status, payment_ref)
+                   VALUES (%s, %s, NOW(), 'active', %s)""",
+                (current_user["id"], req.tier, req.razorpay_payment_id),
+            )
+            conn.commit()
+    finally:
+        conn.close()
+    return {"success": True, "tier": req.tier, "payment_id": req.razorpay_payment_id}
+
+
 @router.post("/subscription/upgrade")
-async def subscription_upgrade(req: UpgradeRequest, current_user: dict = Depends(require_user)):
-    valid_tiers = [p["id"] for p in SUBSCRIPTION_PLANS]
-    if req.tier not in valid_tiers:
-        raise HTTPException(status_code=400, detail=f"Invalid tier. Choose from: {valid_tiers}")
-    updated = update_subscription(current_user["id"], req.tier)
-    return {"message": f"Subscription updated to {req.tier}", "user": updated}
+async def subscription_upgrade_deprecated():
+    raise HTTPException(status_code=410, detail="This endpoint is no longer available. Use /subscription/create-order and /subscription/verify.")
 
 
 # ─── Forge ─────────────────────────────────────────────────────────────────────
