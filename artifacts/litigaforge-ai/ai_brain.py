@@ -21,7 +21,7 @@ import requests as _req
 
 logger = logging.getLogger("litigaforge.ai_brain")
 
-from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
+from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response, strip_generic_fluff, hallucination_guard
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Provider registry — lazy-initialised on first call
@@ -346,29 +346,69 @@ def _regex_extract_entities(prompt: str) -> Dict[str, Any]:
 # Strategy Synthesis — Claude leads, GPT-5 → Gemini → smart template fallback
 # ──────────────────────────────────────────────────────────────────────────────
 
-STRATEGY_SYSTEM = """You are a senior Indian advocate with 20 years of experience in Telangana and Andhra Pradesh High Courts, Supreme Court, and SEBI/NCLT/DRT tribunals.
+LEGAL_OUTPUT_FORMAT = """
+=== CASE ANALYSIS ===
 
-You have been given:
-1. The user's original query / case facts
-2. Real data retrieved from government APIs and databases
+1. FACTS SUMMARY
+----------------
+[Brief, neutral summary of case facts. 3-5 sentences. Only facts from the user's input.]
 
-Your task: Write a sharp, actionable legal strategy STRICTLY based on the actual data retrieved.
+2. IDENTIFIED ISSUES
+--------------------
+- Issue 1: [concise legal issue]
+- Issue 2: [concise legal issue]
 
-MANDATORY RULES:
-- NEVER use generic template text. Every section must reference actual data values.
-- If stock/NSE data: lead with live price, 52-week range, financial health implications
-- If IFSC/bank data: use actual branch name, address, MICR code in your NI Act S.138 analysis
-- If GSTIN data: use actual registration status, return filing record in CGST Act analysis
-- If pincode data: use actual district and state for jurisdiction (CPC S.20)
-- If vehicle data: use actual RC details for motor accident / insurance analysis
-- Quote actual Indian laws with section numbers in every recommendation
-- Structure your output with these exact headings:
-  ## Summary
-  ## Key Findings from Government Data
-  ## Legal Analysis
-  ## Recommended Actions (within 7 days)
-  ## Document Checklist
-- Be concise, precise, and immediately actionable for a practicing advocate"""
+3. APPLICABLE LAWS
+------------------
+- [Act Name, Section X] — [one-line relevance to this case]
+- [Act Name, Section Y] — [one-line relevance]
+[Every law must have a verifiable Act name and section number.]
+
+4. GOVERNMENT DATA FINDINGS
+---------------------------
+[Only if API chains returned data. List verified facts per chain, with source.]
+[If no data returned, write: "No government data available for this case."]
+
+5. RECOMMENDED STRATEGY
+-----------------------
+Immediate (within 7 days):
+- Action 1: [who, what, under which law]
+- Action 2: [who, what, under which law]
+
+Medium-term (within 30 days):
+- Action 1
+- Action 2
+
+6. DOCUMENT CHECKLIST
+---------------------
+- [ ] Document 1 (purpose)
+- [ ] Document 2 (purpose)
+
+7. DISCLAIMERS & CAVEATS
+--------------------------
+[Specific caveats: what this analysis cannot determine without further evidence.]
+[Standard legal disclaimer.]
+"""
+
+STRATEGY_SYSTEM = """You are a senior Indian advocate drafting a case analysis for a fellow advocate to use in court or tribunal proceedings in Telangana or Andhra Pradesh.
+
+SOURCES YOU MAY USE:
+- The user's original query / case facts
+- Real data retrieved from government APIs (GSTN, VAHAN, NSE, RBI IFSC, India Post, etc.)
+- Established Indian statutes and reported case law
+
+OUTPUT RULES — violation of any rule is a critical error:
+1. Use ONLY the exact section headings in LEGAL_OUTPUT_FORMAT. No extra sections.
+2. Every fact in "FACTS SUMMARY" must be traceable to the user's input or an API result.
+3. Every law in "APPLICABLE LAWS" must state the Act name AND section number.
+4. "GOVERNMENT DATA FINDINGS" must name the exact source chain (e.g., "GSTIN — GSTN Portal").
+5. "RECOMMENDED STRATEGY" must name the specific Act/Section that authorises each action.
+6. Never invent facts, parties, dates, amounts, or legal provisions not present in the input.
+7. Never use speculative language ("may", "might", "could", "possibly"). Use "requires", "mandates", "prohibits".
+8. Never include generic boilerplate examples, sample clauses, or template text.
+9. Never include marketing language, emojis, ASCII art, or self-referential AI commentary.
+10. Maximum length: 800 words. Be concise. A busy advocate must read this in under 2 minutes.
+11. If a section has no content, write "Not applicable" — do not omit the heading."""
 
 
 def smart_legal_strategy(
@@ -405,6 +445,8 @@ Location: {location}
 Case ID: {case_id}
 Active AI Providers: {', '.join(active)}
 
+{LEGAL_OUTPUT_FORMAT}
+
 Real Government API Data Retrieved:
 {json.dumps(data_summary, indent=2, default=str)[:7000]}
 """)
@@ -415,8 +457,10 @@ Real Government API Data Retrieved:
         result = _call_claude(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
             result = validate_ai_response(result)
+            result = strip_generic_fluff(result)
+            result = hallucination_guard(result, api_results)
             result = add_disclaimer(result)
-            return f"🔥 LITIGAFORGE AI — CASE {case_id} [Claude Sonnet 4-6]\n{'='*60}\n\n{result}"
+            return result
 
     # 2️⃣ Try OpenAI GPT-5-mini
     if "openai" in active:
@@ -424,8 +468,10 @@ Real Government API Data Retrieved:
         result = _call_openai(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
             result = validate_ai_response(result)
+            result = strip_generic_fluff(result)
+            result = hallucination_guard(result, api_results)
             result = add_disclaimer(result)
-            return f"🔥 LITIGAFORGE AI — CASE {case_id} [GPT-5]\n{'='*60}\n\n{result}"
+            return result
 
     # 3️⃣ Try Gemini 2.5 Flash
     if "gemini" in active:
@@ -433,8 +479,10 @@ Real Government API Data Retrieved:
         result = _call_gemini(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
             result = validate_ai_response(result)
+            result = strip_generic_fluff(result)
+            result = hallucination_guard(result, api_results)
             result = add_disclaimer(result)
-            return f"🔥 LITIGAFORGE AI — CASE {case_id} [Gemini 2.5 Flash]\n{'='*60}\n\n{result}"
+            return result
 
     # 4️⃣ Smart data-driven template — never generic
     logger.info(f"[AI_BRAIN] All AI providers failed — using smart data template (case {case_id})")
@@ -456,7 +504,7 @@ def _smart_fallback_strategy(
     company   = entities.get("company_name", "")
     location  = entities.get("location", "Hyderabad")
     case_type = entities.get("case_type", "General Legal Matter")
-    sections  = []
+    gov_data  = []
 
     # Stock / NSE
     nse = api_results.get("NSE_INDIA", {})
@@ -464,100 +512,204 @@ def _smart_fallback_strategy(
         q     = (nse.get("results", {}).get("live_quote") or {})
         price = q.get("last_price", "—")
         chg   = q.get("pct_change", "—")
-        w52h  = q.get("week_52_high", "—")
-        w52l  = q.get("week_52_low", "—")
         cname = q.get("company", company.title())
-        sections.append(f"""## Key Findings from Government Data
-
-**NSE Live Quote — {cname}**
-- Current Price: ₹{price}  |  Today's Change: {chg}%
-- 52-Week High: ₹{w52h}  |  52-Week Low: ₹{w52l}
-- Nifty 50 Member: {'Yes' if nse.get('results', {}).get('nifty50_member') else 'No'}
-
-## Legal Analysis
-
-This market data is actionable in:
-- **Asset Valuation** (Family Courts Act) — share price on petition date
-- **Insider Trading** — SEBI PIT Regulations 2015, Reg.4 — trades within 60 days of UPSI
-- **NPA/DRT Attachment** — market cap determines proportionality of attachment orders
-- **Contempt/SEBI Orders** — verify suspended trading has not resumed (SEBI Act S.11B)
-
-## Recommended Actions (within 7 days)
-1. File complaint at SEBI SCORES portal (scores.sebi.gov.in) — attach trade history
-2. Cite SEBI Act 1992 S.11, S.11B for market manipulation
-3. Obtain certified NSE/BSE trade reports for evidence""")
+        gov_data.append(
+            f"NSE India (live): {cname} @ Rs.{price} ({chg}% change)"
+        )
 
     # IFSC / Bank
     ifsc = api_results.get("IFSC", {})
     if ifsc.get("status") == "success":
-        sections.append(f"""## Key Findings from Government Data
-
-**Bank Branch Verified (RBI Registry)**
-- Bank: {ifsc.get('bank_name')}  |  Branch: {ifsc.get('branch')}
-- Address: {ifsc.get('address')}, {ifsc.get('city')}, {ifsc.get('state')}
-- MICR: {ifsc.get('micr_code', '—')}  |  RTGS: {ifsc.get('rtgs_enabled')}  |  NEFT: {ifsc.get('neft_enabled')}
-
-## Legal Analysis — NI Act S.138
-
-1. Drawee bank confirmed as **{ifsc.get('bank_name')}, {ifsc.get('branch')}** — essential for prosecution
-2. Cross-verify MICR code {ifsc.get('micr_code', '—')} against the dishonoured cheque leaf
-3. File complaint in court of payee's bank jurisdiction (NI Act S.142)
-
-## Recommended Actions (within 7 days)
-1. Send statutory demand notice within 30 days of dishonour (NI Act S.138 proviso)
-2. File complaint within 30 days of expiry of 15-day notice period
-3. Attach bank certificate of dishonour + IFSC verification printout""")
+        gov_data.append(
+            f"RBI IFSC Registry: {ifsc.get('bank_name')}, {ifsc.get('branch')}, "
+            f"MICR {ifsc.get('micr_code', '—')}"
+        )
 
     # Pincode
     pin = api_results.get("PINCODE", {})
     if pin.get("status") == "success":
-        sections.append(f"""## Key Findings from Government Data
-
-**Address Verified (India Post)**
-- Pincode: {pin.get('pincode')}  |  District: {pin.get('district')}  |  State: {pin.get('state')}
-- Post Offices in zone: {pin.get('total_offices')}
-
-## Legal Analysis — Jurisdiction
-- Territorial jurisdiction: Courts in **{pin.get('district')}, {pin.get('state')}** (CPC S.20)
-- Sub-Registrar for property documents: {pin.get('district')} district office
-- For summons service: any post office in this pincode zone (CPC Order V)""")
+        gov_data.append(
+            f"India Post: Pincode {pin.get('pincode')} → {pin.get('district')}, {pin.get('state')}"
+        )
 
     # GSTIN
     gstin = api_results.get("GSTIN", {})
     if gstin.get("status") == "success":
-        status = gstin.get('registration_status', '')
-        sections.append(f"""## Key Findings from Government Data
+        gov_data.append(
+            f"GSTN Portal: {gstin.get('legal_name')} — Status: {gstin.get('registration_status')}"
+        )
 
-**GSTIN Verified (GSTN Portal)**
-- Legal Name: {gstin.get('legal_name')}
-- Status: **{status}**  |  Type: {gstin.get('taxpayer_type')}
-- Jurisdiction: {gstin.get('state_jurisdiction')}
-- Last Return: {gstin.get('last_return_period')} ({gstin.get('last_return_status')})
-- Pending Returns: {gstin.get('pending_returns', 0)}
+    # eCourts
+    ecourts = api_results.get("ECOURTS", {})
+    if ecourts.get("status") == "success":
+        gov_data.append(f"eCourts India: {ecourts.get('cnr_number', 'CNR lookup')} case data retrieved")
 
-## Legal Analysis — CGST Act 2017
-- {'✅ Active — use for compliance verification' if 'active' in status.lower() else '⚠️ Inactive/suspended — grounds for attachment under CGST Act S.83'}
-- Pending returns admissible as evidence of financial irregularity (CGST Act S.132)""")
+    # VAHAN
+    vahan = api_results.get("VAHAN", {})
+    if vahan.get("status") == "success":
+        gov_data.append(
+            f"VAHAN: Vehicle {vahan.get('registration_number', '—')} — "
+            f"RC status: {vahan.get('rc_status', '—')}"
+        )
+
+    # MeeSeva
+    mee = api_results.get("MEE_SEVA", {})
+    if mee.get("status") == "success":
+        gov_data.append(f"MeeSeva TG: {mee.get('service_name', 'service')} application {mee.get('application_id', '—')}")
+
+    # Transport
+    ts = api_results.get("TRANSPORT_TS", {})
+    if ts.get("status") == "success":
+        gov_data.append(f"Transport TS: Permit {ts.get('permit_number', '—')} valid until {ts.get('validity', '—')}")
 
     active_chains = [k for k, v in api_results.items()
                      if isinstance(v, dict) and v.get("status") not in ("skipped", "no_api_key", "error")]
 
-    header = (f"🔥 LITIGAFORGE AI — CASE {case_id} [AI-Generated]\n"
-              f"{'='*60}\n\n"
-              f"## Summary\n"
-              f"**Query**: {prompt[:200]}\n"
-              f"**Departments Queried**: {', '.join(active_chains) or 'General'}\n"
-              f"**Location**: {location}  |  **Case Type**: {case_type}\n")
+    # Build structured output matching LEGAL_OUTPUT_FORMAT
+    lines = [
+        "=== CASE ANALYSIS ===",
+        "",
+        "1. FACTS SUMMARY",
+        "----------------",
+        prompt[:300] if len(prompt) > 20 else "No case facts provided.",
+        "",
+        "2. IDENTIFIED ISSUES",
+        "--------------------",
+    ]
 
-    if sections:
-        return header + "\n\n".join(sections)
+    # Add issues based on intent
+    if "stock" in intent or "nse" in intent:
+        lines.append("- Securities law compliance and valuation of listed assets")
+        lines.append("- Potential insider trading or market manipulation under SEBI Act 1992")
+    elif "ifsc" in intent or "bank" in intent:
+        lines.append("- Dishonour of cheque and recovery under Negotiable Instruments Act 1881")
+        lines.append("- Territorial jurisdiction of the drawee bank")
+    elif "gstin" in intent or "gst" in intent:
+        lines.append("- Tax compliance and registration status under CGST Act 2017")
+        lines.append("- Attachment risk under S.83 if registration is inactive")
+    elif "vehicle" in intent or "vahan" in intent:
+        lines.append("- Motor vehicle accident liability under Motor Vehicles Act 1988")
+        lines.append("- Insurance claim validity based on RC and permit status")
+    elif "pincode" in intent or "property" in intent:
+        lines.append("- Territorial jurisdiction for civil proceedings (CPC S.20)")
+        lines.append("- Venue for sub-registrar verification and summons service")
+    else:
+        lines.append("- General legal matter requiring further factual clarification")
+        lines.append("- Jurisdiction and applicable substantive law to be determined")
 
-    return header + (
-        "\nNo specific identifiers detected. Include GSTIN, vehicle number, IFSC, "
-        "company name, or pincode for targeted AI analysis.\n\n"
-        "**Example queries:**\n"
-        "- `search Infosys stock` → live NSE data + legal strategy\n"
-        "- `Cheque bounce IFSC SBIN0020149` → bank verification + NI Act S.138\n"
-        "- `GSTIN 36AAAAA0000A1ZA fraud case` → live GSTIN + CGST Act strategy\n"
-        "- `Vehicle TS09EA1234 accident Hyderabad` → VAHAN + SARATHI + motor accident law"
-    )
+    lines.extend([
+        "",
+        "3. APPLICABLE LAWS",
+        "------------------",
+    ])
+
+    if "stock" in intent or "nse" in intent:
+        lines.append("- SEBI Act 1992, S.11, S.11B, S.12A — market manipulation and insider trading")
+        lines.append("- SEBI (Prohibition of Insider Trading) Regulations 2015, Reg. 4 — UPSI disclosure")
+        lines.append("- Companies Act 2013, S.447 — fraud in relation to securities")
+    elif "ifsc" in intent or "bank" in intent:
+        lines.append("- Negotiable Instruments Act 1881, S.138 — cheque dishonour and penalty")
+        lines.append("- Negotiable Instruments Act 1881, S.142 — jurisdiction for complaint")
+        lines.append("- RBI Act 1934 — banking regulation and customer grievance")
+    elif "gstin" in intent or "gst" in intent:
+        lines.append("- CGST Act 2017, S.83 — provisional attachment in pending proceedings")
+        lines.append("- CGST Act 2017, S.132 — tax evasion and penalties")
+        lines.append("- CGST Act 2017, S.29 — cancellation of registration")
+    elif "vehicle" in intent or "vahan" in intent:
+        lines.append("- Motor Vehicles Act 1988, S.146 — compulsory third-party insurance")
+        lines.append("- Motor Vehicles Act 1988, S.166 — claim for compensation")
+        lines.append("- CPC 1908, O.37 R.1 — summary suit for recovery")
+    elif "pincode" in intent or "property" in intent:
+        lines.append("- CPC 1908, S.20 — place of suing (territorial jurisdiction)")
+        lines.append("- CPC 1908, O.V — service of summons")
+        lines.append("- Registration Act 1908, S.17 — documents requiring registration")
+    else:
+        lines.append("- To be determined upon review of complete case facts")
+
+    lines.extend([
+        "",
+        "4. GOVERNMENT DATA FINDINGS",
+        "---------------------------",
+    ])
+    if gov_data:
+        for item in gov_data:
+            lines.append(f"- {item}")
+    else:
+        lines.append("No government data available for this case.")
+
+    lines.extend([
+        "",
+        "5. RECOMMENDED STRATEGY",
+        "-----------------------",
+        "Immediate (within 7 days):",
+    ])
+
+    if "stock" in intent or "nse" in intent:
+        lines.append("- Obtain certified NSE/BSE trade reports for the disputed period")
+        lines.append("- File complaint on SEBI SCORES portal (scores.sebi.gov.in) with trade history")
+    elif "ifsc" in intent or "bank" in intent:
+        lines.append("- Send statutory demand notice under NI Act S.138 within 30 days of dishonour")
+        lines.append("- File complaint in court of payee's bank jurisdiction (NI Act S.142)")
+    elif "gstin" in intent or "gst" in intent:
+        lines.append("- Verify registration status on GSTN portal and preserve screenshots")
+        lines.append("- File DRC-01 if tax demand arises; seek stay under CGST Act S.83 if attachment threatened")
+    elif "vehicle" in intent or "vahan" in intent:
+        lines.append("- File insurance claim with RC, permit, and FIR copies within 30 days")
+        lines.append("- Initiate MACT proceedings under Motor Vehicles Act S.166 for compensation")
+    elif "pincode" in intent or "property" in intent:
+        lines.append("- Verify territorial jurisdiction at district court (CPC S.20)")
+        lines.append("- Engage local process server for summons via registered post (CPC O.V)")
+    else:
+        lines.append("- Gather complete case facts and supporting documents")
+        lines.append("- Identify all parties, causes of action, and desired relief")
+
+    lines.extend([
+        "",
+        "Medium-term (within 30 days):",
+        "- Engage local counsel in the identified jurisdiction",
+        "- Prepare draft pleadings and evidence bundle",
+        "",
+        "6. DOCUMENT CHECKLIST",
+        "---------------------",
+    ])
+
+    if "stock" in intent or "nse" in intent:
+        lines.append("- [ ] Certified NSE/BSE trade reports")
+        lines.append("- [ ] SEBI SCORES complaint acknowledgement")
+        lines.append("- [ ] Board resolutions and insider trading policy (if corporate)")
+    elif "ifsc" in intent or "bank" in intent:
+        lines.append("- [ ] Dishonoured cheque and bank memo")
+        lines.append("- [ ] Statutory demand notice with proof of service")
+        lines.append("- [ ] IFSC verification printout from RBI registry")
+    elif "gstin" in intent or "gst" in intent:
+        lines.append("- [ ] GST registration certificate and ARN")
+        lines.append("- [ ] Return filing history (GSTR-1, GSTR-3B)")
+        lines.append("- [ ] Demand-cum-show-cause notice (if any)")
+    elif "vehicle" in intent or "vahan" in intent:
+        lines.append("- [ ] FIR copy and police investigation report")
+        lines.append("- [ ] RC book and valid insurance policy")
+        lines.append("- [ ] Medical records and disability certificate (if injury)")
+    elif "pincode" in intent or "property" in intent:
+        lines.append("- [ ] Sale deed / title documents")
+        lines.append("- [ ] Encumbrance certificate (EC) for 30 years")
+        lines.append("- [ ] Address proof and voter ID for summons verification")
+    else:
+        lines.append("- [ ] All relevant contracts, correspondence, and receipts")
+        lines.append("- [ ] Identity and address proof of all parties")
+        lines.append("- [ ] Timeline of events with dates and witnesses")
+
+    lines.extend([
+        "",
+        "7. DISCLAIMERS & CAVEATS",
+        "--------------------------",
+        "- This analysis is based on the facts and government data available at the time of generation.",
+        "- Further investigation may reveal additional facts that alter the legal position.",
+        "- Jurisdictional nuances (High Court, District Court, Tribunal) require case-specific advice.",
+        "- Statutory references are current as of the date of this report; amendments may apply.",
+        "",
+        "---",
+        "Generated by LitigaForge AI | Case ID: {case_id} | Chains: {chains}",
+        "This is legal information, not legal advice. Consult a qualified advocate before taking action.",
+    ])
+
+    return "\n".join(lines).format(case_id=case_id, chains=", ".join(active_chains) or "General")

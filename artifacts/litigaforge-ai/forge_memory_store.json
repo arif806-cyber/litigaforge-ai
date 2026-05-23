@@ -1,5 +1,294 @@
 {
-  "patterns": [],
-  "cases": [],
+  "patterns": [
+    {
+      "id": 1,
+      "timestamp": "2026-05-23T19:12:47.290849",
+      "prompt_snippet": "Cheque bounce IFSC SBIN0020149",
+      "chains_used": [
+        "IFSC",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "## CASE ANALYSIS \u2014 Case ID: 06752439\n\n---\n\n### 1. FACTS SUMMARY\n\nThe complainant presents a cheque bounce matter in Hyderabad involving a cheque drawn on State Bank of India, IFSC SBIN0020149, N.I.T. Branch, Warangal, Andhra Pradesh (MICR: 506002030). The drawee bank and branch are verified against "
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "06752439",
+      "timestamp": "2026-05-23T19:12:47.291253",
+      "prompt": "Cheque bounce IFSC SBIN0020149",
+      "api_results": {
+        "IFSC": {
+          "chain": "IFSC",
+          "status": "success",
+          "data_source": "RBI IFSC Registry via Razorpay (free, no key)",
+          "ifsc_code": "SBIN0020149",
+          "bank_name": "State Bank of India",
+          "branch": "N I T BR",
+          "address": "IEMKDKZIPEMIDWGLWGL",
+          "city": "WARANGAL",
+          "district": "WARANGAL",
+          "state": "ANDHRA PRADESH",
+          "contact": "+918702459149",
+          "micr_code": "506002030",
+          "rtgs_enabled": true,
+          "neft_enabled": true,
+          "imps_enabled": true,
+          "upi_enabled": true,
+          "swift_code": "SBININBBH14",
+          "raw": {
+            "MICR": "506002030",
+            "BRANCH": "N I T BR",
+            "ADDRESS": "IEMKDKZIPEMIDWGLWGL",
+            "STATE": "ANDHRA PRADESH",
+            "CONTACT": "+918702459149",
+            "UPI": true,
+            "RTGS": true,
+            "CITY": "WARANGAL",
+            "CENTRE": "WARANGAL",
+            "DISTRICT": "WARANGAL",
+            "NEFT": true,
+            "IMPS": true,
+            "SWIFT": "SBININBBH14",
+            "ISO3166": "IN-AP",
+            "BANK": "State Bank of India",
+            "BANKCODE": "SBIN",
+            "IFSC": "SBIN0020149"
+          },
+          "legal_relevance": {
+            "bank_verified": true,
+            "notes": "IFSC SBIN0020149 verified against RBI registry. Critical in cheque bounce cases (NI Act S.138) to establish drawee bank. Use for attachment orders (CPC Order XXI), fraud tracing, and loan disputes."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Citizen (Mock)",
+            "given_name": "Mock",
+            "family_name": "Citizen",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Unknown",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "connection_failed",
+              "sandbox_connected": false,
+              "api_error": "Request timed out",
+              "note": "Sandbox unreachable \u2014 Request timed out",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC02ECD763BA26",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "24-11-2025",
+                "valid_till": "24-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "connection_failed",
+              "sandbox_connected": false,
+              "api_error": "Request timed out",
+              "note": "Sandbox unreachable \u2014 Request timed out",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC02B8B8CAA9C2",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "24-11-2025",
+                "valid_till": "24-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "api_error",
+              "sandbox_connected": true,
+              "api_error": "HTTP 503: <html>\r\n<head><title>503 Service Temporarily Unavailable</title></head>\r\n<body>\r\n<center><h1>503 Service Temporarily Unavailable</h1></center>\r\n</body>\r\n</html>\r\n",
+              "note": "Sandbox unreachable \u2014 HTTP 503: <html>\r\n<head><title>503 Service Temporarily Unavailable</title></head>\r\n<body>\r\n<center><h1>503 Service Temporarily Unavailable</h1></center>\r\n</body>\r\n</html>\r\n",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02FD4A71DD4A",
+                "applicant_name": "Applicant (Mock)",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "24-11-2025",
+                "valid_till": "24-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "skipped",
+          "reason": "Provide party_name, case_number, or cnr"
+        }
+      },
+      "final_output": "LITIGAFORGE AI \u2014 CASE 06752439 [AI-Generated]\n---\n\n## CASE ANALYSIS \u2014 Case ID: 06752439\n\n---\n\n### 1. FACTS SUMMARY\n\nThe complainant presents a cheque bounce matter in Hyderabad involving a cheque drawn on State Bank of India, IFSC SBIN0020149, N.I.T. Branch, Warangal, Andhra Pradesh (MICR: 506002030). The drawee bank and branch are verified against the RBI IFSC Registry. The cheque has been dishonoured, giving rise to a criminal complaint under the Negotiable Instruments Act. The matter falls within the jurisdiction of a Magistrate's Court competent to try NI Act offences.\n\n---\n\n### 2. IDENTIFIED ISSUES\n\n- **Issue 1:** Whether the dishonoured cheque satisfies all conditions for a valid complaint under the Negotiable Instruments Act, 1881, Section 138.\n- **Issue 2:** Whether the mandatory pre-litigation demand notice was served within 30 days of dishonour, and whether the accused failed to pay within 15 days thereafter \u2014 conditions precedent under NI Act, Section 138 proviso.\n- **Issue 3:** Whether the complaint is filed within the limitation period of 30 days from expiry of the notice period, as required under NI Act, Section 142(b).\n- **Issue 4:** Correct territorial jurisdiction of the court given the drawee bank branch is located in Warangal, Andhra Pradesh.\n\n---\n\n### 3. APPLICABLE LAWS\n\n- **Negotiable Instruments Act, 1881, Section 138** \u2014 Creates the offence of dishonour of cheque for insufficiency of funds or exceeding the arranged amount.\n- **Negotiable Instruments Act, 1881, Section 139** \u2014 Raises a presumption that the cheque was issued for discharge of a legally enforceable debt.\n- **Negotiable Instruments Act, 1881, Section 141** \u2014 Fastens liability on directors/officers where the drawer is a company.\n- **Negotiable Instruments Act, 1881, Section 142** \u2014 Mandates cognisance only on written complaint; prescribes limitation of 30 days from cause of action.\n- **Negotiable Instruments Act, 1881, Section 142A** \u2014 Governs territorial jurisdiction; complaint lies where cheque is delivered for collection through the complainant's bank.\n- **Code of Criminal Procedure, 1973, Section 200** \u2014 Governs examination of complainant on oath before Magistrate.\n- **Indian Evidence Act, 1872, Section 118** \u2014 Presumes every negotiable instrument was made for consideration.\n- **Information Technology Act, 2000, Section 65B** \u2014 Governs admissibility of electronic bank records (dishonour memo, bank statement).\n\n---\n\n### 4. GOVERNMENT DATA FINDINGS\n\n**Source: RBI IFSC Registry via Razorpay API**\n- IFSC Code: SBIN0020149 \u2014 **Verified**\n- Bank: State Bank of India\n- Branch: N.I.T. Branch\n- City/District: Warangal\n- State: Andhra Pradesh\n- MICR Code: 506002030\n- RTGS/NEFT/IMPS/UPI: All enabled\n- Contact: +91-870-2459149\n\n**Note:** MeriPehchaan data is flagged **mock/sandbox only** in the API response and is excluded from verified findings per Output Rule 6.\n\n---\n\n### 5. RECOMMENDED STRATEGY\n\n**Immediate (within 7 days):**\n- Complainant's advocate issues a **legal demand notice** to the drawer specifying the dishonour and demanding payment of the cheque amount within 15 days, as mandated under **NI Act, Section 138 proviso (b)**.\n- Complainant obtains the **cheque return memo** from the presenting bank establishing dishonour \u2014 essential for the complaint under **NI Act, Section 138**.\n\n**Medium-term (within 30 days):**\n- If the drawer fails to pay within 15 days of receipt of notice, file a written complaint before the competent Magistrate at the location of the **complainant's bank branch** (where the cheque was deposited for collection), as required under **NI Act, Section 142A**.\n- File complaint within **30 days of expiry of the 15-day notice period**, as mandated under **NI Act, Section 142(b)**; delay attracts bar on cognisance.\n\n---\n\n### 6. DOCUMENT CHECKLIST\n\n- [ ] Original dishonoured cheque (establishes the instrument \u2014 NI Act, Section 138)\n- [ ] Bank return memo stating reason for dishonour (evidence of dishonour)\n- [ ] Proof of dispatch and delivery of legal demand notice (satisfies NI Act, Section 138 proviso)\n- [ ] Postal acknowledgement / courier proof of notice service\n- [ ] Bank account statement of complainant showing cheque presentation and return\n- [ ] Certificate under IT Act, Section 65B for electronic bank records\n- [ ] Underlying transaction documents establishing legally enforceable debt\n\n---\n\n### 7. DISCLAIMERS & CAVEATS\n\nThis analysis cannot determine: (a) the actual reason for dishonour as recorded on the bank memo; (b) whether the demand notice has already been issued and its date; (c) whether limitation has already run; (d) the identity or location of the drawer, which affects jurisdiction under NI Act, Section 142A. The Warangal branch location may affect which court exercises jurisdiction \u2014 this requires verification of where the complainant's bank account is held.\n\n**This is legal information, not legal advice. Consult a qualified advocate before taking action.**\n\n---\nUNTHOUGHT CHAINS:\n- Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS:  IFSC, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS:  IFSC:success | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n---"
+    }
+  ],
   "watch_list": []
 }

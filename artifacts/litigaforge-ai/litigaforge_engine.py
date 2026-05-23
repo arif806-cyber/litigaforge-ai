@@ -498,25 +498,19 @@ Structure: ## Summary | ## Key Findings from Data | ## Legal Analysis | ## Recom
         )
         suggestions = _dummy_suggestions(state["user_prompt"])
 
-    disclaimer = """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MANDATORY LEGAL DISCLAIMER — ADVOCATES ACT 1961
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LitigaForge AI output is AI-generated and must be independently
-verified by the licensed advocate. It does NOT constitute legal advice.
-The advocate bears full responsibility under the Advocates Act 1961
-and Bar Council of India Rules.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
-
-    mode_tag = "[DUMMY MODE — Add OPENAI_API_KEY for real AI output]" if DUMMY_MODE else "[AI-Generated]"
+    mode_tag = "[Fallback Mode — AI providers unavailable]" if DUMMY_MODE else "[AI-Generated]"
     chain_status = " | ".join(f"{c['chain']}:{c['status']}" for c in state["chain_map"])
 
+    # strategy_text already contains disclaimer from ai_brain; do not duplicate
     final_output = (
-        f"🔥 LITIGAFORGE AI — CASE {state['case_id']} {mode_tag}\n{'='*60}\n\n"
-        f"{strategy_text}\n\n{'='*60}\n"
-        f"UNTHOUGHT CHAINS:\n" + "\n".join(f"  → {s}" for s in suggestions) +
-        f"\n\nCHAINS  : {', '.join(state['planned_chains'])}\n"
-        f"STATUS  : {chain_status}\n{'='*60}\n\n{disclaimer}"
+        f"LITIGAFORGE AI — CASE {state['case_id']} {mode_tag}\n"
+        f"---\n\n"
+        f"{strategy_text}\n\n"
+        f"---\n"
+        f"UNTHOUGHT CHAINS:\n" + "\n".join(f"- {s}" for s in suggestions) + "\n\n"
+        f"CHAINS:  {', '.join(state['planned_chains'])}\n"
+        f"STATUS:  {chain_status}\n"
+        f"---"
     )
 
     state["final_output"] = final_output

@@ -5,6 +5,8 @@ Wraps every AI call with safety guardrails:
 - Prevents cross-user data leakage
 - Validates AI output before returning to user
 """
+import re
+from typing import Dict, Any
 
 LEGAL_SYSTEM_PROMPT = """You are LitigaForge AI, a legal
 information assistant specialising in Indian law, specifically
@@ -85,4 +87,77 @@ def validate_ai_response(response: str) -> str:
                 "Please rephrase your query and try again."
             )
 
+    return response
+
+
+def strip_generic_fluff(response: str) -> str:
+    """
+    Post-process AI output to remove generic phrases, emojis, marketing text,
+    and self-referential AI commentary. Preserves legal substance.
+    """
+    if not response:
+        return response
+
+    fluff_patterns = [
+        r"(?i)^\s*🔥\s*litigaforge\s*ai\s*[—-]\s*case\s+\S+\s*\[.*?\]\s*",
+        r"(?i)^\s*={10,}\s*",
+        r"(?i)^\s*#{1,2}\s*summary\s*(of\s*the\s*case)?\s*",
+        r"(?i)\b(litigaforge\s*ai|our\s*ai|our\s*system|this\s*ai|this\s*model)\b",
+        r"(?i)\b(leverage\s*our|harness\s*the\s*power|cutting-edge|state-of-the-art)\b",
+        r"(?i)\b(your\s*trusted\s*legal\s*partner|empowering\s*justice|revolutionizing)\b",
+        r"(?i)\b(it\s*is\s*important\s*to\s*note\s*that|it\s*should\s*be\s*noted\s*that)\b",
+        r"(?i)\b(in\s*conclusion|to\s*sum\s*up|all\s*things\s*considered)\b",
+        r"(?i)\b(as\s*a\s*language\s*model|as\s*an\s*ai|i\s*am\s*an\s*ai)\b",
+        r"(?i)\b(i\s*do\s*not\s*have\s*access\s*to|my\s*knowledge\s*cutoff)\b",
+    ]
+    cleaned = response
+    for pat in fluff_patterns:
+        cleaned = re.sub(pat, "", cleaned)
+
+    # Remove emojis and decorative Unicode
+    cleaned = re.sub(r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002702-\U000027B0\U000024C2-\U0001F251]+", "", cleaned)
+
+    # Collapse multiple blank lines
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+
+    return cleaned.strip()
+
+
+def hallucination_guard(response: str, api_results: Dict[str, Any]) -> str:
+    """
+    Lightweight guard: if the response quotes specific numbers, names, or
+    dates that do NOT appear in api_results, flag it with a warning.
+    Does NOT rewrite — adds a visible caveat.
+    """
+    if not response or not api_results:
+        return response
+
+    # Collect all scalar string values from api_results as a flat set
+    known_values = set()
+    def _collect(obj):
+        if isinstance(obj, str) and len(obj) > 2:
+            known_values.add(obj.lower())
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                _collect(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _collect(item)
+    _collect(api_results)
+
+    # Look for quoted numbers (e.g., "Rs. 50,000" or "Section 420")
+    suspicious = []
+    quoted_numbers = re.findall(r'["\'](Rs\.?\s*[\d,]+|\d{4,})["\']', response)
+    for qn in quoted_numbers:
+        if qn.lower() not in known_values:
+            suspicious.append(qn)
+
+    if suspicious:
+        warning = (
+            "\n\n[VERIFICATION WARNING] The following specific values "
+            "could not be verified against government data: "
+            + ", ".join(suspicious[:3])
+            + ". Please independently confirm before relying on them."
+        )
+        return response + warning
     return response
