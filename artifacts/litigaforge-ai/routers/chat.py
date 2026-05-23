@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from auth import get_current_user
 from rate_limit import limiter
 from database import fetchrow, fetch, execute
+from sanitizer import sanitize_text
+from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
 
 logger = logging.getLogger("litigaforge.chat")
 router = APIRouter(tags=["chat"])
@@ -83,7 +85,13 @@ async def ai_legal_chat(
     if not current_user:
         raise HTTPException(401, "Login required")
 
-    system_prompt = """You are LitigaForge AI, a legal assistant for the Indian legal system, specifically for Telangana and Andhra Pradesh. 
+    try:
+        safe_message = sanitize_text(req.message, max_length=2000, field_name="message")
+        safe_context = sanitize_text(req.context, max_length=2000, field_name="context") if req.context else ""
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    system_prompt = """You are LitigaForge AI, a legal assistant for the Indian legal system, specifically for Telangana and Andhra Pradesh.
 You help advocates and clients with legal drafting, procedural guidance, and case analysis.
 
 IMPORTANT: Always include this disclaimer at the end of your response:
@@ -91,12 +99,14 @@ IMPORTANT: Always include this disclaimer at the end of your response:
 
 Be concise, accurate, and cite relevant Indian laws (IPC, CrPC, CPC, specific state acts) where applicable."""
 
-    user_prompt = req.message
-    if req.context:
-        user_prompt = f"Context: {req.context}\n\nQuestion: {req.message}"
+    user_prompt = safe_message
+    if safe_context:
+        user_prompt = f"Context: {safe_context}\n\nQuestion: {safe_message}"
 
     full_prompt = f"{system_prompt}\n\n{user_prompt}"
-    response = _ai(full_prompt, 2500)
+    response = _ai(wrap_user_prompt(full_prompt), 2500)
+    response = validate_ai_response(response)
+    response = add_disclaimer(response)
 
     if req.thread_id:
         await execute(
@@ -182,11 +192,16 @@ async def send_chat_message(
     if not auth:
         raise HTTPException(403, "Not authorized")
 
+    try:
+        safe_content = sanitize_text(req.content, max_length=2000, field_name="content")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
     row = await fetchrow(
         """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content)
            VALUES ($1, $2, 'user', $3)
            RETURNING id, thread_id, sender_id, sender_role, content, created_at""",
-        req.thread_id, current_user["id"], req.content,
+        req.thread_id, current_user["id"], safe_content,
     )
     row["created_at"] = str(row["created_at"])
     return {"message": row}

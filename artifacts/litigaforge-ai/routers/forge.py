@@ -13,6 +13,7 @@ from alerts.whatsapp import send_whatsapp_alert
 from database import increment_case_count, TIER_LIMITS
 from auth import get_current_user
 from rate_limit import limiter
+from sanitizer import sanitize_text
 
 router = APIRouter(tags=["forge"])
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
@@ -57,10 +58,22 @@ async def health():
 
 @router.post("/forge")
 @limiter.limit("10/minute")
-async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
-                fastapi_request: Request,
-                current_user: Optional[dict] = Depends(get_current_user)):
-    if not request.prompt.strip():
+async def forge(
+    body: ForgeRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    try:
+        safe_prompt = sanitize_text(
+            body.prompt,
+            max_length=5000,
+            field_name="prompt"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if not safe_prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
     # Enforce monthly case limits for authenticated users
@@ -75,7 +88,7 @@ async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
             )
 
     try:
-        result = forge_case(request.prompt)
+        result = forge_case(safe_prompt)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Engine error: {str(e)}")
 
@@ -86,13 +99,13 @@ async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
         except Exception:
             pass
 
-    if request.notify_whatsapp:
+    if body.notify_whatsapp:
         summary = (
             f"Case {result['case_id']} forged.\nChains: {', '.join(result['planned_chains'])}\n"
             + "\n".join(f"• {s}" for s in result.get("meta_suggestions", []))
         )
         background_tasks.add_task(
-            send_whatsapp_alert, message=summary, to=request.advocate_phone, alert_type="forge"
+            send_whatsapp_alert, message=summary, to=body.advocate_phone, alert_type="forge"
         )
 
     return {

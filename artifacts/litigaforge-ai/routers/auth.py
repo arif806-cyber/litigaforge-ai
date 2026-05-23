@@ -13,6 +13,8 @@ from auth import (
 )
 from database import create_user, get_user_by_email
 from rate_limit import limiter
+from sanitizer import sanitize_text
+import re as _re
 
 router = APIRouter(tags=["auth"])
 
@@ -36,9 +38,15 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     if len(req.name.strip()) < 2:
         raise HTTPException(status_code=400, detail="Name is too short")
     try:
+        safe_name = sanitize_text(req.name, max_length=100, field_name="name")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', req.email):
+        raise HTTPException(status_code=422, detail="Invalid email format")
+    try:
         user = await create_user(
             email=req.email,
-            name=req.name,
+            name=safe_name,
             password_hash=hash_password(req.password),
         )
     except ValueError as e:

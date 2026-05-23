@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from auth import get_superuser
 from database import fetch, fetchrow, execute
+from sanitizer import sanitize_text
 
 router = APIRouter(tags=["admin"])
 
@@ -41,13 +42,17 @@ async def admin_approve_lawyer(lawyer_id: int, current_user: dict = Depends(get_
 
 @router.post("/admin/lawyers/{lawyer_id}/reject")
 async def admin_reject_lawyer(lawyer_id: int, req: RejectRequest, current_user: dict = Depends(get_superuser)):
+    try:
+        safe_reason = sanitize_text(req.reason, max_length=500, field_name="reason") if req.reason else ""
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     row = await fetchrow(
         "UPDATE lawyers SET verification_status = 'rejected' WHERE id = $1 RETURNING id",
         lawyer_id,
     )
     if not row:
         raise HTTPException(status_code=404, detail="Lawyer not found")
-    return {"success": True, "lawyer_id": lawyer_id, "status": "rejected", "reason": req.reason}
+    return {"success": True, "lawyer_id": lawyer_id, "status": "rejected", "reason": safe_reason}
 
 
 @router.get("/admin/users")

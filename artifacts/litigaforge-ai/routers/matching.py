@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from auth import get_current_user
 from rate_limit import limiter
 from database import fetchrow, fetch, execute, executemany
+from sanitizer import sanitize_text
+from ai_safety import wrap_user_prompt
 
 logger = logging.getLogger("litigaforge.matching")
 router = APIRouter(tags=["matching"])
@@ -93,13 +95,22 @@ async def create_case_requirement(
 ):
     if not current_user:
         raise HTTPException(401, "Login required to post a case")
+    try:
+        safe_title = sanitize_text(req.title, max_length=200, field_name="title")
+        safe_case_type = sanitize_text(req.case_type, max_length=100, field_name="case_type")
+        safe_desc = sanitize_text(req.description, max_length=2000, field_name="description")
+        safe_location = sanitize_text(req.location, max_length=100, field_name="location")
+        safe_budget = sanitize_text(req.budget_range, max_length=50, field_name="budget_range")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
     row = await fetchrow(
         """INSERT INTO case_requirements
            (user_id, title, case_type, description, location, budget_range, is_anonymous, status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')
            RETURNING id, user_id, title, case_type, description, location, budget_range, is_anonymous, status, created_at""",
-        current_user["id"], req.title, req.case_type, req.description,
-        req.location, req.budget_range, req.is_anonymous,
+        current_user["id"], safe_title, safe_case_type, safe_desc,
+        safe_location, safe_budget, req.is_anonymous,
     )
     row["created_at"] = str(row["created_at"])
     return {"message": "Case requirement posted successfully", "case": row}

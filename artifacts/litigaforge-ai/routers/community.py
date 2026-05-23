@@ -15,6 +15,8 @@ from pydantic import BaseModel
 from auth import get_current_user
 from rate_limit import limiter
 from database import fetchrow, fetch
+from sanitizer import sanitize_text
+from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
@@ -93,9 +95,14 @@ class QuestionRequest(BaseModel):
 async def ask_legal_question(req: QuestionRequest,
                              request: Request,
                              current_user: Optional[dict] = Depends(get_current_user)):
+    try:
+        safe_question = sanitize_text(req.question, max_length=1000, field_name="question")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
     prompt = f"""You are a senior Indian legal advisor with deep expertise in Telangana and Andhra Pradesh law.
 
-QUESTION: {req.question.strip()}
+QUESTION: {safe_question}
 
 Provide a thorough, practical answer in this format:
 
@@ -118,19 +125,21 @@ Provide a thorough, practical answer in this format:
 
 Be specific, cite real law, and avoid unhelpful generic disclaimers."""
 
-    answer = _ai(prompt, 1800)
-    if not answer:
+    answer = _ai(wrap_user_prompt(prompt), 1800)
+    answer = validate_ai_response(answer)
+    answer = add_disclaimer(answer)
+    if not answer.strip():
         answer = "Our AI advisors are temporarily busy. Please try again in a moment, or consult a local advocate directly."
 
     uid = current_user["id"] if current_user else None
     row = await fetchrow(
         "INSERT INTO legal_questions (user_id, question, category, ai_answer) "
         "VALUES ($1, $2, $3, $4) RETURNING id, created_at",
-        uid, req.question.strip(), req.category, answer,
+        uid, safe_question, req.category, answer,
     )
     return {
         "id": row["id"],
-        "question": req.question,
+        "question": safe_question,
         "category": req.category,
         "answer": answer,
         "created_at": str(row["created_at"]),
@@ -166,7 +175,12 @@ class DocumentRequest(BaseModel):
 @router.post("/document/analyze")
 @limiter.limit("10/minute")
 async def analyze_document(req: DocumentRequest, request: Request):
-    if len(req.document_text.strip()) < 50:
+    try:
+        safe_text = sanitize_text(req.document_text, max_length=8000, field_name="document_text")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if len(safe_text.strip()) < 50:
         raise HTTPException(400, "Document too short — paste at least 50 characters")
 
     prompt = f"""You are a senior Indian contract lawyer. Analyze the following {req.document_type} and return ONLY a valid JSON object with this exact structure:
@@ -182,10 +196,11 @@ async def analyze_document(req: DocumentRequest, request: Request):
 
 Document text:
 ---
-{req.document_text.strip()[:8000]}
+{safe_text[:8000]}
 ---"""
 
-    raw = _ai(prompt, 2500)
+    raw = _ai(wrap_user_prompt(prompt), 2500)
+    raw = validate_ai_response(raw)
     try:
         result = _extract_json_object(raw)
     except Exception:
@@ -210,7 +225,12 @@ class JudgmentSearchRequest(BaseModel):
 @router.post("/judgments/search")
 @limiter.limit("10/minute")
 async def search_judgments(req: JudgmentSearchRequest, request: Request):
-    if len(req.query.strip()) < 5:
+    try:
+        safe_query = sanitize_text(req.query, max_length=500, field_name="query")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if len(safe_query.strip()) < 5:
         raise HTTPException(400, "Search query too short")
 
     court_note = f" Prioritise {req.court} judgments." if req.court else \
@@ -218,7 +238,7 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
 
     prompt = f"""You are an expert in Indian case law and legal research.
 
-SEARCH QUERY: {req.query.strip()}{court_note}
+SEARCH QUERY: {safe_query}{court_note}
 
 Return ONLY a valid JSON array of 5 highly relevant Indian court judgments:
 [
@@ -235,17 +255,18 @@ Return ONLY a valid JSON array of 5 highly relevant Indian court judgments:
 
 Use real, verifiable citations where known. Prefer landmark judgments that advocates actually cite."""
 
-    raw = _ai(prompt, 3000)
+    raw = _ai(wrap_user_prompt(prompt), 3000)
+    raw = validate_ai_response(raw)
     try:
         judgments = _extract_json_array(raw)
     except Exception:
         judgments = []
 
     for j in judgments:
-        q = j.get("ik_query", j.get("case_name", req.query)).replace(" ", "+")
+        q = j.get("ik_query", j.get("case_name", safe_query)).replace(" ", "+")
         j["ik_link"] = f"https://indiankanoon.org/search/?formInput={q}&type=judgments"
 
-    return {"query": req.query, "total": len(judgments), "judgments": judgments}
+    return {"query": safe_query, "total": len(judgments), "judgments": judgments}
 
 
 # ── Lawyer Directory ────────────────────────────────────────────────────────────────────

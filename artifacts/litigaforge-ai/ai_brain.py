@@ -21,6 +21,8 @@ import requests as _req
 
 logger = logging.getLogger("litigaforge.ai_brain")
 
+from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Provider registry — lazy-initialised on first call
 # ──────────────────────────────────────────────────────────────────────────────
@@ -223,7 +225,8 @@ CRITICAL RULES:
 
 def smart_extract_entities(prompt: str) -> Dict[str, Any]:
     """Extract entities — Gemini leads (fast), regex fallback."""
-    raw = _call_gemini(EXTRACT_SYSTEM, f"Extract entities from: {prompt}",
+    safe_prompt = wrap_user_prompt(f"Extract entities from: {prompt}")
+    raw = _call_gemini(EXTRACT_SYSTEM, safe_prompt,
                        temperature=0.1, max_tokens=1024)
     if raw:
         try:
@@ -392,7 +395,7 @@ def smart_legal_strategy(
         if isinstance(result, dict) and result.get("status") not in ("skipped", None)
     }
 
-    context = f"""User Query / Case Facts:
+    safe_context = wrap_user_prompt(f"""User Query / Case Facts:
 {prompt}
 
 Detected Intent: {intent}
@@ -404,32 +407,39 @@ Active AI Providers: {', '.join(active)}
 
 Real Government API Data Retrieved:
 {json.dumps(data_summary, indent=2, default=str)[:7000]}
-"""
+""")
 
     # 1️⃣ Try Claude Sonnet 4-6 — best for structured legal documents
     if "claude" in active:
         logger.info(f"[AI_BRAIN] Strategy via Claude Sonnet 4-6 (case {case_id})")
-        result = _call_claude(STRATEGY_SYSTEM, context, temperature=0.3, max_tokens=6000)
+        result = _call_claude(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
+            result = validate_ai_response(result)
+            result = add_disclaimer(result)
             return f"🔥 LITIGAFORGE AI — CASE {case_id} [Claude Sonnet 4-6]\n{'='*60}\n\n{result}"
 
     # 2️⃣ Try OpenAI GPT-5-mini
     if "openai" in active:
         logger.info(f"[AI_BRAIN] Strategy via GPT-5-mini (case {case_id})")
-        result = _call_openai(STRATEGY_SYSTEM, context, temperature=0.3, max_tokens=6000)
+        result = _call_openai(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
+            result = validate_ai_response(result)
+            result = add_disclaimer(result)
             return f"🔥 LITIGAFORGE AI — CASE {case_id} [GPT-5]\n{'='*60}\n\n{result}"
 
     # 3️⃣ Try Gemini 2.5 Flash
     if "gemini" in active:
         logger.info(f"[AI_BRAIN] Strategy via Gemini 2.5 Flash (case {case_id})")
-        result = _call_gemini(STRATEGY_SYSTEM, context, temperature=0.3, max_tokens=6000)
+        result = _call_gemini(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
+            result = validate_ai_response(result)
+            result = add_disclaimer(result)
             return f"🔥 LITIGAFORGE AI — CASE {case_id} [Gemini 2.5 Flash]\n{'='*60}\n\n{result}"
 
     # 4️⃣ Smart data-driven template — never generic
     logger.info(f"[AI_BRAIN] All AI providers failed — using smart data template (case {case_id})")
-    return _smart_fallback_strategy(prompt, entities, api_results, case_id)
+    fallback = _smart_fallback_strategy(prompt, entities, api_results, case_id)
+    return add_disclaimer(fallback)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
