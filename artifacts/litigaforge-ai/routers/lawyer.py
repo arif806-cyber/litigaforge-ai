@@ -157,6 +157,46 @@ async def create_lawyer_document(
     return {"message": "Document uploaded", "document": row}
 
 
+@router.patch("/lawyer/cases/{case_id}")
+@limiter.limit("30/minute")
+async def update_lawyer_case(
+    case_id: int,
+    req: CreateCaseRequest,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    """Update case details (title, type, description, client, court, status)."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    case = await fetchrow(
+        "SELECT id FROM lawyer_cases WHERE id = $1 AND lawyer_id = $2",
+        case_id, current_user["id"],
+    )
+    if not case:
+        raise HTTPException(404, "Case not found or not owned by you")
+
+    try:
+        safe_title = sanitize_text(req.title, max_length=200, field_name="title")
+        safe_type = sanitize_text(req.case_type, max_length=100, field_name="case_type")
+        safe_desc = sanitize_text(req.description, max_length=2000, field_name="description")
+        safe_client = sanitize_text(req.client_name, max_length=100, field_name="client_name")
+        safe_court = sanitize_text(req.court_name, max_length=100, field_name="court_name")
+        safe_status = sanitize_text(req.status, max_length=20, field_name="status")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    row = await fetchrow(
+        """UPDATE lawyer_cases SET title = $1, case_type = $2, description = $3, client_name = $4, court_name = $5, status = $6
+           WHERE id = $7 AND lawyer_id = $8
+           RETURNING id, lawyer_id, title, case_type, description, client_name, court_name, status, created_at""",
+        safe_title, safe_type, safe_desc, safe_client, safe_court, safe_status, case_id, current_user["id"],
+    )
+    row["created_at"] = str(row["created_at"])
+    logger.info("lawyer %s updated case %s", current_user["id"], case_id)
+    return {"message": "Case updated", "case": row}
+
+
 @router.patch("/lawyer/cases/{case_id}/status")
 @limiter.limit("30/minute")
 async def update_case_status(

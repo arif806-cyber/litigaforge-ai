@@ -174,6 +174,7 @@ export default function LawyerDashboard() {
   const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
   const [statusMenuCaseId, setStatusMenuCaseId] = useState<number | null>(null);
   const [showCaseModal, setShowCaseModal] = useState(false);
+  const [editingCase, setEditingCase] = useState<LawyerCase | null>(null);
   const [showDocModal, setShowDocModal] = useState(false);
   const [preselectedCaseId, setPreselectedCaseId] = useState<string>("");
   const [analyzingDoc, setAnalyzingDoc] = useState<number | null>(null);
@@ -245,6 +246,15 @@ export default function LawyerDashboard() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lawyer-cases"] });
       setStatusMenuCaseId(null);
+    },
+  });
+
+  const editCaseMut = useMutation({
+    mutationFn: ({ caseId, body }: { caseId: number; body: object }) =>
+      apiFetch(`/lawyer/cases/${caseId}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lawyer-cases"] });
+      setEditingCase(null);
     },
   });
 
@@ -465,9 +475,14 @@ export default function LawyerDashboard() {
                                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString("en-IN")}</span>
                               </div>
                             </div>
-                            <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0 mt-1" title="Upload document">
-                              <Upload className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button onClick={(e) => { e.stopPropagation(); setEditingCase(c); }} className="text-gray-300 hover:text-blue-600 transition-colors mt-1" title="Edit case">
+                                <PenSquare className="w-4 h-4" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors mt-1" title="Upload document">
+                                <Upload className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </motion.div>
                       ))}
@@ -669,6 +684,15 @@ export default function LawyerDashboard() {
       {/* ── Add Case Modal ── */}
       <Modal open={showCaseModal} onClose={() => setShowCaseModal(false)} title="Add New Case">
         <CaseForm onSubmit={(data) => createCaseMut.mutate(data)} loading={createCaseMut.isPending} />
+      </Modal>
+
+      {/* ── Edit Case Modal ── */}
+      <Modal open={!!editingCase} onClose={() => setEditingCase(null)} title="Edit Case">
+        <CaseForm
+          initialCase={editingCase}
+          onSubmit={(data) => editingCase && editCaseMut.mutate({ caseId: editingCase.id, body: data })}
+          loading={editCaseMut.isPending}
+        />
       </Modal>
 
       {/* ── Upload Document Modal ── */}
@@ -958,19 +982,21 @@ function CaseFolderModal({
 }
 
 // ── Case Form ────────────────────────────────────────────────────────────────────────────────
-function CaseForm({ onSubmit, loading }: { onSubmit: (data: object) => void; loading: boolean }) {
-  const [title, setTitle] = useState("");
-  const [caseType, setCaseType] = useState(CASE_TYPES[0]);
-  const [clientName, setClientName] = useState("");
-  const [courtName, setCourtName] = useState(COURTS[0]);
-  const [description, setDescription] = useState("");
+function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object) => void; loading: boolean; initialCase?: LawyerCase | null }) {
+  const isEdit = !!initialCase;
+  const [title, setTitle] = useState(initialCase?.title ?? "");
+  const [caseType, setCaseType] = useState(initialCase?.case_type ?? CASE_TYPES[0]);
+  const [clientName, setClientName] = useState(initialCase?.client_name ?? "");
+  const [courtName, setCourtName] = useState(initialCase?.court_name ?? COURTS[0]);
+  const [description, setDescription] = useState(initialCase?.description ?? "");
+  const [status, setStatus] = useState(initialCase?.status ?? "active");
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showCourtDropdown, setShowCourtDropdown] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onSubmit({ title, case_type: caseType, client_name: clientName, court_name: courtName, description, status: "active" });
+    onSubmit({ title, case_type: caseType, client_name: clientName, court_name: courtName, description, status });
   };
 
   return (
@@ -1022,9 +1048,25 @@ function CaseForm({ onSubmit, loading }: { onSubmit: (data: object) => void; loa
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Brief case facts..."
           className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors resize-none" style={{ borderColor: "#E2E8F0" }} />
       </div>
+      {isEdit && (
+        <div className="grid grid-cols-3 gap-2">
+          {(["active","pending","closed"] as const).map((s) => (
+            <button key={s} type="button" onClick={() => setStatus(s)}
+              className={cn("text-[11px] font-bold px-2 py-2 rounded-lg capitalize transition-all",
+                status === s
+                  ? s === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : s === "closed" ? "bg-gray-100 text-gray-700 border border-gray-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                  : "bg-gray-50 text-gray-400 border border-gray-100 hover:border-gray-200")}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
       <button type="submit" disabled={loading || !title.trim()}
         className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm">
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add Case
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : isEdit ? <PenSquare className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        {isEdit ? "Save Changes" : "Add Case"}
       </button>
     </form>
   );
