@@ -30,7 +30,7 @@ function ExternalMatchCard({ match }: { match: any }) {
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold">{match.name}</h3>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                  <ExternalLink className="w-3 h-3" /> eCourts India
+                  <ExternalLink className="w-3 h-3" /> eCourts India (Simulated)
                 </span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
@@ -63,9 +63,9 @@ function ExternalMatchCard({ match }: { match: any }) {
             </div>
           )}
 
-          <div className="bg-muted/40 border border-muted rounded-lg p-3 text-sm text-muted-foreground flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-            <p>This advocate was found via public court records. <strong>Verify independently</strong> before engagement. Contact details and current bar membership must be confirmed.</p>
+          <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 text-sm text-amber-900 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+            <p><strong>Not a verified lawyer.</strong> This name appears in simulated court records for demonstration only. It is <strong>not a real person</strong> on this platform. Do not attempt to contact or hire. In a live deployment, this section would show verified advocates from actual eCourts India data.</p>
           </div>
         </div>
       </div>
@@ -337,14 +337,14 @@ export default function Matches() {
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {matches.length === 0
-                    ? "Found on eCourts India (no verified lawyers available)"
-                    : "Also found on eCourts India"}
+                    ? "Simulated eCourts Results (Demo Only)"
+                    : "Also from Simulated eCourts (Demo)"}
                 </span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               {matches.length === 0 && (
                 <p className="text-sm text-muted-foreground px-1">
-                  No platform lawyers matched your case. These practising advocates appear in public court records for your case type and location.
+                  No verified platform lawyers matched your case. The names below are from <strong>simulated court records for demonstration</strong> — not real people. In production, live eCourts India data would be queried.
                 </p>
               )}
               {externalMatches.map((m: any) => (
