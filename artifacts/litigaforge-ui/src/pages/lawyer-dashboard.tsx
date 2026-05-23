@@ -174,6 +174,7 @@ export default function LawyerDashboard() {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
+  const [preselectedCaseId, setPreselectedCaseId] = useState<string>("");
   const [analyzingDoc, setAnalyzingDoc] = useState<number | null>(null);
 
   useEffect(() => { setDrawerOpen(false); }, [location]);
@@ -451,7 +452,7 @@ export default function LawyerDashboard() {
                               <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString("en-IN")}</span>
                             </div>
                           </div>
-                          <button onClick={() => setShowDocModal(true)} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0 mt-1" title="Upload document to case">
+                          <button onClick={() => { setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0 mt-1" title="Upload document to case">
                             <Upload className="w-4 h-4" />
                           </button>
                         </div>
@@ -461,44 +462,61 @@ export default function LawyerDashboard() {
                 )}
               </div>
 
-              {/* My Documents */}
+              {/* My Documents — grouped with case linkage */}
               {docs.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-gray-900">Client Documents</h3>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Client Documents</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">Linked to cases — upload from any case card</p>
+                    </div>
                     <button onClick={() => setShowDocModal(true)} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
                       <Plus className="w-3.5 h-3.5" /> Upload
                     </button>
                   </div>
                   <div className="space-y-2.5">
-                    {docs.map((d) => (
-                      <motion.div key={d.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl p-4 shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
-                            <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-900 text-sm">{d.filename}</span>
-                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{d.file_type.toUpperCase()}</span>
+                    {docs.map((d) => {
+                      const linkedCase = cases.find((c) => c.id === d.case_id);
+                      return (
+                        <motion.div key={d.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                          className="bg-white rounded-xl p-4 shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
+                              <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
                             </div>
-                            {d.ai_summary && <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">AI: {d.ai_summary}</p>}
-                            <p className="text-[11px] text-gray-400 mt-1">{new Date(d.created_at).toLocaleDateString("en-IN")}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900 text-sm">{d.filename}</span>
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{d.file_type.toUpperCase()}</span>
+                                {linkedCase ? (
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>
+                                    <Briefcase className="w-2.5 h-2.5" /> {linkedCase.title}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0" }}>Unlinked</span>
+                                )}
+                              </div>
+                              {d.ai_summary ? (
+                                <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">AI: {d.ai_summary}</p>
+                              ) : (
+                                <p className="text-[12px] text-gray-400 mt-0.5 line-clamp-1">{d.content_text?.slice(0, 80) || "No content preview"}{d.content_text && d.content_text.length > 80 ? "…" : ""}</p>
+                              )}
+                              <p className="text-[11px] text-gray-400 mt-1">{new Date(d.created_at).toLocaleDateString("en-IN")}</p>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {!d.ai_summary && (
+                                <button onClick={() => { setAnalyzingDoc(d.id); analyzeDocMut.mutate(d.id, { onSettled: () => setAnalyzingDoc(null) }); }}
+                                  disabled={analyzeDocMut.isPending && analyzingDoc === d.id}
+                                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-60">
+                                  {analyzeDocMut.isPending && analyzingDoc === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                  Analyze
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            {!d.ai_summary && (
-                              <button onClick={() => { setAnalyzingDoc(d.id); analyzeDocMut.mutate(d.id, { onSettled: () => setAnalyzingDoc(null) }); }}
-                                disabled={analyzeDocMut.isPending && analyzingDoc === d.id}
-                                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-60">
-                                {analyzeDocMut.isPending && analyzingDoc === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                Analyze
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -631,8 +649,8 @@ export default function LawyerDashboard() {
       </Modal>
 
       {/* ── Upload Document Modal ── */}
-      <Modal open={showDocModal} onClose={() => setShowDocModal(false)} title="Upload Client Document">
-        <DocForm cases={cases} onSubmit={(data) => createDocMut.mutate(data)} loading={createDocMut.isPending} />
+      <Modal open={showDocModal} onClose={() => { setShowDocModal(false); setPreselectedCaseId(""); }} title="Upload Client Document">
+        <DocForm cases={cases} preselectedCaseId={preselectedCaseId} onSubmit={(data) => createDocMut.mutate(data)} loading={createDocMut.isPending} />
       </Modal>
 
     </div>
@@ -713,11 +731,11 @@ function CaseForm({ onSubmit, loading }: { onSubmit: (data: object) => void; loa
 }
 
 // ── Document Form ───────────────────────────────────────────────────────────────────────────────
-function DocForm({ cases, onSubmit, loading }: { cases: LawyerCase[]; onSubmit: (data: object) => void; loading: boolean }) {
+function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: LawyerCase[]; onSubmit: (data: object) => void; loading: boolean; preselectedCaseId?: string }) {
   const [tab, setTab] = useState<"paste" | "upload">("paste");
   const [filename, setFilename] = useState("");
   const [contentText, setContentText] = useState("");
-  const [caseId, setCaseId] = useState<string>("");
+  const [caseId, setCaseId] = useState<string>(preselectedCaseId ?? "");
   const [fileType, setFileType] = useState("pdf");
   const fileRef = useRef<HTMLInputElement>(null);
 
