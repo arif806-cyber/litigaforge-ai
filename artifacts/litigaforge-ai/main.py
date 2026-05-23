@@ -1,37 +1,30 @@
 """
 LitigaForge AI — FastAPI Server
-Full REST API for legal case forging, watch mode, forge memory, WhatsApp alerts,
-user authentication (register/login/me), and subscription management.
+Modular router aggregator: 9 clean routers, lifespan, CORS, rate limiting.
 """
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Optional
 
-from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 
 load_dotenv()
+
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
+from database import get_pool, close_pool
+from watch_mode import WatchModeManager
+from alerts.whatsapp import send_whatsapp_alert
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger("litigaforge.api")
 
-from litigaforge_engine import forge_case, memory
-from alerts.whatsapp import send_whatsapp_alert, send_hearing_reminder
-from watch_mode import WatchModeManager
-from database import (
-    create_user, get_user_by_email, get_user_by_id, get_pool, close_pool,
-    increment_case_count, update_subscription, SUBSCRIPTION_PLANS, TIER_LIMITS,
-    fetch, fetchrow, execute, fetchval,
-)
-from auth import hash_password, verify_password, create_token, get_current_user, require_user, set_auth_cookie, clear_auth_cookie
-from payments import create_order, verify_payment, PLAN_PRICES
-from extra_routes import router as extra_router
-
-watcher = WatchModeManager(memory=memory, alert_fn=send_whatsapp_alert)
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
+watcher = WatchModeManager(
+    memory=__import__("litigaforge_engine").memory,
+    alert_fn=send_whatsapp_alert,
+)
 
 
 @asynccontextmanager
@@ -49,6 +42,7 @@ async def lifespan(app: FastAPI):
                 subscription_tier TEXT DEFAULT 'free',
                 cases_this_month INTEGER DEFAULT 0,
                 month_reset_date DATE DEFAULT CURRENT_DATE,
+                is_superuser BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -99,6 +93,7 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending'")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT FALSE")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS case_requirements (
                 id SERIAL PRIMARY KEY,
@@ -174,6 +169,7 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+
 _cors_origins = [f"https://{d.strip()}" for d in os.getenv("REPLIT_DOMAINS", "").split(",") if d.strip()]
 _frontend_url = os.environ.get("FRONTEND_URL", "").strip()
 if _frontend_url:
@@ -189,478 +185,23 @@ app.add_middleware(
     max_age=600,
 )
 
-router = APIRouter()
+# ─── Include Routers ──────────────────────────────────────────────────────────
+from routers import (
+    auth_router, forge_router, subscription_router,
+    matching_router, chat_router, community_router,
+    watch_router, alerts_router, admin_router,
+)
+
+app.include_router(auth_router,         prefix=BASE_PATH)
+app.include_router(matching_router,     prefix=BASE_PATH)  # before forge to win /cases/requirements
+app.include_router(forge_router,        prefix=BASE_PATH)
+app.include_router(subscription_router, prefix=BASE_PATH)
+app.include_router(chat_router,        prefix=BASE_PATH)
+app.include_router(community_router,   prefix=BASE_PATH)
+app.include_router(watch_router,       prefix=BASE_PATH)
+app.include_router(alerts_router,      prefix=BASE_PATH)
+app.include_router(admin_router,       prefix=BASE_PATH)
 
-
-# ─── Pydantic models ───────────────────────────────────────────────────────────
-
-class ForgeRequest(BaseModel):
-    prompt: str
-    notify_whatsapp: bool = False
-    advocate_phone: Optional[str] = None
-
-class WatchRequest(BaseModel):
-    party_name: Optional[str] = None
-    case_number: Optional[str] = None
-    phone: Optional[str] = None
-    notes: Optional[str] = ""
-
-class AlertRequest(BaseModel):
-    message: str
-    phone: Optional[str] = None
-    alert_type: str = "info"
-
-class HearingReminderRequest(BaseModel):
-    case_number: str
-    court: str
-    date: str
-    party: str
-    phone: Optional[str] = None
-
-class RegisterRequest(BaseModel):
-    name: str
-    email: str
-    password: str
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-class UpgradeRequest(BaseModel):
-    tier: str
-
-
-# ─── Root / health ─────────────────────────────────────────────────────────────
-
-@router.get("/")
-async def root():
-    docs_path = f"{BASE_PATH}/docs" if BASE_PATH else "/docs"
-    return {
-        "name": "LitigaForge AI",
-        "version": "3.0.0",
-        "status": "running",
-        "watch_mode_active": watcher.is_running,
-        "forge_memory": memory.stats(),
-        "docs": docs_path,
-    }
-
-
-@router.get("/healthz")
-async def health():
-    from ai_brain import get_active_providers
-    active = get_active_providers()
-    if len(active) >= 2:
-        ai_mode = "multi"
-    elif active:
-        ai_mode = active[0]
-    else:
-        ai_mode = "smart_fallback"
-    return {
-        "status": "ok",
-        "service": "LitigaForge AI",
-        "ai_mode": ai_mode,
-        "active_providers": active,
-        "dummy_mode": ai_mode == "smart_fallback",
-    }
-
-
-# ─── Auth routes ───────────────────────────────────────────────────────────────
-
-@router.post("/auth/register")
-@limiter.limit("3/minute")
-async def register(req: RegisterRequest, request: Request, response: Response):
-    if len(req.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
-    if len(req.name.strip()) < 2:
-        raise HTTPException(status_code=400, detail="Name is too short")
-    try:
-        user = await create_user(
-            email=req.email,
-            name=req.name,
-            password_hash=hash_password(req.password),
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    token = create_token(user["id"])
-    set_auth_cookie(response, token)
-    return {"user": user}
-
-
-@router.post("/auth/login")
-@limiter.limit("5/minute")
-async def login(req: LoginRequest, request: Request, response: Response):
-    user = await get_user_by_email(req.email)
-    if not user or not verify_password(req.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
-    # Remove password hash from response
-    user.pop("password_hash", None)
-    token = create_token(user["id"])
-    set_auth_cookie(response, token)
-    return {"user": user}
-
-
-@router.get("/auth/me")
-async def me(current_user: dict = Depends(require_user)):
-    return current_user
-
-
-@router.post("/auth/logout")
-async def logout(response: Response):
-    clear_auth_cookie(response)
-    return {"message": "Logged out successfully"}
-
-
-# ─── Subscription routes ───────────────────────────────────────────────────────
-
-@router.get("/subscription/plans")
-async def subscription_plans():
-    return SUBSCRIPTION_PLANS
-
-
-class CreateOrderRequest(BaseModel):
-    tier: str
-
-
-@router.post("/subscription/create-order")
-async def subscription_create_order(req: CreateOrderRequest, current_user: dict = Depends(require_user)):
-    if req.tier not in PLAN_PRICES:
-        raise HTTPException(status_code=400, detail="Invalid tier. Choose professional or advocate_pro")
-    try:
-        order = create_order(req.tier, current_user["id"])
-    except Exception as e:
-        logger.error(f"Razorpay order creation failed: {e}")
-        raise HTTPException(status_code=500, detail="Payment service unavailable. Please try again later.")
-    return {
-        "order_id": order["id"],
-        "amount": order["amount"],
-        "currency": order["currency"],
-        "key_id": os.environ.get("RAZORPAY_KEY_ID", ""),
-    }
-
-
-class VerifyRequest(BaseModel):
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
-    tier: str
-
-
-@router.post("/subscription/verify")
-async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(require_user)):
-    if req.tier not in PLAN_PRICES:
-        raise HTTPException(status_code=400, detail="Invalid tier")
-    ok = verify_payment(req.razorpay_order_id, req.razorpay_payment_id, req.razorpay_signature)
-    if not ok:
-        raise HTTPException(status_code=400, detail="Payment verification failed")
-    # Update user tier and record subscription
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                "UPDATE users SET subscription_tier=$1 WHERE id=$2",
-                req.tier, current_user["id"],
-            )
-            await conn.execute(
-                """INSERT INTO subscriptions (user_id, tier, started_at, status, payment_ref)
-                   VALUES ($1, $2, NOW(), 'active', $3)""",
-                current_user["id"], req.tier, req.razorpay_payment_id,
-            )
-    return {"success": True, "tier": req.tier, "payment_id": req.razorpay_payment_id}
-
-
-@router.post("/subscription/upgrade")
-async def subscription_upgrade_deprecated():
-    raise HTTPException(status_code=410, detail="This endpoint is no longer available. Use /subscription/create-order and /subscription/verify.")
-
-
-# ─── Forge ─────────────────────────────────────────────────────────────────────
-
-@router.post("/forge")
-@limiter.limit("10/minute")
-async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
-                fastapi_request: Request,
-                current_user: Optional[dict] = Depends(get_current_user)):
-    if not request.prompt.strip():
-        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
-
-    # Enforce monthly case limits for authenticated users
-    if current_user:
-        tier = current_user.get("subscription_tier", "free")
-        limit = TIER_LIMITS.get(tier, 5)
-        used = current_user.get("cases_this_month", 0)
-        if limit != -1 and used >= limit:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Monthly case limit reached ({limit} cases for {tier} plan). Upgrade your subscription to continue.",
-            )
-
-    try:
-        result = forge_case(request.prompt)
-    except Exception as e:
-        logger.exception("Engine error")
-        raise HTTPException(status_code=500, detail=f"Engine error: {str(e)}")
-
-    # Increment counter for authenticated users
-    if current_user:
-        try:
-            await increment_case_count(current_user["id"])
-        except Exception:
-            logger.warning("Failed to increment case count for user %s", current_user["id"])
-
-    if request.notify_whatsapp:
-        summary = (
-            f"Case {result['case_id']} forged.\nChains: {', '.join(result['planned_chains'])}\n"
-            + "\n".join(f"• {s}" for s in result.get("meta_suggestions", []))
-        )
-        background_tasks.add_task(
-            send_whatsapp_alert, message=summary, to=request.advocate_phone, alert_type="forge"
-        )
-
-    return {
-        "status": "success",
-        "case_id": result["case_id"],
-        "chains_executed": result["planned_chains"],
-        "chain_map": result["chain_map"],
-        "entities_found": result["extracted_entities"],
-        "api_results": result["api_results"],
-        "meta_suggestions": result["meta_suggestions"],
-        "final_output": result["final_output"],
-    }
-
-
-# ─── Cases ─────────────────────────────────────────────────────────────────────
-
-@router.get("/cases")
-async def list_cases(limit: int = 10):
-    cases = memory.get_recent_cases(limit=limit)
-    return {
-        "total": len(cases),
-        "cases": [
-            {"case_id": c["case_id"], "timestamp": c["timestamp"], "prompt_preview": c["prompt"][:100]}
-            for c in reversed(cases)
-        ],
-    }
-
-
-@router.get("/cases/{case_id}")
-async def get_case(case_id: str):
-    case = memory.get_case(case_id.upper())
-    if not case:
-        raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
-    return case
-
-
-@router.get("/memory/patterns")
-async def get_patterns(limit: int = 50):
-    patterns = memory.get_all_patterns()
-    return {"total_patterns": len(patterns), "patterns": patterns[-limit:]}
-
-
-@router.get("/memory/stats")
-async def memory_stats():
-    return memory.stats()
-
-
-# ─── Chains ────────────────────────────────────────────────────────────────────
-
-@router.get("/chains")
-async def list_chains():
-    from api_chains import CHAIN_MAP
-    departments = {
-        "Identity & Tax": [
-            {"name": "GSTIN",        "description": "GST registration status, filing history, taxpayer details"},
-            {"name": "PAN",          "description": "PAN verification, name match, Aadhaar seeding status"},
-            {"name": "DigiLocker",   "description": "Aadhaar, income, domicile certificates via API Setu"},
-            {"name": "MERIPEHCHAAN", "description": "DigiLocker OAuth2 SSO — all citizen documents (NIC/MeitY)"},
-        ],
-        "Courts": [
-            {"name": "eCourts",      "description": "Case search by party name or case number — all Indian courts"},
-        ],
-        "Transport & Vehicle": [
-            {"name": "VAHAN",        "description": "Vehicle RC, owner, insurance, fitness, tax validity"},
-            {"name": "SARATHI",      "description": "Driving licence holder, validity, vehicle classes"},
-            {"name": "TRANSPORT_TS", "description": "Vehicle RC & DL — API Setu sandbox (TS/AP)"},
-        ],
-        "State Services": [
-            {"name": "BPCL_LPG",    "description": "LPG Subscription Voucher — Ministry of Petroleum (BPCL)"},
-            {"name": "MEE_SEVA_TG", "description": "Mee Seva Telangana — 11 state certificates via API Setu"},
-        ],
-        "Finance & Markets": [
-            {"name": "NSE_INDIA",      "description": "NSE India live stock quotes, OHLC, 52-week range — free"},
-            {"name": "STOCK_EXCHANGE", "description": "NSE/BSE financials, shareholding pattern — RapidAPI"},
-            {"name": "FOREX",          "description": "Live INR forex rates USD/GBP/EUR/AED/SAR — ECB free"},
-        ],
-        "Company Registry": [
-            {"name": "MCA_COMPANY", "description": "MCA21 company search — CIN validation"},
-        ],
-        "Banking & Address": [
-            {"name": "IFSC",    "description": "IFSC bank branch verification — RBI registry via Razorpay"},
-            {"name": "PINCODE", "description": "India Post pincode — district, state, post offices"},
-        ],
-    }
-    # Flat list for frontend
-    chains_flat = [c for dept in departments.values() for c in dept]
-    return {
-        "total_chains": len(CHAIN_MAP),
-        "chains": chains_flat,
-        "departments": departments,
-        "api_keys_status": {
-            "RAPIDAPI_KEY":  "✅ set" if os.getenv("RAPIDAPI_KEY") else "❌ not set",
-            "API_SETU_KEY":  "✅ set" if os.getenv("API_SETU_KEY") else "❌ not set",
-            "ECOURTS_API_KEY": "✅ live" if os.getenv("ECOURTS_API_KEY") else "❌ not set",
-            "NSE_INDIA":     "✅ live — no key needed",
-            "FOREX":         "✅ live — no key needed",
-            "IFSC":          "✅ live — no key needed",
-            "PINCODE":       "✅ live — no key needed",
-        },
-    }
-
-
-# ─── Watch mode ────────────────────────────────────────────────────────────────
-
-@router.post("/watch/start")
-async def start_watch():
-    return watcher.start()
-
-
-@router.post("/watch/stop")
-async def stop_watch():
-    return watcher.stop()
-
-
-@router.post("/watch")
-async def add_watch(request: WatchRequest):
-    if not request.party_name and not request.case_number:
-        raise HTTPException(status_code=400, detail="Provide party_name or case_number")
-    return watcher.add_watch(
-        party_name=request.party_name, case_number=request.case_number,
-        phone=request.phone, notes=request.notes,
-    )
-
-
-@router.get("/watch")
-async def list_watches():
-    watches = watcher.list_watches()
-    return {"total": len(watches), "watches": watches}
-
-
-@router.delete("/watch/{watch_id}")
-async def remove_watch(watch_id: str):
-    return watcher.remove_watch(watch_id)
-
-
-# ─── Alerts ────────────────────────────────────────────────────────────────────
-
-@router.post("/alert")
-async def send_alert(request: AlertRequest):
-    return send_whatsapp_alert(message=request.message, to=request.phone, alert_type=request.alert_type)
-
-
-@router.post("/alert/hearing")
-async def hearing_reminder(request: HearingReminderRequest):
-    return send_hearing_reminder(
-        case_number=request.case_number, court=request.court,
-        date=request.date, party=request.party, to=request.phone,
-    )
-
-
-# ─── Sandbox ping ──────────────────────────────────────────────────────────────
-
-@router.get("/sandbox/ping")
-async def sandbox_ping():
-    import requests, uuid
-    from datetime import datetime, timedelta
-
-    key       = os.getenv("API_SETU_KEY", "demokey123456ABCD789")
-    client_id = os.getenv("API_SETU_CLIENT_ID", "in.gov.sandbox")
-    base      = "https://sandbox.api-setu.in"
-    headers   = {"X-APISETU-APIKEY": key, "X-APISETU-CLIENTID": client_id, "Content-Type": "application/json"}
-    now       = datetime.utcnow()
-    results   = {}
-    endpoints = {
-        "mee_seva_tg_incer":  f"{base}/certificate/v3/meesevatg/incer",
-        "transport_ts_drvlc": f"{base}/certificate/v3/transportts/drvlc",
-    }
-    for name, url in endpoints.items():
-        try:
-            resp = requests.post(url, headers=headers, json={}, timeout=8)
-            results[name] = {"reachable": True, "http_status": resp.status_code}
-        except Exception as e:
-            results[name] = {"reachable": False, "error": str(e)}
-    return {"sandbox_url": base, "endpoints": results}
-
-
-# ─── Admin routes ────────────────────────────────────────────────────────────
-
-from auth import get_superuser
-
-@router.get("/admin/lawyers/pending")
-async def admin_pending_lawyers(current_user: dict = Depends(get_superuser)):
-    rows = await fetch(
-        """SELECT id, name, email, phone, bar_number, district, practice_areas,
-                  experience_years, created_at
-           FROM lawyers WHERE verified = FALSE
-           ORDER BY created_at DESC""",
-    )
-    for r in rows:
-        r["created_at"] = str(r["created_at"])
-    return {"total": len(rows), "lawyers": rows}
-
-
-@router.post("/admin/lawyers/{lawyer_id}/approve")
-async def admin_approve_lawyer(lawyer_id: int, current_user: dict = Depends(get_superuser)):
-    row = await fetchrow(
-        "UPDATE lawyers SET verified = TRUE, verification_status = 'verified' WHERE id = $1 RETURNING id",
-        lawyer_id,
-    )
-    if not row:
-        raise HTTPException(status_code=404, detail="Lawyer not found")
-    return {"success": True, "lawyer_id": lawyer_id, "status": "verified"}
-
-
-class RejectRequest(BaseModel):
-    reason: str = ""
-
-
-@router.post("/admin/lawyers/{lawyer_id}/reject")
-async def admin_reject_lawyer(lawyer_id: int, req: RejectRequest, current_user: dict = Depends(get_superuser)):
-    row = await fetchrow(
-        "UPDATE lawyers SET verification_status = 'rejected' WHERE id = $1 RETURNING id",
-        lawyer_id,
-    )
-    if not row:
-        raise HTTPException(status_code=404, detail="Lawyer not found")
-    return {"success": True, "lawyer_id": lawyer_id, "status": "rejected", "reason": req.reason}
-
-
-@router.get("/admin/users")
-async def admin_list_users(
-    page: int = 1,
-    limit: int = 50,
-    current_user: dict = Depends(get_superuser),
-):
-    offset = max((page - 1) * limit, 0)
-    rows = await fetch(
-        """SELECT id, name, email, subscription_tier,
-                  cases_this_month, is_superuser, created_at
-           FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2""",
-        limit, offset,
-    )
-    for r in rows:
-        r["created_at"] = str(r["created_at"])
-    return {"page": page, "limit": limit, "users": rows}
-
-
-@router.post("/admin/users/{user_id}/reset-usage")
-async def admin_reset_usage(user_id: int, current_user: dict = Depends(get_superuser)):
-    await execute("UPDATE users SET cases_this_month = 0 WHERE id = $1", user_id)
-    return {"success": True}
-
-
-# ─── Mount ─────────────────────────────────────────────────────────────────────
-
-app.include_router(router, prefix=BASE_PATH)
-app.include_router(extra_router, prefix=BASE_PATH)
 
 if __name__ == "__main__":
     import uvicorn

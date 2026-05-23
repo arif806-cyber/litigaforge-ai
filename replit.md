@@ -43,10 +43,18 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 
 ### Backend (`artifacts/litigaforge-ai/`)
 
-- `main.py` — FastAPI app: auth, forge, cases, chains, watch, alerts + mounts `extra_routes`
-- `extra_routes.py` — Legal Q&A, Document Analyzer, Judgment Finder, Lawyers, Legal Aid, Case Matching, AI Chat, Chat Threads
-- `database.py` — PostgreSQL CRUD (psycopg2)
-- `auth.py` — bcrypt hashing, JWT create/decode, cookie-first auth with Bearer fallback, set/clear helpers
+- `main.py` — FastAPI app (215 lines): lifespan, CORS, rate limits, table init + includes 9 routers
+- `routers/auth.py` — Register, login, logout, me
+- `routers/forge.py` — The Forge, cases, memory, chains, healthz, sandbox ping
+- `routers/subscription.py` — Plans, Razorpay create-order, verify
+- `routers/matching.py` — Post case requirements, AI find-lawyers, match management
+- `routers/chat.py` — AI legal drafting chat, match-based messaging threads
+- `routers/community.py` — Legal Q&A, Document Analyzer, Judgment Finder, Lawyer Directory, Legal Aid
+- `routers/watch.py` — Watch mode start/stop/add/list/remove
+- `routers/alerts.py` — WhatsApp alerts, hearing reminders
+- `routers/admin.py` — Pending lawyer verification, approve/reject, user management
+- `database.py` — PostgreSQL async pool (asyncpg): fetch, fetchrow, execute, executemany
+- `auth.py` — bcrypt hashing, JWT create/decode, cookie-first auth with Bearer fallback
 - `payments.py` — Razorpay integration: create_order, verify_payment, PLAN_PRICES
 - `rate_limit.py` — slowapi limiter + custom 429 exception handler
 - `litigaforge_engine.py` — Forge orchestration

@@ -1,0 +1,239 @@
+Split main.py and extra_routes.py into clean FastAPI APIRouter modules.
+Do not change any route paths, response shapes, business logic, 
+authentication, or frontend code. Pure structural refactor only.
+
+═══════════════════════════════════════
+PART A — CREATE ROUTER FILES
+═══════════════════════════════════════
+
+Create these files inside artifacts/litigaforge-ai/routers/:
+
+routers/
+├── __init__.py          (empty)
+├── auth.py              (register, login, logout, me)
+├── forge.py             (forge, cases, memory, chains)
+├── subscription.py      (plans, create-order, verify)
+├── matching.py          (post case, browse cases, my cases,
+│                         find-lawyers, matches, accept, decline)
+├── chat.py              (ai-legal-chat, threads, messages)
+├── community.py         (ask, document/analyze, judgments/search,
+│                         lawyers directory, legal-aid)
+├── watch.py             (watch mode routes)
+├── alerts.py            (whatsapp alert routes)
+└── admin.py             (admin panel routes from Prompt 4)
+
+═══════════════════════════════════════
+PART B — ROUTER FILE STRUCTURE
+═══════════════════════════════════════
+
+Every router file must follow this exact pattern:
+
+   from fastapi import APIRouter, Depends, HTTPException, Request
+   from auth import get_current_user, get_superuser
+   from database import fetch, fetchrow, execute, fetchval
+   from slowapi import Limiter
+   from slowapi.util import get_remote_address
+   import os
+
+   router = APIRouter(prefix="/litigaforge", tags=["<tag_name>"])
+   limiter = Limiter(key_func=get_remote_address)
+
+   # paste the relevant route functions here, 
+   # changing @app.get / @app.post to @router.get / @router.post
+
+Each router gets only the imports it actually needs — 
+do not dump all imports into every file.
+
+═══════════════════════════════════════
+PART C — ROUTE ASSIGNMENTS
+═══════════════════════════════════════
+
+Move routes to routers as follows:
+
+routers/auth.py:
+   POST   /litigaforge/auth/register
+   POST   /litigaforge/auth/login
+   POST   /litigaforge/auth/logout
+   GET    /litigaforge/auth/me
+
+routers/forge.py:
+   POST   /litigaforge/forge
+   GET    /litigaforge/cases
+   GET    /litigaforge/cases/{id}
+   GET    /litigaforge/chains
+   GET    /litigaforge/memory/patterns
+   GET    /litigaforge/memory/stats
+   GET    /litigaforge/healthz
+   GET    /litigaforge/sandbox/ping
+
+routers/subscription.py:
+   GET    /litigaforge/subscription/plans
+   POST   /litigaforge/subscription/create-order
+   POST   /litigaforge/subscription/verify
+
+routers/matching.py:
+   POST   /litigaforge/cases/requirements
+   GET    /litigaforge/cases/requirements
+   GET    /litigaforge/cases/requirements/mine
+   POST   /litigaforge/match/find-lawyers
+   GET    /litigaforge/matches/client
+   GET    /litigaforge/matches/lawyer
+   POST   /litigaforge/matches/{id}/accept
+   POST   /litigaforge/matches/{id}/decline
+
+routers/chat.py:
+   POST   /litigaforge/ai-legal-chat
+   GET    /litigaforge/chat/threads
+   POST   /litigaforge/chat/threads
+   GET    /litigaforge/chat/messages/{thread_id}
+   POST   /litigaforge/chat/messages/{thread_id}
+
+routers/community.py:
+   POST   /litigaforge/ask
+   GET    /litigaforge/ask
+   POST   /litigaforge/document/analyze
+   POST   /litigaforge/judgments/search
+   GET    /litigaforge/lawyers
+   POST   /litigaforge/lawyers/register
+   GET    /litigaforge/legal-aid/contacts
+
+routers/watch.py:
+   POST   /litigaforge/watch
+   GET    /litigaforge/watch
+   DELETE /litigaforge/watch/{id}
+   POST   /litigaforge/watch/start
+   POST   /litigaforge/watch/stop
+
+routers/alerts.py:
+   POST   /litigaforge/alert
+   POST   /litigaforge/alert/hearing
+
+routers/admin.py:
+   GET    /litigaforge/admin/lawyers/pending
+   POST   /litigaforge/admin/lawyers/{id}/approve
+   POST   /litigaforge/admin/lawyers/{id}/reject
+   GET    /litigaforge/admin/users
+   POST   /litigaforge/admin/users/{id}/reset-usage
+
+═══════════════════════════════════════
+PART D — REWRITE main.py
+═══════════════════════════════════════
+
+After moving all routes out, main.py should contain ONLY:
+
+   import os
+   from fastapi import FastAPI
+   from fastapi.middleware.cors import CORSMiddleware
+   from slowapi import Limiter, _rate_limit_exceeded_handler
+   from slowapi.util import get_remote_address
+   from slowapi.errors import RateLimitExceeded
+   from database import get_pool, close_pool
+
+   from routers import (
+       auth, forge, subscription,
+       matching, chat, community,
+       watch, alerts, admin
+   )
+
+   app = FastAPI(
+       title="LitigaForge AI",
+       description="Legal AI Platform for Telangana & Andhra Pradesh",
+       version="1.0.0",
+       docs_url="/litigaforge/docs",
+       redoc_url="/litigaforge/redoc"
+   )
+
+   limiter = Limiter(key_func=get_remote_address)
+   app.state.limiter = limiter
+   app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+   allowed_origins = [
+       os.environ.get("FRONTEND_URL", "http://localhost:5173"),
+       "http://localhost:5173",
+       "http://localhost:4173",
+   ]
+   app.add_middleware(
+       CORSMiddleware,
+       allow_origins=allowed_origins,
+       allow_credentials=True,
+       allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+       allow_headers=["Authorization", "Content-Type", "Accept"],
+       max_age=600,
+   )
+
+   @app.on_event("startup")
+   async def startup():
+       assert os.environ.get("SESSION_SECRET"), \
+           "SESSION_SECRET is required"
+       assert os.environ.get("DATABASE_URL"), \
+           "DATABASE_URL is required"
+       await get_pool()
+       print("✓ LitigaForge AI started")
+
+   @app.on_event("shutdown")
+   async def shutdown():
+       await close_pool()
+
+   app.include_router(auth.router)
+   app.include_router(forge.router)
+   app.include_router(subscription.router)
+   app.include_router(matching.router)
+   app.include_router(chat.router)
+   app.include_router(community.router)
+   app.include_router(watch.router)
+   app.include_router(alerts.router)
+   app.include_router(admin.router)
+
+main.py must have zero route definitions after this refactor.
+All routes live only in their router files.
+
+═══════════════════════════════════════
+PART E — DELETE extra_routes.py
+═══════════════════════════════════════
+
+After all routes from extra_routes.py have been moved into 
+the appropriate router files above, delete extra_routes.py entirely.
+Search main.py for any import of extra_routes and remove it.
+
+═══════════════════════════════════════
+PART F — SHARED DEPENDENCIES FILE
+═══════════════════════════════════════
+
+Create artifacts/litigaforge-ai/dependencies.py:
+
+   from fastapi import Depends, HTTPException, Cookie, Header
+   from auth import get_current_user, get_superuser
+   from database import get_pool
+
+   # Re-export commonly used dependencies so routers 
+   # import from one place:
+   __all__ = ["get_current_user", "get_superuser", "get_pool"]
+
+Routers may import from dependencies.py instead of auth.py 
+directly — either is fine, just be consistent.
+
+═══════════════════════════════════════
+PART G — VERIFY AFTER REFACTOR
+═══════════════════════════════════════
+
+After the refactor:
+
+1. Start the backend and confirm no import errors
+2. Open /litigaforge/docs (Swagger UI) and verify all routes 
+   are still listed — same paths, same methods, same count
+3. Test these requests work exactly as before:
+   - POST /litigaforge/auth/login
+   - POST /litigaforge/forge
+   - GET  /litigaforge/lawyers
+   - GET  /litigaforge/chains
+4. Confirm extra_routes.py no longer exists
+5. Confirm main.py has zero @app.get / @app.post decorators
+
+If any route returns 404 after the refactor, it means the 
+router prefix is doubled — check that the route path in the 
+router file does NOT repeat /litigaforge if the router already 
+has prefix="/litigaforge". Fix by removing the prefix from 
+either the router definition or the individual route path.
+
+Do not change any frontend code, environment variables, 
+database schema, or business logic in this prompt.
