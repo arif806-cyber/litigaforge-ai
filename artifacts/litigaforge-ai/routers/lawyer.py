@@ -150,7 +150,7 @@ async def create_lawyer_document(
     row = await fetchrow(
         """INSERT INTO lawyer_documents (lawyer_id, case_id, filename, file_type, file_url, content_text)
            VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING id, lawyer_id, case_id, filename, file_type, file_url, content_text, ai_summary, created_at""",
+           RETURNING id, lawyer_id, case_id, filename, file_type, file_url, content_text, ai_summary, notes, created_at""",
         current_user["id"], req.case_id, safe_name, safe_type, safe_url, safe_content,
     )
     row["created_at"] = str(row["created_at"])
@@ -166,13 +166,13 @@ async def list_lawyer_documents(
         raise HTTPException(401, "Login required")
     if case_id:
         rows = await fetch(
-            """SELECT id, case_id, filename, file_type, file_url, content_text, ai_summary, created_at
+            """SELECT id, case_id, filename, file_type, file_url, content_text, ai_summary, notes, created_at
                FROM lawyer_documents WHERE lawyer_id = $1 AND case_id = $2 ORDER BY created_at DESC""",
             current_user["id"], case_id,
         )
     else:
         rows = await fetch(
-            """SELECT id, case_id, filename, file_type, file_url, content_text, ai_summary, created_at
+            """SELECT id, case_id, filename, file_type, file_url, content_text, ai_summary, notes, created_at
                FROM lawyer_documents WHERE lawyer_id = $1 ORDER BY created_at DESC""",
             current_user["id"],
         )
@@ -275,3 +275,54 @@ Document text:
     )
 
     return {"analysis": result, "document_id": doc_id, "file_type": file_type}
+
+
+# ── Document Notes ────────────────────────────────────────────────────────────────────────────────
+
+class NotesRequest(BaseModel):
+    notes: str
+
+
+@router.post("/lawyer/documents/{doc_id}/notes")
+@limiter.limit("30/minute")
+async def update_document_notes(
+    doc_id: int,
+    req: NotesRequest,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    doc = await fetchrow(
+        "SELECT id FROM lawyer_documents WHERE id = $1 AND lawyer_id = $2",
+        doc_id, current_user["id"],
+    )
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    try:
+        safe_notes = sanitize_text(req.notes, max_length=3000, field_name="notes")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    await execute(
+        "UPDATE lawyer_documents SET notes = $1 WHERE id = $2",
+        safe_notes, doc_id,
+    )
+    return {"message": "Notes saved", "document_id": doc_id}
+
+
+@router.get("/lawyer/documents/{doc_id}")
+async def get_lawyer_document(
+    doc_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    row = await fetchrow(
+        """SELECT id, case_id, filename, file_type, file_url, content_text, ai_summary, notes, created_at
+           FROM lawyer_documents WHERE id = $1 AND lawyer_id = $2""",
+        doc_id, current_user["id"],
+    )
+    if not row:
+        raise HTTPException(404, "Document not found")
+    row["created_at"] = str(row["created_at"])
+    return row

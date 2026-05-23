@@ -211,9 +211,17 @@ async def lifespan(app: FastAPI):
                 file_url TEXT,
                 content_text TEXT,
                 ai_summary TEXT,
+                notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # ── Migration: add notes column if missing ──
+        try:
+            await conn.execute("ALTER TABLE lawyer_documents ADD COLUMN IF NOT EXISTS notes TEXT")
+            logger.info("Migration: notes column added to lawyer_documents")
+        except Exception as me:
+            logger.warning("Migration check: %s", me)
+
         logger.info("Database tables initialized")
     except Exception as e:
         logger.warning("DB init check: %s", e)

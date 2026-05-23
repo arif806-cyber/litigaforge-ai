@@ -7,7 +7,7 @@ import {
   Menu, X, LogOut, MessageSquare, ExternalLink, Info, ArrowRight,
   FileSearch, Gavel, Phone, Award, AlertTriangle, IndianRupee,
   Shield, MapPin, Clock, XCircle, Loader2, Trash2, Sparkles,
-  FolderOpen, PenSquare, ChevronDown, Check,
+  FolderOpen, PenSquare, ChevronDown, Check, Download, Share2, StickyNote, Send, Copy,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
@@ -46,7 +46,7 @@ interface LawyerCase {
 
 interface LawyerDoc {
   id: number; case_id?: number; filename: string; file_type: string;
-  file_url: string; content_text: string; ai_summary: string; created_at: string;
+  file_url: string; content_text: string; ai_summary: string; notes?: string; created_at: string;
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────────────────────
@@ -176,6 +176,11 @@ export default function LawyerDashboard() {
   const [showDocModal, setShowDocModal] = useState(false);
   const [preselectedCaseId, setPreselectedCaseId] = useState<string>("");
   const [analyzingDoc, setAnalyzingDoc] = useState<number | null>(null);
+  const [folderCase, setFolderCase] = useState<LawyerCase | null>(null);
+  const [folderDocs, setFolderDocs] = useState<LawyerDoc[]>([]);
+  const [showFolder, setShowFolder] = useState(false);
+  const [editingNotesDocId, setEditingNotesDocId] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => { setDrawerOpen(false); }, [location]);
 
@@ -233,6 +238,16 @@ export default function LawyerDashboard() {
   const analyzeDocMut = useMutation({
     mutationFn: (docId: number) => apiFetch(`/lawyer/documents/${docId}/analyze`, { method: "POST" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lawyer-documents"] }),
+  });
+
+  const saveNotesMut = useMutation({
+    mutationFn: ({ docId, notes }: { docId: number; notes: string }) =>
+      apiFetch(`/lawyer/documents/${docId}/notes`, { method: "POST", body: JSON.stringify({ notes }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lawyer-documents"] });
+      setEditingNotesDocId(null);
+      setNoteDraft("");
+    },
   });
 
   const isAdvocatePro = user?.subscription_tier === "advocate_pro";
@@ -431,7 +446,8 @@ export default function LawyerDashboard() {
                   <div className="space-y-2.5">
                     {cases.map((c) => (
                       <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl p-4 shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+                        className="bg-white rounded-xl p-4 shadow-sm cursor-pointer" style={{ border: "1px solid #F1F5F9" }}
+                        onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}>
                         <div className="flex items-start gap-3">
                           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#EFF6FF" }}>
                             <Briefcase className="w-4 h-4 text-blue-600" />
@@ -444,6 +460,11 @@ export default function LawyerDashboard() {
                                 c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                                   : c.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200"
                                   : "bg-amber-50 text-amber-600 border border-amber-200")}>{c.status.toUpperCase()}</span>
+                              {docs.filter((d) => d.case_id === c.id).length > 0 && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>
+                                  <FileText className="w-2.5 h-2.5" /> {docs.filter((d) => d.case_id === c.id).length} doc{docs.filter((d) => d.case_id === c.id).length > 1 ? "s" : ""}
+                                </span>
+                              )}
                             </div>
                             <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{c.description || "No description"}</p>
                             <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
@@ -452,7 +473,7 @@ export default function LawyerDashboard() {
                               <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString("en-IN")}</span>
                             </div>
                           </div>
-                          <button onClick={() => { setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0 mt-1" title="Upload document to case">
+                          <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0 mt-1" title="Upload document to case">
                             <Upload className="w-4 h-4" />
                           </button>
                         </div>
@@ -653,6 +674,283 @@ export default function LawyerDashboard() {
         <DocForm cases={cases} preselectedCaseId={preselectedCaseId} onSubmit={(data) => createDocMut.mutate(data)} loading={createDocMut.isPending} />
       </Modal>
 
+      {/* ── Case Folder Modal ── */}
+      <CaseFolderModal
+        open={showFolder}
+        onClose={() => setShowFolder(false)}
+        caseData={folderCase}
+        docs={folderDocs}
+        onUpload={() => { setShowFolder(false); setShowDocModal(true); }}
+        onAnalyze={(docId: number) => { setAnalyzingDoc(docId); analyzeDocMut.mutate(docId, { onSettled: () => setAnalyzingDoc(null) }); }}
+        analyzingDoc={analyzingDoc}
+        analyzePending={analyzeDocMut.isPending}
+        onSaveNotes={(docId: number, notes: string) => saveNotesMut.mutate({ docId, notes })}
+        notesPending={saveNotesMut.isPending}
+      />
+
+    </div>
+  );
+}
+
+// ── Document Actions (shared) ─────────────────────────────────────────────────────────────────────────────
+function DocumentActions({
+  doc,
+  onDownload,
+  onShare,
+  onNotes,
+  onAnalyze,
+  analyzing,
+}: {
+  doc: LawyerDoc;
+  onDownload: () => void;
+  onShare: () => void;
+  onNotes: () => void;
+  onAnalyze?: () => void;
+  analyzing?: boolean;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    if (showMenu) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenu]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setShowMenu(!showMenu)}
+        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+      >
+        <ChevronDown className="w-3.5 h-3.5" />
+      </button>
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.96 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl z-30 py-1"
+            style={{ border: "1px solid #E2E8F0" }}
+          >
+            <button onClick={() => { onDownload(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-gray-700 hover:bg-blue-50 transition-colors text-left">
+              <Download className="w-3.5 h-3.5 text-blue-600" /> Download
+            </button>
+            <button onClick={() => { onShare(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-gray-700 hover:bg-blue-50 transition-colors text-left">
+              <Share2 className="w-3.5 h-3.5 text-emerald-600" /> Share / Forward
+            </button>
+            <button onClick={() => { onNotes(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-gray-700 hover:bg-blue-50 transition-colors text-left">
+              <StickyNote className="w-3.5 h-3.5 text-amber-600" /> Add Notes
+            </button>
+            {onAnalyze && !doc.ai_summary && (
+              <button onClick={() => { onAnalyze(); setShowMenu(false); }} disabled={analyzing}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-gray-700 hover:bg-blue-50 transition-colors text-left disabled:opacity-50">
+                <Sparkles className="w-3.5 h-3.5 text-violet-600" /> {analyzing ? "Analyzing..." : "AI Analyze"}
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function downloadDoc(doc: LawyerDoc) {
+  const blob = new Blob([doc.content_text || "No content"], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = doc.filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function shareDoc(doc: LawyerDoc) {
+  const shareText = `Document: ${doc.filename}\nType: ${doc.file_type.toUpperCase()}\nContent:\n${doc.content_text?.slice(0, 500) || "No content"}${doc.content_text && doc.content_text.length > 500 ? "\n..." : ""}`;
+  navigator.clipboard.writeText(shareText).then(() => {
+    alert("Document copied to clipboard! Paste in email, WhatsApp, or court filing.");
+  }).catch(() => {
+    alert("Could not copy. Copy manually from the document preview.");
+  });
+}
+
+// ── Case Folder Modal ────────────────────────────────────────────────────────────────────────────────
+function CaseFolderModal({
+  open, onClose, caseData, docs, onUpload, onAnalyze, analyzingDoc, analyzePending, onSaveNotes, notesPending,
+}: {
+  open: boolean; onClose: () => void; caseData: LawyerCase | null; docs: LawyerDoc[];
+  onUpload: () => void;
+  onAnalyze: (docId: number) => void;
+  analyzingDoc: number | null;
+  analyzePending: boolean;
+  onSaveNotes: (docId: number, notes: string) => void;
+  notesPending: boolean;
+}) {
+  const [expandedDoc, setExpandedDoc] = useState<number | null>(null);
+  const [editingNotes, setEditingNotes] = useState<number | null>(null);
+  const [noteText, setNoteText] = useState("");
+
+  if (!open || !caseData) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-auto"
+        style={{ border: "1px solid #E2E8F0" }}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
+              <FolderOpen className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg leading-tight">{caseData.title}</h3>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{caseData.case_type}</span>
+                <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                  caseData.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                    : caseData.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200"
+                    : "bg-amber-50 text-amber-600 border border-amber-200")}>{caseData.status.toUpperCase()}</span>
+                <span className="text-[11px] text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{caseData.court_name || "No court"}</span>
+              </div>
+              <p className="text-[12px] text-gray-500 mt-1">{caseData.description || "No description"}</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Client: {caseData.client_name || "N/A"} · Added {new Date(caseData.created_at).toLocaleDateString("en-IN")}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button onClick={onUpload} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white transition-colors" style={{ background: "#2563EB" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1D4ED8"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}>
+              <Plus className="w-3.5 h-3.5" /> Upload
+            </button>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Documents */}
+        <div className="p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-gray-900 text-sm">Case Documents ({docs.length})</h4>
+          </div>
+
+          {docs.length === 0 ? (
+            <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+              <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No documents in this case folder yet.</p>
+              <button onClick={onUpload} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">Upload your first document →</button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {docs.map((d) => (
+                <motion.div key={d.id} layout className="rounded-xl border overflow-hidden" style={{ borderColor: "#F1F5F9" }}>
+                  {/* Doc header */}
+                  <div className="flex items-start gap-3 p-3.5 bg-white">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
+                      <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-900 text-sm">{d.filename}</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{d.file_type.toUpperCase()}</span>
+                        {d.ai_summary && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">AI Analyzed</span>}
+                      </div>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{new Date(d.created_at).toLocaleDateString("en-IN")}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => setExpandedDoc(expandedDoc === d.id ? null : d.id)}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                        {expandedDoc === d.id ? "Collapse" : "View"}
+                      </button>
+                      <DocumentActions
+                        doc={d}
+                        onDownload={() => downloadDoc(d)}
+                        onShare={() => shareDoc(d)}
+                        onNotes={() => { setEditingNotes(d.id); setNoteText(d.notes || ""); }}
+                        onAnalyze={d.ai_summary ? undefined : () => onAnalyze(d.id)}
+                        analyzing={analyzePending && analyzingDoc === d.id}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expanded content */}
+                  <AnimatePresence>
+                    {expandedDoc === d.id && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+                        <div className="px-4 pb-4 pt-0 bg-white" style={{ borderTop: "1px solid #F8FAFC" }}>
+                          {/* Content preview */}
+                          <div className="mt-3 rounded-lg p-3 font-mono text-[12px] leading-relaxed text-gray-600" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9", maxHeight: "200px", overflow: "auto" }}>
+                            {d.content_text || "No text content available."}
+                          </div>
+
+                          {/* Notes section */}
+                          {editingNotes === d.id ? (
+                            <div className="mt-3 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <StickyNote className="w-3.5 h-3.5 text-amber-600" />
+                                <span className="text-xs font-semibold text-gray-700">Your Notes</span>
+                              </div>
+                              <textarea
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                rows={3}
+                                placeholder="Add observations, strategy reminders, hearing notes..."
+                                className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-amber-400 transition-colors resize-none"
+                                style={{ borderColor: "#E2E8F0" }}
+                              />
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => { onSaveNotes(d.id, noteText); setEditingNotes(null); }} disabled={notesPending}
+                                  className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-60">
+                                  <Check className="w-3 h-3" /> Save Notes
+                                </button>
+                                <button onClick={() => { setEditingNotes(null); setNoteText(""); }}
+                                  className="text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1.5 transition-colors">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : d.notes ? (
+                            <div className="mt-3 rounded-lg p-3" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <StickyNote className="w-3.5 h-3.5 text-amber-600" />
+                                <span className="text-xs font-semibold text-amber-800">Your Notes</span>
+                                <button onClick={() => { setEditingNotes(d.id); setNoteText(d.notes || ""); }}
+                                  className="ml-auto text-[10px] text-amber-600 hover:text-amber-800 font-medium">Edit</button>
+                              </div>
+                              <p className="text-[12px] text-amber-700 leading-relaxed whitespace-pre-wrap">{d.notes}</p>
+                            </div>
+                          ) : null}
+
+                          {/* AI Summary */}
+                          {d.ai_summary && (
+                            <div className="mt-3 rounded-lg p-3" style={{ background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-xs font-semibold text-emerald-800">AI Analysis Summary</span>
+                              </div>
+                              <p className="text-[12px] text-emerald-700 leading-relaxed">{d.ai_summary}</p>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }
