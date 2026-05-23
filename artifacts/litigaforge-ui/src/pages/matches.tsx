@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
@@ -165,7 +165,13 @@ export default function Matches() {
   const [location] = useLocation();
   const [_, setLocation] = useLocation();
   const [isFinding, setIsFinding] = useState(false);
-  const [externalMatches, setExternalMatches] = useState<any[]>([]);
+  const [externalMatches, setExternalMatches] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem(`lf_external_matches_${new URLSearchParams(location.includes("?") ? location.split("?")[1] : "").get("case") || "none"}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [fetchedForCase, setFetchedForCase] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const searchParams = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
@@ -199,9 +205,10 @@ export default function Matches() {
         method: "POST",
         body: JSON.stringify({ case_requirement_id: parseInt(caseId) }),
       });
-      if (result?.external_matches?.length) {
-        // External matches are not stored in DB, so keep them in component state
-        setExternalMatches(result.external_matches || []);
+      const ext = result?.external_matches || [];
+      if (ext.length) {
+        setExternalMatches(ext);
+        localStorage.setItem(`lf_external_matches_${caseId}`, JSON.stringify(ext));
       }
       refetchClient();
     } catch (e) {
@@ -210,6 +217,14 @@ export default function Matches() {
       setIsFinding(false);
     }
   };
+
+  // Auto-call find-lawyers once per caseId when it changes
+  useEffect(() => {
+    if (caseId && fetchedForCase !== caseId && user) {
+      setFetchedForCase(caseId);
+      findLawyers();
+    }
+  }, [caseId, user, fetchedForCase]);
 
   if (!user) {
     return (
@@ -223,7 +238,7 @@ export default function Matches() {
     );
   }
 
-  const isLawyer = !!lawyerMatches?.matches?.length || lawyerMatches?.message;
+  const isLawyer = (lawyerMatches?.total ?? 0) > 0;
   const matches = isLawyer ? (lawyerMatches?.matches ?? []) : (clientMatches?.matches ?? []);
 
   return (
@@ -276,7 +291,7 @@ export default function Matches() {
           </p>
           <Button variant="outline" onClick={() => refetchClient()}>Retry</Button>
         </div>
-      ) : matches.length === 0 ? (
+      ) : matches.length === 0 && externalMatches.length === 0 ? (
         <div className="bg-card border border-card-border rounded-xl p-12 text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
             <UserCheck className="w-8 h-8 text-muted-foreground" />
@@ -310,10 +325,17 @@ export default function Matches() {
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Also found on eCourts India
+                  {matches.length === 0
+                    ? "Found on eCourts India (no verified lawyers available)"
+                    : "Also found on eCourts India"}
                 </span>
                 <div className="flex-1 h-px bg-border" />
               </div>
+              {matches.length === 0 && (
+                <p className="text-sm text-muted-foreground px-1">
+                  No platform lawyers matched your case. These practising advocates appear in public court records for your case type and location.
+                </p>
+              )}
               {externalMatches.map((m: any) => (
                 <ExternalMatchCard key={m.id} match={m} />
               ))}
