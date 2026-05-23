@@ -3,8 +3,8 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Scale, Star, Briefcase, Users, FileText, BookOpen, User,
-  Search, Bell, ChevronRight, Plus, Upload, Zap, CheckCircle2,
-  Menu, X, LogOut, MessageSquare, ExternalLink, Info, ArrowRight,
+  Search, Bell, ChevronRight, Plus, Upload, CheckCircle2,
+  Menu, X, LogOut, MessageSquare, ExternalLink, Info,
   FileSearch, Gavel, Phone, Award, AlertTriangle, IndianRupee,
   Shield, MapPin, Clock, XCircle, Loader2, Trash2, Sparkles,
   FolderOpen, PenSquare, ChevronDown, Check, Download, Share2, StickyNote, Send, Copy,
@@ -171,7 +171,7 @@ export default function LawyerDashboard() {
   const qc = useQueryClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
   const [preselectedCaseId, setPreselectedCaseId] = useState<string>("");
@@ -222,7 +222,6 @@ export default function LawyerDashboard() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lawyer-cases"] });
       setShowCaseModal(false);
-      setCompletedSteps((prev) => [...new Set([...prev, 1])]);
     },
   });
 
@@ -231,7 +230,6 @@ export default function LawyerDashboard() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lawyer-documents"] });
       setShowDocModal(false);
-      setCompletedSteps((prev) => [...new Set([...prev, 2])]);
     },
   });
 
@@ -253,16 +251,13 @@ export default function LawyerDashboard() {
   const isAdvocatePro = user?.subscription_tier === "advocate_pro";
   const lawyerFirstName = user?.name?.split(" ")[0] ?? "Advocate";
 
-  const toggleStep = (step: number) =>
-    setCompletedSteps((prev) =>
-      prev.includes(step) ? prev.filter((s) => s !== step) : [...prev, step]
-    );
+  const filteredCases = cases.filter((c) => c.status === caseTab);
 
   const stats = [
-    { label: "Active Cases", value: activeCases.length, sub: "in court / ongoing", iconEl: <Briefcase className="w-5 h-5" />, iconBg: "#EFF6FF", iconColor: "#2563EB", borderColor: "#DBEAFE" },
-    { label: "New Leads", value: pendingLeads.length, sub: "awaiting response", iconEl: <Users className="w-5 h-5" />, iconBg: "#ECFDF5", iconColor: "#059669", borderColor: "#D1FAE5" },
-    { label: "AI Credits Used", value: user?.cases_this_month ?? 0, sub: "this month", iconEl: <Zap className="w-5 h-5" />, iconBg: "#F5F3FF", iconColor: "#7C3AED", borderColor: "#EDE9FE" },
-    { label: "Documents", value: docs.length, sub: "uploaded files", iconEl: <FileText className="w-5 h-5" />, iconBg: "#FFFBEB", iconColor: "#D97706", borderColor: "#FEF3C7" },
+    { label: "Active Cases", value: cases.filter((c) => c.status === "active").length, sub: "in progress", iconEl: <Briefcase className="w-5 h-5" />, iconBg: "#EFF6FF", iconColor: "#2563EB", borderColor: "#DBEAFE" },
+    { label: "Pending", value: cases.filter((c) => c.status === "pending").length, sub: "awaiting action", iconEl: <Clock className="w-5 h-5" />, iconBg: "#FEF3C7", iconColor: "#D97706", borderColor: "#FDE68A" },
+    { label: "Closed", value: cases.filter((c) => c.status === "closed").length, sub: "resolved / archived", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "#ECFDF5", iconColor: "#059669", borderColor: "#D1FAE5" },
+    { label: "Documents", value: docs.length, sub: "uploaded files", iconEl: <FileText className="w-5 h-5" />, iconBg: "#F5F3FF", iconColor: "#7C3AED", borderColor: "#EDE9FE" },
   ];
 
   return (
@@ -361,106 +356,98 @@ export default function LawyerDashboard() {
                 {stats.map((s) => <StatCard key={s.label} {...s} />)}
               </div>
 
-              {/* Getting Started Steps — now functional */}
-              <div className="bg-white rounded-2xl shadow-sm p-5" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "#EFF6FF" }}>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-900">Get started in 3 steps</h3>
-                  <span className="ml-auto text-xs text-gray-400">{completedSteps.length}/3 done</span>
-                </div>
-                <div className="h-1.5 rounded-full mb-5 overflow-hidden" style={{ background: "#F1F5F9" }}>
-                  <motion.div className="h-full rounded-full" style={{ background: "linear-gradient(90deg, #2563EB, #1D4ED8)" }}
-                    initial={{ width: 0 }} animate={{ width: `${(completedSteps.length / 3) * 100}%` }} transition={{ duration: 0.4 }} />
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { step: 1, title: "Connect your cases", desc: "Add a new case to your practice.", icon: Briefcase, action: () => setShowCaseModal(true) },
-                    { step: 2, title: "Upload client documents", desc: "Paste or upload FIRs, charge sheets, contracts.", icon: FileText, action: () => setShowDocModal(true) },
-                    { step: 3, title: "Start using AI Forge", desc: "Draft pleadings, research IPC/CrPC, generate strategy.", icon: Zap, action: () => setLocation("/") },
-                  ].map((s) => {
-                    const isDone = completedSteps.includes(s.step);
-                    const Icon = s.icon;
-                    return (
-                      <motion.div key={s.step} whileHover={{ x: 2 }} onClick={() => { toggleStep(s.step); s.action(); }}
-                        className="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                        style={{ background: isDone ? "#ECFDF5" : "#F8FAFC", border: `1px solid ${isDone ? "#A7F3D0" : "#F1F5F9"}` }}
-                        onMouseEnter={(e) => { if (!isDone) { (e.currentTarget as HTMLDivElement).style.borderColor = "#DBEAFE"; (e.currentTarget as HTMLDivElement).style.background = "#EFF6FF"; } }}
-                        onMouseLeave={(e) => { if (!isDone) { (e.currentTarget as HTMLDivElement).style.borderColor = "#F1F5F9"; (e.currentTarget as HTMLDivElement).style.background = "#F8FAFC"; } }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: isDone ? "#059669" : "white", border: isDone ? "none" : "2px solid #E2E8F0" }}>
-                          {isDone ? <CheckCircle2 className="w-4 h-4 text-white" /> : <span className="text-xs font-bold text-gray-400">{s.step}</span>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn("font-semibold text-sm", isDone ? "text-emerald-800 line-through" : "text-gray-900")}>{s.title}</p>
-                          <p className="text-[12px] text-gray-500 mt-0.5">{s.desc}</p>
-                        </div>
-                        <Icon className="w-4 h-4 flex-shrink-0 mt-1" style={{ color: isDone ? "#059669" : "#D1D5DB" }} />
-                      </motion.div>
-                    );
-                  })}
-                </div>
+              {/* ── Quick Action Pills ── */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { label: "New Case", icon: Briefcase, action: () => setShowCaseModal(true), bg: "#EFF6FF", color: "#2563EB", border: "#DBEAFE" },
+                  { label: "Upload Doc", icon: FileText, action: () => setShowDocModal(true), bg: "#F5F3FF", color: "#7C3AED", border: "#EDE9FE" },
+                  { label: "AI Draft", icon: Sparkles, action: () => setLocation("/legal-chat"), bg: "#ECFDF5", color: "#059669", border: "#A7F3D0" },
+                  { label: "Find Client", icon: Users, action: () => setLocation("/matches"), bg: "#FEF3C7", color: "#D97706", border: "#FDE68A" },
+                ].map((pill) => (
+                  <motion.button key={pill.label} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                    onClick={pill.action} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap"
+                    style={{ background: pill.bg, color: pill.color, border: `1px solid ${pill.border}` }}>
+                    <pill.icon className="w-3.5 h-3.5" /> {pill.label}
+                  </motion.button>
+                ))}
               </div>
 
-              {/* My Cases list */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="font-bold text-gray-900">My Cases</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Cases added to your practice</p>
+              {/* ── Case Tabs + Search ── */}
+              <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+                <div className="px-4 pt-4 pb-0 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex items-center gap-1 bg-gray-100/70 rounded-xl p-1 flex-shrink-0">
+                    {(["active","pending","closed"] as const).map((tab) => (
+                      <button key={tab} onClick={() => setCaseTab(tab)}
+                        className={cn("px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize",
+                          caseTab === tab ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>
+                        {tab} <span className="ml-0.5 opacity-60">({cases.filter((c) => c.status === tab).length})</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search cases by title, client, court..."
+                      className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20" style={{ borderColor: "#E2E8F0" }} />
                   </div>
                   <button onClick={() => setShowCaseModal(true)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl flex-shrink-0 transition-all hover:shadow-sm" style={{ background: "#2563EB", color: "white" }}>
                     <Plus className="w-3.5 h-3.5" /> Add Case
                   </button>
                 </div>
-                {cases.length === 0 ? (
-                  <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-                    <FolderOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No cases yet. Click "Add Case" to get started.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {cases.map((c) => (
-                      <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl p-4 shadow-sm cursor-pointer" style={{ border: "1px solid #F1F5F9" }}
-                        onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}>
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#EFF6FF" }}>
-                            <Briefcase className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
-                              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
-                              <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                                c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                  : c.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200"
-                                  : "bg-amber-50 text-amber-600 border border-amber-200")}>{c.status.toUpperCase()}</span>
-                              {docs.filter((d) => d.case_id === c.id).length > 0 && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>
-                                  <FileText className="w-2.5 h-2.5" /> {docs.filter((d) => d.case_id === c.id).length} doc{docs.filter((d) => d.case_id === c.id).length > 1 ? "s" : ""}
-                                </span>
-                              )}
+
+                {/* Case List */}
+                <div className="p-4 pt-3">
+                  {filteredCases.length === 0 ? (
+                    <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+                      <FolderOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No {caseTab} cases. <button onClick={() => setShowCaseModal(true)} className="text-blue-600 font-semibold hover:underline">Add one</button></p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {filteredCases.filter((c) => {
+                        const q = searchQuery.toLowerCase();
+                        return !q || c.title.toLowerCase().includes(q) || c.client_name?.toLowerCase().includes(q) || c.court_name?.toLowerCase().includes(q) || c.case_type.toLowerCase().includes(q);
+                      }).map((c) => (
+                        <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                          className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" style={{ border: "1px solid #F1F5F9" }}
+                          onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#EFF6FF" }}>
+                              <Briefcase className="w-4 h-4 text-blue-600" />
                             </div>
-                            <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{c.description || "No description"}</p>
-                            <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
-                              {c.client_name && <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.client_name}</span>}
-                              {c.court_name && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.court_name}</span>}
-                              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString("en-IN")}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
+                                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
+                                <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                                  c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                    : c.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200"
+                                    : "bg-amber-50 text-amber-600 border border-amber-200")}>{c.status.toUpperCase()}</span>
+                                {docs.filter((d) => d.case_id === c.id).length > 0 && (
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>
+                                    <FileText className="w-2.5 h-2.5" /> {docs.filter((d) => d.case_id === c.id).length} doc{docs.filter((d) => d.case_id === c.id).length > 1 ? "s" : ""}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{c.description || "No description added"}</p>
+                              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+                                {c.client_name && <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.client_name}</span>}
+                                {c.court_name && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.court_name}</span>}
+                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString("en-IN")}</span>
+                              </div>
                             </div>
+                            <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0 mt-1" title="Upload document">
+                              <Upload className="w-4 h-4" />
+                            </button>
                           </div>
-                          <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0 mt-1" title="Upload document to case">
-                            <Upload className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* My Documents — grouped with case linkage */}
+              {/* Client Documents — grouped with case linkage */}
               {docs.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -546,67 +533,76 @@ export default function LawyerDashboard() {
             {/* ── Right Sidebar ── */}
             <aside className="hidden xl:flex flex-col w-64 2xl:w-72 flex-shrink-0 overflow-auto px-4 py-5 space-y-4" style={{ borderLeft: "1px solid #F1F5F9", background: "#F8FAFC" }}>
 
-              {/* Active Cases */}
-              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#EFF6FF" }}>
-                      <Briefcase className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Active Cases</p>
-                      <p className="text-[11px] text-gray-400">In progress</p>
-                    </div>
-                  </div>
-                  <span className="text-2xl font-bold text-blue-700">{activeCases.length}</span>
-                </div>
-                <div className="h-px mb-3" style={{ background: "#F8FAFC" }} />
-                <button onClick={() => setShowCaseModal(true)} className="w-full flex items-center justify-center gap-2 text-white text-xs font-semibold py-2.5 rounded-lg transition-colors" style={{ background: "#2563EB" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1D4ED8"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}>
-                  <Plus className="w-3.5 h-3.5" /> Add New Case
-                </button>
-                <button onClick={() => setLocation("/cases")} className="mt-2 w-full flex items-center justify-center gap-1 text-xs font-medium py-2 rounded-lg transition-colors text-blue-600 hover:text-blue-800 hover:bg-blue-50">
-                  View all cases <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-
-              {/* Client Documents */}
+              {/* Upcoming Deadlines */}
               <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}>
-                    <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#FEF3C7" }}>
+                    <Clock className="w-4 h-4" style={{ color: "#D97706" }} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-gray-900">Client Documents</p>
-                    <p className="text-[11px] text-gray-400">Upload for AI analysis</p>
+                    <p className="text-sm font-bold text-gray-900">Upcoming</p>
+                    <p className="text-[11px] text-gray-400">Hearings & deadlines</p>
                   </div>
                 </div>
-                <div className="rounded-xl p-4 text-center mb-3 cursor-pointer transition-colors" style={{ border: "2px dashed #E9D5FF" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#A78BFA"; (e.currentTarget as HTMLDivElement).style.background = "#F5F3FF"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#E9D5FF"; (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-                  onClick={() => setShowDocModal(true)}>
-                  <Upload className="w-6 h-6 mx-auto mb-1.5" style={{ color: "#D1D5DB" }} />
-                  <p className="text-[11px] text-gray-400">FIRs, charge sheets, contracts</p>
-                  <p className="text-[10px] text-gray-300 mt-0.5">Paste text or upload file</p>
+                <div className="space-y-2">
+                  {cases.filter((c) => c.status === "active").slice(0, 3).map((c) => (
+                    <button key={c.id} onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}
+                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#D97706" }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-medium text-gray-800 truncate">{c.title}</p>
+                        <p className="text-[11px] text-gray-400">{c.court_name || "Court TBD"}</p>
+                      </div>
+                    </button>
+                  ))}
+                  {cases.filter((c) => c.status === "active").length === 0 && (
+                    <p className="text-[12px] text-gray-400 text-center py-2">No upcoming hearings</p>
+                  )}
                 </div>
-                <button onClick={() => setShowDocModal(true)} className="w-full flex items-center justify-center gap-2 text-white text-xs font-semibold py-2.5 rounded-lg transition-colors" style={{ background: "#7C3AED" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#6D28D9"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#7C3AED"; }}>
-                  <Upload className="w-3.5 h-3.5" /> Upload &amp; Analyze
-                </button>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#ECFDF5" }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <p className="text-sm font-bold text-gray-900">Recent Activity</p>
+                </div>
+                <div className="space-y-2.5">
+                  {docs.slice().reverse().slice(0, 3).map((d) => {
+                    const linkedCase = cases.find((c) => c.id === d.case_id);
+                    return (
+                      <div key={d.id} className="flex items-start gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
+                          <FileText className="w-3 h-3" style={{ color: "#7C3AED" }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-medium text-gray-800 truncate">{d.filename}</p>
+                          <p className="text-[11px] text-gray-400">{linkedCase ? `Linked: ${linkedCase.title}` : "Unlinked document"}</p>
+                          <p className="text-[10px] text-gray-300">{new Date(d.created_at).toLocaleDateString("en-IN")}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {docs.length === 0 && (
+                    <p className="text-[12px] text-gray-400 text-center py-2">No documents yet</p>
+                  )}
+                </div>
               </div>
 
               {/* Quick Research */}
               <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
                 <p className="text-sm font-bold text-gray-900 mb-3">Quick Research</p>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {[{ label: "Search Judgments", icon: Gavel, href: "/judgments" },
                     { label: "Legal Q&A", icon: MessageSquare, href: "/ask" },
-                    { label: "eCourts Lookup", icon: FileSearch, href: "/chains" }].map((item) => {
+                    { label: "Document Analyzer", icon: FileSearch, href: "/review" },
+                    { label: "Find Precedents", icon: BookOpen, href: "/judgments" },
+                  ].map((item) => {
                     const Icon = item.icon;
                     return (
-                      <button key={item.label} onClick={() => setLocation(item.href)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-600 hover:text-blue-700 hover:bg-blue-50 transition-colors text-[13px] font-medium text-left">
+                      <button key={item.label} onClick={() => setLocation(item.href)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-600 hover:text-blue-700 hover:bg-blue-50 transition-colors text-[12px] font-medium text-left">
                         <Icon className="w-3.5 h-3.5 flex-shrink-0" /> {item.label} <ChevronRight className="w-3 h-3 ml-auto text-gray-300" />
                       </button>
                     );
@@ -626,7 +622,7 @@ export default function LawyerDashboard() {
                 </div>
               )}
 
-              {/* NALSA */}
+              {/* NALSA Helpline */}
               <div className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: "#F1F5F9" }}>
                 <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
                 <div>
