@@ -46,7 +46,9 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - `main.py` — FastAPI app: auth, forge, cases, chains, watch, alerts + mounts `extra_routes`
 - `extra_routes.py` — Legal Q&A, Document Analyzer, Judgment Finder, Lawyers, Legal Aid, Case Matching, AI Chat, Chat Threads
 - `database.py` — PostgreSQL CRUD (psycopg2)
-- `auth.py` — bcrypt hashing, JWT create/decode, FastAPI deps
+- `auth.py` — bcrypt hashing, JWT create/decode, cookie-first auth with Bearer fallback, set/clear helpers
+- `payments.py` — Razorpay integration: create_order, verify_payment, PLAN_PRICES
+- `rate_limit.py` — slowapi limiter + custom 429 exception handler
 - `litigaforge_engine.py` — Forge orchestration
 - `ai_brain.py` — Multi-AI cascade (Claude → Gemini → GPT-5)
 - `api_chains/` — 16 government API chain modules
@@ -132,7 +134,9 @@ To go live on all API Setu chains: register at api.setu.in, get approved credent
 | `POST /auth/login` | None | Verify bcrypt hash, return JWT |
 | `GET /auth/me` | Bearer | Current user info |
 | `GET /subscription/plans` | None | Free / Professional (₹999) / Advocate Pro (₹2,499) |
-| `POST /subscription/upgrade` | Bearer | Switch tier instantly |
+| `POST /subscription/create-order` | Cookie / Bearer | Create Razorpay order for upgrade |
+| `POST /subscription/verify` | Cookie / Bearer | Verify Razorpay payment, activate tier |
+| `POST /subscription/upgrade` | — | **Deprecated** — returns 410 Gone |
 
 JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-context.tsx`. All main routes protected via `ProtectedRoute`.
 

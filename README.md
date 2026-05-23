@@ -56,10 +56,10 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 | Layer | Technology |
 |---|---|
 | Frontend | React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter |
-| Backend | Python 3.12, FastAPI, Uvicorn, LangGraph, LangChain |
+| Backend | Python 3.12, FastAPI, Uvicorn, LangGraph, LangChain, slowapi (rate limiting), razorpay |
 | AI | Gemini 2.5 Flash + Claude Sonnet 4-6 + GPT-5 — all free via Replit AI Integrations |
 | Database | PostgreSQL (Replit managed) — users, subscriptions, case memory |
-| Auth | bcrypt password hashing, JWT (python-jose), 30-day tokens |
+| Auth | bcrypt password hashing, JWT (python-jose), 30-day tokens, httpOnly cookies + Bearer fallback |
 | Mobile | Expo (React Native), Expo Router, NativeWind |
 | Legal Q&A | Claude Sonnet 4-6 / Gemini 2.5 Flash — instant answers with cited law |
 | Doc Analyzer | AI risk scoring, clause extraction, Indian jurisdiction analysis |
@@ -108,7 +108,9 @@ litigaforge-ai/
 │       ├── main.py                  # All routes (auth, forge, cases, chains, watch, alerts)
 │       ├── extra_routes.py          # Legal Q&A, Doc Analyzer, Judgments, Lawyers, Legal Aid, Case Matching, AI Chat
 │       ├── database.py              # PostgreSQL CRUD (psycopg2)
-│       ├── auth.py                  # bcrypt hashing, JWT create/decode, FastAPI deps
+│       ├── auth.py                  # bcrypt hashing, JWT create/decode, cookie-first auth, FastAPI deps
+│       ├── payments.py              # Razorpay integration: create_order, verify_payment
+│       ├── rate_limit.py            # slowapi limiter + custom exception handler
 │       ├── litigaforge_engine.py    # Forge orchestration
 │       ├── ai_brain.py              # Multi-AI cascade (Claude → Gemini → GPT-5) + matching engine
 │       ├── requirements.txt
@@ -173,7 +175,11 @@ litigaforge-ai/
 
 - Monthly counter resets automatically on the first of each month.
 - Hitting the limit returns an error asking you to upgrade.
-- Upgrade / downgrade is instant via `POST /litigaforge/subscription/upgrade`.
+- **Upgrades require real payment** via Razorpay:
+  1. `POST /subscription/create-order` — creates a Razorpay order
+  2. Razorpay checkout modal opens in the browser
+  3. `POST /subscription/verify` — verifies signature, activates tier
+- The old `POST /subscription/upgrade` endpoint is disabled (410 Gone).
 
 ### Database schema
 
@@ -305,6 +311,15 @@ Set these in Replit Secrets / shared env vars, or in `.env` for Docker.
 | `MERIPEHCHAAN_CLIENT_SECRET` | No | Live DigiLocker OAuth2 SSO |
 | `ECOURTS_API_KEY` | No | Live eCourts case lookup |
 | `OPENCORPORATES_API_KEY` | No | MCA company search via OpenCorporates |
+
+### Razorpay (Payments)
+
+| Variable | Required | Description |
+|---|---|---|
+| `RAZORPAY_KEY_ID` | Yes (for paid upgrades) | Razorpay key (e.g. `rzp_test_xxx`) |
+| `RAZORPAY_KEY_SECRET` | Yes (for paid upgrades) | Razorpay secret |
+
+> Use Razorpay **test keys** during development — no real money is charged. Switch to live keys (`rzp_live_xxx`) before production.
 
 ### WhatsApp Alerts (Twilio)
 
@@ -512,16 +527,19 @@ All backend routes are prefixed with `/litigaforge`.
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `POST` | `/litigaforge/auth/register` | None | Create account — returns JWT + user |
-| `POST` | `/litigaforge/auth/login` | None | Login — returns JWT + user |
-| `GET` | `/litigaforge/auth/me` | Bearer | Current user info |
+| `POST` | `/litigaforge/auth/register` | None | Create account — sets httpOnly cookie, returns user |
+| `POST` | `/litigaforge/auth/login` | None | Login — sets httpOnly cookie, returns user |
+| `GET` | `/litigaforge/auth/me` | Cookie / Bearer | Current user info |
+| `POST` | `/litigaforge/auth/logout` | Cookie / Bearer | Clear auth cookie |
 
 ### Subscription
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/litigaforge/subscription/plans` | None | List all plans with features and pricing |
-| `POST` | `/litigaforge/subscription/upgrade` | Bearer | Switch to a new tier |
+| `POST` | `/litigaforge/subscription/create-order` | Cookie / Bearer | Create Razorpay order for chosen tier |
+| `POST` | `/litigaforge/subscription/verify` | Cookie / Bearer | Verify Razorpay payment and activate tier |
+| `POST` | `/litigaforge/subscription/upgrade` | — | **Deprecated** — returns 410 Gone |
 
 ### Forge & Cases
 
