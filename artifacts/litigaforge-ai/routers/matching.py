@@ -236,11 +236,17 @@ async def ai_match_lawyers(
                 cases = ecourts_result.get("cases", [])
                 advocate_names = set()
                 for c in cases:
-                    for adv in c.get("petitioner_advocates", []):
+                    # eCourts API uses camelCase field names
+                    for adv in c.get("petitionerAdvocates", c.get("petitioner_advocates", [])):
                         name = _clean_advocate_name(adv)
                         if name:
                             advocate_names.add(name)
-                    for adv in c.get("respondent_advocates", []):
+                    for adv in c.get("respondentAdvocates", c.get("respondent_advocates", [])):
+                        name = _clean_advocate_name(adv)
+                        if name:
+                            advocate_names.add(name)
+                    # Some endpoints (Cause List) have a combined "advocates" array
+                    for adv in c.get("advocates", []):
                         name = _clean_advocate_name(adv)
                         if name:
                             advocate_names.add(name)
