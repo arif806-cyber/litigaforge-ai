@@ -13,8 +13,9 @@ from rate_limit import limiter
 from database import fetchrow, fetch, execute, executemany
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt
+from logger import get_logger
 
-logger = logging.getLogger("litigaforge.matching")
+logger = get_logger("litigaforge.matching")
 router = APIRouter(tags=["matching"])
 
 
@@ -100,9 +101,12 @@ def _clean_advocate_name(raw: str) -> str:
     name = re.sub(r"\s*,\s*Bar\s+No.*", "", name, flags=re.I)
     name = re.sub(r"\s+\d+$", "", name)            # remove trailing numbers
     name = name.strip()
-    # Reject if too short or all caps (likely an organisation)
-    if len(name) < 3 or name.isupper():
+    # Reject if too short
+    if len(name) < 3:
         return ""
+    # Convert ALL CAPS to Title Case for display
+    if name.isupper():
+        name = name.title()
     return name
 
 
@@ -227,11 +231,13 @@ async def ai_match_lawyers(
         from api_chains import fetch_ecourts
         search_query = case.get("title", "") or case.get("case_type", "")
         state_code = _infer_state_code(case.get("location", ""))
+        logger.info(f"[eCourts] Querying: party_name={search_query[:100]!r}, state={state_code}")
         ecourts_result = fetch_ecourts(
             party_name=search_query[:100],
             state_code=state_code,
         )
         ecourts_status = ecourts_result.get("status", "unknown")
+        logger.info(f"[eCourts] Result status={ecourts_status}, total_hits={ecourts_result.get('total_hits', 0)}, cases={len(ecourts_result.get('cases', []))}")
         if ecourts_status in ("live", "mock"):
             cases = ecourts_result.get("cases", [])
             advocate_names = set()
@@ -249,6 +255,7 @@ async def ai_match_lawyers(
                     name = _clean_advocate_name(adv)
                     if name:
                         advocate_names.add(name)
+            logger.info(f"[eCourts] Advocate names found: {len(advocate_names)}")
             for idx, name in enumerate(sorted(advocate_names)[:10], 1):
                 external_matches.append({
                     "id": f"ecourts-{idx}",
