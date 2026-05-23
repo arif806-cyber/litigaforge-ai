@@ -8,7 +8,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends, Request
+from fastapi import FastAPI, HTTPException, APIRouter, BackgroundTasks, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
@@ -25,7 +25,7 @@ from database import (
     create_user, get_user_by_email, get_user_by_id,
     increment_case_count, update_subscription, SUBSCRIPTION_PLANS, TIER_LIMITS,
 )
-from auth import hash_password, verify_password, create_token, get_current_user, require_user
+from auth import hash_password, verify_password, create_token, get_current_user, require_user, set_auth_cookie, clear_auth_cookie
 from extra_routes import router as extra_router
 
 watcher = WatchModeManager(memory=memory, alert_fn=send_whatsapp_alert)
@@ -178,7 +178,16 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+_cors_origins = [f"https://{d.strip()}" for d in os.getenv("REPLIT_DOMAINS", "").split(",") if d.strip()]
+if not _cors_origins:
+    _cors_origins = ["https://localhost"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 router = APIRouter()
 
@@ -259,7 +268,7 @@ async def health():
 
 @router.post("/auth/register")
 @limiter.limit("3/minute")
-async def register(req: RegisterRequest, request: Request):
+async def register(req: RegisterRequest, request: Request, response: Response):
     if len(req.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     if len(req.name.strip()) < 2:
@@ -273,24 +282,32 @@ async def register(req: RegisterRequest, request: Request):
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     token = create_token(user["id"])
-    return {"token": token, "user": user}
+    set_auth_cookie(response, token)
+    return {"user": user}
 
 
 @router.post("/auth/login")
 @limiter.limit("5/minute")
-async def login(req: LoginRequest, request: Request):
+async def login(req: LoginRequest, request: Request, response: Response):
     user = get_user_by_email(req.email)
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     # Remove password hash from response
     user.pop("password_hash", None)
     token = create_token(user["id"])
-    return {"token": token, "user": user}
+    set_auth_cookie(response, token)
+    return {"user": user}
 
 
 @router.get("/auth/me")
 async def me(current_user: dict = Depends(require_user)):
     return current_user
+
+
+@router.post("/auth/logout")
+async def logout(response: Response):
+    clear_auth_cookie(response)
+    return {"message": "Logged out successfully"}
 
 
 # ─── Subscription routes ───────────────────────────────────────────────────────
@@ -314,7 +331,8 @@ async def subscription_upgrade(req: UpgradeRequest, current_user: dict = Depends
 @router.post("/forge")
 @limiter.limit("10/minute")
 async def forge(request: ForgeRequest, background_tasks: BackgroundTasks,
-                current_user: Optional[dict] = Depends(get_current_user), fastapi_request: Request = None):
+                fastapi_request: Request,
+                current_user: Optional[dict] = Depends(get_current_user)):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 

@@ -1,0 +1,65 @@
+Migrate JWT authentication from localStorage to httpOnly cookies. 
+Do not break any existing functionality.
+
+BACKEND (artifacts/litigaforge-ai/):
+
+1. In auth.py, update the JWT creation to set cookie parameters:
+   - Add a helper function set_auth_cookie(response: Response, token: str) that calls:
+     response.set_cookie(
+       key="lf_token",
+       value=token,
+       httponly=True,
+       secure=True,
+       samesite="strict",
+       max_age=60 * 60 * 24 * 30  # 30 days
+     )
+
+2. In main.py, update POST /litigaforge/auth/register:
+   - Accept a Response parameter in the route function
+   - After creating the JWT, call set_auth_cookie(response, token)
+   - Still return the user object in the JSON body, but remove the token 
+     from the JSON response body
+
+3. In main.py, update POST /litigaforge/auth/login:
+   - Same as above — set the cookie, remove token from JSON body
+
+4. In main.py, update GET /litigaforge/auth/me and all protected routes:
+   - Update the get_current_user dependency to read the token from 
+     the cookie first: request.cookies.get("lf_token")
+   - Keep Bearer token header as a fallback so existing API/curl usage 
+     still works: check Authorization header if cookie is missing
+
+5. Add POST /litigaforge/auth/logout route:
+   - Clears the lf_token cookie:
+     response.delete_cookie("lf_token")
+   - Returns {"message": "Logged out successfully"}
+
+6. In main.py CORSMiddleware, ensure:
+   - allow_credentials=True
+   - allow_origins is set to the exact Replit app URL 
+     (not "*" — credentials require explicit origin)
+
+FRONTEND (artifacts/litigaforge-ui/src/):
+
+7. In lib/api.ts, update apiFetch:
+   - Remove all logic that reads/writes localStorage for lf_token
+   - Add credentials: "include" to every fetch call so cookies are 
+     sent automatically
+   - Remove the Authorization header injection entirely
+
+8. In lib/auth-context.tsx:
+   - Remove all localStorage.getItem("lf_token") and 
+     localStorage.setItem("lf_token") calls
+   - On login/register success, do not store anything in localStorage
+   - To check if user is logged in, call GET /litigaforge/auth/me 
+     (cookie is sent automatically) — if it returns 200, user is logged in
+   - On logout, call POST /litigaforge/auth/logout then clear local 
+     user state
+
+9. In pages/login.tsx and pages/register.tsx:
+   - Remove any code that does localStorage.setItem("lf_token", ...)
+   - After successful login/register API call, just update the auth 
+     context state — the cookie is set automatically by the browser
+
+Do not change any page layout, styling, or non-auth logic.
+Test that login, register, refresh, and logout all work after this change.

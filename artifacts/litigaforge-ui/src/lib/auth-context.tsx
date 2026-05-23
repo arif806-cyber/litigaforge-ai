@@ -24,11 +24,11 @@ interface AuthCtx {
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
-async function authFetch(path: string, init?: RequestInit, token?: string | null) {
+async function authFetch(path: string, init?: RequestInit) {
   const res = await fetch(`${BASE}${path}`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
     ...init,
@@ -44,18 +44,14 @@ async function authFetch(path: string, init?: RequestInit, token?: string | null
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("lf_token"));
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    const t = localStorage.getItem("lf_token");
-    if (!t) { setUser(null); setLoading(false); return; }
     try {
-      const data = await authFetch("/auth/me", undefined, t);
+      const data = await authFetch("/auth/me");
       setUser(data);
     } catch {
-      localStorage.removeItem("lf_token");
-      setToken(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -69,8 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    localStorage.setItem("lf_token", data.token);
-    setToken(data.token);
     setUser(data.user);
   };
 
@@ -79,13 +73,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify({ name, email, password }),
     });
-    localStorage.setItem("lf_token", data.token);
-    setToken(data.token);
     setUser(data.user);
   };
 
-  const logout = () => {
-    localStorage.removeItem("lf_token");
+  const logout = async () => {
+    try {
+      await authFetch("/auth/logout", { method: "POST" });
+    } catch {
+      // ignore server errors during logout
+    }
     setToken(null);
     setUser(null);
   };
