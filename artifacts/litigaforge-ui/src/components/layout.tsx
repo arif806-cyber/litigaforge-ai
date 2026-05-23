@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ParticleCanvas } from "@/components/graphics/ParticleCanvas";
 import { useAuth, TIER_LABELS, TIER_LIMITS } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-provider";
+import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 
 const mainNav = [
   { href: "/",          label: "Forge",     icon: Scale },
@@ -254,7 +255,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </header>
           <div className="flex-1 relative">
              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
-             <div className="relative z-10 h-full">{children}</div>
+             <div className="relative z-10 min-h-full flex flex-col">
+               <div className="flex-1">{children}</div>
+               <LegalDisclaimerFooter />
+             </div>
           </div>
         </main>
       </div>

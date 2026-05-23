@@ -19,8 +19,9 @@ import Judgments from "@/pages/judgments";
 import LawyersPage from "@/pages/lawyers";
 import LegalAid from "@/pages/legal-aid";
 import NotFound from "@/pages/not-found";
-import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { Loader2, ShieldAlert } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,52 @@ function Router() {
   );
 }
 
+function FirstVisitDisclaimer() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("lf_disclaimer_seen");
+    if (!seen) setShow(true);
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-card border border-card-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+            <ShieldAlert className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Legal Disclaimer</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Before using LitigaForge AI, please acknowledge the following.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg p-4">
+          <p className="text-sm text-amber-900 dark:text-amber-300 leading-relaxed">
+            This is an <strong>AI assistant only</strong>. All outputs should be verified by a qualified lawyer. <strong>Not a substitute for professional legal advice.</strong> No attorney-client relationship is created by using this platform.
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            localStorage.setItem("lf_disclaimer_seen", "1");
+            setShow(false);
+          }}
+          className="w-full bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
+          data-testid="disclaimer-acknowledge"
+        >
+          I Understand &mdash; Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
@@ -93,6 +140,7 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <FirstVisitDisclaimer />
               <Router />
             </WouterRouter>
           </AuthProvider>
