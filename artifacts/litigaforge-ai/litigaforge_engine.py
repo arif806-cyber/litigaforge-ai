@@ -560,5 +560,6 @@ def forge_case(user_prompt: str) -> dict:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    print("Run via main.py or API, not directly.")
+    from logger import get_logger
+    _log = get_logger("litigaforge.engine")
+    _log.info("Run via main.py or API, not directly.")

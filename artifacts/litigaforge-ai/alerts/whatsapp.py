@@ -15,7 +15,9 @@ def send_whatsapp_alert(message: str, to: Optional[str] = None, alert_type: str 
     recipient = to or ADVOCATE_WHATSAPP
 
     if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
-        print(f"[WhatsApp MOCK] To {recipient}: {message[:100]}")
+        from logger import get_logger
+        _log = get_logger("litigaforge.whatsapp")
+        _log.info(f"[WhatsApp MOCK] To {recipient}: {message[:100]}")
         return {
             "success": True,
             "mode": "mock",

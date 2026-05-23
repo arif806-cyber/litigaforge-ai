@@ -1,24 +1,71 @@
+"""LitigaForge AI — FastAPI Server
+Modular router aggregator: 9 clean routers, lifespan, CORS, rate limiting,
+structured logging, request middleware, Sentry (conditional).
 """
-LitigaForge AI — FastAPI Server
-Modular router aggregator: 9 clean routers, lifespan, CORS, rate limiting.
-"""
-import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
 
+from logger import get_logger, forge_logger
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
 from database import get_pool, close_pool
 from watch_mode import WatchModeManager
 from alerts.whatsapp import send_whatsapp_alert
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
-logger = logging.getLogger("litigaforge.api")
+logger = get_logger("litigaforge.main")
+
+# —— Sentry (optional, only if SENTRY_DSN set) ——
+_sentry_dsn = os.environ.get("SENTRY_DSN")
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+
+    _sensitive_keys = {
+        "password", "password_hash", "token", "authorization",
+        "lf_token", "session_secret", "pan", "gstin",
+        "aadhaar", "phone", "email", "name",
+        "razorpay_key_secret", "twilio_auth_token",
+    }
+
+    def _scrub(obj):
+        if isinstance(obj, dict):
+            return {k: "[REDACTED]" if k.lower() in _sensitive_keys else _scrub(v)
+                    for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_scrub(i) for i in obj]
+        return obj
+
+    def _scrub_sensitive_data(event, hint):
+        if "request" in event:
+            if "data" in event["request"]:
+                event["request"]["data"] = _scrub(event["request"]["data"])
+            if "headers" in event["request"]:
+                event["request"]["headers"] = _scrub(event["request"]["headers"])
+        return event
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        environment=os.environ.get("ENVIRONMENT", "development"),
+        release=os.environ.get("APP_VERSION", "1.0.0"),
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            CeleryIntegration(),
+        ],
+        traces_sample_rate=0.2,
+        profiles_sample_rate=0.1,
+        send_default_pii=False,
+        before_send=_scrub_sensitive_data,
+    )
+    logger.info("Sentry error tracking initialised")
+else:
+    logger.info("SENTRY_DSN not set — error tracking disabled")
 
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 watcher = WatchModeManager(
