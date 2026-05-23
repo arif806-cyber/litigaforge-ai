@@ -1,0 +1,270 @@
+Final prompt. This closes every remaining gap to take LitigaForge AI
+to production grade. Covers structured logging, error tracking,
+performance optimisation, SEO, accessibility, and final polish.
+
+═══════════════════════════════════════
+PART A — STRUCTURED LOGGING
+═══════════════════════════════════════
+
+1. Create artifacts/litigaforge-ai/logger.py:
+
+   import logging
+   import json
+   import sys
+   import os
+   from datetime import datetime, timezone
+   from typing import Any
+
+   class JSONFormatter(logging.Formatter):
+       """
+       Outputs every log line as a single JSON object.
+       Makes logs parseable by Replit, Datadog, CloudWatch etc.
+       """
+       def format(self, record: logging.LogRecord) -> str:
+           log = {
+               "timestamp": datetime.now(timezone.utc).isoformat(),
+               "level":     record.levelname,
+               "logger":    record.name,
+               "message":   record.getMessage(),
+               "module":    record.module,
+               "function":  record.funcName,
+               "line":      record.lineno,
+           }
+           if record.exc_info:
+               log["exception"] = self.formatException(record.exc_info)
+           if hasattr(record, "extra"):
+               log.update(record.extra)
+           return json.dumps(log, ensure_ascii=False)
+
+   def get_logger(name: str) -> logging.Logger:
+       logger = logging.getLogger(name)
+       if logger.handlers:
+           return logger
+
+       handler = logging.StreamHandler(sys.stdout)
+       env = os.environ.get("ENVIRONMENT", "development")
+       if env == "production":
+           handler.setFormatter(JSONFormatter())
+           logger.setLevel(logging.INFO)
+       else:
+           handler.setFormatter(logging.Formatter(
+               "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+               datefmt="%H:%M:%S"
+           ))
+           logger.setLevel(logging.DEBUG)
+
+       logger.addHandler(handler)
+       logger.propagate = False
+       return logger
+
+   # Module-level loggers — import these in route files
+   forge_logger   = get_logger("litigaforge.forge")
+   auth_logger    = get_logger("litigaforge.auth")
+   ai_logger      = get_logger("litigaforge.ai")
+   db_logger      = get_logger("litigaforge.db")
+   watch_logger   = get_logger("litigaforge.watch")
+   payment_logger = get_logger("litigaforge.payment")
+
+2. Add to Replit Secrets / .env:
+   ENVIRONMENT=production   (set this when deploying)
+   APP_VERSION=1.0.0
+
+3. Replace all print() statements across every .py file
+   with the appropriate logger:
+
+   BEFORE: print(f"User {user_id} logged in")
+   AFTER:  auth_logger.info("User login", extra={
+               "user_id": user_id, "event": "login_success"
+           })
+
+   BEFORE: print(f"[Forge] Case forged: {case_id}")
+   AFTER:  forge_logger.info("Case forged", extra={
+               "case_id": case_id,
+               "user_id": user_id,
+               "chains":  chains_executed
+           })
+
+   BEFORE: print(f"[Alert] WhatsApp failed: {exc}")
+   AFTER:  watch_logger.error("WhatsApp alert failed", extra={
+               "error": str(exc), "to": to
+           })
+
+   BEFORE: print(f"[Cleanup] Monthly usage reset: {result}")
+   AFTER:  get_logger("litigaforge.cleanup").info(
+               "Monthly usage reset", extra={"result": result}
+           )
+
+4. Add a request logging middleware in main.py:
+
+   import time
+   from logger import get_logger
+
+   request_logger = get_logger("litigaforge.requests")
+
+   @app.middleware("http")
+   async def log_requests(request: Request, call_next):
+       start    = time.perf_counter()
+       response = await call_next(request)
+       duration = (time.perf_counter() - start) * 1000
+
+       request_logger.info("HTTP request", extra={
+           "method":      request.method,
+           "path":        request.url.path,
+           "status_code": response.status_code,
+           "duration_ms": round(duration, 2),
+           "ip":          request.client.host if request.client else None,
+       })
+       return response
+
+═══════════════════════════════════════
+PART B — ERROR TRACKING (SENTRY)
+═══════════════════════════════════════
+
+5. Add to requirements.txt:
+   - sentry-sdk[fastapi]
+
+6. Add to Replit Secrets / .env:
+   SENTRY_DSN=https://YOUR_KEY@oXXXXXX.ingest.sentry.io/XXXXXXX
+   (Create a free Sentry account at sentry.io, create a Python/FastAPI
+   project, copy the DSN they give you)
+
+7. In main.py, initialise Sentry before the app is created:
+
+   import sentry_sdk
+   from sentry_sdk.integrations.fastapi import FastApiIntegration
+   from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+   from sentry_sdk.integrations.celery import CeleryIntegration
+
+   sentry_dsn = os.environ.get("SENTRY_DSN")
+   if sentry_dsn:
+       sentry_sdk.init(
+           dsn=sentry_dsn,
+           environment=os.environ.get("ENVIRONMENT", "development"),
+           release=os.environ.get("APP_VERSION", "1.0.0"),
+           integrations=[
+               FastApiIntegration(transaction_style="endpoint"),
+               CeleryIntegration(),
+           ],
+           traces_sample_rate=0.2,   # 20% of requests traced
+           profiles_sample_rate=0.1,
+           send_default_pii=False,   # never send PII to Sentry
+           before_send=_scrub_sensitive_data,
+       )
+       print("✓ Sentry error tracking initialised")
+   else:
+       print("⚠ SENTRY_DSN not set — error tracking disabled")
+
+8. Add the PII scrubber before sentry_sdk.init():
+
+   def _scrub_sensitive_data(event: dict, hint: dict) -> dict:
+       """
+       Remove sensitive fields before sending to Sentry.
+       A legal platform must never send user PII to third parties.
+       """
+       sensitive_keys = {
+           "password", "password_hash", "token", "authorization",
+           "lf_token", "session_secret", "pan", "gstin",
+           "aadhaar", "phone", "email", "name",
+           "razorpay_key_secret", "twilio_auth_token"
+       }
+
+       def scrub(obj: Any) -> Any:
+           if isinstance(obj, dict):
+               return {
+                   k: "[REDACTED]" if k.lower() in sensitive_keys
+                   else scrub(v)
+                   for k, v in obj.items()
+               }
+           if isinstance(obj, list):
+               return [scrub(i) for i in obj]
+           return obj
+
+       if "request" in event:
+           if "data" in event["request"]:
+               event["request"]["data"] = scrub(event["request"]["data"])
+           if "headers" in event["request"]:
+               event["request"]["headers"] = scrub(
+                   event["request"]["headers"]
+               )
+       return event
+
+9. Add to frontend (artifacts/litigaforge-ui/):
+
+   npm install @sentry/react
+
+   In src/main.tsx, before rendering the app:
+
+   import * as Sentry from "@sentry/react"
+
+   const sentryDsn = import.meta.env.VITE_SENTRY_DSN
+   if (sentryDsn) {
+     Sentry.init({
+       dsn: sentryDsn,
+       environment: import.meta.env.MODE,
+       release: import.meta.env.VITE_APP_VERSION ?? "1.0.0",
+       integrations: [
+         Sentry.browserTracingIntegration(),
+         Sentry.replayIntegration({
+           maskAllText:   true,   // mask all text (PII protection)
+           blockAllMedia: true,
+         }),
+       ],
+       tracesSampleRate:  0.1,
+       replaysOnErrorSampleRate: 1.0,
+       replaysSessionSampleRate: 0.0,
+       beforeSend(event) {
+         // Never send auth-related events
+         if (event.request?.url?.includes("/auth/")) return null
+         return event
+       }
+     })
+   }
+
+   Add to Replit Secrets / .env (frontend):
+   VITE_SENTRY_DSN=https://YOUR_FRONTEND_KEY@...
+   VITE_APP_VERSION=1.0.0
+
+═══════════════════════════════════════
+PART C — PERFORMANCE OPTIMISATION
+═══════════════════════════════════════
+
+10. Add Redis caching for expensive repeated reads.
+    Create artifacts/litigaforge-ai/cache.py:
+
+    import redis.asyncio as aioredis
+    import json
+    import os
+    from typing import Any
+
+    _redis: aioredis.Redis | None = None
+
+    async def get_redis() -> aioredis.Redis:
+        global _redis
+        if _redis is None:
+            _redis = aioredis.from_url(
+                os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
+                encoding="utf-8",
+                decode_responses=True
+            )
+        return _redis
+
+    async def cache_get(key: str) -> Any | None:
+        try:
+            r = await get_redis()
+            val = await r.get(key)
+            return json.loads(val) if val else None
+        except Exception:
+            return None   # cache miss on error — degrade gracefully
+
+    async def cache_set(
+        key:   str,
+        value: Any,
+        ttl:   int = 300   # 5 minutes default
+    ) -> None:
+        try:
+            r = await get_redis()
+            await r.setex(key, ttl, json.dumps(value, default=str))
+        except Exception:
+            pass   # cache write failure is non-fatal
+
+    async def cache_delete(key: str) -> None:
