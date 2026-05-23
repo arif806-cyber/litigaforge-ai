@@ -22,7 +22,7 @@ from litigaforge_engine import forge_case, memory
 from alerts.whatsapp import send_whatsapp_alert, send_hearing_reminder
 from watch_mode import WatchModeManager
 from database import (
-    create_user, get_user_by_email, get_user_by_id,
+    create_user, get_user_by_email, get_user_by_id, get_conn,
     increment_case_count, update_subscription, SUBSCRIPTION_PLANS, TIER_LIMITS,
 )
 from auth import hash_password, verify_password, create_token, get_current_user, require_user, set_auth_cookie, clear_auth_cookie
@@ -164,6 +164,12 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
+    assert os.environ.get("SESSION_SECRET"), \
+        "SESSION_SECRET is required — set it in Replit Secrets"
+    assert os.environ.get("DATABASE_URL"), \
+        "DATABASE_URL is required"
+    logger.info("✓ Startup checks passed")
+
     if os.getenv("WATCH_MODE_AUTO_START", "false").lower() == "true":
         watcher.start()
     yield
@@ -180,14 +186,18 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 _cors_origins = [f"https://{d.strip()}" for d in os.getenv("REPLIT_DOMAINS", "").split(",") if d.strip()]
+_frontend_url = os.environ.get("FRONTEND_URL", "").strip()
+if _frontend_url:
+    _cors_origins.append(_frontend_url)
 if not _cors_origins:
-    _cors_origins = ["https://localhost"]
+    _cors_origins = ["http://localhost:5173", "http://localhost:4173"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+    max_age=600,
 )
 
 router = APIRouter()
@@ -354,7 +364,6 @@ async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(r
     if not ok:
         raise HTTPException(status_code=400, detail="Payment verification failed")
     # Update user tier and record subscription
-    from database import get_conn
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -593,6 +602,103 @@ async def sandbox_ping():
         except Exception as e:
             results[name] = {"reachable": False, "error": str(e)}
     return {"sandbox_url": base, "endpoints": results}
+
+
+# ─── Admin routes ────────────────────────────────────────────────────────────
+
+from auth import get_superuser
+
+@router.get("/admin/lawyers/pending")
+async def admin_pending_lawyers(current_user: dict = Depends(get_superuser)):
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """SELECT id, name, email, phone, bar_number, district, practice_areas,
+                          experience_years, created_at
+                   FROM lawyers WHERE verified = FALSE
+                   ORDER BY created_at DESC"""
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+            for r in rows:
+                r["created_at"] = str(r["created_at"])
+            return {"total": len(rows), "lawyers": rows}
+    finally:
+        conn.close()
+
+
+@router.post("/admin/lawyers/{lawyer_id}/approve")
+async def admin_approve_lawyer(lawyer_id: int, current_user: dict = Depends(get_superuser)):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE lawyers SET verified = TRUE, verification_status = 'verified' WHERE id = %s RETURNING id",
+                (lawyer_id,),
+            )
+            if not cur.fetchone():
+                raise HTTPException(status_code=404, detail="Lawyer not found")
+            conn.commit()
+    finally:
+        conn.close()
+    return {"success": True, "lawyer_id": lawyer_id, "status": "verified"}
+
+
+class RejectRequest(BaseModel):
+    reason: str = ""
+
+
+@router.post("/admin/lawyers/{lawyer_id}/reject")
+async def admin_reject_lawyer(lawyer_id: int, req: RejectRequest, current_user: dict = Depends(get_superuser)):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE lawyers SET verification_status = 'rejected' WHERE id = %s RETURNING id",
+                (lawyer_id,),
+            )
+            if not cur.fetchone():
+                raise HTTPException(status_code=404, detail="Lawyer not found")
+            conn.commit()
+    finally:
+        conn.close()
+    return {"success": True, "lawyer_id": lawyer_id, "status": "rejected", "reason": req.reason}
+
+
+@router.get("/admin/users")
+async def admin_list_users(
+    page: int = 1,
+    limit: int = 50,
+    current_user: dict = Depends(get_superuser),
+):
+    conn = get_conn()
+    try:
+        offset = max((page - 1) * limit, 0)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """SELECT id, name, email, subscription_tier,
+                          cases_this_month, is_superuser, created_at
+                   FROM users ORDER BY created_at DESC LIMIT %s OFFSET %s""",
+                (limit, offset),
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+            for r in rows:
+                r["created_at"] = str(r["created_at"])
+            return {"page": page, "limit": limit, "users": rows}
+    finally:
+        conn.close()
+
+
+@router.post("/admin/users/{user_id}/reset-usage")
+async def admin_reset_usage(user_id: int, current_user: dict = Depends(get_superuser)):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE users SET cases_this_month = 0 WHERE id = %s", (user_id,))
+            conn.commit()
+    finally:
+        conn.close()
+    return {"success": True}
 
 
 # ─── Mount ─────────────────────────────────────────────────────────────────────

@@ -1,0 +1,136 @@
+Two things in this prompt: lock down CORS and build a lawyer 
+verification admin panel. Both close critical trust and security gaps.
+
+═══════════════════════════════════════
+PART A — CORS POLICY
+═══════════════════════════════════════
+
+BACKEND (artifacts/litigaforge-ai/main.py):
+
+1. Add FRONTEND_URL to environment variables / Replit Secrets:
+   - FRONTEND_URL = https://YOUR_APP_NAME.replit.app
+   (replace with your actual Replit app URL)
+
+2. Replace the existing CORSMiddleware setup with:
+
+   from fastapi.middleware.cors import CORSMiddleware
+   import os
+
+   allowed_origins = [
+       os.environ.get("FRONTEND_URL", "http://localhost:5173"),
+       "http://localhost:5173",   # Vite dev server
+       "http://localhost:4173",   # Vite preview
+   ]
+
+   app.add_middleware(
+       CORSMiddleware,
+       allow_origins=allowed_origins,
+       allow_credentials=True,
+       allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+       allow_headers=["Authorization", "Content-Type", "Accept"],
+       max_age=600,
+   )
+
+3. Add a startup check in main.py:
+   @app.on_event("startup")
+   async def startup_checks():
+       assert os.environ.get("SESSION_SECRET"), \
+           "SESSION_SECRET is required — set it in Replit Secrets"
+       assert os.environ.get("DATABASE_URL"), \
+           "DATABASE_URL is required"
+       print("✓ Startup checks passed")
+
+═══════════════════════════════════════
+PART B — LAWYER VERIFICATION ADMIN PANEL
+═══════════════════════════════════════
+
+BACKEND (artifacts/litigaforge-ai/):
+
+4. Add is_superuser column to users table in database.py:
+   Run this migration:
+   ALTER TABLE users ADD COLUMN IF NOT EXISTS 
+       is_superuser BOOLEAN NOT NULL DEFAULT FALSE;
+
+   Then manually set your own account as superuser:
+   UPDATE users SET is_superuser = TRUE 
+       WHERE email = 'YOUR_ADMIN_EMAIL';
+
+5. In auth.py, add a new dependency get_superuser:
+   def get_superuser(current_user=Depends(get_current_user)):
+       if not current_user.is_superuser:
+           raise HTTPException(
+               status_code=403,
+               detail="Admin access required"
+           )
+       return current_user
+
+6. Add these admin routes to main.py 
+   (all require get_superuser dependency):
+
+   GET /litigaforge/admin/lawyers/pending
+   - Returns all lawyers where verified=FALSE
+   - Include: id, name, email, phone, bar_number, district,
+     practice_areas, experience_years, created_at
+
+   POST /litigaforge/admin/lawyers/{lawyer_id}/approve
+   - Sets verified=TRUE, verification_status='verified' 
+     WHERE id=lawyer_id
+   - Returns {"success": true, "lawyer_id": lawyer_id, 
+               "status": "verified"}
+
+   POST /litigaforge/admin/lawyers/{lawyer_id}/reject
+   Request body: { "reason": "string" }
+   - Sets verification_status='rejected' WHERE id=lawyer_id
+   - Returns {"success": true, "lawyer_id": lawyer_id, 
+               "status": "rejected", "reason": reason}
+
+   GET /litigaforge/admin/users
+   - Returns all users with id, name, email, subscription_tier,
+     cases_this_month, is_superuser, created_at
+   - Paginated: accept ?page=1&limit=50 query params
+
+   POST /litigaforge/admin/users/{user_id}/reset-usage
+   - Sets cases_this_month=0 WHERE id=user_id
+   - Returns {"success": true}
+
+7. Update GET /litigaforge/lawyers (public directory):
+   - Only return lawyers where verified=TRUE
+   - Previously it returned all lawyers including unverified ones
+
+FRONTEND (artifacts/litigaforge-ui/src/):
+
+8. Create a new page: pages/admin.tsx
+   - Only render if useAuth().user.is_superuser === true
+   - If not superuser, show: "Access denied" and redirect to /
+   
+   Layout — two tabs:
+   
+   TAB 1: "Pending lawyers" 
+   - Fetch GET /litigaforge/admin/lawyers/pending on load
+   - Show each pending lawyer as a card with:
+       * Name, email, phone, bar number, district, practice areas
+       * Experience years, registration date
+       * Two buttons: "Approve" (green) and "Reject" (red)
+   - Approve button calls POST .../approve, then removes card from list
+   - Reject button opens a small inline text input for reason, 
+     then calls POST .../reject with the reason, removes card
+   - If no pending lawyers: show "No pending verifications"
+
+   TAB 2: "All users"
+   - Fetch GET /litigaforge/admin/users on load
+   - Show as a simple table: Name | Email | Tier | Cases this month | Joined
+   - Add a "Reset usage" button per row that calls reset-usage endpoint
+   - Highlight superusers with a badge
+
+9. Add the admin route to the router in App.tsx or wherever 
+   routes are defined:
+   <Route path="/admin" component={AdminPage} />
+
+10. In components/layout.tsx (sidebar):
+    - If user.is_superuser === true, show an "Admin" link in the 
+      sidebar navigation pointing to /admin
+    - Use a shield or settings icon for it
+    - Only visible to superusers — hide from regular users completely
+
+Do not change any existing lawyer registration flow, public lawyer 
+directory display, or any non-admin pages.

@@ -9,6 +9,7 @@ export interface User {
   subscription_tier: "free" | "professional" | "advocate_pro";
   cases_this_month: number;
   month_reset_date: string;
+  is_superuser: boolean;
   created_at: string;
 }
 

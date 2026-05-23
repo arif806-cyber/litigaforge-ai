@@ -23,6 +23,7 @@ import PostCase from "@/pages/post-case";
 import MyCases from "@/pages/my-cases";
 import Matches from "@/pages/matches";
 import LegalChat from "@/pages/legal-chat";
+import AdminPage from "@/pages/admin";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -86,6 +87,7 @@ function Router() {
             <Route path="/my-cases"     component={() => <ProtectedRoute component={MyCases} />} />
             <Route path="/matches"      component={() => <ProtectedRoute component={Matches} />} />
             <Route path="/legal-chat"   component={() => <ProtectedRoute component={LegalChat} />} />
+            <Route path="/admin"         component={() => <ProtectedRoute component={AdminPage} />} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

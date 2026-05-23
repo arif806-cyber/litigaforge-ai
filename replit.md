@@ -117,7 +117,7 @@ To go live on all API Setu chains: register at api.setu.in, get approved credent
 
 | Table | Purpose |
 |---|---|
-| `users` | id, email, name, password_hash, subscription_tier, cases_this_month, month_reset_date, created_at |
+| `users` | id, email, name, password_hash, subscription_tier, cases_this_month, month_reset_date, is_superuser, created_at |
 | `subscriptions` | id, user_id FK, tier, started_at, expires_at, status, payment_ref |
 | `legal_questions` | id, user_id FK nullable, question, category, ai_answer, upvotes, created_at |
 | `lawyers` | id, user_id FK, name, email, phone, bar_number, district, practice_areas[], languages[], experience_years, rating, bio, hourly_rate, availability, verification_status, verified, created_at |

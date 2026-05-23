@@ -98,7 +98,7 @@ def get_user_by_email(email: str) -> dict | None:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """SELECT id, email, name, password_hash, subscription_tier,
-                          cases_this_month, month_reset_date
+                          cases_this_month, month_reset_date, is_superuser
                    FROM users WHERE email=%s""",
                 (email.lower().strip(),),
             )
@@ -114,7 +114,7 @@ def get_user_by_id(user_id: int) -> dict | None:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """SELECT id, email, name, subscription_tier,
-                          cases_this_month, month_reset_date, created_at
+                          cases_this_month, month_reset_date, is_superuser, created_at
                    FROM users WHERE id=%s""",
                 (user_id,),
             )

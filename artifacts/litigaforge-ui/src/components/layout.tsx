@@ -4,7 +4,7 @@ import {
   Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
   Crown, LogOut, User, ChevronRight, MessageSquare, FileSearch,
   BookOpen, Users, Heart, Sun, Moon, Plus, Gavel, MessageSquareText,
-  AlertTriangle
+  AlertTriangle, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -77,6 +77,29 @@ function NavItem({
   );
 }
 
+function AdminNavItem({ location, onNav }: { location: string; onNav?: () => void }) {
+  const { user } = useAuth();
+  if (!user?.is_superuser) return null;
+  const href = "/admin";
+  const active = location.startsWith(href);
+  return (
+    <Link
+      href={href}
+      data-testid="nav-admin"
+      onClick={onNav}
+      className={cn(
+        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer relative group",
+        active
+          ? "bg-primary text-primary-foreground font-medium shadow-sm"
+          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+      )}
+    >
+      <Shield className={cn("w-4 h-4 flex-shrink-0", active ? "text-primary-foreground" : "group-hover:text-sidebar-foreground")} />
+      <span className="tracking-wide relative z-10 text-sm font-medium">Admin</span>
+    </Link>
+  );
+}
+
 function UserPanel({ onNav }: { onNav?: () => void }) {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
@@ -137,6 +160,7 @@ function SidebarContent({
         {serviceNav.map(item => (
           <NavItem key={item.href} {...item} location={location} onClick={onNav} />
         ))}
+        <AdminNavItem location={location} onNav={onNav} />
       </div>
 
       <UserPanel onNav={onNav} />

@@ -98,3 +98,10 @@ def require_user(token: str | None = Depends(_token_dependency)) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+def get_superuser(current_user: dict = Depends(require_user)) -> dict:
+    """Admin-only dependency — raises 403 if user is not a superuser."""
+    if not current_user.get("is_superuser"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user

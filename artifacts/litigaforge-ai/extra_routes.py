@@ -313,7 +313,7 @@ async def list_lawyers(
     conn = _conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            conds, params = [], []
+            conds, params = ["verified = TRUE"], []
             if district:
                 conds.append("district ILIKE %s")
                 params.append(f"%{district}%")
@@ -327,7 +327,7 @@ async def list_lawyers(
                 conds.append("(name ILIKE %s OR bio ILIKE %s)")
                 params.extend([f"%{search}%", f"%{search}%"])
 
-            where = ("WHERE " + " AND ".join(conds)) if conds else ""
+            where = "WHERE " + " AND ".join(conds)
             cur.execute(
                 f"SELECT id, name, email, phone, bar_number, district, practice_areas, "
                 f"languages, experience_years, rating, bio, hourly_rate, availability, "
