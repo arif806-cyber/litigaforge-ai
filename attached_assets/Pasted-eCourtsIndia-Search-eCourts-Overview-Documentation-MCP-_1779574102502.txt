@@ -1,0 +1,1017 @@
+eCourtsIndia
+Search eCourts...
+
+
+Overview
+Documentation
+MCP Server
+Pricing
+API Documentation
+v4.0
+Base URL: https://webapi.ecourtsindia.com
+|
+JSON
+|
+Bearer Token Auth
+|
+11 Endpoints
+Get API Key
+Pricing
+Authentication
+Core Concepts
+Endpoints
+
+Case Detail
+Case Search
+Order Download
+Order + AI
+Order Markdown
+Case Refresh
+Bulk Refresh
+Enum Reference
+
+Court Structure
+Cause List Search
+Available Dates
+Error Handling
+Rate Limits
+Code Examples
+Enum Reference
+Workflows
+Important Notes
+Best Practices
+Authentication
+All API requests (except Court Structure) require Bearer token authentication. Include your API token in the Authorization header.
+
+Bearer Token Format
+Authorization: Bearer eci_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Prefix: eci_live_
+Length: 41 characters
+Format: Alphanumeric
+Response Format
+All successful responses follow this structure:
+
+JSON
+
+{
+  "data": { ... },
+  "meta": {
+    "requestId": "req_abc123xyz"
+  }
+}
+Security Warning
+Keep your API token confidential. Do not expose it in client-side code.
+Never commit tokens to version control or share in public repositories.
+If compromised, contact us immediately to regenerate your token.
+MCP Server
+Connect AI agents directly via Model Context Protocol:
+
+https://mcp.ecourtsindia.com/mcp?token=YOUR_API_KEY
+Free Endpoints (No Auth Required)
+GET /api/CauseList/court-structure/* — States, districts, complexes, courts
+GET /api/partner/enums — Live enum reference
+Free but auth required: GET /api/partner/causelist/available-dates — No credits charged, but Bearer token is required.
+
+Core Concepts
+Key concepts for working with the eCourts API.
+
+CNR (Case Number Record)
+A CNR is the unique 16-character identifier for every case in the eCourts system.
+
+Pattern: [A-Z]{4}\d{12}
+Components: [Court Code: 4 letters][Case Number: 6 digits][Filing Year: 4 digits]
+DLHC010351552024 → Delhi HC, case 035155, filed 2024
+HCBM050012342023 → Bombay HC (Kolhapur), case 001234, filed 2023
+Court Hierarchy
+text
+
+Supreme Court of India (SC)
+├── High Courts (37 across states/UTs)
+│   ├── Original Jurisdiction
+│   └── Appellate Jurisdiction
+├── District Courts
+├── National Company Law Tribunal (NCLT)
+├── National Company Law Appellate Tribunal (NCLAT)
+└── Specialized Tribunals
+Cause List
+A cause list is the daily schedule of cases to be heard in a specific courtroom. Each entry shows the case number, parties, assigned judge, expected hearing time, and case status. Use the Cause List Search endpoint to query schedules across courts.
+
+Credit-Based Pricing
+Most authenticated endpoints consume credits per request. Court structure endpoints and enum reference are free. Check your account balance and see the pricing page for details.
+
+API Endpoints
+11 endpoints covering case data, orders, cause lists, and court structure across all Indian courts.
+
+GET
+/api/partner/case/{cnr}
+Case Detail
+Get complete case information by CNR (Case Number Record) including parties, advocates, judges, hearing history, orders, IAs, tagged matters, and more.
+
+Parameters
+Parameter	Type	Required	Description
+cnr	path	Yes	Case Number Record
+e.g. DLND020047882015
+Example Request
+cURL
+
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/case/DLND020047882015" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "courtCaseData": {
+      "caseNumber": "202400248072016",
+      "district": "New Delhi",
+      "state": "DL",
+      "stateCode": "26",
+      "districtCode": "7",
+      "courtCode": 2,
+      "caseTypeSub": "Criminal Procedure Code.",
+      "courtName": "Chief Metropolitan Magistrate, New Delhi, PHC",
+      "courtNo": 2,
+      "firDetails": {},
+      "historyOfCaseHearings": [
+        { "judge": "", "businessOnDate": "2016-01-05", "hearingDate": "2016-04-07", "purposeOfListing": "Misc./ Appearance" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2016-04-07", "hearingDate": "2016-05-19", "purposeOfListing": "Misc./ Appearance" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2016-05-19", "hearingDate": "2016-07-16", "purposeOfListing": "Misc./ Appearance" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2016-07-16", "hearingDate": "2016-08-16", "purposeOfListing": "Misc./ Appearance" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2016-08-16", "hearingDate": "2016-10-24", "purposeOfListing": "Misc./ Appearance" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2016-10-24", "hearingDate": "2016-11-26", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2016-11-26", "hearingDate": "2016-12-20", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2016-12-20", "hearingDate": "2017-01-18", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-01-18", "hearingDate": "2017-03-25", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-03-25", "hearingDate": "2017-05-20", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-05-20", "hearingDate": "2017-08-05", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-08-05", "hearingDate": "2017-09-25", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-09-25", "hearingDate": "2017-10-27", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-10-27", "hearingDate": "2017-12-15", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-12-15", "hearingDate": "2017-12-18", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2017-12-18", "hearingDate": "2018-01-02", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2018-01-02", "hearingDate": "2018-02-08", "purposeOfListing": "Prosecution Evidence" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2018-02-08", "hearingDate": "2018-02-28", "purposeOfListing": "Prosecution Evidence" },
+        { "judge": "Chief Metropolitan Magistrate", "businessOnDate": "2018-02-28", "hearingDate": "2018-03-01", "purposeOfListing": "Prosecution Evidence" },
+        { "judge": "Addl. Chief Metropolitan Magistrate", "businessOnDate": "2018-03-01", "hearingDate": "2018-04-03", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Addl. Chief Metropolitan Magistrate", "businessOnDate": "2018-04-03", "hearingDate": "2018-04-07", "purposeOfListing": "Misc. Arguments" },
+        { "judge": "Addl. Chief Metropolitan Magistrate", "businessOnDate": "2018-04-07", "hearingDate": "2018-05-11", "purposeOfListing": "Plaintiff/Petitioner Evidence" },
+        { "judge": "Addl. Chief Metropolitan Magistrate", "businessOnDate": "2018-05-11", "hearingDate": "2018-05-19", "purposeOfListing": "Plaintiff/Petitioner Evidence" },
+        { "judge": "Addl. Chief Metropolitan Magistrate", "businessOnDate": "2018-05-19", "hearingDate": "2018-07-07", "purposeOfListing": "Plaintiff/Petitioner Evidence" },
+        { "judge": "Addl. Chief Metropolitan Magistrate", "businessOnDate": "2018-07-07", "purposeOfListing": "Disposed" }
+      ],
+      "filedDocuments": [],
+      "subordinateCourt": {},
+      "linkCases": [],
+      "purpose": "Plaintiff/Petitioner Evidence",
+      "disposalType": "DISMISSED_AS_WITHDRAWN",
+      "disposalTypeRaw": "DISMISSED AS WITHDRAWN",
+      "contestedStatus": "UNCONTESTED",
+      "lastHearingDate": "2018-07-07",
+      "interimOrders": [
+        { "orderDate": "2017-10-27", "description": "COPY OF ORDER", "orderUrl": "order-1.pdf" },
+        { "orderDate": "2017-12-15", "description": "COPY OF ORDER", "orderUrl": "order-2.pdf" },
+        { "orderDate": "2017-12-18", "description": "COPY OF ORDER", "orderUrl": "order-3.pdf" },
+        { "orderDate": "2018-01-02", "description": "COPY OF ORDER", "orderUrl": "order-4.pdf" },
+        { "orderDate": "2018-02-08", "description": "COPY OF ORDER", "orderUrl": "order-5.pdf" },
+        { "orderDate": "2018-02-28", "description": "COPY OF ORDER", "orderUrl": "order-6.pdf" },
+        { "orderDate": "2018-03-01", "description": "COPY OF JUDICIAL PROCEEDINGS", "orderUrl": "order-7.pdf" },
+        { "orderDate": "2018-04-03", "description": "COPY OF ORDER", "orderUrl": "order-8.pdf" },
+        { "orderDate": "2018-05-19", "description": "COPY OF JUDICIAL PROCEEDINGS", "orderUrl": "order-9.pdf" }
+      ],
+      "processes": [],
+      "businessOnDateEntries": [
+        { "date": "2016-01-05", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "--", "nextPurpose": "Misc./ Appearance", "nextHearingDate": "2016-04-07" },
+        { "date": "2016-04-07", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "--", "nextPurpose": "Misc./ Appearance", "nextHearingDate": "2016-05-19" },
+        { "date": "2016-05-19", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "P F", "nextPurpose": "Misc./ Appearance", "nextHearingDate": "2016-07-16" },
+        { "date": "2016-07-16", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "FP", "nextPurpose": "Misc./ Appearance", "nextHearingDate": "2016-08-16" },
+        { "date": "2016-08-16", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "CON", "nextPurpose": "Misc./ Appearance", "nextHearingDate": "2016-10-24" },
+        { "date": "2016-10-24", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "arg", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2016-11-26" },
+        { "date": "2016-11-26", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "arg", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2016-12-20" },
+        { "date": "2016-12-20", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "or", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-01-18" },
+        { "date": "2017-01-18", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "m", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-03-25" },
+        { "date": "2017-03-25", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "ch", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-05-20" },
+        { "date": "2017-05-20", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "further proceedings", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-08-05" },
+        { "date": "2017-08-05", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "heard", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-09-25" },
+        { "date": "2017-09-25", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "FP", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-10-27" },
+        { "date": "2017-10-27", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "Heard", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-12-15" },
+        { "date": "2017-12-15", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "heard", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2017-12-18" },
+        { "date": "2017-12-18", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "heard", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2018-01-02" },
+        { "date": "2018-01-02", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "heard", "nextPurpose": "Prosecution Evidence", "nextHearingDate": "2018-02-08" },
+        { "date": "2018-02-08", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "heard", "nextPurpose": "Prosecution Evidence", "nextHearingDate": "2018-02-28" },
+        { "date": "2018-02-28", "courtOf": "Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "FP", "nextPurpose": "Prosecution Evidence", "nextHearingDate": "2018-03-01" },
+        { "date": "2018-03-01", "courtOf": "Addl. Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "CN", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2018-04-03" },
+        { "date": "2018-04-03", "courtOf": "Addl. Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "accused no. 1,2,3,5,6 withdraw the case. put up on date fixed", "nextPurpose": "Misc. Arguments", "nextHearingDate": "2018-04-07" },
+        { "date": "2018-04-07", "courtOf": "Addl. Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "CE", "nextPurpose": "Plaintiff/Petitioner Evidence", "nextHearingDate": "2018-05-11" },
+        { "date": "2018-05-11", "courtOf": "Addl. Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "--\nReason for Adjournment\n:\nJudge on Leave", "nextPurpose": "Plaintiff/Petitioner Evidence", "nextHearingDate": "2018-05-19" },
+        { "date": "2018-05-19", "courtOf": "Addl. Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "Two applications have been moved on behalf of the sureties Gopal Mohan and Naresh Balyan for release of FDR.\nApplication perused. Considered.", "nextPurpose": "Plaintiff/Petitioner Evidence", "nextHearingDate": "2018-07-07" },
+        { "date": "2018-07-07", "courtOf": "Addl. Chief Metropolitan Magistrate", "petitioner": "MR.ARUN JAITLEY", "respondent": "MR. ARVIND KEJRIWAL", "business": "DAW\nNature of Disposal\n:\nDISMISSED AS WITHDRAWN\nDisposal Date\n:\n07-07-2018\nAddl. Chief Metropolitan Magistrate" }
+      ],
+      "cnr": "DLND020047882015",
+      "cnrCourtCode": "DLND02",
+      "courtComplexCode": "DLND02",
+      "cnrCaseNumber": "0047882015",
+      "cnrYear": "2015",
+      "caseType": "CC",
+      "caseTypeRaw": "Ct Cases",
+      "caseStatus": "DISPOSED",
+      "filingNumber": "27843/2015",
+      "filingDate": "2015-12-21",
+      "registrationNumber": "24807/2016",
+      "registrationDate": "2015-12-21",
+      "firstHearingDate": "2016-01-05",
+      "nextHearingDate": "2018-07-07",
+      "decisionDate": "2018-07-07",
+      "caseDurationDays": 929,
+      "filingToFirstHearingDays": 15,
+      "judges": [],
+      "petitioners": ["MR.ARUN JAITLEY"],
+      "petitionerAdvocates": [],
+      "respondents": ["MR. ARVIND KEJRIWAL"],
+      "respondentAdvocates": [],
+      "caseCategoryFacetPath": "Criminal Law/Other Criminal Matters",
+      "hasOrders": true,
+      "hasJudgments": true,
+      "orderCount": 10,
+      "interimOrderCount": 9,
+      "judgmentCount": 1,
+      "hearingCount": 25,
+      "iaCount": 0,
+      "taggedMatters": [],
+      "earlierCourtDetails": [],
+      "interlocutoryApplications": [],
+      "listingDates": [],
+      "notices": [],
+      "judgmentOrders": [
+        { "orderDate": "2018-07-07", "orderType": "COPY OF ORDER", "orderUrl": "order-10.pdf" }
+      ],
+      "caveatDetails": []
+    },
+    "entityInfo": {
+      "cnr": "DLND020047882015",
+      "nextDateOfHearing": "2018-07-07T00:00:00Z",
+      "lastDateOfHearing": "2018-07-07T00:00:00Z",
+      "dateCreated": "2026-02-18T15:33:18.064345Z",
+      "dateModified": "2026-05-01T09:38:35.670942Z"
+    },
+    "files": { "files": [] },
+    "descriptions": {
+      "enumFields": ["caseType", "caseStatus", "courtCode", "judicialSection", "caseCategory", "benchType", "stateCode"],
+      "enumLookup": {
+        "caseType": { "CC": "Criminal Complaint Case" },
+        "caseStatus": { "DISPOSED": "Disposed" },
+        "courtCode": { "DLND02": "Chief Metropolitan Magistrate, New Delhi, PHC" },
+        "judicialSection": {},
+        "caseCategory": {},
+        "benchType": {},
+        "stateCode": {}
+      }
+    },
+    "caseAiAnalysis": null
+  },
+  "meta": { "request_id": "400006a5-0010-d800-b63f-84710c7967bb" }
+}
+The markdownContent field in files contains the COMPLETE order text (often 5-40 pages), not a stub.
+Party arrays (petitioners, respondents, etc.) are plain string arrays, NOT object arrays.
+pdfFile vs orderUrl: files.files[].pdfFile has the CNR-prefixed filename. The bare filename for use with /order/ and /order-ai/ endpoints comes from judgmentOrders[].orderUrl.
+Response Schema
+GET
+/api/partner/search
+Case Search
+Full-text search across 24Cr+ records with filters for party, advocate, judge, court, case type, dates, and faceted results.
+
+Text Search Parameters
+Parameter	Type	Required	Description
+query	string	No	General full-text search across all fields
+advocates	string	No	Search by advocate name
+judges	string	No	Search by judge name
+petitioners	string	No	Search by petitioner name
+respondents	string	No	Search by respondent name
+litigants	string	No	Search both petitioners and respondents
+Filter Parameters (arrays)
+Date Range Filters
+Sorting & Pagination
+Important: Search results do not include a "case title" field. Construct a display title using petitioners/respondents arrays (e.g., "ABC Ltd vs XYZ Corp").
+Example Request
+cURL
+
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/search?advocates=Sharma&courtCodes=DLHC01&filingDateFrom=2024-01-01&pageSize=20" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "results": [
+      {
+        "cnr": "DLHC010001232024",
+        "caseType": "RFA",
+        "caseStatus": "PENDING",
+        "filingDate": "2024-01-15",
+        "nextHearingDate": "2024-03-15",
+        "judges": ["Justice A.K. Sharma"],
+        "petitioners": ["ABC Private Limited"],
+        "respondents": ["XYZ Corporation"],
+        "petitionerAdvocates": ["Adv. Rahul Sharma"],
+        "actsAndSections": ["Code of Civil Procedure, 1908 - Section 9"],
+        "courtCode": "DLHC01",
+        "judicialSection": "CIV",
+        "aiKeywords": ["contract breach", "interim injunction"],
+        "registrationNumber": "456/2005",
+        "registrationDate": "2005-06-30",
+        "decisionDate": "2017-10-10",
+        "caseCategory": "SPECIFIC PERFORMANCE OF CONTRACT MATTERS",
+        "caseCategoryFacetPath": ["Administrative/Not Specified"],
+        "benchType": ""
+      }
+    ],
+    "totalHits": 150,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 8,
+    "hasNextPage": true,
+    "facets": {
+      "caseType": { "values": { "WP_C": 7479, "CMAppl": 5905, "CR_MISC": 5345, "RFA": 4088, "CS": 3488 }, "totalValues": 37, "hasMore": false, "facetType": "categorical" },
+      "caseStatus": { "values": { "DISPOSED": 42859, "PENDING": 2801 }, "totalValues": 2, "hasMore": false, "facetType": "categorical" }
+    },
+    "hasPreviousPage": false,
+    "processingTimeMs": 38,
+    "query": "contract",
+    "activeFilters": [
+      { "field": "courtCode", "value": "DLHC01", "displayName": "Court: DLHC01", "filterType": "facet" }
+    ],
+    "enumDescriptions": {
+      "enumFields": ["caseType", "caseStatus", "courtCode", "judicialSection"],
+      "enumLookup": {
+        "caseType": { "RFA": "Regular First Appeal", "WP_C": "Writ Petition (Civil)" },
+        "caseStatus": { "DISPOSED": "Disposed", "PENDING": "Pending" }
+      }
+    }
+  },
+  "meta": { "request_id": "550e8400-e29b-41d4-a716-446655440004" }
+}
+GET
+/api/partner/case/{cnr}/order/{filename}
+Order Download (PDF)
+Get order document metadata and download information. PDFs are certified true copies from the eCourts system.
+
+Parameters
+Parameter	Type	Required	Description
+cnr	path	Yes	Case Number Record
+e.g. DLHC010001232024
+filename	path	Yes	Order filename from judgmentOrders[].orderUrl
+e.g. order-1.pdf
+How to get the filename:
+Call GET /api/partner/case/{cnr} to get case details.
+Look in courtCaseData.judgmentOrders[] or courtCaseData.interimOrders[] for orderUrl values.
+Example Request
+cURL
+
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024/order/order-1.pdf" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "cnr": "DLHC010001232024",
+    "filename": "order-1.pdf",
+    "downloadFilename": "ecourtsindia-truecopy-DLHC010001232024-order-1.pdf",
+    "message": "Use the standard document download endpoint to retrieve the PDF"
+  },
+  "meta": { "request_id": "550e8400-e29b-41d4-a716-446655440001" }
+}
+This endpoint returns order metadata and download info. For text analysis, use Order + AI (extracted text + AI analysis) or Order Markdown (markdown text + watermarked PDF). Full order text is also available in Case Detail under files[].markdownContent.
+GET
+/api/partner/case/{cnr}/order-ai/{filename}
+Order + AI Summary
+Get extracted text and AI analysis for a court order: summary, key points, outcome, relief granted, and legal provisions cited. Generated on-demand on first access, cached thereafter.
+
+Parameters
+Parameter	Type	Required	Description
+cnr	path	Yes	Case Number Record
+filename	path	Yes	Order filename from judgmentOrders[].orderUrl
+May take 10-60 seconds. This endpoint performs on-demand processing from government court servers on first access. If aiAnalysis is null, retry up to 3 times with 15-30 second waits. Subsequent accesses are cached.
+Example Request
+cURL
+
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024/order-ai/order-1.pdf" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "cnr": "DLHC010631472005",
+    "filename": "order-5.pdf",
+    "extractedText": "## IN THE HIGH COURT OF DELHI AT NEW DELHI\n\n+ RFA No. 456/2005...",
+    "aiAnalysis": {
+      "foundational_metadata": {
+        "core_case_identifiers": {
+          "case_number_primary": "RFA No. 456/2005",
+          "case_numbers_secondary": ["63147/2005"],
+          "case_type": "Regular First Appeal",
+          "case_sub_type": "Specific Performance Of Contract Matters",
+          "court_name": "High Court Of Delhi At New Delhi",
+          "court_type": "High Court",
+          "bench_composition": "Single Judge",
+          "judge_names": ["Valmiki J. Mehta"],
+          "judge_designations": ["Justice"],
+          "order_date": "2017-10-10",
+          "hearing_dates_mentioned": ["2003-08-04"],
+          "next_hearing_date_specified": null,
+          "filing_year": 2005
+        },
+        "party_information": {
+          "petitioners_appellants_complainants": [
+            { "name": "M/S Contract Advertising India Ltd.", "type": "Corporation", "role_exact": "Appellant", "is_ors_indicated": false }
+          ],
+          "respondents_accused_defendants": [
+            { "name": "M/S Ajanta Offset & Packagings Ltd.", "type": "Corporation", "role_exact": "Respondent", "is_ors_indicated": true }
+          ],
+          "other_parties_mentioned": []
+        },
+        "legal_representation": {
+          "counsel_for_petitioner_side": [
+            { "name": "Ashok Chhabra", "role": "Advocate", "status_in_order": "Appeared" }
+          ],
+          "counsel_for_respondent_side": [],
+          "advocate_on_record_details": []
+        },
+        "procedural_details_from_order": {
+          "order_nature": "Substantive",
+          "disposition_status_indicated": "Disposed",
+          "disposition_outcome_if_disposed": "Allowed",
+          "service_of_notice_details_mentioned": [],
+          "costs_awarded_details": null,
+          "specific_directions_given_by_court": [
+            "Appeal allowed and disposed of",
+            "Decree set aside against appellant/defendant no.2",
+            "Deposited amount to be released back to appellant within four weeks"
+          ]
+        }
+      },
+      "deep_legal_substance_context": {
+        "core_legal_content_analysis": {
+          "primary_legal_issues_identified": [
+            "Whether an agent is personally liable for contracts on behalf of a disclosed principal",
+            "Whether the suit against an added defendant is barred by limitation"
+          ],
+          "statutes_cited_and_applied": [
+            { "act_name": "Indian Contract Act, 1872", "section_article_rule": "Section 230", "interpretation_focus_or_application": "Agent not personally bound by contracts for disclosed principal" },
+            { "act_name": "Limitation Act, 1963", "section_article_rule": "Section 21", "interpretation_focus_or_application": "Effect of adding new parties on limitation period" },
+            { "act_name": "Code of Civil Procedure, 1908", "section_article_rule": "Section 96", "interpretation_focus_or_application": "Filing of Regular First Appeals" }
+          ],
+          "case_law_cited_and_analysed": []
+        },
+        "arguments_and_reasoning_analysis": {
+          "summary_of_arguments_petitioner_side": "Agent cannot have privity of contract when principal is disclosed...",
+          "summary_of_arguments_respondent_side": "Appellant was liable as agent who placed the printing order...",
+          "court_reasoning_for_decision": "Court agreed with appellant. Section 230 protects agents of disclosed principals...",
+          "ratio_decidendi_extracted": {
+            "statement": "An agent is not personally liable for a contract entered into on behalf of a disclosed principal...",
+            "confidence_score": 10
+          }
+        }
+      },
+      "intelligent_insights_analytics": {
+        "order_significance_and_impact_assessment": {
+          "ai_generated_executive_summary": "The Delhi High Court allowed an appeal, setting aside a trial court decree against an advertising agency...",
+          "plain_language_summary_for_litigants_outcome_focused": "Contract Advertising won its appeal. The court ruled that because they were just an agent...",
+          "actionable_alerts_for_parties": [],
+          "compliance_directives_or_risks_for_parties": [
+            "Decree against respondent no.2/defendant no.1 remains enforceable"
+          ],
+          "implications_for_litigants_in_similar_situations": [
+            "If acting as agent for a known company, generally not personally responsible for contracts made on their behalf"
+          ]
+        }
+      },
+      "actionable_outputs_user_tools": {
+        "research_and_visualization_support_data": {
+          "cited_cases_network_data_outgoing": [],
+          "potential_similar_cases_indicators": {
+            "key_issues_for_similarity_search": ["Agent liability for disclosed principal", "Limitation for adding parties"]
+          },
+          "topic_modeling_cluster_suggestions": ["Agency Law", "Contract Law", "Limitation Period"]
+        }
+      },
+      "quality_review_metadata": {
+        "ocr_accuracy_estimate_if_applicable": 0.98,
+        "overall_extraction_confidence": "High",
+        "ambiguity_or_missing_data_flags": []
+      }
+    }
+  },
+  "meta": { "request_id": "550e8400-e29b-41d4-a716-446655440002" }
+}
+AI Analysis Availability: AI analysis is generated on-demand on first access (10-60 seconds). Once processed, results are cached for subsequent fast access. If aiAnalysis is null, retry up to 3 times with 15-30 second waits.
+Quick Reference — Key Field Paths:
+Executive summary: aiAnalysis.intelligent_insights_analytics...ai_generated_executive_summary
+Plain language: ...plain_language_summary_for_litigants_outcome_focused
+Order nature: aiAnalysis.foundational_metadata.procedural_details_from_order.order_nature
+Outcome: ...disposition_outcome_if_disposed
+Judge(s): aiAnalysis.foundational_metadata.core_case_identifiers.judge_names (Array)
+Order date: ...core_case_identifiers.order_date
+Statutes: aiAnalysis.deep_legal_substance_context.core_legal_content_analysis.statutes_cited_and_applied
+Reasoning: ...arguments_and_reasoning_analysis.court_reasoning_for_decision
+GET
+/api/partner/case/{cnr}/order-md/{filename}
+Order Markdown & PDF
+Get a watermarked certified-true-copy PDF and extracted markdown text of a court order.
+
+Parameters
+Parameter	Type	Required	Description
+cnr	path	Yes	16-character Case Number Record
+e.g. DLHC010001232024
+filename	path	Yes	Bare filename from judgmentOrders[].orderUrl or interimOrders[].orderUrl
+e.g. order-2024-02-01.pdf
+May take up to 300 seconds — This endpoint runs a real-time PDF conversion pipeline. If you receive a 429 TOO_MANY_CONVERSIONS error, wait for the duration specified in the Retry-After header.
+Example Request
+cURL
+
+curl "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024/order-md/order-1.pdf" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "pdfBase64": "JVBERi0xLjQK...",
+    "markdownContent": "# ORDER\n\nBefore: Hon'ble Justice Name\n\nDate of Hearing: 2024-02-01..."
+  },
+  "meta": { "request_id": "req_abc123xyz" }
+}
+pdfBase64 is a watermarked certified-true-copy PDF. markdownContent may be null if conversion failed. Full order text is already available in Case Detail response under files[].markdownContent — use this endpoint only when you need the watermarked PDF for official submission.
+POST
+/api/partner/case/{cnr}/refresh
+Case Refresh
+Queue a fresh data scrape from the eCourts source. Use this to get the latest updates for a case.
+
+Parameters
+Parameter	Type	Required	Description
+cnr	path	Yes	Case Number Record
+e.g. DLHC010001232024
+Example Request
+cURL
+
+curl -X POST "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024/refresh" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Example Response
+202 Accepted
+JSON
+
+{
+  "data": {
+    "cnr": "DLHC010001232024",
+    "status": "QUEUED",
+    "message": "Case refresh request queued",
+    "estimatedTime": "5-10 seconds"
+  },
+  "meta": { "request_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7" }
+}
+This is an asynchronous operation. Fetch case details after 5-10 seconds to get updated data. Duplicate refresh requests within 15 seconds are idempotent.
+POST
+/api/partner/case/bulk-refresh
+Bulk Case Refresh
+Queue multiple cases (max 50) for re-scraping from official eCourts government servers in a single request.
+
+Request Body
+Parameter	Type	Required	Description
+cnrs	string[]	Yes	Array of 2-50 CNR strings
+e.g. ["DLHC010024442025", "DLHC010351552024"]
+Example Request
+cURL
+
+curl -X POST "https://webapi.ecourtsindia.com/api/partner/case/bulk-refresh" \
+  -H "Authorization: Bearer eci_live_your_token_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "cnrs": [
+    "DLHC010024442025",
+    "DLHC010351552024",
+    "HCBM050012342023"
+  ]
+}'
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "refreshed": ["DLHC010024442025", "DLHC010351552024"],
+    "queued": [],
+    "invalid": []
+  },
+  "meta": { "request_id": "req_abc123xyz" }
+}
+CNRs are automatically trimmed, uppercased, and deduplicated. Response fields: refreshed (already in cache), queued (sent for re-scrape), invalid (bad format). Wait 30+ seconds before fetching updated case details.
+GET
+/api/partner/enums
+Enum Reference (Live)
+Get live enumeration codes directly from the API. Always current, cached for 1 hour. No authentication required.
+
+Query Parameters
+Parameter	Type	Required	Description
+types	string	No	Comma-separated enum keys to fetch. If omitted, returns ALL types. Available: caseStatus, caseType, caseCategory, courtCode, highCourtCode, stateCode, benchType, judicialSection, causeListType, courtType
+e.g. caseStatus,caseType
+Example Request
+cURL
+
+curl "https://webapi.ecourtsindia.com/api/partner/enums?types=caseStatus,benchType"
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "caseStatus": [
+      { "code": "PENDING", "description": "Pending" },
+      { "code": "DISPOSED", "description": "Disposed" },
+      { "code": "DISMISSED", "description": "Dismissed" }
+    ],
+    "benchType": [
+      { "code": "SB", "description": "Single Bench" },
+      { "code": "DB", "description": "Division Bench" }
+    ]
+  },
+  "meta": { "request_id": "req_abc123xyz" }
+}
+High Court codes returned here are BASE codes without bench suffix (e.g., DLHC not DLHC01). These are NOT directly usable in search. For search-ready codes with bench suffix, see the Enum Reference section below.
+GET
+/api/partner/causelist/court-structure/*
+Court Structure
+Discover the court hierarchy: State → District → Court Complex → Court. Requires Partner API token. No billing — metadata only.
+
+Breaking change: The court structure endpoints have moved. The old path /api/CauseList/court-structure/* is no longer accessible to partners. Use the new path /api/partner/causelist/court-structure/* with your Partner API token instead.
+Partner Endpoints: Authenticate with your Partner Bearer token (Authorization: Bearer YOUR_API_KEY). No billing. Use these to discover valid filter values for Cause List Search and Available Dates endpoints.
+JSON
+
+// GET /api/partner/causelist/court-structure/states
+[
+  { "state": "DL", "stateName": "Delhi" },
+  { "state": "UP", "stateName": "Uttar Pradesh" },
+  { "state": "SC", "stateName": "India" }   // Supreme Court
+]
+JSON
+
+// GET /api/partner/causelist/court-structure/states/{state}/districts
+[
+  { "districtCode": "1", "districtName": "Prayagraj" },
+  { "districtCode": "HC", "districtName": "Allahabad High Court" }
+]
+JSON
+
+// GET .../districts/{districtCode}/complexes
+[
+  { "courtComplexCode": "1130029", "courtComplexName": "Kheri District Court Complex" }
+]
+JSON
+
+// GET .../complexes/{code}/courts
+[
+  {
+    "court": "11",
+    "courtNo": "1",
+    "courtName": "SUSHRI KAPILA RAGHAV-Presiding Officer MACT",
+    "courtDivision": "Presiding Officer Motor Accident Claim Tribunal",
+    "judgeName": "SUSHRI KAPILA RAGHAV"
+  }
+]
+High Courts appear as a special district with districtCode="HC". Use the returned districtCode value (not the name) in subsequent calls.
+GET
+/api/partner/causelist/search
+Cause List Search
+Search cause list entries across Indian courts with flexible filtering by case number, date, judge, advocate, litigant, state, district, and court.
+
+Query Parameters
+Parameter	Type	Required	Description
+q	string	No	Full-text search across case numbers, parties, and advocates. You can pass a case number directly (e.g. G.R.case/533/2023) to look up a specific entry.
+e.g. G.R.case/533/2023
+date	date	No	Exact date filter (YYYY-MM-DD)
+startDate	date	No	Date range start (inclusive)
+endDate	date	No	Date range end (inclusive)
+judge	string	No	Search by judge name (full-text)
+advocate	string	No	Search by advocate name (full-text)
+state	string	No	Filter by state code (e.g., DL, JH)
+districtCode	string	No	Filter by district code
+limit	int	No	Maximum results to return (max: 100)
+Default: 100
+offset	int	No	Number of results to skip (for pagination)
+Default: 0
+courtComplexCode	string	No	Court complex code
+e.g. 1260007-1
+court	string	No	Court identifier from court structure
+e.g. 1
+courtNo	string	No	Court room number
+e.g. 16
+bench	string	No	Bench identifier
+e.g. 1
+litigant	string	No	Party/litigant name (full-text search)
+e.g. Sharma
+listType	string	No	List type: CIVIL or CRIMINAL
+e.g. CIVIL
+includeCourtroom	boolean	No	Include courtroom assignment data (default: true)
+Default: true
+At least one search or filter parameter must be provided.
+Example Request
+cURL
+
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/causelist/search?q=ram&state=JH&limit=10" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Example Response
+200 OK
+JSON
+
+{
+  "data": {
+    "query": "ram",
+    "results": [
+      {
+        "id": 8506606,
+        "courtType": "DISTRICT_COURT",
+        "listType": "CRIMINAL",
+        "bench": "9",
+        "courtNo": "1",
+        "court": "UNKNOWN",
+        "courtDescription": "UNKNOWN",
+        "benchDescription": "UNKNOWN 1",
+        "date": "2026-02-16",
+        "caseNumber": ["G.R.case/533/2023"],
+        "party": "The State Of Jharkhand Vs. Dilip Ram, Karan Ram",
+        "petitioners": ["The State Of Jharkhand"],
+        "respondents": ["Dilip Ram, Karan Ram"],
+        "petitionerAdvocates": [],
+        "respondentAdvocates": [],
+        "advocates": ["Appsri Shankar Thakur"],
+        "judge": ["Manoj Kumar Prajapati"],
+        "district": "Bokaro",
+        "state": "JH",
+        "status": "APPEARANCE",
+        "districtCode": "1",
+        "courtName": "Manoj Kumar Prajapati-Acjm",
+        "cnr": null,
+        "listingNo": 14,
+        "courtComplexCode": "1260010-1",
+        "internalCaseNo": "203300006522025",
+        "dateCreated": "2026-03-07T19:03:30Z",
+        "dateModified": "2026-03-07T19:03:30Z"
+      }
+    ],
+    "returnedCount": 2,
+    "limit": 10,
+    "offset": 0
+  },
+  "meta": { "request_id": "550e8400-e29b-41d4-a716-446655440003" }
+}
+Searching by case number: The q parameter accepts case numbers directly. Paste a case number (e.g. G.R.case/533/2023) to find that specific entry. Remember to URL-encode / as %2F — example: ?q=G.R.case%2F533%2F2023.
+Pagination: Uses offset-based pagination. First page: limit=20&offset=0, second page: limit=20&offset=20. If returnedCount < limit, you have reached the last page.
+Both judge and caseNumber are arrays, not strings. A single cause list entry may have multiple case numbers and judges.
+Uses offset-based pagination (not page-based). To get the next page: offset = previous_offset + limit. The courtNo field is the room number; court is the internal identifier.
+GET
+/api/partner/causelist/available-dates
+Cause List Available Dates
+Discover which dates have cause list data for a given location before searching. Free with authentication.
+
+Query Parameters
+Parameter	Type	Required	Description
+state	string	No*	State code (e.g., DL)
+districtCode	string	No*	District code
+courtComplexCode	string	No*	Court complex code
+courtNo	string	No*	Court room number
+court	string	No*	Court identifier
+Example Response
+200 OK
+JSON
+
+{
+  "data": [
+    "2024-02-15",
+    "2024-02-14",
+    "2024-02-13",
+    "2024-02-12",
+    "2024-02-09"
+  ],
+  "meta": { "request_id": "a3bb189e-8bf9-3888-9912-ace4e6543002" }
+}
+* At least one parameter must be provided. Dates are returned in descending order (most recent first).
+Error Handling
+All errors follow a consistent format with machine-readable error codes and human-readable messages.
+
+JSON
+
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable error message",
+    "details": {}
+  },
+  "meta": {
+    "requestId": "req_abc123xyz"
+  }
+}
+Error Codes Reference
+Status	Code	Description	Category
+401	INVALID_TOKEN	Bearer token is invalid or malformed	Authentication
+401	TOKEN_INACTIVE	Token has been deactivated	Authentication
+401	TOKEN_EXPIRED	Token has expired. Generate a new one.	Authentication
+403	ACCOUNT_INACTIVE	Partner account is suspended	Authorization
+402	INSUFFICIENT_CREDITS	Not enough credits to complete request	Billing
+402	SUBSCRIPTION_REQUIRED	Active subscription required to use credits	Billing
+429	RATE_LIMIT_EXCEEDED	Too many requests. Please try again later.	Rate Limit
+429	TOO_MANY_CONVERSIONS	PDF conversion pipeline overloaded. Check Retry-After header.	Rate Limit
+400	INVALID_CNR	CNR format is invalid	Validation
+400	INVALID_PARAMETER	Request parameter is invalid	Validation
+400	MISSING_PARAMETER	Required parameter is missing	Validation
+400	PAGE_SIZE_EXCEEDED	Page size cannot exceed 100	Validation
+400	INVALID_FILENAME	Order filename format is invalid. Use bare filename from orderUrl.	Validation
+404	CASE_NOT_FOUND	Case with given CNR not found	Resource
+404	ORDER_NOT_FOUND	Order document not found	Resource
+500	INTERNAL_ERROR	Internal server error (not charged)	Server
+Rate Limits
+Default limits for all partner accounts. Contact us for higher limits on enterprise plans.
+
+Limit	Value
+Per Minute	100 requests
+Per Hour	3,000 requests
+Per Day	50,000 requests
+Concurrent	10 requests
+Implement exponential backoff when receiving 429 responses. Wait 1s, 2s, 4s, etc. before retrying.
+Code Examples
+Complete, ready-to-use examples covering all endpoints.
+
+cURL
+Python
+Node.js
+C#
+
+# Get case details
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+
+# Search cases by advocate
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/search?advocates=Sharma&courtCodes=DLHC01&pageSize=20" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+
+# Search with date range and multiple courts
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/search?advocates=Sharma&courtCodes=DLHC01&courtCodes=HCBM01&filingDateFrom=2024-01-01&filingDateTo=2024-12-31&caseStatuses=PENDING" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+
+# Get order metadata (PDF)
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024/order/order-1.pdf" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+
+# Get order with AI summary
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024/order-ai/order-1.pdf" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+
+# Court Structure (public, no auth)
+curl -X GET "https://webapi.ecourtsindia.com/api/CauseList/court-structure/states"
+curl -X GET "https://webapi.ecourtsindia.com/api/CauseList/court-structure/states/UP/districts"
+
+# Cause List Search
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/causelist/search?q=ram&state=JH&limit=10" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+
+# Available Dates (free)
+curl -X GET "https://webapi.ecourtsindia.com/api/partner/causelist/available-dates?state=DL" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+
+# Refresh case data
+curl -X POST "https://webapi.ecourtsindia.com/api/partner/case/DLHC010001232024/refresh" \
+  -H "Authorization: Bearer eci_live_your_token_here"
+Enum Reference
+Standard enumeration values used across API responses.
+
+Case Status Values
+Judicial Section Values
+Case Type Values
+High Court Codes
+Case Category Values
+Bench Type Values
+State & UT Codes
+NCLT Bench Codes
+NCLAT Bench Codes
+Court Types
+Cause List Types
+Workflows & Patterns
+Common multi-step patterns for working with the API effectively.
+
+Find and Analyze a Case
+Daily Court Docket
+Monitor a Portfolio of Cases
+Get Order with AI Analysis
+Search and Quick Decision-Making
+Bulk Case Management
+Important Notes & Gotchas
+Common pitfalls and things to watch out for when using the API.
+
+Wrong Enum Codes = Silent Empty Results
+If you pass wrong enum codes to search, you get 0 results with no error. Always verify codes using the Enum Reference endpoint or the enum tables below before searching.
+
+cURL
+
+# WRONG — returns 0 results silently
+GET /api/partner/search?caseTypes=BAIL_APP
+
+# CORRECT — use validated code
+GET /api/partner/search?caseTypes=BA
+Order AI Analysis is On-Demand (10-60s)
+The order-ai endpoint performs on-demand processing from government court servers on first access. Expect 10-60 second latency. If aiAnalysis is null, retry up to 3 times with 15-30s waits. Fall back to order-md for raw text if needed.
+
+Order Markdown Can Take Up to 300 Seconds
+The PDF conversion pipeline is slow. Full order text is already available in Case Detail response under files[].markdownContent. Only use the order-md endpoint when you need the watermarked PDF for official submission.
+
+High Court Codes Need Bench Suffix
+High Court codes must include bench suffix for searching. DLHC returns 0 results — use DLHC01.
+
+cURL
+
+# WRONG — base code, returns 0 results
+GET /api/partner/search?courtCodes=DLHC
+
+# CORRECT — full code with bench suffix
+GET /api/partner/search?courtCodes=DLHC01
+NCLT Codes Need Trailing '0'
+NCLT bench codes must end with 0 for searching.
+
+cURL
+
+# WRONG: GET /api/partner/search?courtCodes=NCLTDL
+# CORRECT:
+GET /api/partner/search?courtCodes=NCLTDL0
+SC = India (Supreme Court)
+In state codes, SC represents the Supreme Court of India, not a state. It appears in the states list as "state": "SC", "stateName": "India".
+
+Cause List Uses Offset Pagination
+Cause list search uses offset-based pagination, not page numbers. To get page 2 with limit=20: offset=20. Next page: offset = previous_offset + limit.
+
+courtNo vs court in Cause Lists
+In cause list results, courtNo is the room number and court is the internal identifier. These are different fields — don't confuse them when filtering.
+
+All Dates Use YYYY-MM-DD Format
+All date parameters and response fields use YYYY-MM-DD format. Datetime fields include timezone suffix (Z).
+
+Case Category is Free-Form in Case Data
+Case category enum codes are search filters only. The actual caseCategory field in case data is free-form court text (e.g., "Constitutional Writ"), not a value from the enum.
+
+Acts/Sections Filter — Exact Match, Very Limited Coverage
+The actsAndSections filter requires the exact stored-text format and has very limited index coverage. Most cases do NOT have this field populated. The filter also doesn't appear in activeFilters.
+
+cURL
+
+# WRONG — abbreviation, returns 0:
+GET /api/partner/search?actsAndSections=IPC+302
+
+# TECHNICALLY CORRECT format — but still returns 0 for most courts:
+GET /api/partner/search?actsAndSections=INDIAN+PENAL+CODE+-+302
+
+# RECOMMENDED — use full-text query instead (432K+ results):
+GET /api/partner/search?query=IPC+302
+For general act/section searching, use the query parameter instead. The actsAndSections filter is only reliable when you know the exact stored text format and the case has this field populated.
+
+Refresh is Idempotent Within 15 Seconds
+Calling refresh multiple times within 15 seconds is safe — no duplicates are created. Wait 5-10 seconds after queuing before fetching updated case details.
+
+Best Practices
+Cache responses: Store case details locally to reduce API calls and costs.
+Batch operations: Use search to find multiple cases instead of individual lookups.
+Handle rate limits: Implement exponential backoff for 429 responses.
+Use refresh sparingly: Only request case refresh when you need the latest data.
+Store request IDs: Log requestId from responses for support inquiries.
+CNR Format
+CNR (Case Number Record) is the unique identifier for every case in the eCourts system.
+
+Format: {CourtEstablishmentCode}{CaseNo}{Year}
+Example: DLHC010001232024
+Ready to Integrate?
+Get your API key and start building with ₹200 in free credits. No credit card required.
+
+Get Started
+View Pricing
+Download
+Connect
+Quick Links
+Cause List
+Search Cases
+Lawyer Directory
+Litigant Search
+Judge's History
+Blogs
+Solutions
+eCourts API
+For Advocates
+Contact Verified Advocates
+Legal
+About Us
+FAQs & Case Removal
+Privacy Policy
+Terms of Service
+Disclaimer
+A non Govt. Initiative to use AI in Law
+© 2026 eCourts India
+
