@@ -157,6 +157,35 @@ async def create_lawyer_document(
     return {"message": "Document uploaded", "document": row}
 
 
+@router.patch("/lawyer/cases/{case_id}/status")
+@limiter.limit("30/minute")
+async def update_case_status(
+    case_id: int,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    """Update a case status (active / pending / closed)."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    # Read the new status from the request body
+    body = await request.json()
+    new_status = body.get("status", "").strip().lower()
+    if new_status not in ("active", "pending", "closed"):
+        raise HTTPException(400, "status must be active, pending, or closed")
+
+    safe_status = sanitize_text(new_status, max_length=20, field_name="status")
+
+    case = await fetchrow(
+        "UPDATE lawyer_cases SET status = $1 WHERE id = $2 AND lawyer_id = $3 RETURNING id, status",
+        safe_status, case_id, current_user["id"],
+    )
+    if not case:
+        raise HTTPException(404, "Case not found or not owned by you")
+    logger.info("lawyer %s updated case %s status to %s", current_user["id"], case_id, safe_status)
+    return {"message": "Status updated", "case_id": case_id, "status": safe_status}
+
+
 @router.get("/lawyer/documents")
 async def list_lawyer_documents(
     current_user: Optional[dict] = Depends(get_current_user),

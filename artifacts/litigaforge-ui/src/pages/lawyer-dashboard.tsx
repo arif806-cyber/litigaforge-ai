@@ -172,6 +172,7 @@ export default function LawyerDashboard() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
+  const [statusMenuCaseId, setStatusMenuCaseId] = useState<number | null>(null);
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
   const [preselectedCaseId, setPreselectedCaseId] = useState<string>("");
@@ -236,6 +237,15 @@ export default function LawyerDashboard() {
   const analyzeDocMut = useMutation({
     mutationFn: (docId: number) => apiFetch(`/lawyer/documents/${docId}/analyze`, { method: "POST" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lawyer-documents"] }),
+  });
+
+  const updateStatusMut = useMutation({
+    mutationFn: ({ caseId, status }: { caseId: number; status: string }) =>
+      apiFetch(`/lawyer/cases/${caseId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lawyer-cases"] });
+      setStatusMenuCaseId(null);
+    },
   });
 
   const saveNotesMut = useMutation({
@@ -419,10 +429,29 @@ export default function LawyerDashboard() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
                                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
-                                <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                                  c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                    : c.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200"
-                                    : "bg-amber-50 text-amber-600 border border-amber-200")}>{c.status.toUpperCase()}</span>
+                                {/* Status changer dropdown */}
+                                <div className="relative inline-block">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setStatusMenuCaseId(statusMenuCaseId === c.id ? null : c.id); }}
+                                    className={cn("flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors",
+                                      c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100"
+                                        : c.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
+                                        : "bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100")}>
+                                    {c.status.toUpperCase()} <ChevronDown className="w-2.5 h-2.5" />
+                                  </button>
+                                  {statusMenuCaseId === c.id && (
+                                    <div className="absolute top-full left-0 mt-1 z-20 bg-white rounded-lg shadow-lg border p-1 min-w-[110px]" style={{ borderColor: "#E2E8F0" }}>
+                                      {(["active","pending","closed"] as const).map((s) => (
+                                        <button key={s} onClick={(e) => { e.stopPropagation(); updateStatusMut.mutate({ caseId: c.id, status: s }); }}
+                                          disabled={updateStatusMut.isPending}
+                                          className={cn("w-full text-left text-[11px] font-semibold px-2.5 py-1.5 rounded-md capitalize transition-colors",
+                                            c.status === s ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50")}>
+                                          {s}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                                 {docs.filter((d) => d.case_id === c.id).length > 0 && (
                                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>
                                     <FileText className="w-2.5 h-2.5" /> {docs.filter((d) => d.case_id === c.id).length} doc{docs.filter((d) => d.case_id === c.id).length > 1 ? "s" : ""}
