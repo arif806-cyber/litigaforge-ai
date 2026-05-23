@@ -33,6 +33,69 @@ BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Auto-initialize database tables on first startup
+    try:
+        from database import get_conn
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                subscription_tier TEXT DEFAULT 'free',
+                cases_this_month INTEGER DEFAULT 0,
+                month_reset_date DATE DEFAULT CURRENT_DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                tier TEXT NOT NULL,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                status TEXT DEFAULT 'active',
+                payment_ref TEXT
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS legal_questions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                question TEXT NOT NULL,
+                category TEXT,
+                ai_answer TEXT,
+                upvotes INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS lawyers (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                bar_number TEXT,
+                district TEXT,
+                practice_areas TEXT[],
+                languages TEXT[],
+                experience_years INTEGER,
+                rating NUMERIC(3,2) DEFAULT 0,
+                bio TEXT,
+                verified BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info("Database tables initialized")
+    except Exception as e:
+        logger.warning("DB init check: %s", e)
+
     if os.getenv("WATCH_MODE_AUTO_START", "false").lower() == "true":
         watcher.start()
     yield
