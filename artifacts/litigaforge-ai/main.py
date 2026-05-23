@@ -75,6 +75,7 @@ async def lifespan(app: FastAPI):
         cur.execute("""
             CREATE TABLE IF NOT EXISTS lawyers (
                 id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 name TEXT NOT NULL,
                 email TEXT,
                 phone TEXT,
@@ -85,7 +86,66 @@ async def lifespan(app: FastAPI):
                 experience_years INTEGER,
                 rating NUMERIC(3,2) DEFAULT 0,
                 bio TEXT,
+                hourly_rate INTEGER,
+                availability TEXT DEFAULT 'available',
+                verification_status TEXT DEFAULT 'pending',
                 verified BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Migrate existing lawyers table with new columns
+        try:
+            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
+            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
+            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
+            cur.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending'")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS case_requirements (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                title TEXT NOT NULL,
+                case_type TEXT NOT NULL,
+                description TEXT,
+                location TEXT,
+                budget_range TEXT,
+                is_anonymous BOOLEAN DEFAULT FALSE,
+                status TEXT DEFAULT 'open',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS matches (
+                id SERIAL PRIMARY KEY,
+                case_requirement_id INTEGER REFERENCES case_requirements(id) ON DELETE CASCADE,
+                lawyer_id INTEGER REFERENCES lawyers(id) ON DELETE CASCADE,
+                client_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                status TEXT DEFAULT 'pending',
+                match_score INTEGER DEFAULT 0,
+                ai_explanation TEXT,
+                client_message TEXT,
+                lawyer_message TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chat_threads (
+                id SERIAL PRIMARY KEY,
+                match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
+                title TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id SERIAL PRIMARY KEY,
+                thread_id INTEGER REFERENCES chat_threads(id) ON DELETE CASCADE,
+                sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                sender_role TEXT DEFAULT 'user',
+                content TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -95,6 +155,12 @@ async def lifespan(app: FastAPI):
         logger.info("Database tables initialized")
     except Exception as e:
         logger.warning("DB init check: %s", e)
+        try:
+            conn.rollback()
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
 
     if os.getenv("WATCH_MODE_AUTO_START", "false").lower() == "true":
         watcher.start()

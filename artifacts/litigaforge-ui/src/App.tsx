@@ -19,9 +19,12 @@ import Judgments from "@/pages/judgments";
 import LawyersPage from "@/pages/lawyers";
 import LegalAid from "@/pages/legal-aid";
 import NotFound from "@/pages/not-found";
+import PostCase from "@/pages/post-case";
+import MyCases from "@/pages/my-cases";
+import Matches from "@/pages/matches";
+import LegalChat from "@/pages/legal-chat";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
-import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,6 +82,10 @@ function Router() {
             <Route path="/judgments"    component={Judgments} />
             <Route path="/lawyers"      component={LawyersPage} />
             <Route path="/legal-aid"    component={LegalAid} />
+            <Route path="/post-case"    component={() => <ProtectedRoute component={PostCase} />} />
+            <Route path="/my-cases"     component={() => <ProtectedRoute component={MyCases} />} />
+            <Route path="/matches"      component={() => <ProtectedRoute component={Matches} />} />
+            <Route path="/legal-chat"   component={() => <ProtectedRoute component={LegalChat} />} />
             <Route component={NotFound} />
           </Switch>
         </Layout>
@@ -105,7 +112,7 @@ function FirstVisitDisclaimer() {
             <ShieldAlert className="w-5 h-5 text-amber-700 dark:text-amber-400" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Legal Disclaimer</h3>
+            <h3 className="text-lg font-semibold text-foreground">Platform Disclaimer</h3>
             <p className="text-sm text-muted-foreground mt-1">
               Before using LitigaForge AI, please acknowledge the following.
             </p>
@@ -114,7 +121,7 @@ function FirstVisitDisclaimer() {
 
         <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg p-4">
           <p className="text-sm text-amber-900 dark:text-amber-300 leading-relaxed">
-            This is an <strong>AI assistant only</strong>. All outputs should be verified by a qualified lawyer. <strong>Not a substitute for professional legal advice.</strong> No attorney-client relationship is created by using this platform.
+            This platform <strong>only connects users</strong> with lawyers. The final attorney-client relationship is <strong>directly between client and lawyer</strong>. We are <strong>not providing legal advice</strong>. All AI outputs should be verified by a qualified lawyer.
           </p>
         </div>
 

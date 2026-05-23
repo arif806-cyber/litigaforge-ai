@@ -32,7 +32,7 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
         <div className="flex items-center gap-2">
           <ShieldAlert className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
           <span>
-            AI assistant only. Outputs should be verified by a qualified lawyer. Not a substitute for professional legal advice. No attorney-client relationship is created.
+            This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice.
           </span>
         </div>
         <span className="text-muted-foreground/60 whitespace-nowrap">

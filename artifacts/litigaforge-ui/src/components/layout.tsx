@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
   Crown, LogOut, User, ChevronRight, MessageSquare, FileSearch,
-  BookOpen, Users, Heart, Sun, Moon,
+  BookOpen, Users, Heart, Sun, Moon, Plus, Gavel, MessageSquareText,
   AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,18 +16,21 @@ import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 
 const mainNav = [
-  { href: "/",          label: "Forge",     icon: Scale },
-  { href: "/cases",     label: "Cases",     icon: FileText },
-  { href: "/chains",    label: "Chains",    icon: Link2 },
-  { href: "/use-cases", label: "Use Cases", icon: Lightbulb },
+  { href: "/",          label: "Forge",       icon: Scale },
+  { href: "/post-case", label: "Post Case",   icon: Plus },
+  { href: "/my-cases",  label: "My Cases",    icon: FileText },
+  { href: "/lawyers",   label: "Find Lawyer", icon: Users },
+  { href: "/matches",   label: "Matches",     icon: Gavel },
 ];
 
 const serviceNav = [
-  { href: "/ask",        label: "Legal Q&A",    icon: MessageSquare },
-  { href: "/review",     label: "Doc Analyzer", icon: FileSearch },
-  { href: "/judgments",  label: "Judgments",    icon: BookOpen },
-  { href: "/lawyers",    label: "Find Lawyers", icon: Users },
-  { href: "/legal-aid",  label: "Free Aid",     icon: Heart },
+  { href: "/legal-chat", label: "AI Legal Chat",  icon: MessageSquareText },
+  { href: "/ask",        label: "Legal Q&A",      icon: MessageSquare },
+  { href: "/review",     label: "Doc Analyzer",   icon: FileSearch },
+  { href: "/judgments",  label: "Judgments",      icon: BookOpen },
+  { href: "/chains",     label: "API Chains",     icon: Link2 },
+  { href: "/use-cases",  label: "Use Cases",      icon: Lightbulb },
+  { href: "/legal-aid",  label: "Free Aid",       icon: Heart },
 ];
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -125,12 +128,12 @@ function SidebarContent({
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <div className="px-3 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Platform</div>
+        <div className="px-3 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Match & Connect</div>
         {mainNav.map(item => (
           <NavItem key={item.href} {...item} location={location} onClick={onNav} />
         ))}
 
-        <div className="px-3 pt-6 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Services</div>
+        <div className="px-3 pt-6 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Legal Tools</div>
         {serviceNav.map(item => (
           <NavItem key={item.href} {...item} location={location} onClick={onNav} />
         ))}
@@ -268,7 +271,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           const active = href === "/" ? location === "/" : location.startsWith(href);
           return (
             <Link key={href} href={href}
-              className="flex flex-col items-center justify-center gap-1 min-w-[64px] h-full"
+              className="flex flex-col items-center justify-center gap-1 min-w-[56px] h-full"
             >
               <Icon className={cn("w-5 h-5 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
               <span className={cn("text-[10px] font-medium transition-colors", active ? "text-primary" : "text-muted-foreground")}>
@@ -277,10 +280,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
-        <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center justify-center gap-1 min-w-[64px] h-full">
+        <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center justify-center gap-1 min-w-[56px] h-full">
            <Menu className={cn("w-5 h-5 transition-colors", serviceNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
            <span className={cn("text-[10px] font-medium", serviceNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")}>
-             Menu
+             More
            </span>
         </button>
       </nav>
