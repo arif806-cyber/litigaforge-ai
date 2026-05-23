@@ -61,15 +61,19 @@ def fetch_ecourts(
     state_code: str = "TS",
     district_code: str = None,
     cnr: str = None,
+    advocate_name: str = None,
+    court_codes: list = None,
     **kwargs,
 ) -> dict:
     """
     Fetch case data from eCourts India live API.
+    Docs: https://webapi.ecourtsindia.com
 
     Priority:
       1. If CNR is provided → fetch case detail directly
-      2. If party_name or case_number → search API
-      3. Fallback → mock data with reason
+      2. If advocate_name → search by advocate (best for finding practising lawyers)
+      3. If party_name or case_number → search API
+      4. Fallback → mock data with reason
     """
     token = os.getenv("ECOURTS_API_KEY", "")
     if not token:
@@ -89,9 +93,21 @@ def fetch_ecourts(
                 return _format_case_detail(result["data"], cnr=cnr)
         return _mock_ecourts(party_name, case_number, cnr, reason=result.get("error"))
 
-    # 2. Search by party name or case number
+    # 2. Search by advocate name (recommended for lawyer discovery)
+    if advocate_name:
+        params = {"advocates": advocate_name, "pageSize": 20, "page": 1}
+        if court_codes:
+            params["courtCodes"] = court_codes
+        if state_code:
+            params["stateCodes"] = state_code.upper()
+        result = _safe_get("/api/partner/search", params=params, timeout=20)
+        if result["success"]:
+            return _format_search_results(result["data"], query=advocate_name)
+        return _mock_ecourts(party_name, case_number, cnr, reason=result.get("error"))
+
+    # 3. Search by party name or case number
     if not party_name and not case_number:
-        return {"chain": "eCourts", "status": "skipped", "reason": "Provide party_name, case_number, or cnr"}
+        return {"chain": "eCourts", "status": "skipped", "reason": "Provide party_name, case_number, cnr, or advocate_name"}
 
     params = {"pageSize": 10, "page": 1}
     if party_name:
@@ -100,6 +116,8 @@ def fetch_ecourts(
         params["query"] = case_number
     if state_code:
         params["stateCodes"] = state_code.upper()
+    if court_codes:
+        params["courtCodes"] = court_codes
 
     result = _safe_get("/api/partner/search", params=params, timeout=20)
     if result["success"]:

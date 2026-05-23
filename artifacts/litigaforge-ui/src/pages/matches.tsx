@@ -13,7 +13,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
-function ExternalMatchCard({ match }: { match: any }) {
+function ExternalMatchCard({ match, isLive }: { match: any; isLive?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -29,8 +29,13 @@ function ExternalMatchCard({ match }: { match: any }) {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold">{match.name}</h3>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                  <ExternalLink className="w-3 h-3" /> eCourts India (Simulated)
+                <span className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border",
+                  isLive
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                )}>
+                  <ExternalLink className="w-3 h-3" /> eCourts India {isLive ? "(Live)" : "(Simulated)"}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
@@ -63,9 +68,18 @@ function ExternalMatchCard({ match }: { match: any }) {
             </div>
           )}
 
-          <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 text-sm text-amber-900 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
-            <p><strong>Not a verified lawyer.</strong> This name appears in simulated court records for demonstration only. It is <strong>not a real person</strong> on this platform. Do not attempt to contact or hire. In a live deployment, this section would show verified advocates from actual eCourts India data.</p>
+          <div className={cn(
+            "rounded-lg p-3 text-sm flex items-start gap-2",
+            isLive
+              ? "bg-green-50 border border-green-200 text-green-800"
+              : "bg-amber-100 border border-amber-300 text-amber-900"
+          )}>
+            <AlertTriangle className={cn("w-4 h-4 mt-0.5 flex-shrink-0", isLive ? "text-green-700" : "text-amber-700")} />
+            <p>
+              {isLive
+                ? "This advocate appears in live eCourts India public court records. Verify their current bar membership and contact details independently before engagement."
+                : "This name appears in simulated court records for demonstration only. It is not a real person on this platform. Do not attempt to contact or hire."}
+            </p>
           </div>
         </div>
       </div>
@@ -175,6 +189,7 @@ export default function Matches() {
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
+  const [ecourtsStatus, setEcourtsStatus] = useState<string | null>(null);
   const [fetchedForCase, setFetchedForCase] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -212,6 +227,7 @@ export default function Matches() {
         body: JSON.stringify({ case_requirement_id: parseInt(caseId) }),
       });
       const ext = result?.external_matches || [];
+      setEcourtsStatus(result?.ecourts_status || "unknown");
       if (ext.length) {
         setExternalMatches(ext);
         localStorage.setItem(`lf_external_matches_${caseId}`, JSON.stringify(ext));
@@ -336,19 +352,21 @@ export default function Matches() {
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {matches.length === 0
-                    ? "Simulated eCourts Results (Demo Only)"
-                    : "Also from Simulated eCourts (Demo)"}
+                  {ecourtsStatus === "live"
+                    ? (matches.length === 0 ? "Found on eCourts India (live data)" : "Also from eCourts India (live)")
+                    : (matches.length === 0 ? "eCourts India (simulated data)" : "Also from eCourts India (simulated)")}
                 </span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               {matches.length === 0 && (
                 <p className="text-sm text-muted-foreground px-1">
-                  No verified platform lawyers matched your case. The names below are from <strong>simulated court records for demonstration</strong> — not real people. In production, live eCourts India data would be queried.
+                  {ecourtsStatus === "live"
+                    ? "No verified platform lawyers matched your case. The advocates below are from live eCourts India public court records. Verify their bar membership and contact details before engagement."
+                    : "No verified platform lawyers matched your case. The names below are from simulated court records for demonstration — not real people. In production, live eCourts India data would be queried."}
                 </p>
               )}
               {externalMatches.map((m: any) => (
-                <ExternalMatchCard key={m.id} match={m} />
+                <ExternalMatchCard key={m.id} match={m} isLive={ecourtsStatus === "live"} />
               ))}
             </div>
           )}
