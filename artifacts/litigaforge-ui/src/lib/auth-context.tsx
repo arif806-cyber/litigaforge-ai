@@ -67,6 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
+    if (data.token) {
+      localStorage.setItem("lf_token", data.token);
+      setToken(data.token);
+    }
     setUser(data.user);
   };
 
@@ -75,6 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify({ name, email, password }),
     });
+    if (data.token) {
+      localStorage.setItem("lf_token", data.token);
+      setToken(data.token);
+    }
     setUser(data.user);
   };
 
@@ -86,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setToken(null);
     setUser(null);
+    if (typeof window !== "undefined") localStorage.removeItem("lf_token");
   };
 
   if (loading) {

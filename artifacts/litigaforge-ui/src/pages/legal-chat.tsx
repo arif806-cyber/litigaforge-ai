@@ -49,16 +49,15 @@ export default function LegalChat() {
     setIsTyping(true);
 
     try {
-      const res = await apiFetch("/ai-legal-chat", {
+      const data = await apiFetch("/ai-legal-chat", {
         method: "POST",
         body: JSON.stringify({ message: text }),
       });
-      if (!res.ok) throw new Error("AI error");
-      const data = await res.json();
       const aiMsg: Message = { id: Date.now() + 1, role: "ai", content: data.reply || "Sorry, I could not generate a response." };
       setMessages((prev) => [...prev, aiMsg]);
-    } catch {
-      const errMsg: Message = { id: Date.now() + 1, role: "ai", content: "I apologise, but I am unable to respond right now. Please try again later." };
+    } catch (err: any) {
+      const detail = err?.message || "";
+      const errMsg: Message = { id: Date.now() + 1, role: "ai", content: detail || "I apologise, but I am unable to respond right now. Please try again later." };
       setMessages((prev) => [...prev, errMsg]);
     } finally {
       setIsTyping(false);

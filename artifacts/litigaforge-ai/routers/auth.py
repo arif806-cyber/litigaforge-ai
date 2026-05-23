@@ -53,7 +53,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         raise HTTPException(status_code=409, detail=str(e))
     token = create_token(user["id"])
     set_auth_cookie(response, token)
-    return {"user": user}
+    return {"user": user, "token": token}
 
 
 @router.post("/auth/login")
@@ -66,7 +66,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
     user.pop("password_hash", None)
     token = create_token(user["id"])
     set_auth_cookie(response, token)
-    return {"user": user}
+    return {"user": user, "token": token}
 
 
 @router.get("/auth/me")

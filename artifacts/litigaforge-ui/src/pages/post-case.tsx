@@ -60,7 +60,7 @@ export default function PostCase() {
     setSubmitting(true);
     setError("");
     try {
-      const res = await apiFetch("/cases/requirements", {
+      await apiFetch("/cases/requirements", {
         method: "POST",
         body: JSON.stringify({
           title: title.trim(),
@@ -71,7 +71,6 @@ export default function PostCase() {
           is_anonymous: isAnonymous,
         }),
       });
-      if (!res.ok) throw new Error("Failed to post case");
       setLocation("/my-cases");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to post");
