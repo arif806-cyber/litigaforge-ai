@@ -1,6 +1,6 @@
 # LitigaForge AI
 
-Legal AI platform for Telangana & AP advocates — extracts entities from case facts, runs 16 government API chains, and synthesises a data-driven legal strategy. Now with 5 community legal services: Legal Q&A, Document Analyzer, Judgment Finder, Lawyer Directory, and Free Legal Aid Finder.
+Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case requirements, AI matches them with verified lawyers (scored 0-100), and they collaborate via chat. Also includes: entity extraction from case facts, 16 government API chains, multi-AI legal strategy synthesis, legal Q&A, document analyzer, judgment finder, and free legal aid finder.
 
 ## Run & Operate
 
@@ -31,16 +31,20 @@ Legal AI platform for Telangana & AP advocates — extracts entities from case f
 - `use-cases.tsx` — 7 interactive scenario cards with "Try in Forge" button
 - `login.tsx`, `register.tsx` — Authentication (JWT via localStorage)
 - `subscription.tsx` — Plan comparison & upgrade/downgrade
+- `post-case.tsx` — **Post a Case**: client case posting form with anonymous option, 9 case types, budget range
+- `my-cases.tsx` — **My Cases**: client tracks posted cases, views match proposals, accept/decline flow
+- `matches.tsx` — **AI Matching**: lawyer match scores (0-100), AI explanations, accept/decline proposals
+- `legal-chat.tsx` — **AI Legal Chat**: drafting assistant with 4 templates, live chat with Claude/Gemini
 - `ask.tsx` — **Legal Q&A with AI**: ask questions, Claude answers instantly, community knowledge base
 - `review.tsx` — **Document Analyzer**: risk scoring, missing clauses, recommendations
 - `judgments.tsx` — **Judgment Finder**: precedent search + IndianKanoon links
-- `lawyers.tsx` — **Lawyer Directory**: 12 seeded TG/AP advocate profiles + self-registration
+- `lawyers.tsx` — **Lawyer Directory**: searchable advocate profiles with verification badges, ratings, hourly rates
 - `legal-aid.tsx` — **Free Legal Aid Finder**: NALSA/TSLSA eligibility wizard + helplines
 
 ### Backend (`artifacts/litigaforge-ai/`)
 
 - `main.py` — FastAPI app: auth, forge, cases, chains, watch, alerts + mounts `extra_routes`
-- `extra_routes.py` — Legal Q&A, Document Analyzer, Judgment Finder, Lawyers, Legal Aid
+- `extra_routes.py` — Legal Q&A, Document Analyzer, Judgment Finder, Lawyers, Legal Aid, Case Matching, AI Chat, Chat Threads
 - `database.py` — PostgreSQL CRUD (psycopg2)
 - `auth.py` — bcrypt hashing, JWT create/decode, FastAPI deps
 - `litigaforge_engine.py` — Forge orchestration
@@ -52,7 +56,8 @@ Legal AI platform for Telangana & AP advocates — extracts entities from case f
 
 ### Components & utilities
 
-- `src/components/layout.tsx` — Sidebar (Tools + Services sections), topbar, mobile drawer, user panel
+- `src/components/layout.tsx` — Sidebar: "Match & Connect" (Forge, Post Case, My Cases, Find Lawyer, Matches) + "Legal Tools" (AI Chat, Q&A, Analyzer, etc)
+- `src/components/legal-disclaimer.tsx` — Footer disclaimer + FirstVisitDisclaimer modal
 - `src/components/graphics/` — ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
 - `src/lib/api.ts` — apiFetch (auto-attaches Bearer token); BASE = "/litigaforge"
 - `src/lib/auth-context.tsx` — AuthProvider, useAuth, TIER_LABELS, TIER_LIMITS
@@ -113,7 +118,11 @@ To go live on all API Setu chains: register at api.setu.in, get approved credent
 | `users` | id, email, name, password_hash, subscription_tier, cases_this_month, month_reset_date, created_at |
 | `subscriptions` | id, user_id FK, tier, started_at, expires_at, status, payment_ref |
 | `legal_questions` | id, user_id FK nullable, question, category, ai_answer, upvotes, created_at |
-| `lawyers` | id, name, email, phone, bar_number, district, practice_areas[], languages[], experience_years, rating, bio, verified, created_at |
+| `lawyers` | id, user_id FK, name, email, phone, bar_number, district, practice_areas[], languages[], experience_years, rating, bio, hourly_rate, availability, verification_status, verified, created_at |
+| `case_requirements` | id, user_id FK, title, case_type, description, location, budget_range, is_anonymous, status, created_at |
+| `matches` | id, case_requirement_id FK, lawyer_id FK, client_id FK, status, match_score, ai_explanation, client_message, lawyer_message, created_at |
+| `chat_threads` | id, match_id FK, title, created_at |
+| `chat_messages` | id, thread_id FK, sender_id FK, sender_role, content, created_at |
 
 ## Auth & Subscription
 
@@ -138,6 +147,19 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 | `GET /lawyers` | None | Search advocate directory |
 | `POST /lawyers/register` | Bearer | Register as an advocate |
 | `GET /legal-aid/contacts` | None | NALSA helpline + all 8 TSLSA DLSA contacts |
+| `POST /cases/requirements` | Bearer | Post a new case requirement |
+| `GET /cases/requirements` | None | Browse all open requirements |
+| `GET /cases/requirements/mine` | Bearer | Client's own requirements |
+| `POST /match/find-lawyers` | Bearer | AI match: top 10 scored lawyers |
+| `GET /matches/client` | Bearer | Client match proposals |
+| `GET /matches/lawyer` | Bearer | Lawyer match proposals |
+| `POST /matches/{id}/accept` | Bearer | Accept a match |
+| `POST /matches/{id}/decline` | Bearer | Decline a match |
+| `POST /ai-legal-chat` | Bearer | AI legal drafting chat with disclaimer |
+| `GET /chat/threads` | Bearer | List chat threads |
+| `POST /chat/threads` | Bearer | Create new chat thread |
+| `GET /chat/messages/{id}` | Bearer | Get thread messages |
+| `POST /chat/messages/{id}` | Bearer | Send message to thread |
 
 ## Product (pages)
 
@@ -148,10 +170,14 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 - **Chains** (`/chains`): 16 API chains with live/sandbox/mock status
 - **Case Detail** (`/cases/:id`): full chain results, strategy, entities
 - **Use Cases** (`/use-cases`): 7 interactive scenario cards
+- **Post a Case** (`/post-case`): client case posting with anonymous option, 9 case types, budget range
+- **My Cases** (`/my-cases`): client tracks posted cases and match proposals
+- **Matches** (`/matches`): AI match scores, accept/decline lawyer proposals
+- **AI Legal Chat** (`/legal-chat`): interactive drafting assistant with templates
 - **Legal Q&A** (`/ask`): ask any question, Claude AI answers instantly
 - **Document Analyzer** (`/review`): paste contract/FIR, AI flags risks
 - **Judgment Finder** (`/judgments`): search precedents + IndianKanoon links
-- **Lawyer Directory** (`/lawyers`): 12 verified TG/AP advocates, filter by district/area
+- **Lawyer Directory** (`/lawyers`): verified TG/AP advocates with badges, ratings, hourly rates
 - **Free Legal Aid** (`/legal-aid`): NALSA eligibility wizard + DLSA contacts
 - **Subscription** (`/subscription`): plan comparison, upgrade/downgrade
 

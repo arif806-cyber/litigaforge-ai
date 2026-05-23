@@ -1,8 +1,8 @@
 # LitigaForge AI
 
-**Self-Evolving Legal Intelligence for Telangana & Andhra Pradesh Advocates**
+**Client-Lawyer Matching Platform + Legal Intelligence for Telangana & Andhra Pradesh**
 
-LitigaForge AI is a full-stack legal platform that takes a plain-language description of a case, automatically extracts legal entities (PAN, GSTIN, vehicle numbers, party names, DL numbers), runs them through 16 Indian government API chains, and synthesises a Supreme Court-grade legal strategy — all in seconds. Powered by a multi-AI cascade (Claude Sonnet + Gemini 2.5 Flash + GPT-5) with user accounts, subscription tiers, and case memory.
+LitigaForge AI is a full-stack legal platform that connects clients with verified lawyers through AI-powered matching, while also providing a complete legal toolkit: entity extraction from case facts, 16 Indian government API chains, and multi-AI legal strategy synthesis. Clients post case requirements, get matched with the best advocates based on practice area, location, and experience, then chat and collaborate — all in one platform. Powered by a multi-AI cascade (Claude Sonnet + Gemini 2.5 Flash + GPT-5) with user accounts, subscription tiers, and case memory.
 
 ---
 
@@ -26,23 +26,28 @@ LitigaForge AI is a full-stack legal platform that takes a plain-language descri
 
 ## Features
 
+- **Client-Lawyer AI Matching** — clients post case requirements; AI scores and ranks lawyers (0-100) based on practice area overlap, location proximity, experience, and rating. Personalized AI explanations for each match
+- **Post a Case** — clients post legal needs with case type, location, budget range, and anonymous option. Lawyer proposals arrive with match scores
+- **My Cases** — clients track their posted cases, view match proposals, accept or decline lawyer connections
+- **AI Legal Chat** — interactive chat with Claude/Gemini for legal drafting. Templates: legal notice, agreement, court petition, reply to notice. Full chat history persists
 - **The Forge** — paste case facts, get a full legal strategy with entity extraction, chain orchestration, and multi-AI synthesis
 - **Legal Q&A with AI** — ask any legal question, Claude/Gemini answers instantly with applicable Indian law, Telangana/AP procedure, and next steps. Community knowledge base of past Q&As
 - **Document Analyzer** — paste contract/FIR/sale deed/petition text; AI identifies legal risks, missing clauses, jurisdiction issues, and recommends amendments. Risk score 1–10
 - **Judgment Finder** — search Indian case law by keyword/court; AI finds 5 relevant precedents with real citations and plain-language summaries. Direct links to IndianKanoon
-- **Lawyer Directory** — searchable directory of Telangana & AP advocates. Filter by district, practice area, language. Verified advocate profiles with contact details. Self-registration for advocates
+- **Lawyer Directory** — searchable directory of Telangana & AP advocates. Filter by district, practice area, language. Verified advocate profiles with contact details, hourly rates, and availability status. Self-registration for advocates
 - **Free Legal Aid Finder** — NALSA/TSLSA eligibility wizard (income + category check). Instant DLSA contact info for all 8 Telangana districts + helplines (15100, 181, 1098)
 - **16 Government API Chains** — GSTIN, PAN, eCourts, VAHAN, SARATHI, DigiLocker, BPCL LPG, MeriPehchaan, Mee Seva Telangana, Transport TS, NSE India, Stock Exchange, FOREX, MCA Company, IFSC, and Pincode
 - **Multi-AI Cascade** — Claude Sonnet 4-6 (strategy) → Gemini 2.5 Flash (entities) → GPT-5 (fallback) — all free via Replit AI Integrations
 - **User Accounts** — register / login with bcrypt-hashed passwords and 30-day JWT sessions
 - **Subscription Tiers** — Free (5 cases/month), Professional ₹999/mo (50 cases, Gemini AI), Advocate Pro ₹2,499/mo (unlimited, full Multi-AI)
-- **PostgreSQL Database** — persistent user accounts, subscription history, monthly usage tracking, legal questions, and advocate profiles
+- **PostgreSQL Database** — persistent user accounts, subscription history, monthly usage tracking, legal questions, advocate profiles, case requirements, lawyer matches, and chat threads
 - **Use Cases** — 7 interactive scenario cards (Property, MACT, GST Fraud, Criminal, Mee Seva, Watch Mode, NPA/DRT)
 - **Case Memory** — every forged case is stored and searchable; AI learns patterns over time
 - **Watch Mode** — background scheduler monitors cases and parties for court date changes
 - **WhatsApp Alerts** — hearing reminders and forge results via Twilio WhatsApp
 - **Sandbox Mode** — Mee Seva TG and Transport TS make live calls to `sandbox.api-setu.in` using the public demo key
 - **Light / White UI** — clean white backgrounds, amber/gold accent, particle canvas, Framer Motion animations, fully mobile-responsive
+- **Platform Disclaimer** — mandatory first-visit acknowledgment and persistent footer: "This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
 
 ---
 
@@ -73,22 +78,27 @@ litigaforge-ai/
 │   ├── litigaforge-ui/              # React + Vite web frontend
 │   │   └── src/
 │   │       ├── pages/
-│   │       │   ├── login.tsx        # Sign-in page
-│   │       │   ├── register.tsx     # Registration page
-│   │       │   ├── subscription.tsx # Plan comparison & upgrade
-│   │       │   ├── forge.tsx        # The Forge — main tool
-│   │       │   ├── cases.tsx        # Case browser
-│   │       │   ├── chains.tsx       # API chain status
-│   │       │   ├── case-detail.tsx  # Single case view
-│   │       │   ├── use-cases.tsx    # Scenario cards
-│   │       │   ├── ask.tsx          # Legal Q&A — ask questions, AI answers, community Q&A
-│   │       │   ├── review.tsx       # Document Analyzer — risk scoring, clause analysis
-│   │       │   ├── judgments.tsx    # Judgment Finder — precedent search + IndianKanoon links
-│   │       │   ├── lawyers.tsx      # Lawyer Directory — advocate profiles + registration
-│   │       │   └── legal-aid.tsx    # Free Legal Aid — eligibility wizard + helplines
+│   │       │   ├── login.tsx          # Sign-in page
+│   │       │   ├── register.tsx       # Registration page
+│   │       │   ├── subscription.tsx   # Plan comparison & upgrade
+│   │       │   ├── forge.tsx          # The Forge — main tool
+│   │       │   ├── cases.tsx          # Case browser
+│   │       │   ├── chains.tsx         # API chain status
+│   │       │   ├── case-detail.tsx    # Single case view
+│   │       │   ├── use-cases.tsx      # Scenario cards
+│   │       │   ├── post-case.tsx      # Post a Case — client case requirements form
+│   │       │   ├── my-cases.tsx       # My Cases — client case tracking & proposals
+│   │       │   ├── matches.tsx        # AI Matching — lawyer match scores & accept/decline
+│   │       │   ├── legal-chat.tsx     # AI Legal Chat — drafting assistant with templates
+│   │       │   ├── ask.tsx            # Legal Q&A — ask questions, AI answers, community Q&A
+│   │       │   ├── review.tsx         # Document Analyzer — risk scoring, clause analysis
+│   │       │   ├── judgments.tsx      # Judgment Finder — precedent search + IndianKanoon links
+│   │       │   ├── lawyers.tsx        # Lawyer Directory — advocate profiles + registration
+│   │       │   └── legal-aid.tsx      # Free Legal Aid — eligibility wizard + helplines
 │   │       ├── components/
-│   │       │   ├── layout.tsx       # Sidebar, topbar, mobile nav, user panel
-│   │       │   └── graphics/        # ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
+│   │       │   ├── layout.tsx           # Sidebar, topbar, mobile nav, user panel
+│   │       │   ├── legal-disclaimer.tsx # Footer disclaimer on every page
+│   │       │   └── graphics/            # ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
 │   │       └── lib/
 │   │           ├── api.ts           # apiFetch (auto-attaches Bearer token)
 │   │           ├── auth-context.tsx # AuthProvider, useAuth hook
@@ -96,11 +106,11 @@ litigaforge-ai/
 │   │
 │   └── litigaforge-ai/              # Python FastAPI backend
 │       ├── main.py                  # All routes (auth, forge, cases, chains, watch, alerts)
-│       ├── extra_routes.py          # Legal Q&A, Doc Analyzer, Judgments, Lawyers, Legal Aid
+│       ├── extra_routes.py          # Legal Q&A, Doc Analyzer, Judgments, Lawyers, Legal Aid, Case Matching, AI Chat
 │       ├── database.py              # PostgreSQL CRUD (psycopg2)
 │       ├── auth.py                  # bcrypt hashing, JWT create/decode, FastAPI deps
 │       ├── litigaforge_engine.py    # Forge orchestration
-│       ├── ai_brain.py              # Multi-AI cascade (Gemini → Claude → GPT-5)
+│       ├── ai_brain.py              # Multi-AI cascade (Claude → Gemini → GPT-5) + matching engine
 │       ├── requirements.txt
 │       ├── api_chains/              # 16 government API chain modules
 │       │   ├── gstin.py             # GST Network
@@ -187,6 +197,69 @@ CREATE TABLE subscriptions (
   expires_at  TIMESTAMPTZ,
   status      TEXT NOT NULL DEFAULT 'active',
   payment_ref TEXT
+);
+
+CREATE TABLE lawyers (
+  id                  SERIAL PRIMARY KEY,
+  user_id             INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  name                TEXT NOT NULL,
+  email               TEXT,
+  phone               TEXT,
+  bar_number          TEXT,
+  district            TEXT,
+  practice_areas      TEXT[],
+  languages           TEXT[],
+  experience_years    INTEGER,
+  rating              NUMERIC(3,2) DEFAULT 0,
+  bio                 TEXT,
+  hourly_rate         INTEGER,
+  availability        TEXT DEFAULT 'available',
+  verification_status TEXT DEFAULT 'pending',
+  verified            BOOLEAN DEFAULT FALSE,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE case_requirements (
+  id            SERIAL PRIMARY KEY,
+  user_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  title         TEXT NOT NULL,
+  case_type     TEXT NOT NULL,
+  description   TEXT,
+  location      TEXT,
+  budget_range  TEXT,
+  is_anonymous  BOOLEAN DEFAULT FALSE,
+  status        TEXT DEFAULT 'open',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE matches (
+  id                    SERIAL PRIMARY KEY,
+  case_requirement_id   INTEGER REFERENCES case_requirements(id) ON DELETE CASCADE,
+  lawyer_id             INTEGER REFERENCES lawyers(id) ON DELETE CASCADE,
+  client_id             INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  status                TEXT DEFAULT 'pending',
+  match_score           INTEGER DEFAULT 0,
+  ai_explanation        TEXT,
+  client_message        TEXT,
+  lawyer_message        TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE chat_threads (
+  id          SERIAL PRIMARY KEY,
+  match_id    INTEGER REFERENCES matches(id) ON DELETE CASCADE,
+  title       TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE chat_messages (
+  id          SERIAL PRIMARY KEY,
+  thread_id   INTEGER REFERENCES chat_threads(id) ON DELETE CASCADE,
+  sender_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  sender_role TEXT DEFAULT 'user',
+  content     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -404,7 +477,7 @@ Browser / Mobile App
                               ┌─────────────┴─────────────┐
                               ▼                           ▼
                        Gemini 2.5 Flash           Claude Sonnet 4-6
-                       (entity extraction)        (legal strategy)
+                       (entity extraction)        (legal strategy + matching)
                               │                           │
                               └──────────┬────────────────┘
                                          ▼
@@ -418,6 +491,15 @@ Browser / Mobile App
                               │
                         WhatsApp Alerts
                            (Twilio)
+                                         │
+                              ┌──────────┴──────────┐
+                              ▼                     ▼
+                    AI Matching Engine          Chat Threads
+               (case → lawyer scoring)        (client-lawyer chat)
+                              │
+                        PostgreSQL
+             (users, subs, cases, lawyers,
+                  matches, chat_messages)
 ```
 
 ---
@@ -463,6 +545,29 @@ All backend routes are prefixed with `/litigaforge`.
 | `GET` | `/litigaforge/lawyers` | None | Search advocate directory (district, area, language, text) |
 | `POST` | `/litigaforge/lawyers/register` | Bearer | Register as an advocate (login required) |
 | `GET` | `/litigaforge/legal-aid/contacts` | None | NALSA helpline + all 8 TSLSA DLSA contacts |
+
+### Client-Lawyer Matching
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/litigaforge/cases/requirements` | Bearer | Post a new case requirement (client) |
+| `GET` | `/litigaforge/cases/requirements` | None | Browse all open case requirements |
+| `GET` | `/litigaforge/cases/requirements/mine` | Bearer | Client's own case requirements |
+| `POST` | `/litigaforge/match/find-lawyers` | Bearer | AI match: find best lawyers for a case (returns scored top 10) |
+| `GET` | `/litigaforge/matches/client` | Bearer | Client view: all match proposals for their cases |
+| `GET` | `/litigaforge/matches/lawyer` | Bearer | Lawyer view: all match proposals they've received |
+| `POST` | `/litigaforge/matches/{id}/accept` | Bearer | Accept a match proposal |
+| `POST` | `/litigaforge/matches/{id}/decline` | Bearer | Decline a match proposal |
+
+### AI Legal Chat
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/litigaforge/ai-legal-chat` | Bearer | AI legal drafting chat — send message, get AI response with disclaimer |
+| `GET` | `/litigaforge/chat/threads` | Bearer | List chat threads for current user |
+| `POST` | `/litigaforge/chat/threads` | Bearer | Create a new chat thread |
+| `GET` | `/litigaforge/chat/messages/{thread_id}` | Bearer | Get messages in a thread |
+| `POST` | `/litigaforge/chat/messages/{thread_id}` | Bearer | Send a message to a thread |
 
 ### Watch Mode
 
