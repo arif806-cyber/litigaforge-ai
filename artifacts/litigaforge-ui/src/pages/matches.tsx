@@ -162,19 +162,25 @@ function MatchCard({ match, onAccept, onDecline, isClient }: {
 
 export default function Matches() {
   const { user } = useAuth();
-  const [location] = useLocation();
   const [_, setLocation] = useLocation();
-  const [isFinding, setIsFinding] = useState(false);
+  const [isFinding, setIsFinding] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !!new URLSearchParams(window.location.search).get("case");
+  });
   const [externalMatches, setExternalMatches] = useState<any[]>(() => {
     try {
-      const saved = localStorage.getItem(`lf_external_matches_${new URLSearchParams(location.includes("?") ? location.split("?")[1] : "").get("case") || "none"}`);
+      const saved = localStorage.getItem(
+        `lf_external_matches_${new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("case") || "none"}`
+      );
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
   const [fetchedForCase, setFetchedForCase] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const searchParams = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
+  const searchParams = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : ""
+  );
   const caseId = searchParams.get("case");
 
   const { data: clientMatches, isLoading: clientLoading, isError: clientError, error: clientErrorData, refetch: refetchClient } = useQuery({
@@ -276,9 +282,14 @@ export default function Matches() {
         </div>
       )}
 
-      {clientLoading || lawyerLoading ? (
-        <div className="flex items-center justify-center py-20">
+      {clientLoading || lawyerLoading || isFinding || (caseId && fetchedForCase !== caseId) ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">
+            {isFinding || (caseId && fetchedForCase !== caseId)
+              ? "AI is matching lawyers for your case..."
+              : "Loading matches..."}
+          </p>
         </div>
       ) : clientError || lawyerError ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
