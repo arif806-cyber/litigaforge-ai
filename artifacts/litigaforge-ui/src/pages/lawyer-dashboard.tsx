@@ -361,29 +361,6 @@ export default function LawyerDashboard() {
                 {stats.map((s) => <StatCard key={s.label} {...s} />)}
               </div>
 
-              {/* Launch AI Forge CTA */}
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                className="relative overflow-hidden rounded-2xl p-5 md:p-6 shadow-lg" style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #1d4ed8 100%)" }}>
-                <div className="absolute -right-8 -top-8 w-48 h-48 rounded-full pointer-events-none" style={{ background: "rgba(255,255,255,0.04)" }} />
-                <div className="absolute right-16 bottom-0 w-32 h-32 rounded-full pointer-events-none blur-2xl" style={{ background: "rgba(255,255,255,0.04)" }} />
-                <Scale className="absolute right-0 top-0 w-36 h-36 pointer-events-none opacity-5 text-white" />
-                <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Zap className="w-4 h-4" style={{ color: "#FBBF24" }} />
-                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#FBBF24" }}>AI Forge</span>
-                    </div>
-                    <h2 className="text-white font-bold text-lg md:text-xl leading-snug">Set up your AI Forge for better practice</h2>
-                    <p className="text-sm mt-1 max-w-md leading-relaxed" style={{ color: "#BFDBFE" }}>
-                      AI Forge helps you analyze documents, draft pleadings, research IPC/CrPC cases, and manage client matters efficiently.
-                    </p>
-                  </div>
-                  <button onClick={() => setLocation("/")} className="flex items-center gap-2 font-bold px-5 py-3 rounded-xl transition-all shadow-lg text-sm flex-shrink-0 self-start sm:self-center hover:-translate-y-0.5 hover:shadow-xl" style={{ background: "#FBBF24", color: "#1a2744" }}>
-                    <Zap className="w-4 h-4" /> Launch AI Forge <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-
               {/* Getting Started Steps — now functional */}
               <div className="bg-white rounded-2xl shadow-sm p-5" style={{ border: "1px solid #F1F5F9" }}>
                 <div className="flex items-center gap-2 mb-4">
