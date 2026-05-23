@@ -72,6 +72,7 @@ API_SETU_CLIENT_ID = "in.gov.sandbox"
 MEESEVA_USE_PROD = "false"
 BASE_PATH = "/litigaforge"
 PORT = "5000"
+GITHUB_TOKEN = "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"
 
 [nix]
 channel = "stable-25_05"
