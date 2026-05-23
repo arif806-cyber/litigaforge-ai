@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Scale, Loader2, ChevronRight, AlertTriangle, Zap } from "lucide-react";
+import { Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScalesHero } from "@/components/graphics/ScalesHero";
@@ -21,16 +21,16 @@ interface ForgeResult {
 }
 
 const ENTITY_CONFIG: Record<string, { label: string; color: string }> = {
-  pan:            { label: "PAN",       color: "text-violet-700 border-violet-200 bg-violet-50" },
-  gstin:          { label: "GSTIN",     color: "text-blue-700 border-blue-200 bg-blue-50" },
-  vehicle_number: { label: "Vehicle No.", color: "text-green-700 border-green-200 bg-green-50" },
-  party_name:     { label: "Party",     color: "text-amber-700 border-amber-200 bg-amber-50" },
-  case_number:    { label: "Case No.",  color: "text-rose-700 border-rose-200 bg-rose-50" },
-  state_code:     { label: "State",     color: "text-cyan-700 border-cyan-200 bg-cyan-50" },
-  location:       { label: "Location",  color: "text-teal-700 border-teal-200 bg-teal-50" },
-  case_type:      { label: "Case Type", color: "text-fuchsia-700 border-fuchsia-200 bg-fuchsia-50" },
-  dl_number:      { label: "DL No.",    color: "text-indigo-700 border-indigo-200 bg-indigo-50" },
-  aadhaar:        { label: "Aadhaar",   color: "text-orange-700 border-orange-200 bg-orange-50" },
+  pan:            { label: "PAN",       color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300" },
+  gstin:          { label: "GSTIN",     color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300" },
+  vehicle_number: { label: "Vehicle No.", color: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300" },
+  party_name:     { label: "Party",     color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300" },
+  case_number:    { label: "Case No.",  color: "text-rose-700 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300" },
+  state_code:     { label: "State",     color: "text-cyan-700 bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300" },
+  location:       { label: "Location",  color: "text-teal-700 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300" },
+  case_type:      { label: "Case Type", color: "text-fuchsia-700 bg-fuchsia-100 dark:bg-fuchsia-900/30 dark:text-fuchsia-300" },
+  dl_number:      { label: "DL No.",    color: "text-indigo-700 bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300" },
+  aadhaar:        { label: "Aadhaar",   color: "text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300" },
 };
 
 const EXAMPLE_PROMPTS = [
@@ -41,11 +41,13 @@ const EXAMPLE_PROMPTS = [
 
 function PipelineLoading() {
   return (
-    <div className="flex items-center justify-center py-20">
-      <div className="relative">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+    <div className="flex flex-col items-center justify-center py-32 space-y-6">
+      <div className="relative w-16 h-16 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary relative z-10" />
+        <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse-glow" />
       </div>
+      <p className="text-lg font-medium text-foreground tracking-tight">Synthesizing Strategy...</p>
+      <p className="text-sm text-muted-foreground">Extracting entities and running API chains</p>
     </div>
   );
 }
@@ -100,233 +102,183 @@ export default function Forge() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
-
-      {/* Header */}
-      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 flex items-start justify-between">
-        <div>
+    <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
+        <div className="max-w-2xl">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3"
+            className="text-3xl md:text-4xl font-bold text-foreground tracking-tight mb-4"
           >
-            <Zap className="w-6 h-6 text-primary" />
             The Forge
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-sm text-muted-foreground mt-2 max-w-xl leading-relaxed"
+            className="text-lg text-muted-foreground leading-relaxed"
           >
-            Input your case facts. LitigaForge will extract entities, execute government API chains, and synthesize a Supreme Court-grade legal strategy.
+            Input case facts. We'll extract entities, execute government API chains, and synthesize a Supreme Court-grade legal strategy.
           </motion.p>
         </div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="flex-shrink-0 hidden lg:block"
-        >
-          <ScalesHero className="w-56 h-44 opacity-70" />
-        </motion.div>
       </div>
 
-      <div className="flex-1 overflow-auto px-4 pb-6 md:px-10 md:pb-10 space-y-6 md:space-y-8 relative z-10">
-        {/* Input form */}
-        <form onSubmit={handleSubmit} className="max-w-4xl space-y-4 md:space-y-6">
-          <div className="relative group">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className={cn(
-              "absolute -inset-0.5 rounded-xl blur transition duration-1000",
-              focused || prompt ? "bg-primary/20 opacity-100" : "bg-gray-200 opacity-0 group-hover:opacity-100"
-            )} />
-            <Textarea
-              data-testid="input-prompt"
-              value={prompt}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the case facts here. Include PAN, GSTIN, vehicle numbers, or names..."
-              className={cn(
-                "relative min-h-[120px] md:min-h-[160px] font-mono text-sm md:text-base resize-none bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-xl p-4 md:p-5 shadow-sm transition-all",
-                focused && "border-primary/50 shadow-[0_0_20px_rgba(180,120,20,0.08)]"
-              )}
-              disabled={forge.isPending}
-            />
-          </div>
+              "rounded-2xl p-1 transition-all duration-300 bg-card border shadow-sm",
+              focused ? "border-primary ring-4 ring-primary/10" : "border-border"
+            )}>
+              <Textarea
+                data-testid="input-prompt"
+                value={prompt}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Describe the case facts here. Include PAN, GSTIN, vehicle numbers, or names..."
+                className="min-h-[200px] border-0 focus-visible:ring-0 resize-none text-base bg-transparent p-4 placeholder:text-muted-foreground/60"
+                disabled={forge.isPending}
+              />
+            </div>
 
-          <AnimatePresence>
-            {!prompt && !result && !forge.isPending && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-3 overflow-hidden"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-8 h-px bg-gray-200" />
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">Suggested Inputs</p>
-                  <span className="flex-1 h-px bg-gray-200" />
-                </div>
-                <div className="grid gap-2">
-                  {EXAMPLE_PROMPTS.map((ex, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      data-testid={`example-prompt-${i}`}
-                      onClick={() => setPrompt(ex.text)}
-                      className="group flex items-center justify-between text-left text-sm border border-gray-200 rounded-lg px-4 py-3 bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition-all"
-                    >
-                      <span className="text-gray-500 group-hover:text-gray-900 transition-colors">{ex.text}</span>
-                      <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity ml-4 flex-shrink-0">
-                        <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-mono text-gray-700">⌘</kbd>
-                        <kbd className="bg-gray-100 border border-gray-300 rounded px-1.5 py-0.5 text-[10px] font-mono text-gray-700">{ex.hotkey}</kbd>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <Button
-              data-testid="button-forge"
-              type="submit"
-              disabled={!prompt.trim() || forge.isPending}
-              className={cn(
-                "h-12 md:h-14 px-6 md:px-8 rounded-xl font-bold text-sm md:text-base tracking-wide transition-all shadow-sm overflow-hidden relative w-full sm:w-auto",
-                prompt.trim() && !forge.isPending
-                  ? "bg-primary text-primary-foreground hover:scale-[1.02] shadow-[0_4px_14px_rgba(180,120,20,0.25)] hover:shadow-[0_6px_20px_rgba(180,120,20,0.35)]"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            <AnimatePresence>
+              {!prompt && !result && !forge.isPending && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-3"
+                >
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Templates</p>
+                  <div className="grid gap-3">
+                    {EXAMPLE_PROMPTS.map((ex, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        data-testid={`example-prompt-${i}`}
+                        onClick={() => setPrompt(ex.text)}
+                        className="group flex items-start gap-4 text-left p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all"
+                      >
+                        <span className="flex-shrink-0 w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-mono text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                          ⌘{ex.hotkey}
+                        </span>
+                        <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors leading-relaxed">{ex.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
               )}
-            >
-              {prompt.trim() && !forge.isPending && (
-                <div className="absolute inset-0 shimmer-gradient animate-shimmer opacity-20" />
-              )}
-              <span className="relative z-10 flex items-center gap-2">
-                <Scale className="w-5 h-5" />
-                INITIATE FORGE
-              </span>
-            </Button>
+            </AnimatePresence>
 
-            {result && (
+            <div className="flex items-center gap-4">
               <Button
-                type="button"
-                variant="outline"
-                className="h-12 md:h-14 px-6 rounded-xl border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium w-full sm:w-auto"
-                onClick={() => { setResult(null); setPrompt(""); }}
+                data-testid="button-forge"
+                type="submit"
+                size="lg"
+                disabled={!prompt.trim() || forge.isPending}
+                className="h-14 px-8 text-base shadow-lg hover:shadow-xl transition-all"
               >
-                Reset Canvas
+                <Zap className="w-5 h-5 mr-2" />
+                INITIATE FORGE
               </Button>
-            )}
+
+              {result && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-14 px-8 text-base"
+                  onClick={() => { setResult(null); setPrompt(""); }}
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
+          </form>
+
+          {forge.isError && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-destructive/20 bg-destructive/10 p-6 flex items-start gap-4">
+              <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0" />
+              <div>
+                <h4 className="text-destructive font-semibold text-lg">Forge Sequence Failed</h4>
+                <p className="text-sm text-destructive/80 mt-1">{String(forge.error)}</p>
+              </div>
+            </motion.div>
+          )}
+
+          {forge.isPending && <PipelineLoading />}
+          
+          {result && !forge.isPending && (
+             <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-12 space-y-8"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-card border border-border rounded-2xl shadow-sm">
+                   <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                     </div>
+                     <div>
+                       <h3 className="font-semibold text-lg">Synthesis Complete</h3>
+                       <p className="text-sm font-mono text-muted-foreground">{result.case_id}</p>
+                     </div>
+                   </div>
+                   <Button onClick={() => setLocation(`/cases/${result.case_id}`)} variant="outline" className="gap-2">
+                      View Full File <ChevronRight className="w-4 h-4" />
+                   </Button>
+                </div>
+
+                {Object.keys(result.entities_found).length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Extracted Entities</h4>
+                    <div className="flex flex-wrap gap-2">
+                       {Object.entries(result.entities_found).map(([key, value]) => {
+                          if (!value) return null;
+                          const config = ENTITY_CONFIG[key] || { label: key, color: "bg-muted text-muted-foreground" };
+                          return (
+                            <div key={key} className={cn("px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2", config.color)}>
+                              <span className="opacity-70">{config.label}:</span>
+                              <span className="font-mono">{value}</span>
+                            </div>
+                          );
+                       })}
+                    </div>
+                  </div>
+                )}
+
+                {result.final_output && (
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Strategy</h4>
+                    <div className="p-8 bg-card border border-border rounded-2xl shadow-sm prose prose-sm dark:prose-invert max-w-none">
+                       <div className="whitespace-pre-wrap font-serif text-lg leading-relaxed text-foreground/90">
+                         {result.final_output}
+                       </div>
+                    </div>
+                  </div>
+                )}
+
+              </motion.div>
+          )}
+
+        </div>
+
+        <div className="lg:col-span-4 space-y-6">
+          <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
+             <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+               <Scale className="w-5 h-5 text-primary" />
+               Capabilities
+             </h3>
+             <ul className="space-y-4 text-sm text-muted-foreground">
+               <li className="flex gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"/> Extracts entities (PAN, GSTIN, Vehicle Nos)</li>
+               <li className="flex gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"/> Cross-references 16 Govt APIs</li>
+               <li className="flex gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"/> Synthesizes arguments and precedents</li>
+               <li className="flex gap-3"><div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"/> Generates final actionable strategy</li>
+             </ul>
           </div>
-        </form>
-
-        {forge.isError && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl glass-panel border-destructive/40 bg-destructive/5 rounded-xl p-6 flex items-start gap-4">
-            <div className="p-2 bg-destructive/10 rounded-full flex-shrink-0">
-              <AlertTriangle className="w-6 h-6 text-destructive" />
-            </div>
-            <div>
-              <h4 className="text-destructive font-semibold">Forge Sequence Failed</h4>
-              <p className="text-sm text-destructive/80 mt-1 font-mono">{String(forge.error)}</p>
-            </div>
-          </motion.div>
-        )}
-
-        {forge.isPending ? (
-          <div className="max-w-4xl w-full"><PipelineLoading /></div>
-        ) : result ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-5xl"
-          >
-            <ForgeResults result={result} onViewCase={() => setLocation(`/cases/${result.case_id}`)} />
-          </motion.div>
-        ) : null}
+        </div>
       </div>
     </div>
-  );
-}
-
-function ForgeResults({ result, onViewCase }: { result: ForgeResult; onViewCase: () => void }) {
-  const entities = Object.entries(result.entities_found).filter(([, v]) => v);
-
-  const container = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.15 } }
-  };
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-  };
-
-  return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8 pb-20">
-      {/* Case ID Banner */}
-      <motion.div variants={item} className="flex items-center justify-between glass-panel p-4 rounded-xl">
-        <div className="flex items-center gap-4">
-          <div className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-            <span className="text-primary font-mono text-sm font-bold tracking-widest">{result.case_id}</span>
-          </div>
-          <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Case Generated Successfully</span>
-        </div>
-        <button
-          data-testid="link-view-case"
-          onClick={onViewCase}
-          className="flex items-center gap-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-4 py-2 rounded-lg transition-colors font-medium"
-        >
-          Open Case File <ChevronRight className="w-4 h-4" />
-        </button>
-      </motion.div>
-
-      {/* Entities */}
-      {entities.length > 0 && (
-        <motion.div variants={item} className="space-y-3">
-          <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <span className="w-4 h-px bg-gray-300" /> Extracted Entities
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {entities.map(([key, value]) => {
-              const config = ENTITY_CONFIG[key] || { label: key, color: "text-gray-700 border-gray-200 bg-gray-50" };
-              return (
-                <div
-                  key={key}
-                  data-testid={`entity-${key}`}
-                  className={cn("flex items-center gap-2 text-sm border rounded-lg px-3 py-2 shadow-sm", config.color)}
-                >
-                  <span className="opacity-70 text-xs font-medium uppercase tracking-wide">{config.label}</span>
-                  <span className="w-px h-3 bg-current opacity-30" />
-                  <span className="font-mono font-bold">{value}</span>
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Strategy Block */}
-      {result.final_output && (
-        <motion.div variants={item} className="space-y-3">
-          <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <span className="w-4 h-px bg-gray-300" /> Legal Strategy
-          </h3>
-          <div className="glass-panel p-8 rounded-2xl border-l-4 border-l-primary relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
-              <Scale className="w-64 h-64 text-primary" />
-            </div>
-            <div
-              data-testid="text-final-output"
-              className="relative z-10 text-base md:text-lg text-gray-800 leading-relaxed font-serif whitespace-pre-wrap"
-            >
-              {result.final_output}
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </motion.div>
   );
 }

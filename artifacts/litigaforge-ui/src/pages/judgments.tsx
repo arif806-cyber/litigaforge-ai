@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { BookOpen, Search, Loader2, ExternalLink, ChevronDown } from "lucide-react";
+import { BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const COURTS = [
   { id: "", label: "All Courts" },
@@ -54,149 +55,149 @@ export default function Judgments() {
   const selectedCourt = COURTS.find(c => c.id === court) ?? COURTS[0];
 
   return (
-    <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
-
-      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-gray-200">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-          <BookOpen className="w-6 h-6 text-primary" />
+    <div className="max-w-5xl mx-auto px-4 py-8 md:px-8 md:py-12">
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
+          <BookOpen className="w-8 h-8 text-primary" />
           Judgment Finder
         </h1>
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-2 font-medium">
           Search Indian case law — AI finds relevant precedents with citations and plain-language summaries.
         </p>
       </div>
 
-      <div className="flex-1 overflow-auto px-4 py-6 md:px-10 md:py-8 relative z-10">
-        <div className="max-w-3xl space-y-6 pb-20">
-
-          {/* Search card */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-            <div className="flex gap-3">
-              <input
+      <div className="space-y-8">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+               <input
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()}
                 placeholder="e.g. property encroachment injunction Telangana High Court"
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition"
+                className="w-full pl-12 pr-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
               />
+            </div>
 
-              {/* Court filter */}
-              <div className="relative flex-shrink-0">
-                <button
-                  onClick={() => setCourtOpen(o => !o)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 hover:border-primary/40 transition whitespace-nowrap"
-                >
-                  {selectedCourt.label}
-                  <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", courtOpen && "rotate-180")} />
-                </button>
-                <AnimatePresence>
-                  {courtOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 min-w-[200px] overflow-hidden"
-                    >
-                      {COURTS.map(c => (
-                        <button
-                          key={c.id}
-                          onClick={() => { setCourt(c.id); setCourtOpen(false); }}
-                          className={cn(
-                            "w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors",
-                            c.id === court ? "text-primary font-semibold bg-primary/5" : "text-gray-700"
-                          )}
-                        >
-                          {c.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
+            <div className="relative w-full md:w-56 flex-shrink-0">
               <button
-                onClick={() => handleSearch()}
-                disabled={!query.trim() || search.isPending}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm flex-shrink-0"
+                onClick={() => setCourtOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 py-4 rounded-xl border border-input bg-background text-base font-medium text-foreground hover:border-primary/50 transition-colors shadow-sm"
               >
-                {search.isPending
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : <Search className="w-4 h-4" />}
-                <span className="hidden sm:inline">{search.isPending ? "Searching…" : "Search"}</span>
+                {selectedCourt.label}
+                <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", courtOpen && "rotate-180")} />
               </button>
+              <AnimatePresence>
+                {courtOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-20 overflow-hidden"
+                  >
+                    {COURTS.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setCourt(c.id); setCourtOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-4 py-3 text-sm font-medium transition-colors",
+                          c.id === court ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+                        )}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Sample queries */}
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-2">Try these</p>
-              <div className="flex flex-wrap gap-2">
-                {SAMPLE_QUERIES.map(q => (
-                  <button
-                    key={q}
-                    onClick={() => handleSearch(q)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20 transition-all"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <Button
+              onClick={() => handleSearch()}
+              disabled={!query.trim() || search.isPending}
+              size="lg"
+              className="h-14 px-8 text-base shadow-md w-full md:w-auto"
+            >
+              {search.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Search"}
+            </Button>
           </div>
 
-          {/* Results */}
-          {search.isPending && (
-            <div className="flex flex-col items-center py-16 gap-4 text-gray-400">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm font-mono">Searching Indian case law…</p>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Suggested Searches</p>
+            <div className="flex flex-wrap gap-2">
+              {SAMPLE_QUERIES.map(q => (
+                <button
+                  key={q}
+                  onClick={() => handleSearch(q)}
+                  className="text-xs font-medium px-4 py-2 rounded-full border border-border bg-muted/50 text-foreground hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all"
+                >
+                  {q}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+        </div>
 
-          {search.isError && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
-              {(search.error as Error).message}
+        {search.isPending && (
+          <div className="flex flex-col items-center justify-center py-24 gap-4 bg-card border border-border rounded-2xl shadow-sm">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <p className="text-muted-foreground font-medium">Querying legal databases...</p>
+          </div>
+        )}
+
+        {search.isError && (
+          <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-6 py-5 flex items-center gap-3">
+             <Scale className="w-5 h-5" />
+            {(search.error as Error).message}
+          </div>
+        )}
+
+        {search.isSuccess && search.data && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="flex items-center justify-between pb-2 border-b border-border/50">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Search Results
+              </h3>
+              <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
+                {search.data.total} judgments found
+              </span>
             </div>
-          )}
 
-          {search.isSuccess && search.data && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-700">
-                  {search.data.total} judgments found
-                </p>
-                <p className="text-xs text-gray-400 font-mono">
-                  Query: "{search.data.query}"
-                </p>
-              </div>
-
+            <div className="space-y-4">
               {(search.data.judgments as Judgment[]).map((j, idx) => (
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.06 }}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+                  transition={{ delay: idx * 0.05 }}
+                  className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden hover:border-primary/30 transition-colors"
                 >
-                  <div
-                    className="px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                  <button
+                    className="w-full text-left px-6 py-5 flex flex-col gap-3"
                     onClick={() => setExpanded(expanded === idx ? null : idx)}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-4 w-full">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                         <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded bg-muted text-muted-foreground border border-border">
                             {j.court}
                           </span>
-                          <span className="text-[10px] font-mono text-gray-400">{j.year}</span>
+                          <span className="text-xs font-mono font-medium text-muted-foreground px-2 py-0.5 rounded bg-background border border-border">{j.year}</span>
                         </div>
-                        <h3 className="text-sm font-bold text-gray-900 leading-snug">{j.case_name}</h3>
-                        <p className="text-xs text-gray-500 font-mono mt-1">{j.citation}</p>
+                        <h3 className="text-lg font-bold text-foreground leading-snug">{j.case_name}</h3>
+                        <p className="text-sm text-muted-foreground font-mono mt-1">{j.citation}</p>
                       </div>
-                      <ChevronDown className={cn("w-4 h-4 text-gray-400 flex-shrink-0 mt-1 transition-transform", expanded === idx && "rotate-180")} />
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                         <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", expanded === idx && "rotate-180")} />
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-600 mt-2 line-clamp-2 italic">{j.relevance}</p>
-                  </div>
+                    <p className="text-sm text-foreground/70 line-clamp-2 leading-relaxed font-medium bg-muted/30 p-3 rounded-lg border border-border/50">
+                      <span className="font-semibold text-primary mr-2">Relevance:</span>
+                      {j.relevance}
+                    </p>
+                  </button>
 
                   <AnimatePresence>
                     {expanded === idx && (
@@ -205,39 +206,51 @@ export default function Judgments() {
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                        className="overflow-hidden border-t border-border/50 bg-muted/10"
                       >
-                        <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4">
+                        <div className="px-6 py-6 space-y-6">
                           <div>
-                            <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-2">Key Holding</p>
-                            <p className="text-sm text-gray-800 leading-relaxed">{j.holding}</p>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              Key Holding
+                            </p>
+                            <p className="text-base text-foreground leading-relaxed font-serif bg-background p-4 rounded-xl border border-border shadow-sm">
+                              {j.holding}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-2">Relevance</p>
-                            <p className="text-sm text-gray-700 leading-relaxed">{j.relevance}</p>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                               <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                               Full Relevance Analysis
+                            </p>
+                            <p className="text-sm text-foreground/80 leading-relaxed">
+                              {j.relevance}
+                            </p>
                           </div>
-                          <a
-                            href={j.ik_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-xs font-mono text-primary hover:underline"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            View on IndianKanoon
-                          </a>
+                          <div className="pt-2">
+                            <a
+                              href={j.ik_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-lg transition-colors"
+                            >
+                              View Full Text on IndianKanoon
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </div>
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </motion.div>
               ))}
+            </div>
 
-              <p className="text-xs text-center text-gray-400 font-mono pt-2">
-                Citations are AI-generated. Verify on IndianKanoon before citing in court.
-              </p>
-            </motion.div>
-          )}
-        </div>
+            <p className="text-xs text-center text-muted-foreground font-mono pt-4">
+              Citations are AI-generated. Verify on IndianKanoon before citing in court.
+            </p>
+          </motion.div>
+        )}
       </div>
     </div>
   );

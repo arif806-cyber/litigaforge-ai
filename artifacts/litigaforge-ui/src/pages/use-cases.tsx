@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   Home, Car, Receipt, Shield, FileCheck, Eye, Landmark,
-  ArrowRight, Zap, ChevronRight,
+  ArrowRight, Zap, ChevronRight, Lightbulb
 } from "lucide-react";
 
 interface UseCase {
@@ -23,20 +23,20 @@ const USE_CASES: UseCase[] = [
     id: "property",
     icon: Home,
     tag: "CIVIL",
-    tagColor: "text-violet-700 border-violet-200 bg-violet-50",
+    tagColor: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800",
     title: "Property Dispute",
     scenario:
       "Client claims ownership of disputed property in Hyderabad. Opposite party has forged sale deed. PAN and GSTIN of both parties available.",
     entities: [
-      { label: "PAN",      color: "text-violet-700 bg-violet-50 border-violet-200" },
-      { label: "GSTIN",    color: "text-blue-700 bg-blue-50 border-blue-200" },
-      { label: "Party",    color: "text-amber-700 bg-amber-50 border-amber-200" },
-      { label: "Location", color: "text-teal-700 bg-teal-50 border-teal-200" },
+      { label: "PAN",      color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
+      { label: "GSTIN",    color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+      { label: "Party",    color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+      { label: "Location", color: "text-teal-700 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800" },
     ],
     chains: [
-      { name: "PAN",     color: "text-violet-700 bg-violet-50 border-violet-200" },
-      { name: "GSTIN",   color: "text-blue-700 bg-blue-50 border-blue-200" },
-      { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
+      { name: "PAN",     color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
+      { name: "GSTIN",   color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+      { name: "eCourts", color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
     ],
     prompt:
       "Describe your property dispute with party PAN numbers, property location, and any suspected documentation issues. The Forge will verify identities, check court records, and build a civil suit strategy.",
@@ -45,19 +45,19 @@ const USE_CASES: UseCase[] = [
     id: "accident",
     icon: Car,
     tag: "MACT",
-    tagColor: "text-green-700 border-green-200 bg-green-50",
+    tagColor: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800",
     title: "Road Accident / Motor Claim",
     scenario:
       "Client met with an accident. Need to verify vehicle RC, insurance validity, and driver licence status as of accident date for MACT claim.",
     entities: [
-      { label: "Vehicle No.", color: "text-green-700 bg-green-50 border-green-200" },
-      { label: "DL No.",      color: "text-indigo-700 bg-indigo-50 border-indigo-200" },
-      { label: "Party",       color: "text-amber-700 bg-amber-50 border-amber-200" },
+      { label: "Vehicle No.", color: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800" },
+      { label: "DL No.",      color: "text-indigo-700 bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800" },
+      { label: "Party",       color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
     ],
     chains: [
-      { name: "VAHAN",   color: "text-green-700 bg-green-50 border-green-200" },
-      { name: "SARATHI", color: "text-teal-700 bg-teal-50 border-teal-200" },
-      { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
+      { name: "VAHAN",   color: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800" },
+      { name: "SARATHI", color: "text-teal-700 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800" },
+      { name: "eCourts", color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
     ],
     prompt:
       "Describe your road accident case with vehicle registration number, driver licence details, and accident location. The Forge will verify RC, DL, and insurance status for your MACT petition.",
@@ -66,19 +66,19 @@ const USE_CASES: UseCase[] = [
     id: "gst",
     icon: Receipt,
     tag: "TAX / FRAUD",
-    tagColor: "text-blue-700 border-blue-200 bg-blue-50",
+    tagColor: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
     title: "GST Fraud / Tax Evasion",
     scenario:
       "Client accused of GST fraud by the department. Need to verify GSTIN filing history, cross-check PAN, and build defence arguments under CGST Act.",
     entities: [
-      { label: "GSTIN",    color: "text-blue-700 bg-blue-50 border-blue-200" },
-      { label: "PAN",      color: "text-violet-700 bg-violet-50 border-violet-200" },
-      { label: "Case No.", color: "text-rose-700 bg-rose-50 border-rose-200" },
+      { label: "GSTIN",    color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+      { label: "PAN",      color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
+      { label: "Case No.", color: "text-rose-700 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
     ],
     chains: [
-      { name: "GSTIN",   color: "text-blue-700 bg-blue-50 border-blue-200" },
-      { name: "PAN",     color: "text-violet-700 bg-violet-50 border-violet-200" },
-      { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
+      { name: "GSTIN",   color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+      { name: "PAN",     color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
+      { name: "eCourts", color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
     ],
     prompt:
       "Describe your GST dispute with GSTIN, PAN, case number, and court details. The Forge will analyse filing history, identify discrepancies, and build your defence strategy.",
@@ -87,18 +87,18 @@ const USE_CASES: UseCase[] = [
     id: "criminal",
     icon: Shield,
     tag: "CRIMINAL",
-    tagColor: "text-rose-700 border-rose-200 bg-rose-50",
+    tagColor: "text-rose-700 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800",
     title: "Criminal Case Defence",
     scenario:
       "Client accused in a criminal case at City Civil Court Hyderabad. Need to pull full case history, orders, hearing dates, and identify procedural grounds for bail or discharge.",
     entities: [
-      { label: "Case No.", color: "text-rose-700 bg-rose-50 border-rose-200" },
-      { label: "Party",    color: "text-amber-700 bg-amber-50 border-amber-200" },
-      { label: "Location", color: "text-teal-700 bg-teal-50 border-teal-200" },
+      { label: "Case No.", color: "text-rose-700 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
+      { label: "Party",    color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+      { label: "Location", color: "text-teal-700 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800" },
     ],
     chains: [
-      { name: "eCourts",   color: "text-amber-700 bg-amber-50 border-amber-200" },
-      { name: "DigiLocker", color: "text-cyan-700 bg-cyan-50 border-cyan-200" },
+      { name: "eCourts",   color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+      { name: "DigiLocker", color: "text-cyan-700 bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800" },
     ],
     prompt:
       "Describe your criminal case with case number, court, FIR details, IPC sections, and custody status. The Forge will pull full case history and identify bail or discharge grounds.",
@@ -107,58 +107,40 @@ const USE_CASES: UseCase[] = [
     id: "mee-seva",
     icon: FileCheck,
     tag: "WRIT / GOVT",
-    tagColor: "text-cyan-700 border-cyan-200 bg-cyan-50",
+    tagColor: "text-cyan-700 bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800",
     title: "Mee Seva / Certificate Dispute",
     scenario:
       "Client's caste / income certificate rejected by government. Need to verify against state database and DigiLocker to file Writ Petition in Telangana High Court.",
     entities: [
-      { label: "Aadhaar",  color: "text-orange-700 bg-orange-50 border-orange-200" },
-      { label: "Party",    color: "text-amber-700 bg-amber-50 border-amber-200" },
-      { label: "Location", color: "text-teal-700 bg-teal-50 border-teal-200" },
+      { label: "Aadhaar",  color: "text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200 dark:border-orange-800" },
+      { label: "Party",    color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+      { label: "Location", color: "text-teal-700 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800" },
     ],
     chains: [
-      { name: "MEE_SEVA_TG",  color: "text-red-700 bg-red-50 border-red-200" },
-      { name: "DigiLocker",   color: "text-cyan-700 bg-cyan-50 border-cyan-200" },
-      { name: "MERIPEHCHAAN", color: "text-pink-700 bg-pink-50 border-pink-200" },
+      { name: "MEE_SEVA_TG",  color: "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800" },
+      { name: "DigiLocker",   color: "text-cyan-700 bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800" },
+      { name: "MERIPEHCHAAN", color: "text-pink-700 bg-pink-100 dark:bg-pink-900/30 dark:text-pink-300 border-pink-200 dark:border-pink-800" },
     ],
     prompt:
       "Describe your certificate dispute with Aadhaar number, certificate type, application number, and rejection reason. The Forge will verify authenticity and build grounds for your Writ Petition.",
   },
   {
-    id: "watch",
-    icon: Eye,
-    tag: "WATCH MODE",
-    tagColor: "text-fuchsia-700 border-fuchsia-200 bg-fuchsia-50",
-    title: "Multi-Case Watch & Hearing Alerts",
-    scenario:
-      "Managing 30+ active cases across Hyderabad, Vijayawada, and Warangal courts. Set up automated monitoring so no hearing date is missed — WhatsApp alerts to client and advocate.",
-    entities: [
-      { label: "Case No.", color: "text-rose-700 bg-rose-50 border-rose-200" },
-      { label: "Party",    color: "text-amber-700 bg-amber-50 border-amber-200" },
-    ],
-    chains: [
-      { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
-    ],
-    prompt:
-      "List your active cases with case numbers, courts, and parties. Set up Watch Mode to monitor hearing dates and order updates with WhatsApp alerts.",
-  },
-  {
     id: "loan",
     icon: Landmark,
     tag: "DRT / NPA",
-    tagColor: "text-orange-700 border-orange-200 bg-orange-50",
+    tagColor: "text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200 dark:border-orange-800",
     title: "Loan Recovery / NPA Case",
     scenario:
       "Bank client has a defaulting borrower. Need to verify if business is still active, check for insolvency filings, and build DRT petition strategy under SARFAESI Act.",
     entities: [
-      { label: "PAN",   color: "text-violet-700 bg-violet-50 border-violet-200" },
-      { label: "GSTIN", color: "text-blue-700 bg-blue-50 border-blue-200" },
-      { label: "Party", color: "text-amber-700 bg-amber-50 border-amber-200" },
+      { label: "PAN",   color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
+      { label: "GSTIN", color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+      { label: "Party", color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
     ],
     chains: [
-      { name: "GSTIN",   color: "text-blue-700 bg-blue-50 border-blue-200" },
-      { name: "PAN",     color: "text-violet-700 bg-violet-50 border-violet-200" },
-      { name: "eCourts", color: "text-amber-700 bg-amber-50 border-amber-200" },
+      { name: "GSTIN",   color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+      { name: "PAN",     color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
+      { name: "eCourts", color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
     ],
     prompt:
       "Describe your loan recovery case with borrower PAN, GSTIN, outstanding amount, and last payment date. The Forge will verify business status and build your DRT petition strategy.",
@@ -177,27 +159,22 @@ export default function UseCases() {
   }
 
   return (
-    <div className="px-4 py-7 md:px-10 md:py-8 pb-20 md:pb-8">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/30 blur-lg rounded-full" />
-            <Zap className="w-7 h-7 text-primary relative z-10" />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Use Cases</h1>
-        </div>
-        <p className="text-muted-foreground text-sm md:text-base leading-relaxed max-w-2xl mb-8">
-          Real scenarios for Telangana &amp; AP advocates. Click <span className="text-primary font-semibold">Try in Forge</span> to load the case facts and run a live analysis instantly.
+    <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
+          <Lightbulb className="w-8 h-8 text-primary" />
+          Scenario Library
+        </h1>
+        <p className="text-muted-foreground mt-2 font-medium max-w-2xl">
+          Real-world scenarios for Telangana &amp; AP advocates. Select a template to run live analysis instantly.
         </p>
-      </motion.div>
+      </div>
 
-      {/* Cards grid */}
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-5"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
       >
         {USE_CASES.map((uc) => {
           const Icon = uc.icon;
@@ -205,36 +182,33 @@ export default function UseCases() {
             <motion.div
               key={uc.id}
               variants={item}
-              className="glass-panel rounded-2xl border border-gray-200 hover:border-primary/30 hover:shadow-md transition-all duration-300 group flex flex-col"
+              className="bg-card rounded-2xl border border-border hover:border-primary/50 hover:shadow-md transition-all duration-300 group flex flex-col"
             >
-              {/* Card header */}
-              <div className="p-5 pb-4 border-b border-gray-100">
-                <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="p-6 pb-4 border-b border-border/50">
+                <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/15 transition-colors">
-                      <Icon className="w-4 h-4 text-primary" />
+                    <div className="p-2.5 rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                      <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <span className={cn("text-[9px] font-mono font-bold tracking-[0.18em] px-2 py-0.5 rounded border", uc.tagColor)}>
+                      <span className={cn("text-[10px] font-bold tracking-widest px-2.5 py-1 rounded border", uc.tagColor)}>
                         {uc.tag}
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary/60 transition-colors mt-0.5 flex-shrink-0" />
                 </div>
-                <h2 className="text-base font-semibold text-gray-900 tracking-wide mb-1">{uc.title}</h2>
+                <h2 className="text-lg font-bold text-foreground tracking-tight mb-2">{uc.title}</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">{uc.scenario}</p>
               </div>
 
-              {/* Card body */}
-              <div className="p-5 pt-4 space-y-3 flex-1">
+              <div className="p-6 space-y-5 flex-1 bg-muted/20">
                 <div>
-                  <p className="text-[9px] font-mono text-gray-400 uppercase tracking-[0.18em] mb-2">Entities Extracted</p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Expected Entities</p>
+                  <div className="flex flex-wrap gap-2">
                     {uc.entities.map((e) => (
                       <span
                         key={e.label}
-                        className={cn("text-[10px] font-mono font-semibold px-2 py-0.5 rounded border tracking-wide", e.color)}
+                        className={cn("text-xs font-medium px-2.5 py-1 rounded-md border", e.color)}
                       >
                         {e.label}
                       </span>
@@ -243,12 +217,12 @@ export default function UseCases() {
                 </div>
 
                 <div>
-                  <p className="text-[9px] font-mono text-gray-400 uppercase tracking-[0.18em] mb-2">API Chains Triggered</p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">API Chains</p>
+                  <div className="flex flex-wrap gap-2">
                     {uc.chains.map((c) => (
                       <span
                         key={c.name}
-                        className={cn("text-[10px] font-mono font-semibold px-2 py-0.5 rounded border tracking-wide", c.color)}
+                        className={cn("text-xs font-medium px-2.5 py-1 rounded-md border", c.color)}
                       >
                         {c.name}
                       </span>
@@ -257,16 +231,15 @@ export default function UseCases() {
                 </div>
               </div>
 
-              {/* CTA */}
-              <div className="px-5 pb-5">
+              <div className="p-4 border-t border-border/50 bg-card rounded-b-2xl">
                 <button
                   onClick={() => handleTry(uc.prompt)}
                   data-testid={`try-usecase-${uc.id}`}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-bold tracking-widest uppercase hover:bg-primary/20 hover:border-primary/40 active:scale-[0.98] transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold tracking-wide hover:bg-primary/90 transition-all shadow-sm"
                 >
-                  <Zap className="w-3.5 h-3.5" />
-                  Try in Forge
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <Zap className="w-4 h-4" />
+                  Try in The Forge
+                  <ArrowRight className="w-4 h-4 ml-1" />
                 </button>
               </div>
             </motion.div>

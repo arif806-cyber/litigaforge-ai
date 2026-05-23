@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown } from "lucide-react";
+import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const DISTRICTS = [
   "All Districts", "Hyderabad", "Rangareddy", "Warangal", "Karimnagar",
@@ -42,61 +43,62 @@ function LawyerCard({ lawyer }: { lawyer: Lawyer }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col gap-4 hover:border-primary/30 transition-colors"
+      className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col hover:border-primary/40 hover:shadow-md transition-all duration-300"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h3 className="font-bold text-gray-900 text-sm">{lawyer.name}</h3>
+          <div className="flex items-center gap-2 mb-1.5">
+            <h3 className="font-bold text-lg text-foreground truncate">{lawyer.name}</h3>
             {lawyer.verified && (
-              <BadgeCheck className="w-4 h-4 text-primary flex-shrink-0" title="Verified advocate" />
+              <BadgeCheck className="w-5 h-5 text-primary flex-shrink-0" />
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 font-mono">
-            <span>{lawyer.district}</span>
-            <span>·</span>
-            <span>{lawyer.experience_years}y exp</span>
+          <div className="flex items-center flex-wrap gap-y-1 gap-x-3 text-sm text-muted-foreground font-medium">
+            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{lawyer.district}</span>
+            <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{lawyer.experience_years}y exp</span>
             {lawyer.bar_number && (
-              <>
-                <span>·</span>
-                <span className="text-gray-400">BCI: {lawyer.bar_number}</span>
-              </>
+              <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">BCI: {lawyer.bar_number}</span>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-          <span className="text-sm font-bold text-gray-900 font-mono">{lawyer.rating}</span>
+        <div className="flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-2 min-w-[56px] flex-shrink-0">
+           <Star className="w-4 h-4 text-amber-500 fill-amber-500 mb-1" />
+           <span className="text-sm font-bold text-amber-700 dark:text-amber-400 font-mono leading-none">{lawyer.rating}</span>
         </div>
       </div>
 
-      {/* Practice areas */}
-      <div className="flex flex-wrap gap-1.5">
-        {lawyer.practice_areas.map(area => (
-          <span key={area} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/8 text-primary border border-primary/20">
-            {area}
-          </span>
-        ))}
+      <div className="mb-4">
+         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Practice Areas</p>
+         <div className="flex flex-wrap gap-2">
+          {lawyer.practice_areas.map(area => (
+            <span key={area} className="text-xs font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary border border-primary/20">
+              {area}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Languages */}
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <span className="font-mono uppercase tracking-widest text-[10px] text-gray-400">Languages:</span>
-        {lawyer.languages.join(", ")}
+      <div className="mb-4">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Languages</p>
+        <p className="text-sm font-medium text-foreground/80">{lawyer.languages.join(", ")}</p>
       </div>
 
       {lawyer.bio && (
-        <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{lawyer.bio}</p>
+        <div className="mb-6 flex-1">
+          <p className="text-sm text-foreground/70 leading-relaxed line-clamp-3 bg-muted/30 p-3 rounded-lg border border-border/50">{lawyer.bio}</p>
+        </div>
       )}
 
-      {/* Contact */}
-      <div>
+      <div className="mt-auto">
         <button
           onClick={() => setShowContact(s => !s)}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition"
+          className={cn(
+            "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all",
+            showContact ? "bg-muted text-foreground" : "bg-foreground text-background hover:bg-foreground/90 shadow-sm"
+          )}
         >
-          <Phone className="w-3.5 h-3.5" />
-          {showContact ? "Hide Contact" : "Show Contact"}
+          <Phone className="w-4 h-4" />
+          {showContact ? "Hide Contact details" : "Contact Advocate"}
         </button>
         <AnimatePresence>
           {showContact && (
@@ -106,17 +108,21 @@ function LawyerCard({ lawyer }: { lawyer: Lawyer }) {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="mt-3 space-y-2 text-sm">
+              <div className="mt-4 p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
                 {lawyer.phone && (
-                  <a href={`tel:${lawyer.phone}`}
-                    className="flex items-center gap-2 text-primary hover:underline font-mono">
-                    <Phone className="w-3.5 h-3.5" />{lawyer.phone}
+                  <a href={`tel:${lawyer.phone}`} className="flex items-center gap-3 text-foreground hover:text-primary font-medium transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
+                       <Phone className="w-4 h-4 text-primary" />
+                    </div>
+                    {lawyer.phone}
                   </a>
                 )}
                 {lawyer.email && (
-                  <a href={`mailto:${lawyer.email}`}
-                    className="flex items-center gap-2 text-primary hover:underline font-mono">
-                    <Mail className="w-3.5 h-3.5" />{lawyer.email}
+                  <a href={`mailto:${lawyer.email}`} className="flex items-center gap-3 text-foreground hover:text-primary font-medium transition-colors">
+                     <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
+                       <Mail className="w-4 h-4 text-primary" />
+                    </div>
+                    {lawyer.email}
                   </a>
                 )}
               </div>
@@ -153,113 +159,136 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
     }));
 
   return (
-    <div className="fixed inset-0 bg-gray-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        initial={{ opacity: 0, scale: 0.96, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 20 }}
+        className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="font-bold text-gray-900">Register as Advocate</h3>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500">
-            <X className="w-4 h-4" />
+        <div className="flex items-center justify-between px-8 py-6 border-b border-border">
+          <div>
+            <h3 className="text-xl font-bold text-foreground tracking-tight">Register as Advocate</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-medium">Join the LitigaForge directory</p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {success ? (
-          <div className="px-6 py-10 text-center space-y-3">
-            <BadgeCheck className="w-12 h-12 text-primary mx-auto" />
-            <h4 className="font-bold text-gray-900">Profile Submitted!</h4>
-            <p className="text-sm text-gray-600">Your profile will appear in the directory after verification by our team.</p>
-            <button onClick={onClose} className="mt-2 px-6 py-2 rounded-xl bg-primary text-white text-sm font-bold">Done</button>
+          <div className="px-8 py-16 text-center flex-1 overflow-y-auto">
+            <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-6">
+              <BadgeCheck className="w-10 h-10 text-green-600 dark:text-green-400" />
+            </div>
+            <h4 className="text-2xl font-bold text-foreground mb-2">Profile Submitted!</h4>
+            <p className="text-muted-foreground font-medium max-w-md mx-auto mb-8">
+              Your profile is under review and will appear in the directory after verification by our team.
+            </p>
+            <Button onClick={onClose} size="lg" className="px-8">Close</Button>
           </div>
         ) : (
-          <form
-            onSubmit={e => { e.preventDefault(); register.mutate(form); }}
-            className="px-6 py-5 space-y-4"
-          >
-            {[
-              { label: "Full Name", key: "name", placeholder: "Adv. Full Name" },
-              { label: "Phone", key: "phone", placeholder: "+91-XXXXXXXXXX" },
-              { label: "Email (optional)", key: "email", placeholder: "advocate@example.com" },
-              { label: "Bar Council No. (optional)", key: "bar_number", placeholder: "TS/XXXX/YYYY" },
-            ].map(({ label, key, placeholder }) => (
-              <div key={key}>
-                <label className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-1.5">{label}</label>
-                <input
-                  value={(form as any)[key]}
-                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-                />
-              </div>
-            ))}
-
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-1.5">District</label>
-              <select
-                value={form.district}
-                onChange={e => setForm(f => ({ ...f, district: e.target.value }))}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-              >
-                {DISTRICTS.slice(1).map(d => <option key={d}>{d}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-1.5">Experience (years)</label>
-              <input
-                type="number" min={0} max={60}
-                value={form.experience_years}
-                onChange={e => setForm(f => ({ ...f, experience_years: parseInt(e.target.value) || 0 }))}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-2">Practice Areas</label>
-              <div className="flex flex-wrap gap-2">
-                {PRACTICE_AREAS.slice(1).map(area => (
-                  <button
-                    key={area} type="button"
-                    onClick={() => toggleArea(area)}
-                    className={cn(
-                      "text-xs px-3 py-1.5 rounded-full border transition-all",
-                      form.practice_areas.includes(area)
-                        ? "bg-primary text-white border-primary"
-                        : "bg-gray-50 text-gray-600 border-gray-200 hover:border-primary/40"
-                    )}
-                  >{area}</button>
+          <div className="flex-1 overflow-y-auto px-8 py-6">
+            <form onSubmit={e => { e.preventDefault(); register.mutate(form); }} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                  { label: "Full Name", key: "name", placeholder: "Adv. Full Name", type: "text", required: true },
+                  { label: "Phone Number", key: "phone", placeholder: "+91-XXXXXXXXXX", type: "text", required: true },
+                  { label: "Email Address (optional)", key: "email", placeholder: "advocate@example.com", type: "email", required: false },
+                  { label: "Bar Council No. (optional)", key: "bar_number", placeholder: "TS/XXXX/YYYY", type: "text", required: false },
+                ].map(({ label, key, placeholder, type, required }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-semibold text-foreground mb-2">
+                      {label} {required && <span className="text-destructive">*</span>}
+                    </label>
+                    <input
+                      type={type}
+                      value={(form as any)[key]}
+                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      required={required}
+                      className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+                    />
+                  </div>
                 ))}
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-1.5">Bio</label>
-              <textarea
-                value={form.bio}
-                onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
-                rows={3}
-                placeholder="Brief professional summary..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
-              />
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">District *</label>
+                  <div className="relative">
+                    <select
+                      value={form.district}
+                      onChange={e => setForm(f => ({ ...f, district: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm appearance-none"
+                    >
+                      {DISTRICTS.slice(1).map(d => <option key={d}>{d}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  </div>
+                </div>
 
-            {register.isError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                {(register.error as Error).message}
-              </p>
-            )}
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Experience (years) *</label>
+                  <input
+                    type="number" min={0} max={60}
+                    value={form.experience_years}
+                    onChange={e => setForm(f => ({ ...f, experience_years: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+                  />
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              disabled={!form.name || !form.phone || form.practice_areas.length === 0 || register.isPending}
-              className="w-full h-11 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {register.isPending ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : "Submit Profile"}
-            </button>
-          </form>
+              <div className="bg-muted/30 p-6 rounded-2xl border border-border">
+                <label className="block text-sm font-semibold text-foreground mb-3">Practice Areas *</label>
+                <div className="flex flex-wrap gap-2">
+                  {PRACTICE_AREAS.slice(1).map(area => (
+                    <button
+                      key={area} type="button"
+                      onClick={() => toggleArea(area)}
+                      className={cn(
+                        "text-sm font-medium px-4 py-2 rounded-full border transition-all",
+                        form.practice_areas.includes(area)
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                      )}
+                    >{area}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Professional Bio</label>
+                <textarea
+                  value={form.bio}
+                  onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                  rows={4}
+                  placeholder="Brief summary of your practice, courts you appear in, and notable achievements..."
+                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm resize-none"
+                />
+              </div>
+
+              {register.isError && (
+                <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  {(register.error as Error).message}
+                </div>
+              )}
+            </form>
+          </div>
+        )}
+
+        {!success && (
+          <div className="px-8 py-5 border-t border-border bg-muted/20 rounded-b-2xl flex justify-end gap-3">
+             <Button variant="outline" onClick={onClose}>Cancel</Button>
+             <Button
+                onClick={() => register.mutate(form)}
+                disabled={!form.name || !form.phone || form.practice_areas.length === 0 || register.isPending}
+                className="px-8"
+             >
+                {register.isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</> : "Submit Profile for Review"}
+             </Button>
+          </div>
         )}
       </motion.div>
     </div>
@@ -286,105 +315,101 @@ export default function LawyersPage() {
   });
 
   return (
-    <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
-
-      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-gray-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-              <Users className="w-6 h-6 text-primary" />
-              Lawyer Directory
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              Verified Telangana & AP advocates — filter by district, practice area, and language.
-            </p>
-          </div>
-          {user && (
-            <button
-              onClick={() => setShowRegister(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition shadow-sm flex-shrink-0"
-            >
-              <Plus className="w-4 h-4" /> List Your Profile
-            </button>
-          )}
+    <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
+            <Users className="w-8 h-8 text-primary" />
+            Advocate Directory
+          </h1>
+          <p className="text-muted-foreground mt-2 font-medium">
+            Verified Telangana & AP advocates — filter by district, practice area, and language.
+          </p>
         </div>
+        {user && (
+          <Button onClick={() => setShowRegister(true)} size="lg" className="shadow-md flex-shrink-0">
+            <Plus className="w-5 h-5 mr-2" /> List Your Profile
+          </Button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-auto px-4 py-6 md:px-10 md:py-8 relative z-10">
-        <div className="max-w-5xl space-y-6 pb-20">
-
-          {/* Filters */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-                placeholder="Search by name or specialisation…"
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-              />
-            </div>
+      <div className="space-y-8">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <input
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              placeholder="Search by name or specialisation…"
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-input bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+            />
+          </div>
+          <div className="relative w-full md:w-64">
             <select
               value={district}
               onChange={e => setDistrict(e.target.value)}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-base font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm appearance-none"
             >
               {DISTRICTS.map(d => <option key={d}>{d}</option>)}
             </select>
-            <select
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          </div>
+          <div className="relative w-full md:w-72">
+             <select
               value={practiceArea}
               onChange={e => setPracticeArea(e.target.value)}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3 rounded-xl border border-input bg-background text-base font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm appearance-none"
             >
               {PRACTICE_AREAS.map(a => <option key={a}>{a}</option>)}
             </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
+        </div>
 
-          {/* Count */}
+        <div className="flex items-center justify-between pb-2 border-b border-border/50">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+             Results
+          </h3>
           {!isLoading && data && (
-            <p className="text-sm text-gray-500 font-mono">{data.total} advocate{data.total !== 1 ? "s" : ""} found</p>
-          )}
-
-          {/* Grid */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1,2,3,4].map(i => <div key={i} className="h-48 bg-gray-100 rounded-2xl animate-pulse" />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(data?.lawyers ?? []).map((lawyer: Lawyer) => (
-                <LawyerCard key={lawyer.id} lawyer={lawyer} />
-              ))}
-              {(data?.lawyers ?? []).length === 0 && (
-                <div className="col-span-2 text-center py-16">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 mb-4">
-                    <Search className="w-7 h-7 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500 text-sm font-medium mb-1">No advocates found</p>
-                  <p className="text-gray-400 text-xs max-w-sm mx-auto mb-4">
-                    The directory is currently empty. Be the first to list your profile.
-                  </p>
-                  {user ? (
-                    <button
-                      onClick={() => setShowRegister(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition shadow-sm"
-                    >
-                      <Plus className="w-4 h-4" /> List Your Profile
-                    </button>
-                  ) : (
-                    <a
-                      href="/register"
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition shadow-sm"
-                    >
-                      <Plus className="w-4 h-4" /> Sign Up & List Your Profile
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
+            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
+              {data.total} advocate{data.total !== 1 ? "s" : ""}
+            </span>
           )}
         </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1,2,3,4].map(i => <div key={i} className="h-64 bg-card border border-border rounded-2xl animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {(data?.lawyers ?? []).map((lawyer: Lawyer) => (
+              <LawyerCard key={lawyer.id} lawyer={lawyer} />
+            ))}
+            {(data?.lawyers ?? []).length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-24 bg-card border border-border rounded-2xl border-dashed">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
+                  <Search className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">No advocates found</h3>
+                <p className="text-muted-foreground font-medium max-w-md text-center mb-8">
+                  Try adjusting your filters or search query to find relevant advocates.
+                </p>
+                {user ? (
+                  <Button onClick={() => setShowRegister(true)} size="lg">
+                    <Plus className="w-5 h-5 mr-2" /> List Your Profile
+                  </Button>
+                ) : (
+                  <Button asChild size="lg">
+                    <a href="/register">
+                      <Plus className="w-5 h-5 mr-2" /> Sign Up to List Profile
+                    </a>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <AnimatePresence>

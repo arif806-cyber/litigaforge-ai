@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const CATEGORIES = [
   { id: "all", label: "All" },
@@ -19,15 +20,15 @@ const CATEGORIES = [
 ];
 
 const CAT_COLORS: Record<string, string> = {
-  property: "bg-violet-50 text-violet-700 border-violet-200",
-  criminal: "bg-red-50 text-red-700 border-red-200",
-  family: "bg-pink-50 text-pink-700 border-pink-200",
-  "gst-tax": "bg-blue-50 text-blue-700 border-blue-200",
-  labour: "bg-orange-50 text-orange-700 border-orange-200",
-  consumer: "bg-green-50 text-green-700 border-green-200",
-  "motor-accident": "bg-yellow-50 text-yellow-700 border-yellow-200",
-  civil: "bg-slate-50 text-slate-700 border-slate-200",
-  general: "bg-gray-50 text-gray-700 border-gray-200",
+  property: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
+  criminal: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
+  family: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",
+  "gst-tax": "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+  labour: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+  consumer: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+  "motor-accident": "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
+  civil: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800",
+  general: "bg-muted text-muted-foreground border-border",
 };
 
 interface QAItem {
@@ -47,29 +48,31 @@ function QACard({ item }: { item: QAItem }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm"
+      className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:border-primary/30 transition-colors"
     >
       <button
         onClick={() => setExpanded(e => !e)}
-        className="w-full text-left px-5 py-4 flex items-start justify-between gap-3 hover:bg-gray-50 transition-colors"
+        className="w-full text-left px-6 py-5 flex items-start justify-between gap-4"
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={cn("text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border", color)}>
+          <div className="flex items-center gap-3 mb-3">
+            <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border", color)}>
               {item.category}
             </span>
-            <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+            <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
               {new Date(item.created_at).toLocaleDateString("en-IN")}
             </span>
           </div>
-          <p className="text-sm font-medium text-gray-900 leading-snug line-clamp-2">
+          <p className="text-base font-semibold text-foreground leading-snug">
             {item.question}
           </p>
         </div>
-        {expanded
-          ? <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" />
-          : <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" />}
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </div>
       </button>
       <AnimatePresence>
         {expanded && (
@@ -80,8 +83,8 @@ function QACard({ item }: { item: QAItem }) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 border-t border-gray-100 pt-4">
-              <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line text-sm leading-relaxed">
+            <div className="px-6 pb-6 pt-2 border-t border-border/50 bg-muted/20">
+              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 whitespace-pre-line leading-relaxed">
                 {item.ai_answer}
               </div>
             </div>
@@ -98,7 +101,7 @@ export default function Ask() {
   const [browseCategory, setBrowseCategory] = useState("all");
   const [answer, setAnswer] = useState<{ question: string; answer: string; category: string } | null>(null);
 
-  const { data: qaList, refetch } = useQuery<{ questions: QAItem[] }>({
+  const { data: qaList, refetch } = useQuery<{ questions: QAItem[]; total: number }>({
     queryKey: ["questions", browseCategory],
     queryFn: () => apiFetch(`/ask?limit=20${browseCategory !== "all" ? `&category=${browseCategory}` : ""}`),
     staleTime: 30000,
@@ -122,131 +125,130 @@ export default function Ask() {
   };
 
   return (
-    <div className="h-full flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
-
-      <div className="px-4 py-5 md:px-10 md:py-8 flex-shrink-0 relative z-10 border-b border-gray-200">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-          <MessageSquare className="w-6 h-6 text-primary" />
+    <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12">
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
+          <MessageSquare className="w-8 h-8 text-primary" />
           Legal Q&A
         </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Ask any legal question — Claude AI answers instantly with applicable Indian law and Telangana/AP procedures.
+        <p className="text-muted-foreground mt-2 font-medium">
+          Ask any legal question — get instant answers grounded in Indian law and local procedures.
         </p>
       </div>
 
-      <div className="flex-1 overflow-auto px-4 py-6 md:px-10 md:py-8 relative z-10">
-        <div className="max-w-3xl space-y-8 pb-20">
+      <div className="space-y-10">
+        {/* Ask form */}
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8">
+          <h2 className="text-lg font-bold text-foreground mb-6">Ask a Question</h2>
 
-          {/* Ask form */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Ask Your Legal Question</h2>
-
-            {/* Category chips */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {CATEGORIES.slice(1).map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setCategory(c.id)}
-                  className={cn(
-                    "text-xs font-mono px-3 py-1.5 rounded-full border transition-all",
-                    category === c.id
-                      ? "bg-primary text-white border-primary shadow-sm"
-                      : "bg-gray-50 text-gray-600 border-gray-200 hover:border-primary/40"
-                  )}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <textarea
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-                placeholder="e.g. My neighbour has encroached on my property in Hyderabad. What steps can I take under TSRPA 1987 to get it back?"
-                rows={4}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition resize-none"
-              />
+          <div className="flex flex-wrap gap-2 mb-6">
+            {CATEGORIES.slice(1).map(c => (
               <button
-                type="submit"
-                disabled={!question.trim() || askMutation.isPending}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+                key={c.id}
+                onClick={() => setCategory(c.id)}
+                className={cn(
+                  "text-xs font-semibold px-4 py-2 rounded-full border transition-all",
+                  category === c.id
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                )}
               >
-                {askMutation.isPending
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Consulting AI…</>
-                  : <><Send className="w-4 h-4" /> Get Legal Advice</>}
+                {c.label}
               </button>
-            </form>
-
-            {askMutation.isError && (
-              <div className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                {(askMutation.error as Error).message}
-              </div>
-            )}
+            ))}
           </div>
 
-          {/* AI answer */}
-          <AnimatePresence>
-            {answer && (
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white border-2 border-primary/20 rounded-2xl shadow-sm overflow-hidden"
-              >
-                <div className="px-6 py-4 bg-primary/5 border-b border-primary/10 flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-xs font-mono font-bold text-primary uppercase tracking-widest">
-                    Claude Sonnet · Legal AI Response
-                  </span>
-                  <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded border ml-auto", CAT_COLORS[answer.category] ?? CAT_COLORS.general)}>
-                    {answer.category}
-                  </span>
-                </div>
-                <div className="px-6 py-5">
-                  <p className="text-xs text-gray-400 font-mono mb-3 italic">"{answer.question}"</p>
-                  <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-                    {answer.answer}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Community Q&A */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700">Community Questions</h2>
-              <span className="text-xs text-gray-400 font-mono">{qaList?.total ?? 0} answered</span>
-            </div>
-
-            <div className="flex flex-wrap gap-2 mb-4">
-              {CATEGORIES.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setBrowseCategory(c.id)}
-                  className={cn(
-                    "text-xs font-mono px-3 py-1.5 rounded-full border transition-all",
-                    browseCategory === c.id
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
-                  )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <textarea
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              placeholder="e.g. My neighbour has encroached on my property in Hyderabad. What steps can I take under TSRPA 1987 to get it back?"
+              rows={4}
+              className="w-full px-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none shadow-sm"
+            />
+            <div className="flex justify-end">
+               <Button
+                  type="submit"
+                  size="lg"
+                  disabled={!question.trim() || askMutation.isPending}
+                  className="px-8 shadow-md"
                 >
-                  {c.label}
-                </button>
-              ))}
+                  {askMutation.isPending
+                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Consulting AI…</>
+                    : <><Send className="w-4 h-4 mr-2" /> Get Legal Advice</>}
+                </Button>
             </div>
+          </form>
 
-            <div className="space-y-3">
-              {(qaList?.questions ?? []).length === 0 && (
-                <div className="text-center py-12 text-gray-400 text-sm font-mono">
-                  No questions yet in this category. Be the first to ask!
-                </div>
-              )}
-              {(qaList?.questions ?? []).map(item => (
-                <QACard key={item.id} item={item} />
-              ))}
+          {askMutation.isError && (
+            <div className="mt-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
+              {(askMutation.error as Error).message}
             </div>
+          )}
+        </div>
+
+        {/* AI answer */}
+        <AnimatePresence>
+          {answer && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card border-2 border-primary/30 rounded-2xl shadow-md overflow-hidden"
+            >
+              <div className="px-6 py-4 bg-primary/5 border-b border-primary/10 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                  AI Legal Analysis
+                </span>
+                <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border ml-auto", CAT_COLORS[answer.category] ?? CAT_COLORS.general)}>
+                  {answer.category}
+                </span>
+              </div>
+              <div className="px-6 py-6">
+                <p className="text-sm text-muted-foreground font-medium mb-4 italic">"{answer.question}"</p>
+                <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 whitespace-pre-line leading-relaxed text-base">
+                  {answer.answer}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Community Q&A */}
+        <div>
+          <div className="flex items-center justify-between mb-6 pb-2 border-b border-border/50">
+            <h2 className="text-lg font-bold text-foreground">Community Knowledge Base</h2>
+            <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">{qaList?.total ?? 0} answered</span>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-6">
+            {CATEGORIES.map(c => (
+              <button
+                key={c.id}
+                onClick={() => setBrowseCategory(c.id)}
+                className={cn(
+                  "text-xs font-semibold px-4 py-2 rounded-full border transition-all",
+                  browseCategory === c.id
+                    ? "bg-foreground text-background border-foreground shadow-sm"
+                    : "bg-transparent text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {(qaList?.questions ?? []).length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 bg-card border border-border rounded-2xl border-dashed">
+                <FileQuestion className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground font-medium">No questions yet in this category.</p>
+                <p className="text-sm text-muted-foreground mt-1">Be the first to ask!</p>
+              </div>
+            )}
+            {(qaList?.questions ?? []).map(item => (
+              <QACard key={item.id} item={item} />
+            ))}
           </div>
         </div>
       </div>
