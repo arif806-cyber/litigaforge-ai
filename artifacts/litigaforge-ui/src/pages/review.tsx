@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -69,16 +70,7 @@ export default function Review() {
   const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-          <FileSearch className="w-8 h-8 text-primary" />
-          Document Analyzer
-        </h1>
-        <p className="text-muted-foreground mt-2 font-medium">
-          Paste any legal document — AI identifies risks, missing clauses, and jurisdiction issues under Indian law.
-        </p>
-      </div>
+    <PageShell title="Document Analyzer" subtitle="Paste any legal document — AI identifies risks, missing clauses, and jurisdiction issues under Indian law." icon={<FileSearch className="w-6 h-6 text-primary" />}>
 
       <div className="space-y-8">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
@@ -250,6 +242,6 @@ export default function Review() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </PageShell>
   );
 }

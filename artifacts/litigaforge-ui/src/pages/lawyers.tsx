@@ -6,6 +6,7 @@ import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, Chevron
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 
 const DISTRICTS = [
@@ -316,24 +317,12 @@ export default function LawyersPage() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-            <Users className="w-8 h-8 text-primary" />
-            Advocate Directory
-          </h1>
-          <p className="text-muted-foreground mt-2 font-medium">
-            Verified Telangana & AP advocates — filter by district, practice area, and language.
-          </p>
-        </div>
-        {user?.role === "lawyer" && (
-          <Button onClick={() => setShowRegister(true)} size="lg" className="shadow-md flex-shrink-0">
-            <Plus className="w-5 h-5 mr-2" /> List Your Profile
-          </Button>
-        )}
-      </div>
-
+    <PageShell title="Advocate Directory" subtitle="Verified Telangana & AP advocates — filter by district, practice area, and language." icon={<Users className="w-6 h-6 text-primary" />}
+      action={user?.role === "lawyer" ? (
+        <Button onClick={() => setShowRegister(true)} size="lg" className="shadow-md flex-shrink-0">
+          <Plus className="w-5 h-5 mr-2" /> List Your Profile
+        </Button>
+      ) : undefined}>
       <div className="space-y-8">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
@@ -410,6 +399,6 @@ export default function LawyersPage() {
       <AnimatePresence>
         {showRegister && <RegisterModal onClose={() => setShowRegister(false)} />}
       </AnimatePresence>
-    </div>
+    </PageShell>
   );
 }

@@ -111,15 +111,15 @@ function ClientSidebar({ onNav }: { onNav?: () => void }) {
     { path: "/legal-aid", label: "Free Legal Aid", icon: Shield },
   ];
   return (
-    <div className="h-full flex flex-col" style={{ background: "#1a2744", color: "#fff" }}>
+    <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
-            <Scale className="w-4 h-4" style={{ color: "#FBBF24" }} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sidebar-accent">
+            <Scale className="w-4 h-4 text-sidebar-primary" />
           </div>
-          <span className="font-bold text-sm tracking-tight">LitigaForge</span>
+          <span className="font-bold text-sm tracking-tight text-sidebar-foreground">LitigaForge</span>
         </div>
-        <p className="text-[11px] opacity-50 font-medium">Client Portal</p>
+        <p className="text-[11px] text-sidebar-foreground/50 font-medium">Client Portal</p>
       </div>
       <nav className="flex-1 px-3 space-y-1 overflow-auto">
         {items.map((item) => {
@@ -127,24 +127,24 @@ function ClientSidebar({ onNav }: { onNav?: () => void }) {
           const active = location === item.path;
           return (
             <button key={item.path} onClick={() => { setLocation(item.path); onNav?.(); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left ${active ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"}`}>
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left ${active ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"}`}>
               <Icon className="w-4 h-4 flex-shrink-0" /> {item.label}
             </button>
           );
         })}
       </nav>
-      <div className="px-4 py-4 border-t border-white/10">
+      <div className="px-4 py-4 border-t border-sidebar-border">
         <div className="flex items-center gap-2.5 mb-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#2563EB" }}>
-            <User className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-sidebar-primary">
+            <User className="w-4 h-4 text-sidebar-primary-foreground" />
           </div>
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold truncate">{user?.name || "Client"}</p>
-            <p className="text-[10px] opacity-50 truncate">{user?.email}</p>
+            <p className="text-[12px] font-semibold truncate text-sidebar-foreground">{user?.name || "Client"}</p>
+            <p className="text-[10px] text-sidebar-foreground/50 truncate">{user?.email}</p>
           </div>
         </div>
         <button onClick={() => { logout(); setLocation("/login"); }}
-          className="w-full text-[11px] font-semibold py-2 rounded-lg border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-all">
+          className="w-full text-[11px] font-semibold py-2 rounded-lg border border-sidebar-border text-sidebar-foreground/70 hover:text-sidebar-foreground hover:border-sidebar-border/80 transition-all">
           Sign Out
         </button>
       </div>
@@ -158,11 +158,11 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }}
-        onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto"
-        style={{ border: "1px solid #E2E8F0" }}>
-        <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
-          <h3 className="font-bold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
+        onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto border border-border"
+        >
+        <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b flex items-center justify-between">
+          <h3 className="font-bold text-foreground">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"><X className="w-4 h-4 text-muted-foreground" /></button>
         </div>
         <div className="p-5">{children}</div>
       </motion.div>
@@ -182,7 +182,7 @@ function CaseStageTimeline({ stage }: { stage: string }) {
           <div key={s} className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full ${done ? "bg-emerald-500" : "bg-gray-200"}`} />
             {isCurrent && <span className="text-[10px] font-semibold text-emerald-600 ml-0.5">{stageLabel(s)}</span>}
-            {i < CASE_STAGES.length - 1 && <div className={`w-3 h-px ${done ? "bg-emerald-300" : "bg-gray-100"}`} />}
+            {i < CASE_STAGES.length - 1 && <div className={`w-3 h-px ${done ? "bg-emerald-300" : "bg-muted"}`} />}
           </div>
         );
       })}
@@ -280,13 +280,13 @@ export default function ClientDashboard() {
   const firstName = user?.name?.split(" ")[0] ?? "Client";
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div className="flex h-screen overflow-hidden">
       {/* Mobile overlay */}
       <AnimatePresence>
         {drawerOpen && (
           <>
             <motion.div key="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setDrawerOpen(false)} />
+              className="fixed inset-0 z-40 md:hidden bg-black/60"  onClick={() => setDrawerOpen(false)} />
             <motion.aside key="drawer" initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className="fixed left-0 top-0 bottom-0 w-72 z-50 md:hidden shadow-2xl">
@@ -301,22 +301,21 @@ export default function ClientDashboard() {
 
       {/* Main */}
       <main className="flex-1 h-full overflow-auto pb-16 md:pb-0">
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b px-5 py-3 flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors" onClick={() => setDrawerOpen(true)}>
-              <Menu className="w-4 h-4 text-gray-600" />
+            <button className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors" onClick={() => setDrawerOpen(true)}>
+              <Menu className="w-4 h-4 text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Good day, {firstName}</h1>
-              <p className="text-[11px] text-gray-400">{clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected</p>
+              <h1 className="text-lg font-bold text-foreground">Good day, {firstName}</h1>
+              <p className="text-[11px] text-muted-foreground">{clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setLocation("/subscription")} className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-colors"
-              style={{ borderColor: "#FDE68A", color: "#B45309", background: "#FEF3C7" }}>
+            <button onClick={() => setLocation("/subscription")} className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-amber-200 text-amber-700 bg-amber-50 transition-colors">
               <Award className="w-3 h-3" /> {user?.subscription_tier === "free" ? "Free" : user?.subscription_tier === "professional" ? "Pro" : "Advocate Pro"}
             </button>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "#1a2744" }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary">
               <User className="w-4 h-4 text-white" />
             </div>
           </div>
@@ -351,31 +350,31 @@ export default function ClientDashboard() {
                 ].map((s) => {
                   const Icon = s.icon;
                   return (
-                    <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+                    <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-border" >
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: s.bg }}><Icon className="w-3.5 h-3.5" style={{ color: s.color }} /></div>
-                        <span className="text-[11px] font-medium text-gray-500">{s.label}</span>
+                        <span className="text-[11px] font-medium text-muted-foreground">{s.label}</span>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{s.value}</p>
+                      <p className="text-2xl font-bold text-foreground">{s.value}</p>
                     </div>
                   );
                 })}
               </div>
 
               {/* My Assigned Cases — Lawyer Dashboard Style */}
-              <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+              <div className="bg-white rounded-2xl shadow-sm border border-border" >
                 {/* Header with search + tabs */}
-                <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
+                <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#EFF6FF" }}><FileCheck className="w-4 h-4 text-blue-600" /></div>
-                    <h2 className="font-bold text-gray-900 text-sm">My Assigned Cases</h2>
-                    <span className="text-[11px] text-gray-400 ml-1">({clientCases.length})</span>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50" ><FileCheck className="w-4 h-4 text-blue-600" /></div>
+                    <h2 className="font-bold text-foreground text-sm">My Assigned Cases</h2>
+                    <span className="text-[11px] text-muted-foreground ml-1">({clientCases.length})</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-0.5">
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
                       {(["active","pending","closed"] as const).map((t) => (
                         <button key={t} onClick={() => setCaseTab(t)}
-                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${caseTab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${caseTab === t ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-muted-foreground"}`}>
                           {t}
                         </button>
                       ))}
@@ -384,18 +383,18 @@ export default function ClientDashboard() {
                 </div>
 
                 {/* Search bar */}
-                <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
-                  <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
-                    <Search className="w-4 h-4 text-gray-400" />
+                <div className="px-5 py-3 border-b">
+                  <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
+                    <Search className="w-4 h-4 text-muted-foreground" />
                     <input
                       type="text"
                       placeholder="Search cases by title, court, or CNR..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none"
+                      className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
                     />
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-gray-600">
+                      <button onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-muted-foreground">
                         <X className="w-4 h-4" />
                       </button>
                     )}
@@ -404,12 +403,12 @@ export default function ClientDashboard() {
 
                 {/* Case list */}
                 <div className="p-4 space-y-2.5">
-                  {casesLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
+                  {casesLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>}
                   {!casesLoading && clientCases.length === 0 && (
-                    <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-                      <Briefcase className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No cases assigned yet.</p>
-                      <button onClick={() => setLocation("/post-case")} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800">Post a case to get matched →</button>
+                    <div className="rounded-xl p-6 text-center bg-muted/40 border border-dashed border-border" >
+                      <Briefcase className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No cases assigned yet.</p>
+                      <button onClick={() => setLocation("/post-case")} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700">Post a case to get matched →</button>
                     </div>
                   )}
                   {!casesLoading && clientCases.length > 0 && (() => {
@@ -417,24 +416,24 @@ export default function ClientDashboard() {
                       .filter((c) => c.status === caseTab)
                       .filter((c) => !searchQuery || [c.title, c.court_name, c.cnr_number, c.case_type].some((f) => f?.toLowerCase().includes(searchQuery.toLowerCase())));
                     if (filtered.length === 0) {
-                      return <p className="text-sm text-gray-400 text-center py-6">No {caseTab} cases{searchQuery ? " matching your search" : ""}.</p>;
+                      return <p className="text-sm text-muted-foreground text-center py-6">No {caseTab} cases{searchQuery ? " matching your search" : ""}.</p>;
                     }
                     return filtered.map((c) => (
                       <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                        className="rounded-xl p-4 hover:shadow-sm transition-all bg-muted/40 border border-border" >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-50" >
                               <Briefcase className="w-4 h-4 text-blue-600" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
-                                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : c.status === "pending" ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>{c.status.toUpperCase()}</span>
+                                <span className="font-semibold text-foreground text-sm">{c.title}</span>
+                                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100" >{c.case_type}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : c.status === "pending" ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-muted text-muted-foreground border border-border"}`}>{c.status.toUpperCase()}</span>
                               </div>
                               <CaseStageTimeline stage={c.case_stage} />
-                              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+                              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
                                 {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
                                 {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{c.cnr_number}</span>}
                                 {c.hearing_date && (
@@ -448,7 +447,7 @@ export default function ClientDashboard() {
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <button
                               onClick={() => { setShowEditCase(c); setEditDesc(c.description || ""); setEditHearing(c.hearing_date || ""); }}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
                               title="Edit case"
                             >
                               <PenSquare className="w-3.5 h-3.5" />
@@ -459,7 +458,7 @@ export default function ClientDashboard() {
                                 if (navigator.share) navigator.share({ title: c.title, text });
                                 else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
                               }}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                               title="Share case"
                             >
                               <Share2 className="w-3.5 h-3.5" />
@@ -473,14 +472,14 @@ export default function ClientDashboard() {
                                 a.download = `case-${c.id}.txt`;
                                 a.click();
                               }}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-violet-600 hover:bg-violet-50 transition-colors"
                               title="Download case"
                             >
                               <Download className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setShowCaseDetail(c)}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted transition-colors"
                               title="View details"
                             >
                               <ChevronRight className="w-4 h-4" />
@@ -494,54 +493,54 @@ export default function ClientDashboard() {
               </div>
 
               {/* Match Proposals */}
-              <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
+              <div className="bg-white rounded-2xl shadow-sm border border-border" >
+                <div className="px-5 py-4 border-b flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}><Sparkles className="w-4 h-4 text-violet-600" /></div>
-                    <h2 className="font-bold text-gray-900 text-sm">Match Proposals</h2>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-50" ><Sparkles className="w-4 h-4 text-violet-600" /></div>
+                    <h2 className="font-bold text-foreground text-sm">Match Proposals</h2>
                   </div>
-                  <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-0.5">
+                  <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
                     {(["pending","accepted","declined"] as const).map((t) => (
                       <button key={t} onClick={() => setMatchTab(t)}
-                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${matchTab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${matchTab === t ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-muted-foreground"}`}>
                         {t}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="p-4 space-y-3">
-                  {matchLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
+                  {matchLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>}
                   {!matchLoading && filteredMatches.length === 0 && (
-                    <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-                      <Sparkles className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No {matchTab} proposals.</p>
+                    <div className="rounded-xl p-6 text-center bg-muted/40 border border-dashed border-border" >
+                      <Sparkles className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No {matchTab} proposals.</p>
                       {matchTab === "pending" && (
-                        <button onClick={() => setLocation("/my-cases")} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800">Check your cases →</button>
+                        <button onClick={() => setLocation("/my-cases")} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700">Check your cases →</button>
                       )}
                     </div>
                   )}
                   {filteredMatches.map((m) => (
                     <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl p-4" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                      className="rounded-xl p-4 bg-muted/40 border border-border" >
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#1a2744" }}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary" >
                           <User className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-gray-900 text-sm">{m.lawyer_name}</span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444" }}>{m.match_score} Match</span>
+                            <span className="font-semibold text-foreground text-sm">{m.lawyer_name}</span>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-primary-foreground" style={{ background: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444" }}>{m.match_score} Match</span>
                             {m.rating > 0 && (
                               <span className="text-[11px] flex items-center gap-0.5 text-amber-600"><Star className="w-3 h-3 fill-amber-400" />{m.rating}</span>
                             )}
                           </div>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{m.district} · {m.experience_years} yrs · ₹{m.hourly_rate}/hr</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{m.district} · {m.experience_years} yrs · ₹{m.hourly_rate}/hr</p>
                           {m.ai_explanation && (
-                            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed line-clamp-2">{m.ai_explanation}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{m.ai_explanation}</p>
                           )}
                           {m.client_message && (
-                            <div className="mt-2 rounded-lg p-2.5 text-[11px] text-gray-600" style={{ background: "#F1F5F9" }}>
-                              <span className="font-semibold text-gray-700">Lawyer says:</span> {m.client_message}
+                            <div className="mt-2 rounded-lg p-2.5 text-[11px] text-muted-foreground bg-muted" >
+                              <span className="font-semibold text-foreground">Lawyer says:</span> {m.client_message}
                             </div>
                           )}
                           <div className="flex items-center gap-2 mt-3">
@@ -549,26 +548,26 @@ export default function ClientDashboard() {
                               <>
                                 <button onClick={() => acceptMut.mutate(m.id)}
                                   disabled={acceptMut.isPending}
-                                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 transition-colors"
-                                  style={{ background: "#059669" }}>
+                                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 transition-colors bg-emerald-600"
+                                  >
                                   {acceptMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Accept"}
                                 </button>
                                 <button onClick={() => declineMut.mutate(m.id)}
                                   disabled={declineMut.isPending}
-                                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors">
                                   {declineMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Decline"}
                                 </button>
                               </>
                             )}
                             {m.status === "accepted" && (
                               <button onClick={() => setShowMessageModal({ matchId: m.id, lawyerName: m.lawyer_name })}
-                                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white flex items-center gap-1 transition-colors"
-                                style={{ background: "#2563EB" }}>
+                                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white flex items-center gap-1 transition-colors bg-blue-600"
+                                >
                                 <MessageSquare className="w-3 h-3" /> Message
                               </button>
                             )}
                             <button onClick={() => setShowMatchDetail(m)}
-                              className="text-[11px] font-medium text-blue-600 hover:text-blue-800 transition-colors ml-auto">View Profile →</button>
+                              className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors ml-auto">View Profile →</button>
                           </div>
                         </div>
                       </div>
@@ -581,62 +580,62 @@ export default function ClientDashboard() {
             {/* Right sidebar */}
             <aside className="space-y-4">
               {/* Upcoming Hearings */}
-              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
+              <div className="bg-white rounded-2xl shadow-sm p-4 border border-border" >
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#FEF3C7" }}><Calendar className="w-4 h-4 text-amber-600" /></div>
-                  <p className="text-sm font-bold text-gray-900">Upcoming Hearings</p>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50" ><Calendar className="w-4 h-4 text-amber-600" /></div>
+                  <p className="text-sm font-bold text-foreground">Upcoming Hearings</p>
                 </div>
                 <div className="space-y-2">
                   {clientCases.filter((c) => c.hearing_date).slice(0, 3).map((c) => (
-                    <div key={c.id} className="flex items-start gap-2 p-2.5 rounded-lg" style={{ background: "#FEF3C7" }}>
+                    <div key={c.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50" >
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-100">
                         <Bell className="w-3.5 h-3.5 text-amber-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold text-gray-800 truncate">{c.title}</p>
-                        <p className="text-[11px] text-gray-500">{c.court_name || "District Court"}</p>
+                        <p className="text-[12px] font-semibold text-foreground truncate">{c.title}</p>
+                        <p className="text-[11px] text-muted-foreground">{c.court_name || "District Court"}</p>
                         <p className="text-[11px] text-amber-700 font-medium">{new Date(c.hearing_date).toLocaleDateString("en-IN")}</p>
                       </div>
                     </div>
                   ))}
                   {clientCases.filter((c) => c.hearing_date).length === 0 && (
-                    <p className="text-[12px] text-gray-400 text-center py-2">No upcoming hearings</p>
+                    <p className="text-[12px] text-muted-foreground text-center py-2">No upcoming hearings</p>
                   )}
                 </div>
               </div>
 
               {/* My Lawyers */}
-              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
+              <div className="bg-white rounded-2xl shadow-sm p-4 border border-border" >
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#ECFDF5" }}><User className="w-4 h-4 text-emerald-600" /></div>
-                  <p className="text-sm font-bold text-gray-900">My Lawyers</p>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50" ><User className="w-4 h-4 text-emerald-600" /></div>
+                  <p className="text-sm font-bold text-foreground">My Lawyers</p>
                 </div>
                 <div className="space-y-2">
                   {clientCases.filter((c, i, arr) => arr.findIndex((x) => x.lawyer_id === c.lawyer_id) === i).map((c) => (
-                    <div key={c.lawyer_id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#1a2744" }}>
+                    <div key={c.lawyer_id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-primary" >
                         <User className="w-4 h-4 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-medium text-gray-800 truncate">{c.lawyer_name || "Advocate"}</p>
-                        <p className="text-[10px] text-gray-400">{c.case_type}</p>
+                        <p className="text-[12px] font-medium text-foreground truncate">{c.lawyer_name || "Advocate"}</p>
+                        <p className="text-[10px] text-muted-foreground">{c.case_type}</p>
                       </div>
                       {c.lawyer_phone && (
-                        <a href={`tel:${c.lawyer_phone}`} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100">
-                          <Phone className="w-3.5 h-3.5 text-gray-400" />
+                        <a href={`tel:${c.lawyer_phone}`} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-muted">
+                          <Phone className="w-3.5 h-3.5 text-muted-foreground" />
                         </a>
                       )}
                     </div>
                   ))}
                   {clientCases.length === 0 && (
-                    <p className="text-[12px] text-gray-400 text-center py-2">No lawyers yet</p>
+                    <p className="text-[12px] text-muted-foreground text-center py-2">No lawyers yet</p>
                   )}
                 </div>
               </div>
 
               {/* Legal Tools */}
-              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
-                <p className="text-sm font-bold text-gray-900 mb-3">Legal Tools</p>
+              <div className="bg-white rounded-2xl shadow-sm p-4 border border-border" >
+                <p className="text-sm font-bold text-foreground mb-3">Legal Tools</p>
                 <div className="space-y-1">
                   {[
                     { label: "Document Analyzer", icon: FileText, href: "/review" },
@@ -647,8 +646,8 @@ export default function ClientDashboard() {
                     const Icon = item.icon;
                     return (
                       <button key={item.label} onClick={() => setLocation(item.href)}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-600 hover:text-blue-700 hover:bg-blue-50 transition-colors text-[12px] font-medium text-left">
-                        <Icon className="w-3.5 h-3.5 flex-shrink-0" /> {item.label} <ChevronRight className="w-3 h-3 ml-auto text-gray-300" />
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-muted-foreground hover:text-blue-700 hover:bg-blue-50 transition-colors text-[12px] font-medium text-left">
+                        <Icon className="w-3.5 h-3.5 flex-shrink-0" /> {item.label} <ChevronRight className="w-3 h-3 ml-auto text-muted-foreground/40" />
                       </button>
                     );
                   })}
@@ -656,21 +655,21 @@ export default function ClientDashboard() {
               </div>
 
               {/* NALSA */}
-              <div className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: "#F1F5F9" }}>
-                <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <div className="rounded-xl p-3 flex items-center gap-2.5 bg-muted" >
+                <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-700">NALSA Free Legal Aid</p>
-                  <p className="text-[11px] text-gray-500">Toll-free: 15100</p>
+                  <p className="text-[11px] font-semibold text-foreground">NALSA Free Legal Aid</p>
+                  <p className="text-[11px] text-muted-foreground">Toll-free: 15100</p>
                 </div>
               </div>
 
               {/* Upgrade banner */}
               {user?.subscription_tier === "free" && (
-                <div className="rounded-2xl p-4 text-white" style={{ background: "linear-gradient(135deg, #1e3a8a, #1d4ed8)" }}>
-                  <Award className="w-6 h-6 mb-2" style={{ color: "#FBBF24" }} />
+                <div className="rounded-2xl p-4 text-sidebar-foreground bg-gradient-to-br from-sidebar to-sidebar-accent" >
+                  <Award className="w-6 h-6 mb-2 w-4 h-4 text-amber-400"  />
                   <p className="font-bold text-sm mb-1">Upgrade to Professional</p>
-                  <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "#BFDBFE" }}>Priority lawyer matching, unlimited AI credits, WhatsApp alerts.</p>
-                  <button onClick={() => setLocation("/subscription")} className="w-full text-xs font-bold py-2 rounded-lg transition-colors" style={{ background: "#FBBF24", color: "#1a2744" }}>Upgrade — ₹999/mo</button>
+                  <p className="text-[11px] mb-3 leading-relaxed text-blue-200" >Priority lawyer matching, unlimited AI credits, WhatsApp alerts.</p>
+                  <button onClick={() => setLocation("/subscription")} className="w-full text-xs font-bold py-2 rounded-lg transition-colors bg-amber-400 text-primary" >Upgrade — ₹999/mo</button>
                 </div>
               )}
             </aside>
@@ -683,39 +682,39 @@ export default function ClientDashboard() {
         {showCaseDetail && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Case Type</p>
-                <p className="text-sm font-bold text-gray-900">{showCaseDetail.case_type}</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Case Type</p>
+                <p className="text-sm font-bold text-foreground">{showCaseDetail.case_type}</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Court</p>
-                <p className="text-sm font-bold text-gray-900">{showCaseDetail.court_name || "N/A"}</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Court</p>
+                <p className="text-sm font-bold text-foreground">{showCaseDetail.court_name || "N/A"}</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">CNR Number</p>
-                <p className="text-sm font-bold text-gray-900">{showCaseDetail.cnr_number || "N/A"}</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">CNR Number</p>
+                <p className="text-sm font-bold text-foreground">{showCaseDetail.cnr_number || "N/A"}</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Hearing Date</p>
-                <p className="text-sm font-bold text-gray-900">{showCaseDetail.hearing_date ? new Date(showCaseDetail.hearing_date).toLocaleDateString("en-IN") : "N/A"}</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Hearing Date</p>
+                <p className="text-sm font-bold text-foreground">{showCaseDetail.hearing_date ? new Date(showCaseDetail.hearing_date).toLocaleDateString("en-IN") : "N/A"}</p>
               </div>
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-gray-700 mb-1">Case Stage</p>
+              <p className="text-[11px] font-semibold text-foreground mb-1">Case Stage</p>
               <CaseStageTimeline stage={showCaseDetail.case_stage} />
             </div>
             {showCaseDetail.description && (
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[11px] font-semibold text-gray-700 mb-1">Description</p>
-                <p className="text-[12px] text-gray-600">{showCaseDetail.description}</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[11px] font-semibold text-foreground mb-1">Description</p>
+                <p className="text-[12px] text-muted-foreground">{showCaseDetail.description}</p>
               </div>
             )}
 
             {/* ── Documents Panel ── */}
-            <div className="rounded-xl p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+            <div className="rounded-xl p-3 bg-muted/40 border border-border" >
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] font-semibold text-gray-700">Case Documents</p>
-                <label className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md text-white cursor-pointer transition-colors" style={{ background: "#2563EB" }}>
+                <p className="text-[11px] font-semibold text-foreground">Case Documents</p>
+                <label className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md text-white cursor-pointer transition-colors bg-blue-600" >
                   <Upload className="w-3 h-3" />
                   {docUploading ? "Uploading..." : "Upload"}
                   <input type="file" className="hidden" disabled={docUploading}
@@ -746,24 +745,24 @@ export default function ClientDashboard() {
                 </label>
               </div>
               {caseDocs.length === 0 ? (
-                <p className="text-[11px] text-gray-400 text-center py-2">No documents yet. Upload case files here.</p>
+                <p className="text-[11px] text-muted-foreground text-center py-2">No documents yet. Upload case files here.</p>
               ) : (
                 <div className="space-y-1.5">
                   {caseDocs.map((doc: any) => (
                     <motion.div key={doc.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="flex items-center justify-between rounded-lg p-2.5" style={{ background: "#FFFFFF", border: "1px solid #F1F5F9" }}>
+                      className="flex items-center justify-between rounded-lg p-2.5 bg-card border border-border">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
+                        <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 bg-blue-50" >
                           <FileText className="w-3.5 h-3.5 text-blue-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[11px] font-medium text-gray-900 truncate">{doc.filename}</p>
-                          <p className="text-[10px] text-gray-400">{doc.file_type} · {doc.file_size ? (doc.file_size / 1024).toFixed(1) + " KB" : "N/A"}</p>
+                          <p className="text-[11px] font-medium text-foreground truncate">{doc.filename}</p>
+                          <p className="text-[10px] text-muted-foreground">{doc.file_type} · {doc.file_size ? (doc.file_size / 1024).toFixed(1) + " KB" : "N/A"}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <a href={doc.file_url} download={doc.filename}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Download">
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Download">
                           <Download className="w-3.5 h-3.5" />
                         </a>
                         <button onClick={() => {
@@ -771,7 +770,7 @@ export default function ClientDashboard() {
                           if (navigator.share) navigator.share({ title: doc.filename, text });
                           else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
                         }}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Share">
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Share">
                           <Share2 className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={async () => {
@@ -781,7 +780,7 @@ export default function ClientDashboard() {
                             setCaseDocs(prev => prev.filter(d => d.id !== doc.id));
                           } catch { alert("Failed to delete"); }
                         }}
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -795,7 +794,7 @@ export default function ClientDashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => { setShowEditCase(showCaseDetail); setEditDesc(showCaseDetail.description || ""); setEditHearing(showCaseDetail.hearing_date || ""); setShowCaseDetail(null); }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">
                 <PenSquare className="w-3.5 h-3.5" /> Edit
               </button>
               <button
@@ -807,7 +806,7 @@ export default function ClientDashboard() {
                     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
                   }
                 }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">
                 <Share2 className="w-3.5 h-3.5" /> Share
               </button>
               <button
@@ -821,16 +820,16 @@ export default function ClientDashboard() {
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">
                 <Download className="w-3.5 h-3.5" /> Download
               </button>
               {showCaseDetail.lawyer_phone && (
-                <a href={`tel:${showCaseDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg text-white transition-colors" style={{ background: "#059669" }}>
+                <a href={`tel:${showCaseDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg text-white transition-colors bg-emerald-600" >
                   <Phone className="w-3.5 h-3.5" /> Call Lawyer
                 </a>
               )}
               {showCaseDetail.lawyer_email && (
-                <a href={`mailto:${showCaseDetail.lawyer_email}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                <a href={`mailto:${showCaseDetail.lawyer_email}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">
                   <Send className="w-3.5 h-3.5" /> Email Lawyer
                 </a>
               )}
@@ -844,14 +843,14 @@ export default function ClientDashboard() {
         {showEditCase && (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Description</label>
+              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Description</label>
               <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={4} placeholder="Update case description..."
-                className="w-full text-sm px-3 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all resize-none" style={{ borderColor: "#E2E8F0" }} />
+                className="w-full text-sm px-3 py-2.5 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none" />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Next Hearing Date</label>
+              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Next Hearing Date</label>
               <input type="date" value={editHearing} onChange={(e) => setEditHearing(e.target.value)}
-                className="w-full text-sm px-3 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" style={{ borderColor: "#E2E8F0" }} />
+                className="w-full text-sm px-3 py-2.5 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
             </div>
             <button
               onClick={() => {
@@ -863,7 +862,7 @@ export default function ClientDashboard() {
                   setShowEditCase(null);
                 });
               }}
-              className="w-full text-xs font-bold py-2.5 rounded-lg text-white transition-colors" style={{ background: "#2563EB" }}>
+              className="w-full text-xs font-bold py-2.5 rounded-lg text-white transition-colors bg-blue-600" >
               Save Changes
             </button>
           </div>
@@ -875,46 +874,46 @@ export default function ClientDashboard() {
         {showMatchDetail && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "#1a2744" }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary" >
                 <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="font-bold text-gray-900">{showMatchDetail.lawyer_name}</p>
-                <p className="text-[11px] text-gray-500">{showMatchDetail.district} · Bar: {showMatchDetail.bar_number}</p>
+                <p className="font-bold text-foreground">{showMatchDetail.lawyer_name}</p>
+                <p className="text-[11px] text-muted-foreground">{showMatchDetail.district} · Bar: {showMatchDetail.bar_number}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Experience</p>
-                <p className="text-sm font-bold text-gray-900">{showMatchDetail.experience_years} years</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Experience</p>
+                <p className="text-sm font-bold text-foreground">{showMatchDetail.experience_years} years</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Hourly Rate</p>
-                <p className="text-sm font-bold text-gray-900">₹{showMatchDetail.hourly_rate}</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Hourly Rate</p>
+                <p className="text-sm font-bold text-foreground">₹{showMatchDetail.hourly_rate}</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Rating</p>
-                <p className="text-sm font-bold text-gray-900 flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />{showMatchDetail.rating || "N/A"}</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Rating</p>
+                <p className="text-sm font-bold text-foreground flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />{showMatchDetail.rating || "N/A"}</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Match Score</p>
+              <div className="rounded-lg p-3 bg-muted/40 border border-border" >
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Match Score</p>
                 <p className="text-sm font-bold" style={{ color: showMatchDetail.match_score >= 80 ? "#059669" : showMatchDetail.match_score >= 60 ? "#D97706" : "#EF4444" }}>{showMatchDetail.match_score}/100</p>
               </div>
             </div>
             {showMatchDetail.ai_explanation && (
               <div className="rounded-lg p-3" style={{ background: "#F0F9FF", border: "1px solid #DBEAFE" }}>
                 <p className="text-[11px] font-semibold text-blue-700 mb-1">AI Match Explanation</p>
-                <p className="text-[12px] text-gray-600 leading-relaxed">{showMatchDetail.ai_explanation}</p>
+                <p className="text-[12px] text-muted-foreground leading-relaxed">{showMatchDetail.ai_explanation}</p>
               </div>
             )}
             <div className="flex items-center gap-2">
               {showMatchDetail.lawyer_phone && (
-                <a href={`tel:${showMatchDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg text-white transition-colors" style={{ background: "#059669" }}>
+                <a href={`tel:${showMatchDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg text-white transition-colors bg-emerald-600" >
                   <Phone className="w-3.5 h-3.5" /> Call
                 </a>
               )}
               {showMatchDetail.lawyer_email && (
-                <a href={`mailto:${showMatchDetail.lawyer_email}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                <a href={`mailto:${showMatchDetail.lawyer_email}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">
                   <Send className="w-3.5 h-3.5" /> Email
                 </a>
               )}
@@ -926,9 +925,9 @@ export default function ClientDashboard() {
       {/* Message Modal */}
       <Modal open={!!showMessageModal} onClose={() => setShowMessageModal(null)} title={`Message ${showMessageModal?.lawyerName || ""}`}>
         <div className="space-y-3">
-          <p className="text-[12px] text-gray-500">Send a message to this lawyer. A chat thread will be created automatically.</p>
+          <p className="text-[12px] text-muted-foreground">Send a message to this lawyer. A chat thread will be created automatically.</p>
           <textarea value={messageText} onChange={(e) => setMessageText(e.target.value)} rows={4} placeholder="Type your message..."
-            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors resize-none" style={{ borderColor: "#E2E8F0" }} />
+            className="w-full text-sm px-3 py-2.5 rounded-lg border border-border focus:outline-none focus:border-primary transition-colors resize-none" />
           <button
             onClick={() => {
               if (!showMessageModal || !messageText.trim()) return;
@@ -945,8 +944,8 @@ export default function ClientDashboard() {
               }
             }}
             disabled={!messageText.trim() || sendMsgMut.isPending}
-            className="w-full text-xs font-bold py-2.5 rounded-lg text-white disabled:opacity-50 transition-colors"
-            style={{ background: "#2563EB" }}>
+            className="w-full text-xs font-bold py-2.5 rounded-lg text-white disabled:opacity-50 transition-colors bg-blue-600"
+            >
             {sendMsgMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Send Message"}
           </button>
         </div>

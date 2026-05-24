@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Heart, Phone, Globe, MapPin, ChevronRight, CheckCircle2, XCircle, ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -92,20 +93,9 @@ export default function LegalAid() {
 
   const dlsa = contacts?.districts.find(d => d.district === district);
 
-  return (<>
+  return (
+    <PageShell title="Free Legal Aid" subtitle="Check if you qualify for free legal aid under NALSA and find your nearest Telangana DLSA office." icon={<Heart className="w-6 h-6 text-primary" />}>
       <SEOHelmet title="Free Legal Aid" description="NALSA eligibility wizard and DLSA helplines." canonical="/legal-aid" />
-    <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-10 text-center max-w-2xl mx-auto">
-         <div className="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-6">
-            <Heart className="w-8 h-8" />
-         </div>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight mb-4">
-          Free Legal Aid
-        </h1>
-        <p className="text-lg text-muted-foreground font-medium">
-          Check if you qualify for free legal aid under NALSA and find your nearest Telangana DLSA office.
-        </p>
-      </div>
 
       <div className="space-y-8">
         {/* Eligibility wizard */}
@@ -302,6 +292,6 @@ export default function LegalAid() {
           </div>
         )}
       </div>
-    </div>
-  </>);
+    </PageShell>
+  );
 }

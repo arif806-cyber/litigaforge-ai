@@ -4,6 +4,7 @@ import { Scale, Loader2, AlertTriangle, Eye, EyeOff, User, Briefcase, ArrowRight
 import { useAuth } from "@/lib/auth-context";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
+import OnboardingModal from "@/components/OnboardingModal";
 
 type Role = "client" | "lawyer";
 type Mode = "signin" | "signup";
@@ -22,6 +23,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const isSignIn = mode === "signin";
   const isClient = role === "client";
@@ -43,8 +45,16 @@ export default function Login() {
     try {
       if (isSignIn) {
         await login(email, password);
+        // login() in auth-context redirects; no extra handling needed
       } else {
         await register(name, email, password, role);
+        // Show onboarding for first-time users
+        const alreadyOnboarded = localStorage.getItem("lf_onboarded");
+        if (!alreadyOnboarded) {
+          setShowOnboarding(true);
+        } else {
+          setLocation(role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
+        }
       }
     } catch (err: any) {
       setError(err.message || (isSignIn ? "Login failed" : "Registration failed"));
@@ -60,14 +70,14 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F8FAFC", fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div className="min-h-screen flex bg-background" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
       <SEOHelmet title={isSignIn ? "Sign In" : "Create Account"} description="Access LitigaForge AI legal tools." canonical="/login" />
 
       {/* Left: Hero */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10" style={{ background: "#1a2744" }}>
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 bg-sidebar text-sidebar-foreground">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
-            <Scale className="w-4 h-4" style={{ color: "#FBBF24" }} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10">
+            <Scale className="w-4 h-4 text-amber-400" />
           </div>
           <span className="font-bold text-white text-sm tracking-tight">LitigaForge</span>
         </div>
@@ -75,27 +85,27 @@ export default function Login() {
           <h2 className="text-3xl font-bold text-white leading-tight">
             Legal intelligence<br />for Telangana & AP
           </h2>
-          <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
+          <p className="text-sm leading-relaxed text-white/60">
             Connect with verified lawyers, analyze documents, search judgments, and get AI-powered legal strategy — all in one platform.
           </p>
           <div className="flex items-center gap-4 pt-2">
             <div className="text-center">
               <p className="text-xl font-bold text-white">16</p>
-              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>Gov APIs</p>
+              <p className="text-[11px] text-white/50">Gov APIs</p>
             </div>
-            <div className="w-px h-8" style={{ background: "rgba(255,255,255,0.15)" }} />
+            <div className="w-px h-8 bg-white/15" />
             <div className="text-center">
               <p className="text-xl font-bold text-white">3</p>
-              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>AI Engines</p>
+              <p className="text-[11px] text-white/50">AI Engines</p>
             </div>
-            <div className="w-px h-8" style={{ background: "rgba(255,255,255,0.15)" }} />
+            <div className="w-px h-8 bg-white/15" />
             <div className="text-center">
               <p className="text-xl font-bold text-white">100+</p>
-              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>Lawyers</p>
+              <p className="text-[11px] text-white/50">Lawyers</p>
             </div>
           </div>
         </div>
-        <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <p className="text-[11px] text-white/30">
           Trusted by advocates across Telangana & Andhra Pradesh
         </p>
       </div>
@@ -114,8 +124,8 @@ export default function Login() {
               onClick={() => setRole("client")}
               className={`flex items-center gap-2 justify-center px-4 py-3 rounded-xl border font-semibold text-sm transition-all ${
                 isClient
-                  ? "border-[#1a2744] bg-[#1a2744] text-white shadow"
-                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                  ? "border-primary bg-primary text-primary-foreground shadow"
+                  : "border-border bg-card text-muted-foreground hover:border-border/80"
               }`}
             >
               <User className="w-4 h-4" /> Client
@@ -125,8 +135,8 @@ export default function Login() {
               onClick={() => setRole("lawyer")}
               className={`flex items-center gap-2 justify-center px-4 py-3 rounded-xl border font-semibold text-sm transition-all ${
                 !isClient
-                  ? "border-[#1a2744] bg-[#1a2744] text-white shadow"
-                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                  ? "border-primary bg-primary text-primary-foreground shadow"
+                  : "border-border bg-card text-muted-foreground hover:border-border/80"
               }`}
             >
               <Briefcase className="w-4 h-4" /> Advocate
@@ -139,7 +149,7 @@ export default function Login() {
               type="button"
               onClick={() => toggleMode("signin")}
               className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition-all ${
-                isSignIn ? "text-[#1a2744] bg-gray-100" : "text-gray-400 hover:text-gray-600"
+                isSignIn ? "text-primary bg-muted" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Sign In
@@ -148,7 +158,7 @@ export default function Login() {
               type="button"
               onClick={() => toggleMode("signup")}
               className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition-all ${
-                !isSignIn ? "text-[#1a2744] bg-gray-100" : "text-gray-400 hover:text-gray-600"
+                !isSignIn ? "text-primary bg-muted" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Create Account
@@ -156,12 +166,12 @@ export default function Login() {
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-xl p-8">
+          <div className="bg-card rounded-2xl border border-border shadow-xl p-8">
             <div className="text-center mb-6">
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-xl font-bold text-foreground">
                 {isSignIn ? `Welcome back, ${isClient ? "Client" : "Advocate"}` : `Join as ${isClient ? "Client" : "Advocate"}`}
               </h1>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {isSignIn ? "Enter your credentials to continue" : "Start your legal journey today"}
               </p>
             </div>
@@ -176,15 +186,15 @@ export default function Login() {
                     exit={{ opacity: 0, height: 0 }}
                     className="space-y-2 overflow-hidden"
                   >
-                    <label className="text-sm font-medium text-gray-700">Full Name</label>
+                    <label className="text-sm font-medium text-foreground">Full Name</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => { setName(e.target.value); setFieldErrors((p) => ({ ...p, name: "" })); }}
                       required={!isSignIn}
                       placeholder={isClient ? "Ravi Kumar" : "Adv. Ramesh Kumar"}
-                      className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a2744] focus:border-transparent transition-all ${
-                        fieldErrors.name ? "border-red-400 focus:ring-red-400" : "border-gray-200"
+                      className={`w-full px-4 py-3 rounded-xl border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                        fieldErrors.name ? "border-red-400 focus:ring-red-400" : "border-border"
                       }`}
                     />
                     {fieldErrors.name && <p className="text-xs text-red-500">{fieldErrors.name}</p>}
@@ -193,22 +203,22 @@ export default function Login() {
               </AnimatePresence>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Email Address</label>
+                <label className="text-sm font-medium text-foreground">Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setFieldErrors((p) => ({ ...p, email: "" })); }}
                   required
                   placeholder="you@example.com"
-                  className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a2744] focus:border-transparent transition-all ${
-                    fieldErrors.email ? "border-red-400 focus:ring-red-400" : "border-gray-200"
+                  className={`w-full px-4 py-3 rounded-xl border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                    fieldErrors.email ? "border-red-400 focus:ring-red-400" : "border-border"
                   }`}
                 />
                 {fieldErrors.email && <p className="text-xs text-red-500">{fieldErrors.email}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Password</label>
+                <label className="text-sm font-medium text-foreground">Password</label>
                 <div className="relative">
                   <input
                     type={showPass ? "text" : "password"}
@@ -216,14 +226,14 @@ export default function Login() {
                     onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: "" })); }}
                     required
                     placeholder="Minimum 8 characters"
-                    className={`w-full px-4 py-3 rounded-xl border bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a2744] focus:border-transparent transition-all pr-12 ${
-                      fieldErrors.password ? "border-red-400 focus:ring-red-400" : "border-gray-200"
+                    className={`w-full px-4 py-3 rounded-xl border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all pr-12 ${
+                      fieldErrors.password ? "border-red-400 focus:ring-red-400" : "border-border"
                     }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -241,26 +251,25 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading || !email || !password || (!isSignIn && !name)}
-                className="w-full h-12 rounded-xl font-semibold tracking-wide flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
-                style={{ background: "#1a2744", color: "#fff" }}
+                className="w-full h-12 rounded-xl font-semibold tracking-wide flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md bg-primary text-white"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                 {loading ? (isSignIn ? "Signing in…" : "Creating account…") : isSignIn ? "Sign In" : "Create Account"}
               </button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-gray-500">
+            <div className="mt-6 text-center text-sm text-muted-foreground">
               {isSignIn ? (
                 <>
                   New to LitigaForge?{" "}
-                  <button onClick={() => toggleMode("signup")} className="font-semibold text-[#1a2744] hover:underline">
+                  <button onClick={() => toggleMode("signup")} className="font-semibold text-primary hover:underline">
                     Create an account
                   </button>
                 </>
               ) : (
                 <>
                   Already have an account?{" "}
-                  <button onClick={() => toggleMode("signin")} className="font-semibold text-[#1a2744] hover:underline">
+                  <button onClick={() => toggleMode("signin")} className="font-semibold text-primary hover:underline">
                     Sign in
                   </button>
                 </>
@@ -268,11 +277,21 @@ export default function Login() {
             </div>
           </div>
 
-          <p className="text-center text-[11px] text-gray-400 mt-6 font-medium">
+          <p className="text-center text-[11px] text-muted-foreground mt-6 font-medium">
             By continuing, you agree to our terms of service and privacy policy
           </p>
         </motion.div>
       </div>
+
+      {/* Role-based onboarding for new registrations */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingModal
+            role={role}
+            onComplete={() => setShowOnboarding(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

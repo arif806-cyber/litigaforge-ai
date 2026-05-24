@@ -8,6 +8,7 @@ import {
   Phone, Send, ChevronRight
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -21,8 +22,8 @@ function MatchCard({ match, onAccept, onDecline, isClient }: {
       className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#1a2744" }}>
-            <UserCheck className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-sidebar">
+            <UserCheck className="w-5 h-5 text-sidebar-foreground" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -132,21 +133,15 @@ export default function Matches() {
     .filter((m: any) => !search || [m.lawyer_name, m.district, m.case_title].some((f) => f?.toLowerCase().includes(search.toLowerCase())));
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
-      <SEOHelmet title="AI Matching" description="View AI-scored lawyer matches with explanations." canonical="/matches" />
+    <PageShell title="Your Lawyer Matches" subtitle="AI-scored lawyer proposals for your cases.">
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-4">
         <button onClick={() => setLocation("/my-cases")} className="text-gray-400 hover:text-gray-600"><ArrowLeft className="w-5 h-5" /></button>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Your Lawyer Matches</h1>
-          <p className="text-gray-400 mt-1 text-sm">AI-scored lawyer proposals for your cases.</p>
-        </div>
       </div>
 
       {caseId && (
         <div className="flex items-center gap-3">
-          <Button onClick={findLawyers} disabled={isFinding} className="bg-[#1a2744] hover:bg-[#243656] text-white">
+          <Button onClick={findLawyers} disabled={isFinding}>
             {isFinding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
             Find Lawyers for Case #{caseId}
           </Button>
@@ -197,6 +192,6 @@ export default function Matches() {
           ))}
         </div>
       </div>
-    </motion.div>
+    </PageShell>
   );
 }

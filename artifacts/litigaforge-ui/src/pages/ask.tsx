@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -127,16 +128,7 @@ export default function Ask() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-          <MessageSquare className="w-8 h-8 text-primary" />
-          Legal Q&A
-        </h1>
-        <p className="text-muted-foreground mt-2 font-medium">
-          Ask any legal question — get instant answers grounded in Indian law and local procedures.
-        </p>
-      </div>
+    <PageShell title="Legal Q&A" subtitle="Ask any legal question — get instant answers grounded in Indian law and local procedures." icon={<MessageSquare className="w-6 h-6 text-primary" />}>
 
       <div className="space-y-10">
         {/* Ask form */}
@@ -268,6 +260,6 @@ export default function Ask() {
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

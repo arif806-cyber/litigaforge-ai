@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,16 +58,7 @@ export default function Judgments() {
 
   return (<>
       <SEOHelmet title="Judgment Finder" description="Search case law precedents with IndianKanoon links." canonical="/judgments" />
-    <div className="max-w-5xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-          <BookOpen className="w-8 h-8 text-primary" />
-          Judgment Finder
-        </h1>
-        <p className="text-muted-foreground mt-2 font-medium">
-          Search Indian case law — AI finds relevant precedents with citations and plain-language summaries.
-        </p>
-      </div>
+    <PageShell title="Judgment Finder" subtitle="Search Indian case law — AI finds relevant precedents with citations and plain-language summaries." icon={<BookOpen className="w-6 h-6 text-primary" />}>
 
       <div className="space-y-8">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
@@ -254,6 +246,6 @@ export default function Judgments() {
           </motion.div>
         )}
       </div>
-    </div>
+    </PageShell>
   </>);
 }

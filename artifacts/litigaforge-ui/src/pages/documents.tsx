@@ -9,6 +9,7 @@ import {
   Loader2, Search, X, ArrowLeft
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 
 export default function DocumentsPage() {
@@ -46,18 +47,11 @@ export default function DocumentsPage() {
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
-      <SEOHelmet title="Documents" description="Manage your case documents." canonical="/documents" />
-
-      <div className="flex items-center gap-3">
+    <PageShell title="Case Documents" subtitle="All your uploaded case files in one place.">
+      <div className="flex items-center gap-3 mb-4">
         <button onClick={() => setLocation("/client-dashboard")} className="text-gray-400 hover:text-gray-600">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Case Documents</h1>
-          <p className="text-gray-400 mt-1 text-sm">All your uploaded case files in one place.</p>
-        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
@@ -164,6 +158,6 @@ export default function DocumentsPage() {
           ))}
         </div>
       </div>
-    </motion.div>
+    </PageShell>
   );
 }

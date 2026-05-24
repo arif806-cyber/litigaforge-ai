@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
-import { ParticleCanvas } from "@/components/graphics/ParticleCanvas";
 import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
@@ -21,16 +20,11 @@ const clientNav = [
   { href: "/my-cases",        label: "My Cases",        icon: FileText },
   { href: "/matches",         label: "Match Proposals", icon: Sparkles },
   { href: "/documents",       label: "Documents",       icon: FileCheck },
-  { href: "/legal-chat",      label: "AI Legal Chat",   icon: MessageSquareText },
-  { href: "/ask",             label: "Legal Q&A",       icon: Gavel },
-  { href: "/judgments",       label: "Judgments",       icon: Scale },
-  { href: "/free-documents",  label: "Free Documents",  icon: FileText },
-  { href: "/legal-aid",       label: "Free Legal Aid",  icon: Heart },
 ];
 
 const lawyerNav = [
   { href: "/",                 label: "Forge",            icon: Scale },
-  { href: "/lawyer-dashboard", label: "Lawyer Dashboard", icon: Star },
+  { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star },
 ];
 
 const commonNav = [
@@ -44,9 +38,7 @@ const commonNav = [
   { href: "/free-documents", label: "Free Documents", icon: FileCheck },
 ];
 
-
-// Removed old serviceNav, using commonNav below
-
+/* ─── Animated counter ─── */
 function AnimatedCounter({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(0);
   useEffect(() => {
@@ -67,111 +59,75 @@ function AnimatedCounter({ value }: { value: number }) {
   return <span>{displayValue}</span>;
 }
 
+/* ─── Nav Item ─── */
 function NavItem({
-  href, label, icon: Icon, location, onClick, isClient,
+  href, label, icon: Icon, location, onClick,
 }: {
-  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; isClient?: boolean;
+  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void;
 }) {
   const active = href === "/" ? location === "/" : location.startsWith(href);
-  if (isClient) {
-    return (
-      <Link href={href} data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`} onClick={onClick}
-        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left ${
-          active ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"
-        }`}>
-        <Icon className="w-4 h-4 flex-shrink-0" />
-        <span>{label}</span>
-      </Link>
-    );
-  }
   return (
     <Link href={href} data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`} onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer relative group",
-        active ? "bg-primary text-primary-foreground font-medium shadow-sm" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
+        active
+          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
+          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
       )}>
-      <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-primary-foreground" : "group-hover:text-sidebar-foreground")} />
-      <span className="tracking-wide relative z-10 text-sm font-medium">{label}</span>
+      <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "group-hover:text-sidebar-foreground")} />
+      <span className="tracking-wide relative z-10">{label}</span>
     </Link>
   );
 }
 
-function AdminNavItem({ location, onNav, isClient }: { location: string; onNav?: () => void; isClient?: boolean }) {
+/* ─── Admin nav item ─── */
+function AdminNavItem({ location, onNav }: { location: string; onNav?: () => void }) {
   const { user } = useAuth();
   if (!user?.is_superuser) return null;
   const href = "/admin";
   const active = location.startsWith(href);
-  if (isClient) {
-    return (
-      <Link href={href} data-testid="nav-admin" onClick={onNav}
-        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left ${
-          active ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"
-        }`}>
-        <Shield className="w-4 h-4 flex-shrink-0" />
-        <span>Admin</span>
-      </Link>
-    );
-  }
   return (
     <Link href={href} data-testid="nav-admin" onClick={onNav}
       className={cn(
-        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer relative group",
-        active ? "bg-primary text-primary-foreground font-medium shadow-sm" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
+        active
+          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
+          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
       )}>
-      <Shield className={cn("w-4 h-4 flex-shrink-0", active ? "text-primary-foreground" : "group-hover:text-sidebar-foreground")} />
-      <span className="tracking-wide relative z-10 text-sm font-medium">Admin</span>
+      <Shield className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "group-hover:text-sidebar-foreground")} />
+      <span className="tracking-wide relative z-10">Admin</span>
     </Link>
   );
 }
 
-function UserPanel({ onNav, isClient }: { onNav?: () => void; isClient?: boolean }) {
+/* ─── User panel ─── */
+function UserPanel({ onNav }: { onNav?: () => void }) {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   if (!user) return null;
 
   const handleLogout = () => { logout(); if (onNav) onNav(); setLocation("/login"); };
 
-  if (isClient) {
-    return (
-      <div className="px-3 pb-4">
-        <div className="border-t border-white/10 pt-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.1)" }}>
-              <UserIcon className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user.name}</p>
-              <p className="text-[11px] text-white/50 truncate">{user.email}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-all text-xs font-medium">
-            <LogOut className="w-4 h-4" /> Sign Out
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="border-t border-sidebar-border px-4 py-4 space-y-4">
+    <div className="border-t border-sidebar-border/40 px-3.5 py-4 space-y-3">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-          <UserIcon className="w-4 h-4 text-primary-foreground" />
+        <div className="w-9 h-9 rounded-xl bg-sidebar-primary/20 flex items-center justify-center flex-shrink-0">
+          <UserIcon className="w-4 h-4 text-sidebar-primary-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
-          <p className="text-xs text-sidebar-foreground/60 truncate">{user.email}</p>
+          <p className="text-sm font-semibold text-sidebar-foreground truncate">{user.name}</p>
+          <p className="text-[11px] text-sidebar-foreground/50 truncate">{user.email}</p>
         </div>
       </div>
       <button onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all text-xs font-medium">
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all text-xs font-medium">
         <LogOut className="w-4 h-4" /> Sign Out
       </button>
     </div>
   );
 }
 
+/* ─── Sidebar content ─── */
 function SidebarContent({
   location, health, stats, onNav, user,
 }: {
@@ -184,49 +140,58 @@ function SidebarContent({
   const isClient = user?.role !== "lawyer";
   const roleNav = isClient ? clientNav : lawyerNav;
   const toolsNav = isClient ? commonNav.filter(i => !["/chains","/use-cases"].includes(i.href)) : commonNav;
-
-  if (isClient) {
-    return (
-      <div className="h-full flex flex-col" style={{ background: "#1a2744", color: "#fff" }}>
-        <div className="px-5 pt-6 pb-4">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
-              <Scale className="w-4 h-4" style={{ color: "#FBBF24" }} />
-            </div>
-            <span className="font-bold text-sm tracking-tight">LitigaForge</span>
-          </div>
-          <p className="text-[11px] opacity-50 font-medium">Client Portal</p>
-        </div>
-        <nav className="flex-1 px-3 space-y-1 overflow-auto">
-          <div className="px-3 pb-2 text-[11px] font-semibold opacity-40 uppercase tracking-wider">Match & Connect</div>
-          {roleNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} isClient />)}
-          <div className="px-3 pt-4 pb-2 text-[11px] font-semibold opacity-40 uppercase tracking-wider">Legal Tools</div>
-          {toolsNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} isClient />)}
-          <AdminNavItem location={location} onNav={onNav} isClient />
-        </nav>
-        <UserPanel onNav={onNav} isClient />
-      </div>
-    );
-  }
+  const roleLabel = isClient ? "Client" : "Advocate";
 
   return (
-    <>
-      <div className="px-6 py-6 border-b border-sidebar-border flex-shrink-0 flex items-center gap-3">
-        <Scale className="w-6 h-6 text-primary-foreground" />
-        <span className="text-sidebar-foreground font-bold text-lg tracking-tight">LitigaForge AI</span>
+    <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
+      {/* Brand */}
+      <div className="px-5 pt-6 pb-4 flex-shrink-0">
+        <div className="flex items-center gap-2.5 mb-2">
+          <div className="w-9 h-9 rounded-xl bg-sidebar-primary/15 flex items-center justify-center">
+            <Scale className="w-5 h-5 text-sidebar-primary" />
+          </div>
+          <div>
+            <span className="font-bold text-sm tracking-tight text-sidebar-foreground">LitigaForge</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="px-1.5 py-0.5 rounded-md bg-sidebar-accent text-[10px] font-semibold text-sidebar-accent-foreground uppercase tracking-wide">
+                {roleLabel}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <div className="px-3 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Lawyer Portal</div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 space-y-1 overflow-auto">
+        <div className="px-3 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">
+          {isClient ? "Match & Connect" : "Lawyer Portal"}
+        </div>
         {roleNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} />)}
-        <div className="px-3 pt-6 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Legal Tools</div>
+
+        <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>
         {toolsNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} />)}
         <AdminNavItem location={location} onNav={onNav} />
-      </div>
+      </nav>
+
+      {/* Stats */}
+      {stats && (
+        <div className="px-5 py-3 border-t border-sidebar-border/40 flex-shrink-0">
+          <div className="flex items-center justify-between text-[11px] text-sidebar-foreground/40">
+            <span className="flex items-center gap-1">
+              <Activity className="w-3 h-3" />
+              {health?.dummy_mode ? "Fallback" : "Live"} AI
+            </span>
+            <span>{stats.total_cases} cases</span>
+          </div>
+        </div>
+      )}
+
       <UserPanel onNav={onNav} />
-    </>
+    </div>
   );
 }
 
+/* ─── Main Layout ─── */
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -251,20 +216,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
+      {/* Mobile header */}
       <header className="flex-shrink-0 border-b border-border bg-card z-20 flex items-center justify-between px-4 h-14 shadow-sm md:hidden">
-        <div className="flex items-center gap-2">
-          <Scale className="w-5 h-5 text-primary" />
-          <span className="font-bold text-lg tracking-tight">LitigaForge AI</span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Scale className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <span className="font-bold text-sm tracking-tight">LitigaForge</span>
+            {user && (
+              <span className="ml-2 px-1.5 py-0.5 rounded bg-accent/20 text-[9px] font-bold text-accent-foreground uppercase tracking-wide">
+                {user.role !== "lawyer" ? "Client" : "Advocate"}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
-           <button
+          <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
           >
             {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           <button
-            className="flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={() => setDrawerOpen(true)}
           >
             <Menu className="w-5 h-5" />
@@ -273,32 +248,35 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex-col relative z-10 shadow-lg">
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex-col relative z-10 shadow-xl">
           <SidebarContent location={location} health={health} stats={stats} user={user} />
         </aside>
 
+        {/* Mobile backdrop */}
         <AnimatePresence>
           {drawerOpen && (
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
               onClick={() => setDrawerOpen(false)}
             />
           )}
         </AnimatePresence>
 
+        {/* Mobile drawer */}
         <AnimatePresence>
           {drawerOpen && (
             <motion.aside
               key="drawer"
               initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ type: "spring", stiffness: 350, damping: 32 }}
               className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-sidebar-border flex flex-col z-50 md:hidden shadow-2xl"
             >
               <button
-                className="absolute top-4 right-4 flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors"
+                className="absolute top-3.5 right-3.5 flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors z-50"
                 onClick={() => setDrawerOpen(false)}
               >
                 <X className="w-4 h-4" />
@@ -311,63 +289,80 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
         </AnimatePresence>
 
-        <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-16 md:pb-0 bg-muted/30">
-          <header className="hidden md:flex flex-shrink-0 h-16 border-b border-border bg-card/80 backdrop-blur-md px-8 items-center justify-between sticky top-0 z-10">
-            <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
+        {/* Main content */}
+        <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-20 md:pb-0 bg-background">
+          {/* Desktop sticky header */}
+          <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card/80 backdrop-blur-md px-6 items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
               {health?.dummy_mode ? (
-                <span className="flex items-center gap-2 text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 rounded-md">
-                   <AlertTriangle className="w-4 h-4" /> Fallback Mode
+                <span className="flex items-center gap-2 text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg text-xs border border-amber-200 dark:border-amber-900">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Fallback Mode
                 </span>
               ) : (
-                <span className="flex items-center gap-2 text-green-600 bg-green-100 dark:bg-green-900/30 px-2.5 py-1 rounded-md">
-                  <Activity className="w-4 h-4" /> Live AI Engine
+                <span className="flex items-center gap-2 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-900">
+                  <Activity className="w-3.5 h-3.5" /> Live AI Engine
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
               >
                 {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
               {user && (
-                <Link href="/subscription" className="flex items-center gap-2 text-sm font-medium text-foreground bg-accent px-3 py-1.5 rounded-lg hover:bg-accent/80 transition-colors">
-                  <Crown className="w-4 h-4 text-amber-500" />
+                <Link href="/subscription" className="flex items-center gap-2 text-xs font-semibold text-foreground bg-accent/80 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors border border-accent-border">
+                  <Crown className="w-3.5 h-3.5 text-amber-600" />
                   {TIER_LABELS[user.subscription_tier] ?? "Free"}
                 </Link>
               )}
             </div>
           </header>
+
           <div className="flex-1 relative">
-             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
-             <div className="relative z-10 min-h-full flex flex-col">
-               <div className="flex-1">{children}</div>
-               <LegalDisclaimerFooter />
-             </div>
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
+            <div className="relative z-10 min-h-full flex flex-col">
+              <div className="flex-1">{children}</div>
+              <LegalDisclaimerFooter />
+            </div>
           </div>
         </main>
       </div>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border flex items-center justify-around px-1 z-30 shadow-lg">
+      {/* Mobile bottom tab bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[68px] bg-card/95 backdrop-blur-lg border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         {(user?.role === "lawyer" ? lawyerNav : clientNav).map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? location === "/" : location.startsWith(href);
           return (
             <Link key={href} href={href}
-              className="flex flex-col items-center justify-center gap-1 min-w-[56px] h-full"
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 w-16 h-full rounded-xl transition-all",
+                active ? "text-primary" : "text-muted-foreground"
+              )}
             >
-              <Icon className={cn("w-5 h-5 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
-              <span className={cn("text-[10px] font-medium transition-colors", active ? "text-primary" : "text-muted-foreground")}>
+              <div className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+                active ? "bg-primary/10" : ""
+              )}>
+                <Icon className={cn("w-5 h-5 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
+              </div>
+              <span className={cn("text-[10px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>
                 {label}
               </span>
             </Link>
           );
         })}
-        <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center justify-center gap-1 min-w-[56px] h-full">
-           <Menu className={cn("w-5 h-5 transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
-           <span className={cn("text-[10px] font-medium", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")}>
-             More
-           </span>
+        <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center justify-center gap-1 w-16 h-full rounded-xl">
+          <div className={cn(
+            "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+            commonNav.some(s => location.startsWith(s.href)) ? "bg-primary/10" : ""
+          )}>
+            <Menu className={cn("w-5 h-5 transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
+          </div>
+          <span className={cn("text-[10px] font-medium leading-none", commonNav.some(s => location.startsWith(s.href)) ? "text-primary font-semibold" : "text-muted-foreground")}>
+            More
+          </span>
         </button>
       </nav>
     </div>

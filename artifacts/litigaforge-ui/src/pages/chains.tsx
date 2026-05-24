@@ -45,15 +45,15 @@ export default function Chains() {
 
   return (<>
       <SEOHelmet title="API Chains" description="Explore 16 government API integrations for legal intelligence." canonical="/chains" />
-    <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-          <Link2 className="w-8 h-8 text-primary" />
-          Data Pipelines
-        </h1>
-        <p className="text-muted-foreground mt-2 font-medium max-w-2xl">
-          The nervous system of LitigaForge. These independent API chains are dynamically orchestrated to build comprehensive intelligence.
-        </p>
+    <div className="space-y-6 px-4 md:px-6 py-5 max-w-7xl mx-auto">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight flex items-center gap-3">
+            <Link2 className="w-7 h-7 text-primary" />
+            Data Pipelines
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">The nervous system of LitigaForge. These independent API chains are dynamically orchestrated to build comprehensive intelligence.</p>
+        </div>
       </div>
 
       <div className="space-y-8">

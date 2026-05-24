@@ -8,6 +8,7 @@ import {
   Share2, Trash2, Sparkles
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -67,24 +68,9 @@ export default function MyCases() {
     .filter((c: any) => !search || [c.title, c.case_type, c.location, c.description].some((f) => f?.toLowerCase().includes(search.toLowerCase())));
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
-      <SEOHelmet title="My Cases" description="Track your posted cases and match proposals." canonical="/my-cases" />
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Legal Requirements</h1>
-          <p className="text-gray-400 mt-1 text-sm">Cases you have posted and proposals received from lawyers.</p>
-        </div>
-        <Link href="/post-case">
-          <Button className="bg-[#1a2744] hover:bg-[#243656] text-white">
-            <Plus className="w-4 h-4 mr-2" /> Post New Case
-          </Button>
-        </Link>
-      </div>
-
-      {/* White card container */}
+    <PageShell title="My Legal Requirements" subtitle="Cases you have posted and proposals received from lawyers."
+      action={<Link href="/post-case"><Button><Plus className="w-4 h-4 mr-2" /> Post New Case
+          </Button></Link>}>
       <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
         {/* Tabs + Search */}
         <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
@@ -230,7 +216,7 @@ export default function MyCases() {
               </div>
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setEditingCase(null)}>Cancel</Button>
-                <Button className="flex-1 bg-[#1a2744] hover:bg-[#243656]" disabled={updateMutation.isPending}
+                <Button className="flex-1" disabled={updateMutation.isPending}
                   onClick={() => updateMutation.mutate({ id: editingCase.id, body: editForm })}>
                   {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 mr-1" />} Save Changes
                 </Button>
@@ -240,6 +226,6 @@ export default function MyCases() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </PageShell>
   );
 }

@@ -7,6 +7,7 @@ import {
   ChevronRight, Check
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
@@ -83,14 +84,8 @@ export default function PostCase() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
+    <PageShell title="Post a Legal Requirement" subtitle="Describe your legal need. Verified lawyers will review and reach out.">
       <SEOHelmet title="Post a Case" description="Post your legal case requirements." canonical="/post-case" />
-
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Post a Legal Requirement</h1>
-        <p className="text-gray-400 mt-1 text-sm">Describe your legal need. Verified lawyers will review and reach out.</p>
-      </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6" style={{ border: "1px solid #F1F5F9" }}>
         {/* Title */}
@@ -156,7 +151,7 @@ export default function PostCase() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg border" style={{ background: "#F8FAFC", borderColor: "#F1F5F9" }}>
           <button onClick={() => setIsAnonymous(!isAnonymous)}
             className={cn("w-5 h-5 rounded border flex items-center justify-center transition-colors",
-              isAnonymous ? "bg-[#1a2744] border-[#1a2744]" : "border-gray-300 bg-white")}>
+              isAnonymous ? "bg-primary border-primary" : "border-border bg-card")}>
             {isAnonymous && <Check className="w-3 h-3 text-white" />}
           </button>
           <div>
@@ -167,11 +162,11 @@ export default function PostCase() {
 
         {error && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
 
-        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#1a2744] hover:bg-[#243656] text-white">
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full">
           <Send className="w-4 h-4 mr-2" />
           {submitting ? "Posting..." : "Post Requirement"}
         </Button>
       </div>
-    </motion.div>
+    </PageShell>
   );
 }
