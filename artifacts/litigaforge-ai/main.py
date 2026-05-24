@@ -302,7 +302,7 @@ from routers import (
     auth_router, forge_router, subscription_router,
     matching_router, chat_router, community_router,
     watch_router, alerts_router, admin_router,
-    lawyer_router,
+    lawyer_router, documents_free_router,
 )
 
 app.include_router(auth_router,         prefix=BASE_PATH)
@@ -315,6 +315,7 @@ app.include_router(watch_router,       prefix=BASE_PATH)
 app.include_router(alerts_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
 app.include_router(lawyer_router,      prefix=BASE_PATH)
+app.include_router(documents_free_router, prefix=BASE_PATH)
 
 # Serve uploaded client documents (ensure dir exists before mounting)
 _uploads_dir = os.path.join(_script_dir, "uploads")

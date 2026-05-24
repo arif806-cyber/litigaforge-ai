@@ -12,6 +12,7 @@ from routers.watch        import router as watch_router
 from routers.alerts       import router as alerts_router
 from routers.admin        import router as admin_router
 from routers.lawyer       import router as lawyer_router
+from routers.documents_free import router as documents_free_router
 
 __all__ = [
     "auth_router",
@@ -24,4 +25,5 @@ __all__ = [
     "alerts_router",
     "admin_router",
     "lawyer_router",
+    "documents_free_router",
 ]

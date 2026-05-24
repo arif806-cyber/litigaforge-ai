@@ -26,6 +26,8 @@ import AdminPage from "@/pages/admin";
 import LawyerDashboard from "@/pages/lawyer-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
 import DocumentsPage from "@/pages/documents";
+import FreeDocuments from "@/pages/free-documents";
+import DocumentTemplatePage from "@/pages/document-template";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -96,6 +98,8 @@ function Router() {
             <Route path="/matches"      component={() => <ErrorBoundary section="matches"><ProtectedRoute component={Matches} /></ErrorBoundary>} />
             <Route path="/documents"    component={() => <ErrorBoundary section="documents"><ProtectedRoute component={DocumentsPage} /></ErrorBoundary>} />
             <Route path="/legal-chat"   component={() => <ErrorBoundary section="legal-chat"><ProtectedRoute component={LegalChat} /></ErrorBoundary>} />
+            <Route path="/free-documents" component={() => <ErrorBoundary section="free-documents"><FreeDocuments /></ErrorBoundary>} />
+            <Route path="/free-documents/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
             <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
             <Route component={NotFound} />
           </Switch>

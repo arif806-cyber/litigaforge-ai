@@ -42,10 +42,12 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - `judgments.tsx` — **Judgment Finder**: precedent search + IndianKanoon links
 - `lawyers.tsx` — **Lawyer Directory**: searchable advocate profiles with verification badges, ratings, hourly rates
 - `legal-aid.tsx` — **Free Legal Aid Finder**: NALSA/TSLSA eligibility wizard + helplines
+- `free-documents.tsx` — **Free Legal Documents**: 10 AI-powered document templates with search/filter
+- `document-template.tsx` — **Document Template Fill Form**: dynamic form fields, AI generate, download/share/print
 
 ### Backend (`artifacts/litigaforge-ai/`)
 
-- `main.py` — FastAPI app (215 lines): lifespan, CORS, rate limits, table init + includes 9 routers
+- `main.py` — FastAPI app: lifespan, CORS, rate limits, table init + includes 10 routers
 - `routers/auth.py` — Register, login, logout, me
 - `routers/forge.py` — The Forge, cases, memory, chains, healthz, sandbox ping
 - `routers/subscription.py` — Plans, Razorpay create-order, verify

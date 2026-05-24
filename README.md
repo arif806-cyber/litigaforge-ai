@@ -42,7 +42,7 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 - **Document Analyzer** — paste contract/FIR/sale deed/petition text; AI identifies legal risks, missing clauses, jurisdiction issues, and recommends amendments. Risk score 1–10
 - **Judgment Finder** — search Indian case law by keyword/court; AI finds 5 relevant precedents with real citations and plain-language summaries. Direct links to IndianKanoon
 - **Lawyer Directory** — searchable directory of Telangana & AP advocates. Filter by district, practice area, language. Verified advocate profiles with contact details, hourly rates, and availability status. Self-registration for advocates
-- **Free Legal Aid Finder** — NALSA/TSLSA eligibility wizard (income + category check). Instant DLSA contact info for all 8 Telangana districts + helplines (15100, 181, 1098)
+- **Free Legal Documents** — 10 AI-generated fill-in legal document templates (rent agreement, legal notice, power of attorney, affidavit, NDA, will, consumer complaint, termination letter, promissory note, commercial lease). Fill the form, AI drafts a complete document via Claude/GPT-5/Gemini cascade, download as .txt, copy, share, or print. No lawyer fees for standard templates
 - **16 Government API Chains** — GSTIN, PAN, eCourts, VAHAN, SARATHI, DigiLocker, BPCL LPG, MeriPehchaan, Mee Seva Telangana, Transport TS, NSE India, Stock Exchange, FOREX, MCA Company, IFSC, and Pincode
 - **Multi-AI Cascade** — Claude Sonnet 4-6 (strategy) → Gemini 2.5 Flash (entities) → GPT-5 (fallback) — all free via Replit AI Integrations
 - **User Accounts** — register / login with bcrypt-hashed passwords and 30-day JWT sessions

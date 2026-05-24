@@ -24,6 +24,7 @@ const clientNav = [
   { href: "/legal-chat",      label: "AI Legal Chat",   icon: MessageSquareText },
   { href: "/ask",             label: "Legal Q&A",       icon: Gavel },
   { href: "/judgments",       label: "Judgments",       icon: Scale },
+  { href: "/free-documents",  label: "Free Documents",  icon: FileText },
   { href: "/legal-aid",       label: "Free Legal Aid",  icon: Heart },
 ];
 
@@ -40,6 +41,7 @@ const commonNav = [
   { href: "/chains",     label: "API Chains",     icon: Link2 },
   { href: "/use-cases",  label: "Use Cases",      icon: Lightbulb },
   { href: "/legal-aid",  label: "Free Legal Aid", icon: Heart },
+  { href: "/free-documents", label: "Free Documents", icon: FileCheck },
 ];
 
 
