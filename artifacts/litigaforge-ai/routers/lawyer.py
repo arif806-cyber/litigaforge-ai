@@ -4,6 +4,7 @@ Case management + document uploads + AI analysis for advocates.
 """
 import json
 import os
+import time
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
@@ -461,6 +462,126 @@ async def get_client_case(case_id: int, current_user: Optional[dict] = Depends(g
 class ClientUpdateRequest(BaseModel):
     description: str = ""
     hearing_date: str = ""
+
+
+# ── Client Document Endpoints ───────────────────────────────────────────────────
+
+@router.post("/client/cases/{case_id}/documents")
+@limiter.limit("30/minute")
+async def upload_client_document(
+    case_id: int,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+    file: UploadFile = File(...),
+):
+    """Client uploads a document for their assigned case. File saved to local uploads/."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    # Verify case belongs to this client
+    case = await fetchrow(
+        "SELECT id FROM lawyer_cases WHERE id = $1 AND client_id = $2",
+        case_id, current_user["id"],
+    )
+    if not case:
+        raise HTTPException(404, "Case not found or not assigned to you")
+
+    if not file.filename:
+        raise HTTPException(400, "No file provided")
+
+    # Save to local uploads directory
+    import shutil, pathlib
+    uploads_dir = pathlib.Path("uploads")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = sanitize_text(file.filename, max_length=255, field_name="filename")
+    # Include case_id in filename to avoid collisions
+    unique_name = f"case_{case_id}_user_{current_user['id']}_{int(time.time())}_{safe_name}"
+    file_path = uploads_dir / unique_name
+
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    file_size = len(content)
+    file_type = safe_name.split(".")[-1].lower() if "." in safe_name else "unknown"
+    file_url = f"/uploads/{unique_name}"
+
+    row = await fetchrow(
+        """INSERT INTO client_documents (case_id, client_id, filename, file_type, file_size, file_path, file_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, case_id, client_id, filename, file_type, file_size, file_path, file_url, created_at""",
+        case_id, current_user["id"], safe_name, file_type, file_size, str(file_path), file_url,
+    )
+    row["created_at"] = str(row["created_at"])
+    logger.info("client %s uploaded document %s for case %s", current_user["id"], row["id"], case_id)
+    return {"message": "Document uploaded", "document": row}
+
+
+@router.get("/client/cases/{case_id}/documents")
+async def list_client_documents(
+    case_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    """List all documents for a client's case."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    # Verify case belongs to this client
+    case = await fetchrow(
+        "SELECT id FROM lawyer_cases WHERE id = $1 AND client_id = $2",
+        case_id, current_user["id"],
+    )
+    if not case:
+        raise HTTPException(404, "Case not found or not assigned to you")
+
+    rows = await fetch(
+        """SELECT id, case_id, client_id, filename, file_type, file_size, file_url, created_at
+           FROM client_documents WHERE case_id = $1 ORDER BY created_at DESC""",
+        case_id,
+    )
+    for r in rows:
+        r["created_at"] = str(r["created_at"])
+    return {"total": len(rows), "documents": rows}
+
+
+@router.delete("/client/documents/{doc_id}")
+@limiter.limit("30/minute")
+async def delete_client_document(
+    doc_id: int,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    """Delete a document. Client can delete their own docs; lawyer can delete docs for their cases."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    doc = await fetchrow(
+        "SELECT * FROM client_documents WHERE id = $1",
+        doc_id,
+    )
+    if not doc:
+        raise HTTPException(404, "Document not found")
+
+    # Check ownership: client must own the doc OR the case's lawyer
+    case = await fetchrow("SELECT lawyer_id, client_id FROM lawyer_cases WHERE id = $1", doc["case_id"])
+    if not case:
+        raise HTTPException(404, "Case not found")
+
+    is_owner = doc["client_id"] == current_user["id"]
+    is_lawyer = case["lawyer_id"] == current_user["id"]
+    if not (is_owner or is_lawyer):
+        raise HTTPException(403, "Not authorized to delete this document")
+
+    # Delete from filesystem
+    import os, pathlib
+    fp = doc.get("file_path")
+    if fp and pathlib.Path(fp).exists():
+        os.remove(fp)
+
+    await execute("DELETE FROM client_documents WHERE id = $1", doc_id)
+    logger.info("user %s deleted document %s", current_user["id"], doc_id)
+    return {"message": "Document deleted"}
 
 
 @router.patch("/client/cases/{case_id}")

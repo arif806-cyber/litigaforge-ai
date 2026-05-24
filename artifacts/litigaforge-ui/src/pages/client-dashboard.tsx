@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
@@ -9,7 +9,7 @@ import {
   Gavel, Plus, ChevronRight, X, Menu, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
   Scale, Calendar, FileCheck, Heart, FileSearch, Building2, Hash,
-  PenSquare, Download, Share2, Search,
+  PenSquare, Download, Share2, Search, Upload, Trash2,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -204,6 +204,16 @@ export default function ClientDashboard() {
   const [messageText, setMessageText] = useState("");
   const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
   const [searchQuery, setSearchQuery] = useState("");
+  const [caseDocs, setCaseDocs] = useState<any[]>([]);
+  const [docUploading, setDocUploading] = useState(false);
+
+  // Fetch case documents when detail modal opens
+  useEffect(() => {
+    if (!showCaseDetail) { setCaseDocs([]); return; }
+    apiFetch(`/client/cases/${showCaseDetail.id}/documents`)
+      .then((res: any) => setCaseDocs(res.documents || []))
+      .catch(() => setCaseDocs([]));
+  }, [showCaseDetail?.id]);
 
   // NEW: Fetch client's assigned cases from /client/cases
   const { data: clientCasesData, isLoading: casesLoading } = useQuery({
@@ -669,7 +679,7 @@ export default function ClientDashboard() {
       </main>
 
       {/* Case Detail Modal */}
-      <Modal open={!!showCaseDetail} onClose={() => setShowCaseDetail(null)} title={showCaseDetail?.title || "Case Details"}>
+      <Modal open={!!showCaseDetail} onClose={() => { setShowCaseDetail(null); setCaseDocs([]); }} title={showCaseDetail?.title || "Case Details"}>
         {showCaseDetail && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
@@ -700,6 +710,87 @@ export default function ClientDashboard() {
                 <p className="text-[12px] text-gray-600">{showCaseDetail.description}</p>
               </div>
             )}
+
+            {/* ── Documents Panel ── */}
+            <div className="rounded-xl p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-semibold text-gray-700">Case Documents</p>
+                <label className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md text-white cursor-pointer transition-colors" style={{ background: "#2563EB" }}>
+                  <Upload className="w-3 h-3" />
+                  {docUploading ? "Uploading..." : "Upload"}
+                  <input type="file" className="hidden" disabled={docUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !showCaseDetail) return;
+                      setDocUploading(true);
+                      try {
+                        const form = new FormData();
+                        form.append("file", file);
+                        const token = typeof window !== "undefined" ? localStorage.getItem("lf_token") : null;
+                        const res = await fetch(`/litigaforge/client/cases/${showCaseDetail.id}/documents`, {
+                          method: "POST",
+                          headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          body: form,
+                        });
+                        if (!res.ok) throw new Error("Upload failed");
+                        const data = await res.json();
+                        setCaseDocs(prev => [data.document, ...prev]);
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Upload failed");
+                      } finally {
+                        setDocUploading(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+              {caseDocs.length === 0 ? (
+                <p className="text-[11px] text-gray-400 text-center py-2">No documents yet. Upload case files here.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {caseDocs.map((doc: any) => (
+                    <motion.div key={doc.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      className="flex items-center justify-between rounded-lg p-2.5" style={{ background: "#FFFFFF", border: "1px solid #F1F5F9" }}>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-medium text-gray-900 truncate">{doc.filename}</p>
+                          <p className="text-[10px] text-gray-400">{doc.file_type} · {doc.file_size ? (doc.file_size / 1024).toFixed(1) + " KB" : "N/A"}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <a href={doc.file_url} download={doc.filename}
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Download">
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                        <button onClick={() => {
+                          const text = `Case Document: ${doc.filename}\nCase: ${showCaseDetail.title}\n\nDownload: ${typeof window !== "undefined" ? window.location.origin : ""}${doc.file_url}\n\n— LitigaForge AI`;
+                          if (navigator.share) navigator.share({ title: doc.filename, text });
+                          else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                        }}
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Share">
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={async () => {
+                          if (!confirm(`Delete "${doc.filename}"?`)) return;
+                          try {
+                            await apiFetch(`/client/documents/${doc.id}`, { method: "DELETE" });
+                            setCaseDocs(prev => prev.filter(d => d.id !== doc.id));
+                          } catch { alert("Failed to delete"); }
+                        }}
+                          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Edit / Share / Download / Contact */}
             <div className="flex flex-wrap items-center gap-2">
               <button

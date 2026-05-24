@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -222,6 +223,19 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS client_documents (
+                id SERIAL PRIMARY KEY,
+                case_id INTEGER REFERENCES lawyer_cases(id) ON DELETE CASCADE,
+                client_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                filename TEXT NOT NULL,
+                file_type TEXT DEFAULT 'pdf',
+                file_size INTEGER DEFAULT 0,
+                file_path TEXT,
+                file_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         # ── Migrations ──
         try:
             await conn.execute("ALTER TABLE lawyer_documents ADD COLUMN IF NOT EXISTS notes TEXT")
@@ -296,6 +310,8 @@ app.include_router(alerts_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
 app.include_router(lawyer_router,      prefix=BASE_PATH)
 
+# Serve uploaded client documents
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 if __name__ == "__main__":
     import uvicorn
