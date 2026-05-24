@@ -21,7 +21,11 @@ import requests as _req
 
 logger = logging.getLogger("litigaforge.ai_brain")
 
-from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response, strip_generic_fluff, hallucination_guard
+from ai_safety import (
+    wrap_user_prompt, add_disclaimer, validate_ai_response,
+    strip_generic_fluff, hallucination_guard, safe_ai_output,
+    score_injection_risk,
+)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Provider registry — lazy-initialised on first call
@@ -456,38 +460,26 @@ Real Government API Data Retrieved:
         logger.info(f"[AI_BRAIN] Strategy via Claude Sonnet 4-6 (case {case_id})")
         result = _call_claude(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
-            result = validate_ai_response(result)
-            result = strip_generic_fluff(result)
-            result = hallucination_guard(result, api_results)
-            result = add_disclaimer(result)
-            return result
+            return safe_ai_output(result, api_results)
 
     # 2️⃣ Try OpenAI GPT-5-mini
     if "openai" in active:
         logger.info(f"[AI_BRAIN] Strategy via GPT-5-mini (case {case_id})")
         result = _call_openai(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
-            result = validate_ai_response(result)
-            result = strip_generic_fluff(result)
-            result = hallucination_guard(result, api_results)
-            result = add_disclaimer(result)
-            return result
+            return safe_ai_output(result, api_results)
 
     # 3️⃣ Try Gemini 2.5 Flash
     if "gemini" in active:
         logger.info(f"[AI_BRAIN] Strategy via Gemini 2.5 Flash (case {case_id})")
         result = _call_gemini(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
         if result and len(result) > 300:
-            result = validate_ai_response(result)
-            result = strip_generic_fluff(result)
-            result = hallucination_guard(result, api_results)
-            result = add_disclaimer(result)
-            return result
+            return safe_ai_output(result, api_results)
 
     # 4️⃣ Smart data-driven template — never generic
     logger.info(f"[AI_BRAIN] All AI providers failed — using smart data template (case {case_id})")
     fallback = _smart_fallback_strategy(prompt, entities, api_results, case_id)
-    return add_disclaimer(fallback)
+    return safe_ai_output(fallback, None)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

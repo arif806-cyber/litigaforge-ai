@@ -125,14 +125,13 @@ def strip_generic_fluff(response: str) -> str:
 
 def hallucination_guard(response: str, api_results: Dict[str, Any]) -> str:
     """
-    Lightweight guard: if the response quotes specific numbers, names, or
-    dates that do NOT appear in api_results, flag it with a warning.
+    If the response quotes specific numbers, names, or dates
+    that do NOT appear in api_results, flag it with a warning.
     Does NOT rewrite — adds a visible caveat.
     """
     if not response or not api_results:
         return response
 
-    # Collect all scalar string values from api_results as a flat set
     known_values = set()
     def _collect(obj):
         if isinstance(obj, str) and len(obj) > 2:
@@ -145,7 +144,6 @@ def hallucination_guard(response: str, api_results: Dict[str, Any]) -> str:
                 _collect(item)
     _collect(api_results)
 
-    # Look for quoted numbers (e.g., "Rs. 50,000" or "Section 420")
     suspicious = []
     quoted_numbers = re.findall(r'["\'](Rs\.?\s*[\d,]+|\d{4,})["\']', response)
     for qn in quoted_numbers:
@@ -160,4 +158,92 @@ def hallucination_guard(response: str, api_results: Dict[str, Any]) -> str:
             + ". Please independently confirm before relying on them."
         )
         return response + warning
+    return response
+
+
+def verify_citations(response: str) -> list[str]:
+    """
+    Check for legal citations in the AI output.
+    Returns a list of warnings for citations that look fabricated.
+    """
+    warnings: list[str] = []
+    if not response:
+        return warnings
+
+    # Section citations like "Section 420" or "S.138" or "S.83"
+    section_refs = re.findall(
+        r'(?:Section|S\.?)\s*(\d+[A-Z]?(?:\s*\(\d+\))?)',
+        response,
+        re.IGNORECASE,
+    )
+    # If the output contains section numbers but no Act name nearby, that's suspicious
+    for sec in section_refs:
+        # Look backwards up to 80 chars for an Act name
+        idx = response.lower().find(f"section {sec.lower()}")
+        if idx == -1:
+            idx = response.lower().find(f"s.{sec.lower()}")
+        if idx != -1:
+            window = response[max(0, idx - 80):idx]
+            if not re.search(
+                r'\b(?:Act|Code|Rules|Regulations|Constitution|Law|Statute)\b',
+                window,
+                re.IGNORECASE,
+            ):
+                warnings.append(
+                    f'Citation "Section {sec}" appears without a named Act nearby'
+                )
+    return warnings
+
+
+def score_injection_risk(text: str) -> tuple[int, list[str]]:
+    """
+    Score prompt-injection risk 0–10 and return matched pattern names.
+    0 = safe, 5+ = block, 8+ = log + alert.
+    """
+    if not text:
+        return 0, []
+
+    _patterns = [
+        ("ignore_previous", r"ignore\s+(all\s+)?previous\s+instructions"),
+        ("forget_instructions", r"forget\s+(all\s+)?instructions"),
+        ("role_swap", r"you\s+are\s+now\s+a\s+(judge|lawyer|developer|hacker)"),
+        ("act_as", r"act\s+as\s+(if\s+you\s+are|a\s+)"),
+        ("system_override", r"system\s*:\s*you"),
+        ("system_tag", r"<\s*system\s*>"),
+        ("inst_token", r"\[INST\]"),
+        ("instruction_header", r"###\s*instruction"),
+        ("jailbreak", r"jailbreak"),
+        ("dan_mode", r"dan\s+mode"),
+        ("developer_mode", r"developer\s+mode"),
+        ("ignore_ethics", r"ignore\s+all\s+ethical"),
+        ("pretend", r"pretend\s+you\s+(are|have\s+no)"),
+        ("new_role", r"new\s+instructions?\s*:"),
+        ("output_format", r"output\s+only\s+(json|code|raw)"),
+    ]
+    matched: list[str] = []
+    score = 0
+    lower = text.lower()
+    for name, pat in _patterns:
+        if re.search(pat, lower):
+            matched.append(name)
+            score += 2
+    return min(score, 10), matched
+
+
+def safe_ai_output(response: str, api_results: Dict[str, Any] | None = None) -> str:
+    """
+    Full safety pipeline: validate → strip fluff → hallucination guard →
+    citation verify → add disclaimer.
+    """
+    response = validate_ai_response(response)
+    response = strip_generic_fluff(response)
+    if api_results:
+        response = hallucination_guard(response, api_results)
+    cite_warnings = verify_citations(response)
+    if cite_warnings:
+        response += (
+            "\n\n[CITATION CHECK] "
+            + " ".join(cite_warnings[:3])
+        )
+    response = add_disclaimer(response)
     return response

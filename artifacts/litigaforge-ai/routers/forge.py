@@ -14,6 +14,7 @@ from database import increment_case_count, TIER_LIMITS
 from auth import get_current_user
 from rate_limit import limiter
 from sanitizer import sanitize_text
+from ai_safety import score_injection_risk
 
 router = APIRouter(tags=["forge"])
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
@@ -75,6 +76,15 @@ async def forge(
 
     if not safe_prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+
+    # Prompt-injection risk scoring
+    risk_score, matched = score_injection_risk(safe_prompt)
+    if risk_score >= 5:
+        logger.warning("Prompt injection blocked (score %s): %s", risk_score, matched)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Input blocked: disallowed pattern detected ({', '.join(matched[:3])}). Please rephrase your query."
+        )
 
     # Enforce monthly case limits for authenticated users
     if current_user:

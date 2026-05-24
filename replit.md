@@ -29,7 +29,9 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - `chains.tsx` — View all 16 API chains with live/sandbox/mock status
 - `case-detail.tsx` — Full chain results, strategy, entities for a single case
 - `use-cases.tsx` — 7 interactive scenario cards with "Try in Forge" button
-- `login.tsx`, `register.tsx` — Authentication (JWT via localStorage)
+- `login.tsx`, `register.tsx` — Authentication (JWT via localStorage). Role-based: Client vs Lawyer tabs
+- `client-dashboard.tsx` — **Client Dashboard**: assigned cases with stage timeline, match proposals, AI explanations, lawyer contact (call/email), case document upload, edit/share/download, NALSA helpline, upgrade banner. Navy sidebar + mobile hamburger drawer
+- `documents.tsx` — **Documents Dashboard**: all client documents across cases with search, download, share (Web Share API + WhatsApp fallback), delete, upload
 - `subscription.tsx` — Plan comparison & upgrade/downgrade
 - `post-case.tsx` — **Post a Case**: client case posting form with anonymous option, 9 case types, budget range
 - `my-cases.tsx` — **My Cases**: client tracks posted cases, views match proposals, accept/decline flow
@@ -53,6 +55,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - `routers/watch.py` — Watch mode start/stop/add/list/remove
 - `routers/alerts.py` — WhatsApp alerts, hearing reminders
 - `routers/admin.py` — Pending lawyer verification, approve/reject, user management
+- `routers/lawyer.py` — Lawyer case/document CRUD + **Client case endpoints**: `GET /client/cases`, `PATCH /client/cases/{id}`, document upload/share/delete, CNR tracking, AI analysis, notes
 - `database.py` — PostgreSQL async pool (asyncpg): fetch, fetchrow, execute, executemany
 - `auth.py` — bcrypt hashing, JWT create/decode, cookie-first auth with Bearer fallback
 - `payments.py` — Razorpay integration: create_order, verify_payment, PLAN_PRICES
@@ -66,7 +69,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 
 ### Components & utilities
 
-- `src/components/layout.tsx` — Sidebar: "Match & Connect" (Forge, Post Case, My Cases, Find Lawyer, Matches) + "Legal Tools" (AI Chat, Q&A, Analyzer, etc)
+- `src/components/layout.tsx` — Sidebar: "Match & Connect" (Dashboard, Post Case, My Cases, Match Proposals, Documents) + "Legal Tools" (AI Chat, Q&A, Analyzer, etc). **Navy (#1a2744) sidebar for clients**, white sidebar for lawyers. Fixed bottom tab bar on mobile
 - `src/components/legal-disclaimer.tsx` — Footer disclaimer + FirstVisitDisclaimer modal
 - `src/components/graphics/` — ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
 - `src/lib/api.ts` — apiFetch (auto-attaches Bearer token); BASE = "/litigaforge"
@@ -131,6 +134,9 @@ To go live on all API Setu chains: register at api.setu.in, get approved credent
 | `lawyers` | id, user_id FK, name, email, phone, bar_number, district, practice_areas[], languages[], experience_years, rating, bio, hourly_rate, availability, verification_status, verified, created_at |
 | `case_requirements` | id, user_id FK, title, case_type, description, location, budget_range, is_anonymous, status, created_at |
 | `matches` | id, case_requirement_id FK, lawyer_id FK, client_id FK, status, match_score, ai_explanation, client_message, lawyer_message, created_at |
+| `lawyer_cases` | id, lawyer_id FK, client_id FK, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status, created_at |
+| `lawyer_documents` | id, lawyer_id FK, case_id FK, filename, file_type, file_url, content_text, ai_summary, notes, created_at |
+| `client_documents` | id, case_id FK, client_id FK, filename, file_type, file_size, file_path, file_url, created_at |
 | `chat_threads` | id, match_id FK, title, created_at |
 | `chat_messages` | id, thread_id FK, sender_id FK, sender_role, content, created_at |
 
@@ -145,6 +151,18 @@ To go live on all API Setu chains: register at api.setu.in, get approved credent
 | `POST /subscription/create-order` | Cookie / Bearer | Create Razorpay order for upgrade |
 | `POST /subscription/verify` | Cookie / Bearer | Verify Razorpay payment, activate tier |
 | `POST /subscription/upgrade` | — | **Deprecated** — returns 410 Gone |
+
+### Client Dashboard (API)
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `GET /client/cases` | Bearer | List all cases assigned to the client (with lawyer info) |
+| `GET /client/cases/{id}` | Bearer | Get single case with attached documents |
+| `PATCH /client/cases/{id}` | Bearer | Edit case description and hearing date |
+| `POST /client/cases/{id}/documents` | Bearer | Upload a document for a case |
+| `GET /client/cases/{id}/documents` | Bearer | List documents for a case |
+| `GET /client/documents` | Bearer | List ALL documents across all cases |
+| `DELETE /client/documents/{id}` | Bearer | Delete a client's document |
 
 JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-context.tsx`. All main routes protected via `ProtectedRoute`.
 
