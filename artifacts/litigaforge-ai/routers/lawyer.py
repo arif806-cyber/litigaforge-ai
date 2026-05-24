@@ -518,6 +518,28 @@ async def upload_client_document(
     return {"message": "Document uploaded", "document": row}
 
 
+@router.get("/client/documents")
+async def list_all_client_documents(
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    """List ALL documents across all cases for the current client."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    rows = await fetch(
+        """SELECT d.id, d.case_id, d.client_id, d.filename, d.file_type, d.file_size, d.file_url, d.created_at,
+                  c.title as case_title, c.case_type
+           FROM client_documents d
+           LEFT JOIN lawyer_cases c ON d.case_id = c.id
+           WHERE d.client_id = $1
+           ORDER BY d.created_at DESC""",
+        current_user["id"],
+    )
+    for r in rows:
+        r["created_at"] = str(r["created_at"])
+    return {"total": len(rows), "documents": rows}
+
+
 @router.get("/client/cases/{case_id}/documents")
 async def list_client_documents(
     case_id: int,

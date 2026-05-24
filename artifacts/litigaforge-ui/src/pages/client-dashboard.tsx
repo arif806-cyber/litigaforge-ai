@@ -104,6 +104,7 @@ function ClientSidebar({ onNav }: { onNav?: () => void }) {
     { path: "/post-case", label: "Post a Case", icon: Plus },
     { path: "/my-cases", label: "My Cases", icon: FileText },
     { path: "/matches", label: "Match Proposals", icon: Sparkles },
+    { path: "/documents", label: "Documents", icon: FileCheck },
     { path: "/legal-chat", label: "AI Legal Chat", icon: MessageSquare },
     { path: "/ask", label: "Legal Q&A", icon: Gavel },
     { path: "/judgments", label: "Judgments", icon: Scale },

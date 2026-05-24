@@ -25,6 +25,7 @@ import LegalChat from "@/pages/legal-chat";
 import AdminPage from "@/pages/admin";
 import LawyerDashboard from "@/pages/lawyer-dashboard";
 import ClientDashboard from "@/pages/client-dashboard";
+import DocumentsPage from "@/pages/documents";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -93,6 +94,7 @@ function Router() {
             <Route path="/post-case"    component={() => <ErrorBoundary section="post-case"><ProtectedRoute component={PostCase} /></ErrorBoundary>} />
             <Route path="/my-cases"     component={() => <ErrorBoundary section="my-cases"><ProtectedRoute component={MyCases} /></ErrorBoundary>} />
             <Route path="/matches"      component={() => <ErrorBoundary section="matches"><ProtectedRoute component={Matches} /></ErrorBoundary>} />
+            <Route path="/documents"    component={() => <ErrorBoundary section="documents"><ProtectedRoute component={DocumentsPage} /></ErrorBoundary>} />
             <Route path="/legal-chat"   component={() => <ErrorBoundary section="legal-chat"><ProtectedRoute component={LegalChat} /></ErrorBoundary>} />
             <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
             <Route component={NotFound} />
