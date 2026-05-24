@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from litigaforge_engine import forge_case, memory
+from ai_brain import smart_refine_section
 from alerts.whatsapp import send_whatsapp_alert
 from database import increment_case_count, TIER_LIMITS
 from auth import get_current_user
@@ -24,6 +25,14 @@ class ForgeRequest(BaseModel):
     prompt: str
     notify_whatsapp: bool = False
     advocate_phone: Optional[str] = None
+
+
+class RefineRequest(BaseModel):
+    case_id: str
+    section_name: str
+    instruction: str  # refine | aggressive | provisions | simplify
+    current_text: str
+    full_output: str
 
 
 @router.get("/")
@@ -154,6 +163,77 @@ async def get_case(case_id: str):
 async def get_patterns(limit: int = 50):
     patterns = memory.get_all_patterns()
     return {"total_patterns": len(patterns), "patterns": patterns[-limit:]}
+
+
+@router.post("/forge/refine")
+@limiter.limit("15/minute")
+async def refine_section(
+    body: RefineRequest,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    try:
+        safe_instruction = sanitize_text(
+            body.instruction,
+            max_length=50,
+            field_name="instruction"
+        )
+        safe_current = sanitize_text(
+            body.current_text,
+            max_length=8000,
+            field_name="current_text"
+        )
+        safe_full = sanitize_text(
+            body.full_output,
+            max_length=12000,
+            field_name="full_output"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if safe_instruction not in ("refine", "aggressive", "provisions", "simplify"):
+        raise HTTPException(status_code=400, detail="instruction must be one of: refine, aggressive, provisions, simplify")
+
+    # Retrieve original case from memory
+    case = memory.get_case(body.case_id.upper())
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {body.case_id} not found")
+
+    try:
+        refined = smart_refine_section(
+            original_prompt=case.get("prompt", ""),
+            section_name=body.section_name,
+            current_text=safe_current,
+            full_output=safe_full,
+            instruction=safe_instruction,
+            api_results=case.get("api_results", {}),
+            case_id=body.case_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Refinement error: {str(e)}")
+
+    memory.save_refinement(
+        case_id=body.case_id,
+        section_name=body.section_name,
+        instruction=safe_instruction,
+        original_text=safe_current,
+        refined_text=refined,
+    )
+
+    return {
+        "status": "success",
+        "case_id": body.case_id,
+        "section_name": body.section_name,
+        "instruction": safe_instruction,
+        "refined_text": refined,
+        "refinement_count": len(memory.get_refinements(body.case_id)),
+    }
+
+
+@router.get("/forge/refine/{case_id}")
+async def get_refinements(case_id: str):
+    refs = memory.get_refinements(case_id.upper())
+    return {"case_id": case_id, "total": len(refs), "refinements": refs}
 
 
 @router.get("/memory/stats")

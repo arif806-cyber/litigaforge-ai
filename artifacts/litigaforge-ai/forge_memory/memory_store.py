@@ -101,10 +101,29 @@ class ForgeMemory:
                 w["active"] = False
         self._write(data)
 
+    def save_refinement(self, case_id: str, section_name: str, instruction: str, original_text: str, refined_text: str):
+        data = self._read()
+        data.setdefault("refinements", {})
+        key = case_id.upper()
+        data["refinements"].setdefault(key, [])
+        data["refinements"][key].append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "section_name": section_name,
+            "instruction": instruction,
+            "original_text": original_text[:500],
+            "refined_text": refined_text[:2000],
+        })
+        data["refinements"][key] = data["refinements"][key][-50:]
+        self._write(data)
+
+    def get_refinements(self, case_id: str) -> List[Dict]:
+        return self._read().get("refinements", {}).get(case_id.upper(), [])
+
     def stats(self) -> Dict:
         data = self._read()
         return {
             "total_patterns": len(data.get("patterns", [])),
             "total_cases": len(data.get("cases", [])),
             "active_watches": len([w for w in data.get("watch_list", []) if w.get("active")]),
+            "total_refinements": sum(len(v) for v in data.get("refinements", {}).values()),
         }

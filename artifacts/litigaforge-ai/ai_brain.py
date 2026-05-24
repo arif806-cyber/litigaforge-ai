@@ -545,6 +545,87 @@ Case ID: {case_id}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Section Refinement — regenerate one section with full case context
+# ──────────────────────────────────────────────────────────────────────────────
+
+REFINE_INSTRUCTIONS = {
+    "refine": """Refine this section: improve clarity, structure, and completeness. Keep every fact from the original. Add any missing detail that strengthens the analysis without inventing facts. Maintain the same format (bullets, tables, etc.).""",
+    "aggressive": """Make this section more aggressive and assertive. Use stronger legal language. Frame positions as demands rather than suggestions. Emphasize the strongest legal remedies available. Highlight opponent vulnerabilities. Use phrases like "strictly mandates", "categorically requires", "unequivocally entitled to". Keep all facts; do not add unsupported claims.""",
+    "provisions": """Expand this section with additional legal provisions, statutes, rules, and regulations. Add specific section numbers, sub-sections, and relevant amendments. Include procedural rules (CPC CrPC rules, tribunal rules) where applicable. Reference relevant SEBI/CGST/RBI/MV Act provisions. Keep existing content; add supplementary provisions.""",
+    "simplify": """Simplify this section into plain, accessible English. Shorten sentences. Remove dense legal jargon where possible (but keep Act names and section numbers). Use analogies or plain explanations for complex concepts. A client with no legal background should understand it. Preserve all factual content and legal accuracy.""",
+}
+
+REFINE_SYSTEM = """You are a senior Indian advocate editing one section of a case analysis memorandum. You are given the FULL case context and asked to rewrite ONLY one section.
+
+RULES:
+1. Output ONLY the rewritten section content. Do NOT include section headings, numbering, or metadata.
+2. Preserve all facts from the original section. Do not invent new facts.
+3. Maintain the same structural format (tables, bullet lists, checklists) unless the instruction explicitly changes style.
+4. Match the tone described in the instruction.
+5. Every legal reference must keep the Act name, year, and section number.
+6. Maximum length: keep it roughly the same length as the original, unless adding provisions.
+7. Do not include any introductory text like "Here is the refined section:" — output the content directly."""
+
+
+def smart_refine_section(
+    original_prompt: str,
+    section_name: str,
+    current_text: str,
+    full_output: str,
+    instruction: str,
+    api_results: Dict[str, Any],
+    case_id: str,
+) -> str:
+    """Regenerate a single section with full case context. Cascade: Claude → GPT-5 → Gemini."""
+    _init_providers()
+    active = get_active_providers()
+
+    modifier = REFINE_INSTRUCTIONS.get(instruction, REFINE_INSTRUCTIONS["refine"])
+
+    safe_context = wrap_user_prompt(f"""FULL CASE FACTS:
+{original_prompt}
+
+ORIGINAL COMPLETE ANALYSIS (for context only):
+{full_output[:4000]}
+
+VERIFIED GOVERNMENT DATA:
+{json.dumps(api_results, indent=2, default=str)[:3000]}
+
+SECTION TO REWRITE: {section_name}
+
+CURRENT SECTION TEXT:
+{current_text[:4000]}
+
+INSTRUCTION:
+{modifier}
+
+REWRITE ONLY THE SECTION CONTENT. Do not include heading or numbering.""")
+
+    # Cascade: Claude → GPT-5 → Gemini
+    if "claude" in active:
+        logger.info(f"[AI_BRAIN] Refine via Claude (section: {section_name}, case: {case_id})")
+        result = _call_claude(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4000)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
+    if "openai" in active:
+        logger.info(f"[AI_BRAIN] Refine via GPT-5-mini (section: {section_name}, case: {case_id})")
+        result = _call_openai(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4000)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
+    if "gemini" in active:
+        logger.info(f"[AI_BRAIN] Refine via Gemini (section: {section_name}, case: {case_id})")
+        result = _call_gemini(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4096)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
+    # Fallback: return original with note
+    logger.info(f"[AI_BRAIN] All AI providers failed for refinement — returning original (case {case_id})")
+    return current_text + "\n\n[Note: AI refinement unavailable at this time. Original text preserved.]"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Smart data-driven fallback — reads real chain results, never generic text
 # ──────────────────────────────────────────────────────────────────────────────
 

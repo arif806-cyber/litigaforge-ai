@@ -4,11 +4,15 @@ import { useLocation } from "wouter";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2, FileText, Gavel, BookOpen, ShieldAlert, ClipboardList, Calendar, BarChart3, Scale as ScaleIcon } from "lucide-react";
+import {
+  Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2,
+  FileText, Gavel, BookOpen, ShieldAlert, ClipboardList, Calendar,
+  BarChart3, Scale as ScaleIcon, Wand2, Swords, BookMarked, Sparkles,
+  Download, ChevronDown, ChevronUp, RotateCcw, History,
+} from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-// ScalesHero removed — not used on this page
 
 interface ForgeResult {
   status: string;
@@ -20,6 +24,14 @@ interface ForgeResult {
   meta_suggestions: string[];
   final_output: string;
 }
+
+interface RefinedSection {
+  text: string;
+  instruction: string;
+  timestamp: string;
+}
+
+type RefineInstruction = "refine" | "aggressive" | "provisions" | "simplify";
 
 const ENTITY_CONFIG: Record<string, { label: string; color: string }> = {
   pan:            { label: "PAN",       color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300" },
@@ -99,34 +111,134 @@ function parseSections(text: string): { heading: string; content: string }[] {
   return sections;
 }
 
-function renderSections(text: string) {
-  const sections = parseSections(text);
-  return sections.map((section, idx) => {
-    const lower = section.heading.toLowerCase();
-    const metaKey = Object.keys(SECTION_META).find(k => lower.includes(k));
-    const meta = metaKey ? SECTION_META[metaKey] : { title: section.heading, icon: <FileText className="w-4 h-4"/>, color: "text-foreground", border: "border-l-4 border-border" };
+const REFINE_ACTIONS: { key: RefineInstruction; label: string; icon: React.ReactNode; color: string; desc: string }[] = [
+  { key: "refine", label: "Refine", icon: <Wand2 className="w-3.5 h-3.5"/>, color: "text-blue-600 hover:bg-blue-50 hover:text-blue-700", desc: "Improve clarity & structure" },
+  { key: "aggressive", label: "Aggressive", icon: <Swords className="w-3.5 h-3.5"/>, color: "text-rose-600 hover:bg-rose-50 hover:text-rose-700", desc: "Stronger, assertive language" },
+  { key: "provisions", label: "Provisions", icon: <BookMarked className="w-3.5 h-3.5"/>, color: "text-amber-600 hover:bg-amber-50 hover:text-amber-700", desc: "Add more statutes & sections" },
+  { key: "simplify", label: "Simplify", icon: <Sparkles className="w-3.5 h-3.5"/>, color: "text-teal-600 hover:bg-teal-50 hover:text-teal-700", desc: "Plain English, shorter" },
+];
 
-    const isTable = section.content.includes("|") && section.content.includes("---");
-    const isChecklist = section.content.includes("- [ ]") || section.content.includes("- [x]");
+function getSectionContent(section: { heading: string; content: string }, refined: RefinedSection[] | undefined) {
+  if (!refined || refined.length === 0) return section.content;
+  return refined[refined.length - 1].text;
+}
 
-    return (
-      <motion.div
-        key={idx}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: idx * 0.05 }}
-        className={cn("rounded-xl bg-card border border-border shadow-sm overflow-hidden", meta.border)}
+function SectionCard({
+  section,
+  idx,
+  refined,
+  isExpanded,
+  isRefining,
+  onToggle,
+  onRefine,
+}: {
+  section: { heading: string; content: string };
+  idx: number;
+  refined?: RefinedSection[];
+  isExpanded: boolean;
+  isRefining: boolean;
+  onToggle: () => void;
+  onRefine: (instruction: RefineInstruction) => void;
+}) {
+  const lower = section.heading.toLowerCase();
+  const metaKey = Object.keys(SECTION_META).find(k => lower.includes(k));
+  const meta = metaKey
+    ? SECTION_META[metaKey]
+    : { title: section.heading, icon: <FileText className="w-4 h-4" />, color: "text-foreground", border: "border-l-4 border-border" };
+
+  const content = getSectionContent(section, refined);
+  const isTable = content.includes("|") && content.includes("---");
+  const isChecklist = content.includes("- [ ]") || content.includes("- [x]");
+  const refCount = refined?.length || 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: idx * 0.05 }}
+      className={cn("rounded-xl bg-card border border-border shadow-sm overflow-hidden transition-all", meta.border)}
+    >
+      {/* Header */}
+      <div
+        className={cn("px-5 py-3 bg-muted/50 border-b border-border flex items-center justify-between cursor-pointer select-none", meta.color)}
+        onClick={onToggle}
       >
-        <div className={cn("px-5 py-3 bg-muted/50 border-b border-border flex items-center gap-2 font-semibold text-sm", meta.color)}>
+        <div className="flex items-center gap-2 font-semibold text-sm">
           {meta.icon}
           {meta.title}
+          {refCount > 0 && (
+            <span className="ml-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium flex items-center gap-1">
+              <History className="w-3 h-3" /> {refCount} refined
+            </span>
+          )}
         </div>
-        <div className="p-5 text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap font-serif">
-          {isTable ? renderTable(section.content) : isChecklist ? renderChecklist(section.content) : section.content}
+        <div className="flex items-center gap-2">
+          {isRefining && (
+            <span className="flex items-center gap-1 text-xs text-primary animate-pulse">
+              <Loader2 className="w-3 h-3 animate-spin" /> Refining...
+            </span>
+          )}
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
-      </motion.div>
-    );
-  });
+      </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            {/* Content */}
+            <div className="p-5 text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap font-serif">
+              {isTable ? renderTable(content) : isChecklist ? renderChecklist(content) : content}
+            </div>
+
+            {/* Refinement toolbar */}
+            <div className="px-5 pb-4">
+              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border/60">
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Refine Section:</span>
+                {REFINE_ACTIONS.map(action => (
+                  <button
+                    key={action.key}
+                    onClick={() => onRefine(action.key)}
+                    disabled={isRefining}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-background transition-all",
+                      action.color,
+                      isRefining && "opacity-50 cursor-not-allowed"
+                    )}
+                    title={action.desc}
+                  >
+                    {action.icon}
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Refinement history */}
+              {refined && refined.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {refined.map((r, i) => (
+                    <div key={i} className="p-2.5 rounded-lg bg-muted/40 border border-border/50 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <RotateCcw className="w-3 h-3" />
+                        <span className="font-medium capitalize">{r.instruction}</span>
+                        <span className="text-[10px] opacity-60">• {new Date(r.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="line-clamp-3 text-foreground/70">{r.text}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
 }
 
 function renderTable(content: string) {
@@ -197,6 +309,48 @@ export default function Forge() {
   const [focused, setFocused] = useState(false);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
+  // Section refinement state
+  const [refinedSections, setRefinedSections] = useState<Record<string, RefinedSection[]>>({});
+  const [activeRefining, setActiveRefining] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  const refineMutation = useMutation({
+    mutationFn: async ({
+      caseId,
+      sectionName,
+      instruction,
+      currentText,
+    }: {
+      caseId: string;
+      sectionName: string;
+      instruction: RefineInstruction;
+      currentText: string;
+    }) => {
+      const res = await apiFetch("/forge/refine", {
+        method: "POST",
+        body: JSON.stringify({
+          case_id: caseId,
+          section_name: sectionName,
+          instruction,
+          current_text: currentText,
+          full_output: result?.final_output ?? "",
+        }),
+      });
+      return res as { refined_text: string; instruction: string; timestamp: string };
+    },
+    onSuccess: (data, vars) => {
+      setRefinedSections(prev => ({
+        ...prev,
+        [vars.sectionName]: [
+          ...(prev[vars.sectionName] || []),
+          { text: data.refined_text, instruction: data.instruction, timestamp: data.timestamp || new Date().toISOString() },
+        ],
+      }));
+      setActiveRefining(null);
+    },
+    onError: () => setActiveRefining(null),
+  });
 
   useEffect(() => {
     const prefill = sessionStorage.getItem("forge_prefill");
@@ -328,7 +482,13 @@ export default function Forge() {
                   variant="outline"
                   size="lg"
                   className="h-14 px-8 text-base"
-                  onClick={() => { setResult(null); setPrompt(""); }}
+                  onClick={() => {
+                    setResult(null);
+                    setPrompt("");
+                    setRefinedSections({});
+                    setExpandedSections(new Set());
+                    setActiveRefining(null);
+                  }}
                 >
                   Reset
                 </Button>
@@ -409,14 +569,61 @@ export default function Forge() {
                 </div>
               )}
 
-              {/* Strategy Output — Sectioned Display */}
+              {/* Strategy Output — Interactive Sectioned Display */}
               {result.final_output && (
                 <div className="space-y-6">
-                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Gavel className="w-4 h-4" /> Case Analysis Report
-                  </h4>
-                  <div className="space-y-4">
-                    {renderSections(result.final_output)}
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Gavel className="w-4 h-4" /> Case Analysis Report
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs gap-1.5"
+                      onClick={() => {
+                        const blob = new Blob([result.final_output], { type: "text/plain" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `case-analysis-${result.case_id}.txt`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="w-3.5 h-3.5" /> Download
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {(() => {
+                      const sections = parseSections(result.final_output);
+                      return sections.map((section, idx) => (
+                        <SectionCard
+                          key={idx}
+                          section={section}
+                          idx={idx}
+                          refined={refinedSections[section.heading]}
+                          isExpanded={expandedSections.has(section.heading)}
+                          isRefining={activeRefining === section.heading}
+                          onToggle={() => {
+                            setExpandedSections(prev => {
+                              const next = new Set(prev);
+                              if (next.has(section.heading)) next.delete(section.heading);
+                              else next.add(section.heading);
+                              return next;
+                            });
+                          }}
+                          onRefine={(instruction) => {
+                            setActiveRefining(section.heading);
+                            refineMutation.mutate({
+                              caseId: result.case_id,
+                              sectionName: section.heading,
+                              instruction,
+                              currentText: getSectionContent(section, refinedSections[section.heading]),
+                            });
+                          }}
+                        />
+                      ));
+                    })()}
                   </div>
                 </div>
               )}
