@@ -9,7 +9,7 @@ import {
   Gavel, Plus, ChevronRight, X, Menu, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
   Scale, Calendar, FileCheck, Heart, FileSearch, Building2, Hash,
-  PenSquare, Download, Share2,
+  PenSquare, Download, Share2, Search,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -202,6 +202,8 @@ export default function ClientDashboard() {
   const [editDesc, setEditDesc] = useState("");
   const [editHearing, setEditHearing] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // NEW: Fetch client's assigned cases from /client/cases
   const { data: clientCasesData, isLoading: casesLoading } = useQuery({
@@ -350,16 +352,48 @@ export default function ClientDashboard() {
                 })}
               </div>
 
-              {/* My Assigned Cases — THE CLIENT FOCUS */}
+              {/* My Assigned Cases — Lawyer Dashboard Style */}
               <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
+                {/* Header with search + tabs */}
+                <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#EFF6FF" }}><FileCheck className="w-4 h-4 text-blue-600" /></div>
                     <h2 className="font-bold text-gray-900 text-sm">My Assigned Cases</h2>
+                    <span className="text-[11px] text-gray-400 ml-1">({clientCases.length})</span>
                   </div>
-                  <span className="text-[11px] text-gray-400">Cases your lawyer is handling for you</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-0.5">
+                      {(["active","pending","closed"] as const).map((t) => (
+                        <button key={t} onClick={() => setCaseTab(t)}
+                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${caseTab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="p-4 space-y-3">
+
+                {/* Search bar */}
+                <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
+                  <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                    <Search className="w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search cases by title, court, or CNR..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none"
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery("")} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Case list */}
+                <div className="p-4 space-y-2.5">
                   {casesLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
                   {!casesLoading && clientCases.length === 0 && (
                     <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
@@ -368,35 +402,84 @@ export default function ClientDashboard() {
                       <button onClick={() => setLocation("/post-case")} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800">Post a case to get matched →</button>
                     </div>
                   )}
-                  {clientCases.map((c) => (
-                    <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl p-4 cursor-pointer hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}
-                      onClick={() => setShowCaseDetail(c)}>
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
-                          <Briefcase className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : c.status === "pending" ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>{c.status.toUpperCase()}</span>
+                  {!casesLoading && clientCases.length > 0 && (() => {
+                    const filtered = clientCases
+                      .filter((c) => c.status === caseTab)
+                      .filter((c) => !searchQuery || [c.title, c.court_name, c.cnr_number, c.case_type].some((f) => f?.toLowerCase().includes(searchQuery.toLowerCase())));
+                    if (filtered.length === 0) {
+                      return <p className="text-sm text-gray-400 text-center py-6">No {caseTab} cases{searchQuery ? " matching your search" : ""}.</p>;
+                    }
+                    return filtered.map((c) => (
+                      <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                        className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
+                              <Briefcase className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
+                                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : c.status === "pending" ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>{c.status.toUpperCase()}</span>
+                              </div>
+                              <CaseStageTimeline stage={c.case_stage} />
+                              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+                                {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
+                                {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{c.cnr_number}</span>}
+                                {c.hearing_date && (
+                                  <span className="flex items-center gap-1 text-amber-600 font-medium"><Calendar className="w-3 h-3" />{new Date(c.hearing_date).toLocaleDateString("en-IN")}</span>
+                                )}
+                                <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.lawyer_name || "Advocate"}</span>
+                              </div>
+                            </div>
                           </div>
-                          <CaseStageTimeline stage={c.case_stage} />
-                          <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
-                            {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
-                            {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{c.cnr_number}</span>}
-                            {c.hearing_date && (
-                              <span className="flex items-center gap-1 text-amber-600 font-medium">
-                                <Calendar className="w-3 h-3" />{new Date(c.hearing_date).toLocaleDateString("en-IN")}
-                              </span>
-                            )}
+                          {/* Inline action buttons */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => { setShowEditCase(c); setEditDesc(c.description || ""); setEditHearing(c.hearing_date || ""); }}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="Edit case"
+                            >
+                              <PenSquare className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\nCNR: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nStage: ${c.case_stage || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
+                                if (navigator.share) navigator.share({ title: c.title, text });
+                                else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                              }}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              title="Share case"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\nCNR: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nStage: ${c.case_stage || "N/A"}\nDescription: ${c.description || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
+                                const blob = new Blob([text], { type: "text/plain" });
+                                const a = document.createElement("a");
+                                a.href = URL.createObjectURL(blob);
+                                a.download = `case-${c.id}.txt`;
+                                a.click();
+                              }}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                              title="Download case"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setShowCaseDetail(c)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                              title="View details"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-2" />
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ));
+                  })()}
                 </div>
               </div>
 
