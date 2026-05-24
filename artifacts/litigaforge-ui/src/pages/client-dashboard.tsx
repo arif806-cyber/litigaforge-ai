@@ -9,6 +9,7 @@ import {
   Gavel, Plus, ChevronRight, X, Menu, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
   Scale, Calendar, FileCheck, Heart, FileSearch, Building2, Hash,
+  PenSquare, Download, Share2,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -197,6 +198,9 @@ export default function ClientDashboard() {
   const [showMatchDetail, setShowMatchDetail] = useState<MatchProposal | null>(null);
   const [showMessageModal, setShowMessageModal] = useState<{ matchId: number; lawyerName: string } | null>(null);
   const [showCaseDetail, setShowCaseDetail] = useState<ClientCase | null>(null);
+  const [showEditCase, setShowEditCase] = useState<ClientCase | null>(null);
+  const [editDesc, setEditDesc] = useState("");
+  const [editHearing, setEditHearing] = useState("");
   const [messageText, setMessageText] = useState("");
 
   // NEW: Fetch client's assigned cases from /client/cases
@@ -613,7 +617,39 @@ export default function ClientDashboard() {
                 <p className="text-[12px] text-gray-600">{showCaseDetail.description}</p>
               </div>
             )}
-            <div className="flex items-center gap-2">
+            {/* Edit / Share / Download / Contact */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => { setShowEditCase(showCaseDetail); setEditDesc(showCaseDetail.description || ""); setEditHearing(showCaseDetail.hearing_date || ""); setShowCaseDetail(null); }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                <PenSquare className="w-3.5 h-3.5" /> Edit
+              </button>
+              <button
+                onClick={() => {
+                  const text = `Case: ${showCaseDetail.title}\nType: ${showCaseDetail.case_type}\nCourt: ${showCaseDetail.court_name || "N/A"}\nCNR: ${showCaseDetail.cnr_number || "N/A"}\nHearing: ${showCaseDetail.hearing_date || "N/A"}\nStage: ${showCaseDetail.case_stage || "N/A"}\n\n— LitigaForge AI`;
+                  if (navigator.share) {
+                    navigator.share({ title: showCaseDetail.title, text });
+                  } else {
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                  }
+                }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                <Share2 className="w-3.5 h-3.5" /> Share
+              </button>
+              <button
+                onClick={() => {
+                  const text = `Case: ${showCaseDetail.title}\nType: ${showCaseDetail.case_type}\nCourt: ${showCaseDetail.court_name || "N/A"}\nCNR: ${showCaseDetail.cnr_number || "N/A"}\nHearing: ${showCaseDetail.hearing_date || "N/A"}\nStage: ${showCaseDetail.case_stage || "N/A"}\nDescription: ${showCaseDetail.description || "N/A"}\n\n— LitigaForge AI`;
+                  const blob = new Blob([text], { type: "text/plain" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `case-${showCaseDetail.id}.txt`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                <Download className="w-3.5 h-3.5" /> Download
+              </button>
               {showCaseDetail.lawyer_phone && (
                 <a href={`tel:${showCaseDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg text-white transition-colors" style={{ background: "#059669" }}>
                   <Phone className="w-3.5 h-3.5" /> Call Lawyer
@@ -625,6 +661,37 @@ export default function ClientDashboard() {
                 </a>
               )}
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Case Modal */}
+      <Modal open={!!showEditCase} onClose={() => setShowEditCase(null)} title={`Edit: ${showEditCase?.title || ""}`}>
+        {showEditCase && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Description</label>
+              <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={4} placeholder="Update case description..."
+                className="w-full text-sm px-3 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all resize-none" style={{ borderColor: "#E2E8F0" }} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Next Hearing Date</label>
+              <input type="date" value={editHearing} onChange={(e) => setEditHearing(e.target.value)}
+                className="w-full text-sm px-3 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" style={{ borderColor: "#E2E8F0" }} />
+            </div>
+            <button
+              onClick={() => {
+                apiFetch(`/client/cases/${showEditCase.id}`, {
+                  method: "PATCH",
+                  body: JSON.stringify({ description: editDesc, hearing_date: editHearing }),
+                }).then(() => {
+                  qc.invalidateQueries({ queryKey: ["client-cases"] });
+                  setShowEditCase(null);
+                });
+              }}
+              className="w-full text-xs font-bold py-2.5 rounded-lg text-white transition-colors" style={{ background: "#2563EB" }}>
+              Save Changes
+            </button>
           </div>
         )}
       </Modal>

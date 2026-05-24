@@ -456,3 +456,38 @@ async def get_client_case(case_id: int, current_user: Optional[dict] = Depends(g
         d["created_at"] = str(d["created_at"])
     row["documents"] = docs
     return row
+
+
+class ClientUpdateRequest(BaseModel):
+    description: str = ""
+    hearing_date: str = ""
+
+
+@router.patch("/client/cases/{case_id}")
+@limiter.limit("30/minute")
+async def update_client_case(
+    case_id: int,
+    req: ClientUpdateRequest,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    """Allow client to update description and hearing date of their assigned case."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    case = await fetchrow(
+        "SELECT id FROM lawyer_cases WHERE id = $1 AND client_id = $2",
+        case_id, current_user["id"],
+    )
+    if not case:
+        raise HTTPException(404, "Case not found or not assigned to you")
+    safe_desc = sanitize_text(req.description, max_length=2000, field_name="description")
+    safe_hearing = sanitize_text(req.hearing_date, max_length=30, field_name="hearing_date")
+    row = await fetchrow(
+        """UPDATE lawyer_cases SET description = $1, hearing_date = $2
+           WHERE id = $3 AND client_id = $4
+           RETURNING id, lawyer_id, client_id, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status, created_at""",
+        safe_desc, safe_hearing, case_id, current_user["id"],
+    )
+    row["created_at"] = str(row["created_at"])
+    logger.info("client %s updated case %s", current_user["id"], case_id)
+    return {"message": "Case updated", "case": row}

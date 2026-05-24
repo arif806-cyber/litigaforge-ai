@@ -225,7 +225,10 @@ async def lifespan(app: FastAPI):
         try:
             await conn.execute("ALTER TABLE lawyer_documents ADD COLUMN IF NOT EXISTS notes TEXT")
             await conn.execute("ALTER TABLE lawyer_cases ADD COLUMN IF NOT EXISTS cnr_number TEXT")
-            logger.info("Migration: notes + cnr columns added")
+            await conn.execute("ALTER TABLE lawyer_cases ADD COLUMN IF NOT EXISTS client_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
+            await conn.execute("ALTER TABLE lawyer_cases ADD COLUMN IF NOT EXISTS hearing_date TEXT")
+            await conn.execute("ALTER TABLE lawyer_cases ADD COLUMN IF NOT EXISTS case_stage TEXT DEFAULT 'filed'")
+            logger.info("Migration: notes + cnr + client_id + hearing_date + case_stage columns added")
         except Exception as me:
             logger.warning("Migration check: %s", me)
 
