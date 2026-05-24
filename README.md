@@ -705,15 +705,15 @@ Interactive Swagger UI: `/litigaforge/docs`
 ## Forge Request Example
 
 ```bash
-# Register as a lawyer
+# Register
 curl -X POST https://YOUR_DOMAIN/litigaforge/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"Adv. Ramesh Kumar","email":"ramesh@example.com","password":"advocate123","role":"lawyer"}'
+  -d '{"name":"Your Name","email":"you@example.com","password":"securepass123","role":"client"}'
 
-# Or register as a client
-curl -X POST https://YOUR_DOMAIN/litigaforge/auth/register \
+# Login
+curl -X POST https://YOUR_DOMAIN/litigaforge/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"name":"Ravi Kumar","email":"ravi@example.com","password":"client123","role":"client"}'
+  -d '{"email":"you@example.com","password":"securepass123"}'
 
 # Use the returned token
 TOKEN="eyJ..."
@@ -721,10 +721,7 @@ TOKEN="eyJ..."
 curl -X POST https://YOUR_DOMAIN/litigaforge/forge \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "prompt": "My client with PAN ABCDE1234F and GSTIN 36ABCDE1234F1Z5 has a property dispute in Hyderabad. Vehicle TS09EA1234 involved.",
-    "notify_whatsapp": false
-  }'
+  -d '{"prompt":"Property dispute in Hyderabad with PAN and vehicle details"}'
 ```
 
 ### Response shape

@@ -11,7 +11,6 @@ import CaseDetail from "@/pages/case-detail";
 import Chains from "@/pages/chains";
 import UseCases from "@/pages/use-cases";
 import Login from "@/pages/login";
-import Register from "@/pages/register";
 import Subscription from "@/pages/subscription";
 import Ask from "@/pages/ask";
 import Review from "@/pages/review";
@@ -74,7 +73,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
+      <Route path="/register" component={Login} />
       <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
       <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
       <Route>
