@@ -159,7 +159,7 @@ function App() {
               <SEOHelmet />
               <SkipLink />
               <KeyboardShortcuts />
-              <FirstVisitDisclaimer />
+              {/* <FirstVisitDisclaimer /> */}
               <Router />
             </WouterRouter>
           </AuthProvider>
