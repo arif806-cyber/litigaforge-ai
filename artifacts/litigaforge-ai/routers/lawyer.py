@@ -27,8 +27,11 @@ class CreateCaseRequest(BaseModel):
     case_type: str
     description: str = ""
     client_name: str = ""
+    client_id: Optional[int] = None
     court_name: str = ""
     cnr_number: str = ""
+    hearing_date: str = ""
+    case_stage: str = "filed"
     status: str = "active"
 
 class CreateDocRequest(BaseModel):
@@ -58,14 +61,17 @@ async def create_lawyer_case(
         safe_court = sanitize_text(req.court_name, max_length=100, field_name="court_name")
         safe_cnr = sanitize_text(req.cnr_number, max_length=20, field_name="cnr_number")
         safe_status = sanitize_text(req.status, max_length=20, field_name="status")
+        safe_hearing = sanitize_text(req.hearing_date, max_length=30, field_name="hearing_date")
+        safe_stage = sanitize_text(req.case_stage, max_length=20, field_name="case_stage")
+        client_id = req.client_id
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     row = await fetchrow(
-        """INSERT INTO lawyer_cases (lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           RETURNING id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at""",
-        current_user["id"], safe_title, safe_type, safe_desc, safe_client, safe_court, safe_cnr, safe_status,
+        """INSERT INTO lawyer_cases (lawyer_id, client_id, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           RETURNING id, lawyer_id, client_id, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status, created_at""",
+        current_user["id"], client_id, safe_title, safe_type, safe_desc, safe_client, safe_court, safe_cnr, safe_hearing, safe_stage, safe_status,
     )
     row["created_at"] = str(row["created_at"])
     logger.info("lawyer %s created case %s", current_user["id"], row["id"])
@@ -81,13 +87,13 @@ async def list_lawyer_cases(
         raise HTTPException(401, "Login required")
     if status:
         rows = await fetch(
-            """SELECT id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at
+            """SELECT id, lawyer_id, client_id, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status, created_at
                FROM lawyer_cases WHERE lawyer_id = $1 AND status = $2 ORDER BY created_at DESC""",
             current_user["id"], status,
         )
     else:
         rows = await fetch(
-            """SELECT id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at
+            """SELECT id, lawyer_id, client_id, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status, created_at
                FROM lawyer_cases WHERE lawyer_id = $1 ORDER BY created_at DESC""",
             current_user["id"],
         )
@@ -186,14 +192,16 @@ async def update_lawyer_case(
         safe_court = sanitize_text(req.court_name, max_length=100, field_name="court_name")
         safe_cnr = sanitize_text(req.cnr_number, max_length=20, field_name="cnr_number")
         safe_status = sanitize_text(req.status, max_length=20, field_name="status")
+        safe_hearing = sanitize_text(req.hearing_date, max_length=30, field_name="hearing_date")
+        safe_stage = sanitize_text(req.case_stage, max_length=20, field_name="case_stage")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     row = await fetchrow(
-        """UPDATE lawyer_cases SET title = $1, case_type = $2, description = $3, client_name = $4, court_name = $5, cnr_number = $6, status = $7
-           WHERE id = $8 AND lawyer_id = $9
-           RETURNING id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, status, created_at""",
-        safe_title, safe_type, safe_desc, safe_client, safe_court, safe_cnr, safe_status, case_id, current_user["id"],
+        """UPDATE lawyer_cases SET title = $1, case_type = $2, description = $3, client_id = $4, client_name = $5, court_name = $6, cnr_number = $7, hearing_date = $8, case_stage = $9, status = $10
+           WHERE id = $11 AND lawyer_id = $12
+           RETURNING id, lawyer_id, client_id, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status, created_at""",
+        safe_title, safe_type, safe_desc, req.client_id, safe_client, safe_court, safe_cnr, safe_hearing, safe_stage, safe_status, case_id, current_user["id"],
     )
     row["created_at"] = str(row["created_at"])
     logger.info("lawyer %s updated case %s", current_user["id"], case_id)
@@ -397,4 +405,54 @@ async def get_lawyer_document(
     if not row:
         raise HTTPException(404, "Document not found")
     row["created_at"] = str(row["created_at"])
+    return row
+
+
+# ── Client endpoints ────────────────────────────────────────────────────────────
+
+@router.get("/client/cases")
+async def list_client_cases(current_user: Optional[dict] = Depends(get_current_user)):
+    """List all cases assigned to this client (by client_id)."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    rows = await fetch(
+        """SELECT id, lawyer_id, title, case_type, description, client_name, court_name, cnr_number, hearing_date, case_stage, status, created_at
+           FROM lawyer_cases WHERE client_id = $1 ORDER BY created_at DESC""",
+        current_user["id"],
+    )
+    for r in rows:
+        r["created_at"] = str(r["created_at"])
+    # Attach lawyer info
+    for r in rows:
+        lawyer = await fetchrow("SELECT name, email, phone FROM users WHERE id = $1", r["lawyer_id"])
+        r["lawyer_name"] = lawyer["name"] if lawyer else ""
+        r["lawyer_email"] = lawyer["email"] if lawyer else ""
+        r["lawyer_phone"] = lawyer["phone"] if lawyer else ""
+    return {"total": len(rows), "cases": rows}
+
+
+@router.get("/client/cases/{case_id}")
+async def get_client_case(case_id: int, current_user: Optional[dict] = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    row = await fetchrow(
+        "SELECT * FROM lawyer_cases WHERE id = $1 AND client_id = $2",
+        case_id, current_user["id"],
+    )
+    if not row:
+        raise HTTPException(404, "Case not found or not assigned to you")
+    row["created_at"] = str(row["created_at"])
+    # Lawyer info
+    lawyer = await fetchrow("SELECT name, email, phone FROM users WHERE id = $1", row["lawyer_id"])
+    row["lawyer_name"] = lawyer["name"] if lawyer else ""
+    row["lawyer_email"] = lawyer["email"] if lawyer else ""
+    row["lawyer_phone"] = lawyer["phone"] if lawyer else ""
+    # Documents shared for this case
+    docs = await fetch(
+        "SELECT id, filename, file_type, file_url, ai_summary, created_at FROM lawyer_documents WHERE case_id = $1 ORDER BY created_at DESC",
+        case_id,
+    )
+    for d in docs:
+        d["created_at"] = str(d["created_at"])
+    row["documents"] = docs
     return row

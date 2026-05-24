@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
@@ -8,7 +8,8 @@ import {
   Briefcase, Clock, CheckCircle2, FileText, User, MessageSquare,
   Gavel, Search, Plus, ChevronRight, X, Menu, Phone, MapPin,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
-  Scale, StickyNote, ChevronDown,
+  Scale, StickyNote, ChevronDown, Calendar, FileCheck, AlertCircle,
+  Building2, TrendingUp, FileSearch, Hash,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -42,11 +43,55 @@ interface MatchProposal {
   created_at: string;
 }
 
+interface ClientCase {
+  id: number;
+  lawyer_id: number;
+  lawyer_name: string;
+  lawyer_email: string;
+  lawyer_phone: string;
+  title: string;
+  case_type: string;
+  description: string;
+  court_name: string;
+  cnr_number: string;
+  hearing_date: string;
+  case_stage: string;
+  status: string;
+  created_at: string;
+}
+
+interface CaseDoc {
+  id: number;
+  filename: string;
+  file_type: string;
+  file_url: string;
+  ai_summary: string;
+  created_at: string;
+}
+
 interface ChatThread {
   id: number;
   match_id: number;
   title: string;
   created_at: string;
+}
+
+const CASE_STAGES = ["filed", "admitted", "evidence", "arguments", "reserved", "judgment"] as const;
+
+function stageIndex(stage: string) {
+  return Math.max(0, CASE_STAGES.indexOf(stage as any));
+}
+
+function stageLabel(stage: string) {
+  const labels: Record<string, string> = {
+    filed: "Case Filed",
+    admitted: "Admitted",
+    evidence: "Evidence Stage",
+    arguments: "Arguments",
+    reserved: "Reserved",
+    judgment: "Judgment",
+  };
+  return labels[stage] || stage;
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────────────
@@ -125,6 +170,26 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
   );
 }
 
+// ── Case Stage Timeline ──────────────────────────────────────────────────────────────
+function CaseStageTimeline({ stage }: { stage: string }) {
+  const idx = stageIndex(stage);
+  return (
+    <div className="flex items-center gap-1 mt-2">
+      {CASE_STAGES.map((s, i) => {
+        const done = i <= idx;
+        const isCurrent = i === idx;
+        return (
+          <div key={s} className="flex items-center gap-1">
+            <div className={`w-2 h-2 rounded-full ${done ? "bg-emerald-500" : "bg-gray-200"}`} />
+            {isCurrent && <span className="text-[10px] font-semibold text-emerald-600 ml-0.5">{stageLabel(s)}</span>}
+            {i < CASE_STAGES.length - 1 && <div className={`w-3 h-px ${done ? "bg-emerald-300" : "bg-gray-100"}`} />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ClientDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -133,9 +198,17 @@ export default function ClientDashboard() {
   const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
   const [showMatchDetail, setShowMatchDetail] = useState<MatchProposal | null>(null);
   const [showMessageModal, setShowMessageModal] = useState<{ matchId: number; lawyerName: string } | null>(null);
+  const [showCaseDetail, setShowCaseDetail] = useState<ClientCase | null>(null);
   const [messageText, setMessageText] = useState("");
 
-  // Fetch data
+  // NEW: Fetch client's assigned cases from /client/cases
+  const { data: clientCasesData, isLoading: casesLoading } = useQuery({
+    queryKey: ["client-cases"],
+    queryFn: () => apiFetch("/client/cases"),
+    enabled: !!user,
+  });
+  const clientCases: ClientCase[] = clientCasesData?.cases || [];
+
   const { data: requirementsData, isLoading: reqLoading } = useQuery({
     queryKey: ["client-requirements"],
     queryFn: () => apiFetch("/cases/requirements/mine"),
@@ -176,11 +249,17 @@ export default function ClientDashboard() {
   const acceptedMatches = allMatches.filter((m) => m.status === "accepted").length;
   const pendingMatches = allMatches.filter((m) => m.status === "pending").length;
 
+  // Derived stats for client dashboard
+  const activeCases = clientCases.filter((c) => c.status === "active").length;
+  const upcomingHearings = clientCases.filter((c) => c.hearing_date && new Date(c.hearing_date) >= new Date()).length;
+  const totalDocs = clientCases.reduce((sum, c) => sum + (c as any)._docCount || 0, 0); // placeholder
+  const connectedLawyers = [...new Set(clientCases.map((c) => c.lawyer_id))].length;
+
   const quickActions = [
     { label: "Post a Case", icon: Plus, color: "#2563EB", bg: "#EFF6FF", border: "#DBEAFE", action: () => setLocation("/post-case") },
     { label: "Find Lawyer", icon: Search, color: "#059669", bg: "#ECFDF5", border: "#D1FAE5", action: () => setLocation("/lawyers") },
-    { label: "AI Chat", icon: MessageSquare, color: "#7C3AED", bg: "#F5F3FF", border: "#EDE9FE", action: () => setLocation("/legal-chat") },
-    { label: "Ask Question", icon: Gavel, color: "#D97706", bg: "#FEF3C7", border: "#FDE68A", action: () => setLocation("/ask") },
+    { label: "Document Analyzer", icon: FileSearch, color: "#7C3AED", bg: "#F5F3FF", border: "#EDE9FE", action: () => setLocation("/review") },
+    { label: "Legal Q&A", icon: Gavel, color: "#D97706", bg: "#FEF3C7", border: "#FDE68A", action: () => setLocation("/ask") },
   ];
 
   const firstName = user?.name?.split(" ")[0] ?? "Client";
@@ -215,7 +294,7 @@ export default function ClientDashboard() {
             </button>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Good day, {firstName}</h1>
-              <p className="text-[11px] text-gray-400">{requirements.length} case{requirements.length !== 1 ? "s" : ""} posted · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected</p>
+              <p className="text-[11px] text-gray-400">{clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -248,12 +327,13 @@ export default function ClientDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left column — Cases & Matches */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Client Stats */}
+              <div className="grid grid-cols-4 gap-3">
                 {[
-                  { label: "Active Cases", value: activeReqs, icon: Briefcase, color: "#2563EB", bg: "#EFF6FF" },
-                  { label: "Pending Matches", value: pendingMatches, icon: Clock, color: "#D97706", bg: "#FEF3C7" },
-                  { label: "Connected", value: acceptedMatches, icon: CheckCircle2, color: "#059669", bg: "#ECFDF5" },
+                  { label: "Active Cases", value: activeCases, icon: Briefcase, color: "#2563EB", bg: "#EFF6FF" },
+                  { label: "Hearings", value: upcomingHearings, icon: Calendar, color: "#D97706", bg: "#FEF3C7" },
+                  { label: "My Lawyers", value: connectedLawyers, icon: User, color: "#059669", bg: "#ECFDF5" },
+                  { label: "Posted", value: activeReqs, icon: FileText, color: "#7C3AED", bg: "#F5F3FF" },
                 ].map((s) => {
                   const Icon = s.icon;
                   return (
@@ -268,35 +348,86 @@ export default function ClientDashboard() {
                 })}
               </div>
 
-              {/* My Posted Cases */}
+              {/* My Assigned Cases — THE CLIENT FOCUS */}
               <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
                 <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#EFF6FF" }}><FileText className="w-4 h-4 text-blue-600" /></div>
-                    <h2 className="font-bold text-gray-900 text-sm">My Posted Cases</h2>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#EFF6FF" }}><FileCheck className="w-4 h-4 text-blue-600" /></div>
+                    <h2 className="font-bold text-gray-900 text-sm">My Assigned Cases</h2>
                   </div>
-                  <button onClick={() => setLocation("/post-case")} className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "#2563EB" }}>+ Post New</button>
+                  <span className="text-[11px] text-gray-400">Cases your lawyer is handling for you</span>
                 </div>
                 <div className="p-4 space-y-3">
-                  {reqLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
-                  {!reqLoading && requirements.length === 0 && (
+                  {casesLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
+                  {!casesLoading && clientCases.length === 0 && (
                     <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
                       <Briefcase className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No cases posted yet.</p>
-                      <button onClick={() => setLocation("/post-case")} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800">Post your first case →</button>
+                      <p className="text-sm text-gray-500">No cases assigned yet.</p>
+                      <button onClick={() => setLocation("/post-case")} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800">Post a case to get matched →</button>
                     </div>
                   )}
-                  {requirements.map((r) => (
-                    <motion.div key={r.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl p-4" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                  {clientCases.map((c) => (
+                    <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl p-4 cursor-pointer hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}
+                      onClick={() => setShowCaseDetail(c)}>
                       <div className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
                           <Briefcase className="w-4 h-4 text-blue-600" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : c.status === "pending" ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>{c.status.toUpperCase()}</span>
+                          </div>
+                          <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{c.description || "No description"}</p>
+                          <CaseStageTimeline stage={c.case_stage} />
+                          <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
+                            {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
+                            {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />CNR: {c.cnr_number}</span>}
+                            {c.hearing_date && (
+                              <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                <Calendar className="w-3 h-3" />Hearing: {new Date(c.hearing_date).toLocaleDateString("en-IN")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-2" />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* My Posted Requirements */}
+              <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+                <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}><FileText className="w-4 h-4 text-violet-600" /></div>
+                    <h2 className="font-bold text-gray-900 text-sm">My Posted Requirements</h2>
+                  </div>
+                  <button onClick={() => setLocation("/post-case")} className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "#7C3AED" }}>+ Post New</button>
+                </div>
+                <div className="p-4 space-y-3">
+                  {reqLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
+                  {!reqLoading && requirements.length === 0 && (
+                    <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+                      <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No requirements posted yet.</p>
+                      <button onClick={() => setLocation("/post-case")} className="mt-2 text-xs font-medium text-violet-600 hover:text-violet-800">Post your first requirement →</button>
+                    </div>
+                  )}
+                  {requirements.map((r) => (
+                    <motion.div key={r.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl p-4" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#F5F3FF" }}>
+                          <FileText className="w-4 h-4 text-violet-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-gray-900 text-sm">{r.title}</span>
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{r.case_type}</span>
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{r.case_type}</span>
                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${r.status === "open" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>{r.status.toUpperCase()}</span>
                           </div>
                           <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{r.description || "No description"}</p>
@@ -306,7 +437,7 @@ export default function ClientDashboard() {
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(r.created_at).toLocaleDateString("en-IN")}</span>
                           </div>
                         </div>
-                        <button onClick={() => setLocation("/my-cases")} className="text-gray-300 hover:text-blue-600 transition-colors flex-shrink-0"><ChevronRight className="w-4 h-4" /></button>
+                        <button onClick={() => setLocation("/my-cases")} className="text-gray-300 hover:text-violet-600 transition-colors flex-shrink-0"><ChevronRight className="w-4 h-4" /></button>
                       </div>
                     </motion.div>
                   ))}
@@ -400,28 +531,56 @@ export default function ClientDashboard() {
 
             {/* Right sidebar */}
             <aside className="space-y-4">
-              {/* Messages */}
+              {/* Upcoming Hearings */}
               <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}><MessageSquare className="w-4 h-4 text-violet-600" /></div>
-                  <p className="text-sm font-bold text-gray-900">Messages</p>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#FEF3C7" }}><Calendar className="w-4 h-4 text-amber-600" /></div>
+                  <p className="text-sm font-bold text-gray-900">Upcoming Hearings</p>
                 </div>
                 <div className="space-y-2">
-                  {threads.slice(0, 4).map((t) => (
-                    <button key={t.id} onClick={() => setLocation("/legal-chat")}
-                      className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#1a2744" }}>
-                        <User className="w-3.5 h-3.5 text-white" />
+                  {clientCases.filter((c) => c.hearing_date).slice(0, 3).map((c) => (
+                    <div key={c.id} className="flex items-start gap-2 p-2.5 rounded-lg" style={{ background: "#FEF3C7" }}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-100">
+                        <Bell className="w-3.5 h-3.5 text-amber-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-medium text-gray-800 truncate">{t.title || `Thread #${t.id}`}</p>
-                        <p className="text-[10px] text-gray-400">{new Date(t.created_at).toLocaleDateString("en-IN")}</p>
+                        <p className="text-[12px] font-semibold text-gray-800 truncate">{c.title}</p>
+                        <p className="text-[11px] text-gray-500">{c.court_name || "District Court"}</p>
+                        <p className="text-[11px] text-amber-700 font-medium">{new Date(c.hearing_date).toLocaleDateString("en-IN")}</p>
                       </div>
-                      <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0 mt-1" />
-                    </button>
+                    </div>
                   ))}
-                  {threads.length === 0 && (
-                    <p className="text-[12px] text-gray-400 text-center py-2">No messages yet</p>
+                  {clientCases.filter((c) => c.hearing_date).length === 0 && (
+                    <p className="text-[12px] text-gray-400 text-center py-2">No upcoming hearings</p>
+                  )}
+                </div>
+              </div>
+
+              {/* My Lawyers */}
+              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#ECFDF5" }}><User className="w-4 h-4 text-emerald-600" /></div>
+                  <p className="text-sm font-bold text-gray-900">My Lawyers</p>
+                </div>
+                <div className="space-y-2">
+                  {clientCases.filter((c, i, arr) => arr.findIndex((x) => x.lawyer_id === c.lawyer_id) === i).map((c) => (
+                    <div key={c.lawyer_id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#1a2744" }}>
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-medium text-gray-800 truncate">{c.lawyer_name || "Advocate"}</p>
+                        <p className="text-[10px] text-gray-400">{c.case_type}</p>
+                      </div>
+                      {c.lawyer_phone && (
+                        <a href={`tel:${c.lawyer_phone}`} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100">
+                          <Phone className="w-3.5 h-3.5 text-gray-400" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                  {clientCases.length === 0 && (
+                    <p className="text-[12px] text-gray-400 text-center py-2">No lawyers yet</p>
                   )}
                 </div>
               </div>
@@ -469,6 +628,54 @@ export default function ClientDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Case Detail Modal */}
+      <Modal open={!!showCaseDetail} onClose={() => setShowCaseDetail(null)} title={showCaseDetail?.title || "Case Details"}>
+        {showCaseDetail && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Case Type</p>
+                <p className="text-sm font-bold text-gray-900">{showCaseDetail.case_type}</p>
+              </div>
+              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Court</p>
+                <p className="text-sm font-bold text-gray-900">{showCaseDetail.court_name || "N/A"}</p>
+              </div>
+              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">CNR Number</p>
+                <p className="text-sm font-bold text-gray-900">{showCaseDetail.cnr_number || "N/A"}</p>
+              </div>
+              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Hearing Date</p>
+                <p className="text-sm font-bold text-gray-900">{showCaseDetail.hearing_date ? new Date(showCaseDetail.hearing_date).toLocaleDateString("en-IN") : "N/A"}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-gray-700 mb-1">Case Stage</p>
+              <CaseStageTimeline stage={showCaseDetail.case_stage} />
+            </div>
+            {showCaseDetail.description && (
+              <div className="rounded-lg p-3" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                <p className="text-[11px] font-semibold text-gray-700 mb-1">Description</p>
+                <p className="text-[12px] text-gray-600">{showCaseDetail.description}</p>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              {showCaseDetail.lawyer_phone && (
+                <a href={`tel:${showCaseDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg text-white transition-colors" style={{ background: "#059669" }}>
+                  <Phone className="w-3.5 h-3.5" /> Call Lawyer
+                </a>
+              )}
+              {showCaseDetail.lawyer_email && (
+                <a href={`mailto:${showCaseDetail.lawyer_email}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                  <Send className="w-3.5 h-3.5" /> Email Lawyer
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Match Detail Modal */}
       <Modal open={!!showMatchDetail} onClose={() => setShowMatchDetail(null)} title="Lawyer Profile">
@@ -532,7 +739,6 @@ export default function ClientDashboard() {
           <button
             onClick={() => {
               if (!showMessageModal || !messageText.trim()) return;
-              // Find or create thread
               const existing = threads.find((t) => t.match_id === showMessageModal.matchId);
               if (existing) {
                 sendMsgMut.mutate({ threadId: existing.id, content: messageText.trim() });

@@ -194,12 +194,15 @@ async def lifespan(app: FastAPI):
             CREATE TABLE IF NOT EXISTS lawyer_cases (
                 id SERIAL PRIMARY KEY,
                 lawyer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                client_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 title TEXT NOT NULL,
                 case_type TEXT NOT NULL,
                 description TEXT,
                 client_name TEXT,
                 court_name TEXT,
                 cnr_number TEXT,
+                hearing_date TEXT,
+                case_stage TEXT DEFAULT 'filed',
                 status TEXT DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
