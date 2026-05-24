@@ -5,11 +5,11 @@ import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Briefcase, Clock, CheckCircle2, FileText, User, MessageSquare,
-  Gavel, Search, Plus, ChevronRight, X, Menu, Phone, MapPin,
+  Briefcase, FileText, User, MessageSquare,
+  Gavel, Search, Plus, ChevronRight, X, Menu, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
-  Scale, StickyNote, ChevronDown, Calendar, FileCheck, AlertCircle,
-  Building2, TrendingUp, FileSearch, Hash,
+  Scale, Calendar, FileCheck,
+  Building2, FileSearch, Hash,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -380,64 +380,18 @@ export default function ClientDashboard() {
                             <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : c.status === "pending" ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>{c.status.toUpperCase()}</span>
                           </div>
-                          <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{c.description || "No description"}</p>
                           <CaseStageTimeline stage={c.case_stage} />
                           <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
                             {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
-                            {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />CNR: {c.cnr_number}</span>}
+                            {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{c.cnr_number}</span>}
                             {c.hearing_date && (
                               <span className="flex items-center gap-1 text-amber-600 font-medium">
-                                <Calendar className="w-3 h-3" />Hearing: {new Date(c.hearing_date).toLocaleDateString("en-IN")}
+                                <Calendar className="w-3 h-3" />{new Date(c.hearing_date).toLocaleDateString("en-IN")}
                               </span>
                             )}
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-2" />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* My Posted Requirements */}
-              <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}><FileText className="w-4 h-4 text-violet-600" /></div>
-                    <h2 className="font-bold text-gray-900 text-sm">My Posted Requirements</h2>
-                  </div>
-                  <button onClick={() => setLocation("/post-case")} className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: "#7C3AED" }}>+ Post New</button>
-                </div>
-                <div className="p-4 space-y-3">
-                  {reqLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
-                  {!reqLoading && requirements.length === 0 && (
-                    <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-                      <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No requirements posted yet.</p>
-                      <button onClick={() => setLocation("/post-case")} className="mt-2 text-xs font-medium text-violet-600 hover:text-violet-800">Post your first requirement →</button>
-                    </div>
-                  )}
-                  {requirements.map((r) => (
-                    <motion.div key={r.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl p-4" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#F5F3FF" }}>
-                          <FileText className="w-4 h-4 text-violet-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-gray-900 text-sm">{r.title}</span>
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{r.case_type}</span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${r.status === "open" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>{r.status.toUpperCase()}</span>
-                          </div>
-                          <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{r.description || "No description"}</p>
-                          <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
-                            {r.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{r.location}</span>}
-                            {r.budget_range && <span className="flex items-center gap-1"><Award className="w-3 h-3" />{r.budget_range}</span>}
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(r.created_at).toLocaleDateString("en-IN")}</span>
-                          </div>
-                        </div>
-                        <button onClick={() => setLocation("/my-cases")} className="text-gray-300 hover:text-violet-600 transition-colors flex-shrink-0"><ChevronRight className="w-4 h-4" /></button>
                       </div>
                     </motion.div>
                   ))}
