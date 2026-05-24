@@ -28,10 +28,13 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 
 - **Role-Based Access** — register as Client or Lawyer. Each role gets its own dedicated dashboard with role-specific tools and workflows
 - **Lawyer Dashboard** (`/lawyer-dashboard`) — full case management for advocates: create/edit/delete cases, upload and analyze client documents, track case status (active/pending/closed), add CNR numbers, write notes, and view match proposals
-- **Client Dashboard** (`/client-dashboard`) — central hub for clients: view posted cases, browse AI match proposals with accept/decline, message connected lawyers, quick access to legal tools, and NALSA helpline
+- **Client Dashboard** (`/client-dashboard`) — central hub for clients: view assigned cases with case stage timeline (filed → arguments → reserved → judgment), browse AI match proposals with accept/decline, message connected lawyers, quick access to legal tools, NALSA helpline, and upgrade banner
 - **Client-Lawyer AI Matching** — clients post case requirements; AI scores and ranks lawyers (0-100) based on practice area overlap, location proximity, experience, and rating. Personalized AI explanations for each match
 - **Post a Case** — clients post legal needs with case type, location, budget range, and anonymous option. Lawyer proposals arrive with match scores
 - **My Cases** — clients track their posted cases, view match proposals, accept or decline lawyer connections
+- **Case Documents Dashboard** (`/documents`) — unified view of all uploaded case documents across every case. Search by filename or case name, download, share to WhatsApp/Instagram via Web Share API, and delete. Upload new documents directly from any case detail page
+- **Case Detail — Edit, Share, Download** — inside every case detail modal, clients can edit description and hearing date, share a case summary to any app (WhatsApp fallback), or download a text summary file with all case details
+- **Client Case Timeline** — visual 4-stage pipeline (Filed → Arguments → Reserved → Judgment) with progress dots on every case card
 - **CNR Tracking** — lawyers can attach Case Number Reference (CNR) numbers to every case for eCourts lookup and government record linkage
 - **AI Legal Chat** — interactive chat with Claude/Gemini for legal drafting. Templates: legal notice, agreement, court petition, reply to notice. Full chat history persists
 - **The Forge** — paste case facts, get a full legal strategy with entity extraction, chain orchestration, and multi-AI synthesis
@@ -50,7 +53,8 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 - **Watch Mode** — background scheduler monitors cases and parties for court date changes
 - **WhatsApp Alerts** — hearing reminders and forge results via Twilio WhatsApp
 - **Sandbox Mode** — Mee Seva TG and Transport TS make live calls to `sandbox.api-setu.in` using the public demo key
-- **Light / White UI** — clean white backgrounds, amber/gold accent, particle canvas, Framer Motion animations, fully mobile-responsive
+- **Light / White UI** — clean white backgrounds, amber/gold accent, particle canvas, Framer Motion animations, fully mobile-responsive. Client pages use a navy (#1a2744) sidebar with gold accents; lawyer pages use a white sidebar
+- **Mobile-First Navigation** — hamburger drawer with animated slide-in sidebar for clients on mobile. Fixed bottom tab bar on all pages for quick one-tap navigation
 - **AI Safety Guardrails** — prompt injection detection (15 attack patterns), input sanitization on every route, Pydantic v2 field validators, unoverridable legal system prompt wrapper, automatic "not legal advice" disclaimer on every AI response, AI output validation against jailbreak red flags
 - **Platform Disclaimer** — mandatory first-visit acknowledgment and persistent footer: "This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
 
@@ -303,12 +307,15 @@ CREATE TABLE chat_messages (
 CREATE TABLE lawyer_cases (
   id            SERIAL PRIMARY KEY,
   lawyer_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
   title         TEXT NOT NULL,
   case_type     TEXT NOT NULL,
   description   TEXT,
   client_name   TEXT,
   court_name    TEXT,
   cnr_number    TEXT,                          -- Case Number Reference for eCourts linkage
+  hearing_date  TEXT,                          -- Next hearing date
+  case_stage    TEXT DEFAULT 'filed',          -- filed / arguments / reserved / judgment
   status        TEXT DEFAULT 'active',         -- active / pending / closed
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -323,6 +330,19 @@ CREATE TABLE lawyer_documents (
   content_text  TEXT,
   ai_summary    TEXT,                          -- AI-generated document analysis
   notes         TEXT,                          -- Lawyer-written notes per document
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Client case document uploads (Client Portal)
+CREATE TABLE client_documents (
+  id            SERIAL PRIMARY KEY,
+  case_id       INTEGER REFERENCES lawyer_cases(id) ON DELETE CASCADE,
+  client_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  filename      TEXT NOT NULL,
+  file_type     TEXT NOT NULL,
+  file_size     INTEGER,
+  file_path     TEXT,
+  file_url      TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
@@ -650,6 +670,18 @@ All backend routes are prefixed with `/litigaforge`.
 | `POST` | `/litigaforge/lawyer/documents/{id}/analyze` | Bearer | AI analyze a document (generates risk summary) |
 | `POST` | `/litigaforge/lawyer/documents/{id}/notes` | Bearer | Save lawyer notes on a document |
 | `GET` | `/litigaforge/lawyer/stats` | Bearer | Quick stats: active/pending/closed counts + document count |
+
+### Client Dashboard (Case & Document Management)
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/litigaforge/client/cases` | Bearer | List all cases assigned to the client (with lawyer info attached) |
+| `GET` | `/litigaforge/client/cases/{id}` | Bearer | Get a single case with attached documents |
+| `PATCH` | `/litigaforge/client/cases/{id}` | Bearer | Edit case description and hearing date (client-owned) |
+| `POST` | `/litigaforge/client/cases/{case_id}/documents` | Bearer | Upload a document for a specific case |
+| `GET` | `/litigaforge/client/cases/{case_id}/documents` | Bearer | List documents for a specific case |
+| `GET` | `/litigaforge/client/documents` | Bearer | List ALL documents across all cases for the client |
+| `DELETE` | `/litigaforge/client/documents/{id}` | Bearer | Delete a client's document |
 
 ### Client-Lawyer Matching
 
