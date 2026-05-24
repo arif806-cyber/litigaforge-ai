@@ -4,8 +4,8 @@ import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import {
   UserCheck, MapPin, Star, Briefcase, Clock, Check, X,
-  Loader2, MessageSquare, ArrowLeft, Sparkles, Zap, AlertTriangle,
-  ExternalLink
+  Loader2, MessageSquare, ArrowLeft, Sparkles, Search,
+  Phone, Send, ChevronRight
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
@@ -13,246 +13,112 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
-function ExternalMatchCard({ match, isLive }: { match: any; isLive?: boolean }) {
+function MatchCard({ match, onAccept, onDecline, isClient }: {
+  match: any; onAccept: (id: number) => void; onDecline: (id: number) => void; isClient: boolean;
+}) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-amber-200/60 rounded-xl p-5 shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-              <UserCheck className="w-5 h-5 text-amber-700" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold">{match.name}</h3>
-                <span className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border",
-                  isLive
-                    ? "bg-green-50 text-green-700 border-green-200"
-                    : "bg-amber-50 text-amber-700 border-amber-200"
-                )}>
-                  <ExternalLink className="w-3 h-3" /> eCourts India {isLive ? "(Live)" : "(Simulated)"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" /> {match.district || "Telangana"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Briefcase className="w-3.5 h-3.5" /> {match.practice_areas?.join(", ") || "General"}
-                </span>
-              </div>
-            </div>
+    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#1a2744" }}>
+            <UserCheck className="w-5 h-5 text-white" />
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-amber-500 rounded-full transition-all"
-                style={{ width: `${match.match_score || 0}%` }}
-              />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-gray-900 text-sm">{isClient ? match.lawyer_name : match.case_title}</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white"
+                style={{ background: match.match_score >= 80 ? "#059669" : match.match_score >= 60 ? "#D97706" : "#EF4444" }}>
+                {match.match_score}% Match
+              </span>
+              {match.rating > 0 && (
+                <span className="text-[11px] flex items-center gap-0.5 text-amber-600"><Star className="w-3 h-3 fill-amber-400" />{match.rating}</span>
+              )}
             </div>
-            <span className="text-sm font-semibold text-amber-700">{match.match_score || 0}% match</span>
-          </div>
-
-          {match.ai_explanation && (
-            <div className="bg-amber-50 border border-amber-200/60 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-amber-800">{match.ai_explanation}</p>
-              </div>
+            <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-400">
+              {isClient && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{match.district}</span>}
+              <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{match.experience_years || 0} yrs</span>
+              <span className="flex items-center gap-1">₹{match.hourly_rate}/hr</span>
             </div>
-          )}
-
-          <div className={cn(
-            "rounded-lg p-3 text-sm flex items-start gap-2",
-            isLive
-              ? "bg-green-50 border border-green-200 text-green-800"
-              : "bg-amber-100 border border-amber-300 text-amber-900"
-          )}>
-            <AlertTriangle className={cn("w-4 h-4 mt-0.5 flex-shrink-0", isLive ? "text-green-700" : "text-amber-700")} />
-            <p>
-              {isLive
-                ? "This advocate appears in live eCourts India public court records. Verify their current bar membership and contact details independently before engagement."
-                : "This name appears in simulated court records for demonstration only. It is not a real person on this platform. Do not attempt to contact or hire."}
-            </p>
+            {match.ai_explanation && (
+              <p className="text-[11px] text-gray-500 mt-1 leading-relaxed line-clamp-2">{match.ai_explanation}</p>
+            )}
+            <div className="flex items-center gap-2 mt-2">
+              {match.status === "pending" && isClient && (
+                <>
+                  <button onClick={() => onAccept(match.id)}
+                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white transition-colors" style={{ background: "#059669" }}>
+                    <Check className="w-3 h-3 inline mr-1" /> Accept
+                  </button>
+                  <button onClick={() => onDecline(match.id)}
+                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    <X className="w-3 h-3 inline mr-1" /> Decline
+                  </button>
+                </>
+              )}
+              {match.status === "accepted" && (
+                <Link href={`/chat?match=${match.id}`}>
+                  <button className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white flex items-center gap-1 transition-colors" style={{ background: "#2563EB" }}>
+                    <MessageSquare className="w-3 h-3" /> Chat
+                  </button>
+                </Link>
+              )}
+              {match.lawyer_phone && (
+                <a href={`tel:${match.lawyer_phone}`} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
+                  <Phone className="w-3.5 h-3.5" />
+                </a>
+              )}
+              {match.lawyer_email && (
+                <a href={`mailto:${match.lawyer_email}`} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                  <Send className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </motion.div>
   );
-}
-
-function MatchCard({ match, onAccept, onDecline, isClient }: {
-  match: any; onAccept: (id: number) => void; onDecline: (id: number) => void; isClient: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (<>
-      <SEOHelmet title="AI Matching" description="View AI-scored lawyer matches with explanations for your cases." canonical="/matches" />
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-card-border rounded-xl p-5 shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <UserCheck className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold">{isClient ? match.lawyer_name : match.case_title}</h3>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                {isClient && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" /> {match.district}
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-amber-500" /> {match.rating || "N/A"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Briefcase className="w-3.5 h-3.5" /> {match.experience_years || 0} yrs
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all"
-                style={{ width: `${match.match_score || 0}%` }}
-              />
-            </div>
-            <span className="text-sm font-semibold text-primary">{match.match_score || 0}% match</span>
-          </div>
-
-          {match.ai_explanation && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-amber-800 dark:text-amber-300">{match.ai_explanation}</p>
-              </div>
-            </div>
-          )}
-
-          {match.status === "pending" && isClient && (
-            <div className="flex items-center gap-2 pt-2">
-              <Button size="sm" onClick={() => onAccept(match.id)} className="bg-green-600 hover:bg-green-700">
-                <Check className="w-4 h-4 mr-1" /> Accept
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => onDecline(match.id)} className="text-destructive border-destructive hover:bg-destructive/10">
-                <X className="w-4 h-4 mr-1" /> Decline
-              </Button>
-              <Link href={`/chat?match=${match.id}`}>
-                <Button size="sm" variant="ghost">
-                  <MessageSquare className="w-4 h-4 mr-1" /> Chat
-                </Button>
-              </Link>
-            </div>
-          )}
-
-          {match.status === "accepted" && (
-            <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
-              <Check className="w-4 h-4" /> Connection established
-              <Link href={`/chat?match=${match.id}`}>
-                <Button size="sm" variant="ghost" className="ml-auto h-7">
-                  <MessageSquare className="w-3.5 h-3.5 mr-1" /> Open Chat
-                </Button>
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  </>);
 }
 
 export default function Matches() {
   const { user } = useAuth();
   const [_, setLocation] = useLocation();
-  const [isFinding, setIsFinding] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !!new URLSearchParams(window.location.search).get("case");
-  });
-  const [externalMatches, setExternalMatches] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem(
-        `lf_external_matches_${new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("case") || "none"}`
-      );
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const [ecourtsStatus, setEcourtsStatus] = useState<string | null>(null);
-  const [fetchedForCase, setFetchedForCase] = useState<string | null>(null);
+  const [tab, setTab] = useState<"pending" | "accepted" | "declined">("pending");
+  const [search, setSearch] = useState("");
+  const [isFinding, setIsFinding] = useState(false);
   const queryClient = useQueryClient();
 
-  const searchParams = new URLSearchParams(
-    typeof window !== "undefined" ? window.location.search : ""
-  );
+  const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const caseId = searchParams.get("case");
 
-  const { data: clientMatches, isLoading: clientLoading, isError: clientError, error: clientErrorData, refetch: refetchClient } = useQuery({
+  const { data: clientMatches, isLoading, refetch } = useQuery({
     queryKey: ["matches-client"],
     queryFn: () => apiFetch("/matches/client"),
     enabled: !!user,
   });
 
-  const { data: lawyerMatches, isLoading: lawyerLoading, isError: lawyerError, error: lawyerErrorData } = useQuery({
-    queryKey: ["matches-lawyer"],
-    queryFn: () => apiFetch("/matches/lawyer"),
-    enabled: !!user,
-  });
-
   const updateMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) =>
-      apiFetch(`/matches/${id}`, { method: "PUT", body: JSON.stringify({ status }) }),
-    onSuccess: () => {
-      refetchClient();
-    },
+      apiFetch(`/matches/${id}/${status}`, { method: "POST" }),
+    onSuccess: () => refetch(),
   });
 
   const findLawyers = async () => {
     if (!caseId) return;
     setIsFinding(true);
     try {
-      const result = await apiFetch("/match/find-lawyers", {
-        method: "POST",
-        body: JSON.stringify({ case_requirement_id: parseInt(caseId) }),
-      });
-      const ext = result?.external_matches || [];
-      setEcourtsStatus(result?.ecourts_status || "unknown");
-      if (ext.length) {
-        setExternalMatches(ext);
-        localStorage.setItem(`lf_external_matches_${caseId}`, JSON.stringify(ext));
-      }
-      refetchClient();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsFinding(false);
-    }
+      await apiFetch("/match/find-lawyers", { method: "POST", body: JSON.stringify({ case_requirement_id: parseInt(caseId) }) });
+      refetch();
+    } catch (e) { console.error(e); }
+    finally { setIsFinding(false); }
   };
-
-  // Auto-call find-lawyers once per caseId when it changes
-  useEffect(() => {
-    if (caseId && fetchedForCase !== caseId && user) {
-      setFetchedForCase(caseId);
-      findLawyers();
-    }
-  }, [caseId, user, fetchedForCase]);
 
   if (!user) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <UserCheck className="w-12 h-12 text-muted-foreground mx-auto" />
+          <UserCheck className="w-12 h-12 text-gray-300 mx-auto" />
           <h2 className="text-xl font-semibold">Sign In Required</h2>
           <Button onClick={() => setLocation("/login")}>Sign In</Button>
         </div>
@@ -260,118 +126,77 @@ export default function Matches() {
     );
   }
 
-  const isLawyer = (lawyerMatches?.total ?? 0) > 0;
-  const matches = isLawyer ? (lawyerMatches?.matches ?? []) : (clientMatches?.matches ?? []);
+  const matches = clientMatches?.matches ?? [];
+  const filtered = matches
+    .filter((m: any) => m.status === tab)
+    .filter((m: any) => !search || [m.lawyer_name, m.district, m.case_title].some((f) => f?.toLowerCase().includes(search.toLowerCase())));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-4 md:p-8 max-w-4xl mx-auto space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+      <SEOHelmet title="AI Matching" description="View AI-scored lawyer matches with explanations." canonical="/matches" />
+
       <div className="flex items-center gap-3">
-        <button onClick={() => setLocation("/my-cases")} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+        <button onClick={() => setLocation("/my-cases")} className="text-gray-400 hover:text-gray-600"><ArrowLeft className="w-5 h-5" /></button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {isLawyer ? "Matched Client Cases" : "Your Lawyer Matches"}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {isLawyer
-              ? "Clients seeking legal help in your practice areas."
-              : "AI-matched lawyers for your legal requirements."}
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Your Lawyer Matches</h1>
+          <p className="text-gray-400 mt-1 text-sm">AI-scored lawyer proposals for your cases.</p>
         </div>
       </div>
 
       {caseId && (
-        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg p-4">
-          <Zap className="w-5 h-5 text-primary" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">Looking for the best lawyers for your case?</p>
-            <p className="text-xs text-muted-foreground">Our AI will match you with verified advocates based on expertise and location.</p>
-          </div>
-          <Button onClick={findLawyers} disabled={isFinding} size="sm">
-            {isFinding ? <Loader2 className="w-4 h-4 animate-spin" /> : "Find Lawyers"}
+        <div className="flex items-center gap-3">
+          <Button onClick={findLawyers} disabled={isFinding} className="bg-[#1a2744] hover:bg-[#243656] text-white">
+            {isFinding ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+            Find Lawyers for Case #{caseId}
           </Button>
         </div>
       )}
 
-      {clientLoading || lawyerLoading || isFinding || (caseId && fetchedForCase !== caseId) ? (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">
-            {isFinding || (caseId && fetchedForCase !== caseId)
-              ? "AI is matching lawyers for your case..."
-              : "Loading matches..."}
-          </p>
-        </div>
-      ) : clientError || lawyerError ? (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-destructive" />
+      <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+        <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}><Sparkles className="w-4 h-4 text-violet-600" /></div>
+            <h2 className="font-bold text-gray-900 text-sm">Match Proposals</h2>
+            <span className="text-[11px] text-gray-400">({matches.length})</span>
           </div>
-          <h3 className="text-lg font-semibold text-destructive">Failed to load matches</h3>
-          <p className="text-sm text-muted-foreground max-w-md text-center">
-            {(clientErrorData as Error)?.message ?? (lawyerErrorData as Error)?.message ?? "Please try again."}
-          </p>
-          <Button variant="outline" onClick={() => refetchClient()}>Retry</Button>
-        </div>
-      ) : matches.length === 0 && externalMatches.length === 0 ? (
-        <div className="bg-card border border-card-border rounded-xl p-12 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <UserCheck className="w-8 h-8 text-muted-foreground" />
+          <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-0.5">
+            {(["pending","accepted","declined"] as const).map((t) => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                {t}
+              </button>
+            ))}
           </div>
-          <h3 className="text-lg font-semibold">No Matches Yet</h3>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            {isLawyer
-              ? "Complete your lawyer profile and keep it updated to receive matches."
-              : "Post a case requirement and use AI matching to find the best lawyers."}
-          </p>
-          {!isLawyer && (
-            <Link href="/post-case">
-              <Button>Post a Case</Button>
-            </Link>
-          )}
         </div>
-      ) : (
-        <div className="space-y-4">
-          {matches.map((m: any) => (
-            <MatchCard
-              key={m.id}
-              match={m}
-              isClient={!isLawyer}
-              onAccept={(id) => updateMutation.mutate({ id, status: "accepted" })}
-              onDecline={(id) => updateMutation.mutate({ id, status: "declined" })}
-            />
-          ))}
-
-          {externalMatches.length > 0 && (
-            <div className="pt-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {ecourtsStatus === "live"
-                    ? (matches.length === 0 ? "Found on eCourts India (live data)" : "Also from eCourts India (live)")
-                    : (matches.length === 0 ? "eCourts India (simulated data)" : "Also from eCourts India (simulated)")}
-                </span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-              {matches.length === 0 && (
-                <p className="text-sm text-muted-foreground px-1">
-                  {ecourtsStatus === "live"
-                    ? "No verified platform lawyers matched your case. The advocates below are from live eCourts India public court records. Verify their bar membership and contact details before engagement."
-                    : "No verified platform lawyers matched your case. The names below are from simulated court records for demonstration — not real people. In production, live eCourts India data would be queried."}
-                </p>
-              )}
-              {externalMatches.map((m: any) => (
-                <ExternalMatchCard key={m.id} match={m} isLive={ecourtsStatus === "live"} />
-              ))}
+        <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+            <Search className="w-4 h-4 text-gray-400" />
+            <input type="text" placeholder="Search by lawyer name, district, or case..." value={search} onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none" />
+            {search && <button onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
+          </div>
+        </div>
+        <div className="p-4 space-y-2.5">
+          {isLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
+          {!isLoading && matches.length === 0 && (
+            <div className="rounded-xl p-8 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+              <Sparkles className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No match proposals yet.</p>
+              <Button size="sm" className="mt-3" onClick={() => setLocation("/my-cases")}><ArrowLeft className="w-4 h-4 mr-1" /> Go to My Cases</Button>
             </div>
           )}
+          {!isLoading && matches.length > 0 && filtered.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-6">No {tab} matches{search ? " matching your search" : ""}.</p>
+          )}
+          {filtered.map((m: any) => (
+            <MatchCard key={m.id} match={m} isClient={true}
+              onAccept={(id) => updateMutation.mutate({ id, status: "accept" })}
+              onDecline={(id) => updateMutation.mutate({ id, status: "decline" })}
+            />
+          ))}
         </div>
-      )}
+      </div>
     </motion.div>
   );
 }

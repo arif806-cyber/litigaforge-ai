@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  Send, FileText, MapPin, Coins, EyeOff, ChevronDown,
-  Briefcase, Scale, Home, Users, Heart, Truck, Landmark, Shield
+  Send, FileText, MapPin, Coins, EyeOff,
+  Briefcase, Scale, Home, Users, Heart, Truck, Landmark, Shield,
+  ChevronRight, Check
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
@@ -12,24 +13,20 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 const CASE_TYPES = [
-  { id: "property", label: "Property & Real Estate", icon: Home },
-  { id: "family", label: "Family & Matrimonial", icon: Heart },
-  { id: "criminal", label: "Criminal Defence", icon: Shield },
-  { id: "civil", label: "Civil Litigation", icon: Scale },
-  { id: "corporate", label: "Corporate & Business", icon: Briefcase },
-  { id: "labour", label: "Labour & Employment", icon: Users },
-  { id: "consumer", label: "Consumer Rights", icon: Landmark },
-  { id: "motor", label: "Motor Accident", icon: Truck },
-  { id: "tax", label: "Tax & GST", icon: Coins },
+  { id: "Property Dispute", label: "Property & Real Estate", icon: Home },
+  { id: "Family Matter", label: "Family & Matrimonial", icon: Heart },
+  { id: "Criminal", label: "Criminal Defence", icon: Shield },
+  { id: "Civil", label: "Civil Litigation", icon: Scale },
+  { id: "Corporate", label: "Corporate & Business", icon: Briefcase },
+  { id: "Labour", label: "Labour & Employment", icon: Users },
+  { id: "Consumer", label: "Consumer Rights", icon: Landmark },
+  { id: "Motor", label: "Motor Accident", icon: Truck },
+  { id: "Tax", label: "Tax & GST", icon: Coins },
 ];
 
 const BUDGET_RANGES = [
-  "Under Rs. 5,000",
-  "Rs. 5,000 - 15,000",
-  "Rs. 15,000 - 50,000",
-  "Rs. 50,000 - 1,00,000",
-  "Above Rs. 1,00,000",
-  "Flexible / Discuss",
+  "Under Rs. 5,000", "Rs. 5,000 - 15,000", "Rs. 15,000 - 50,000",
+  "Rs. 50,000 - 1,00,000", "Above Rs. 1,00,000", "Flexible / Discuss",
 ];
 
 export default function PostCase() {
@@ -62,14 +59,7 @@ export default function PostCase() {
     try {
       await apiFetch("/cases/requirements", {
         method: "POST",
-        body: JSON.stringify({
-          title: title.trim(),
-          case_type: caseType,
-          description,
-          location: locationVal,
-          budget_range: budget,
-          is_anonymous: isAnonymous,
-        }),
+        body: JSON.stringify({ title: title.trim(), case_type: caseType, description, location: locationVal, budget_range: budget, is_anonymous: isAnonymous }),
       });
       setLocation("/my-cases");
     } catch (e) {
@@ -81,12 +71,11 @@ export default function PostCase() {
 
   if (!user) {
     return (<>
-      <SEOHelmet title="Post a Case" description="Post your legal case requirements and get AI-matched with lawyers." canonical="/post-case" />
+      <SEOHelmet title="Post a Case" description="Post your legal case requirements." canonical="/post-case" />
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <FileText className="w-12 h-12 text-muted-foreground mx-auto" />
+          <FileText className="w-12 h-12 text-gray-300 mx-auto" />
           <h2 className="text-xl font-semibold">Sign In Required</h2>
-          <p className="text-muted-foreground">Please sign in to post your legal requirements.</p>
           <Button onClick={() => setLocation("/login")}>Sign In</Button>
         </div>
       </div>
@@ -94,151 +83,91 @@ export default function PostCase() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-4 md:p-8 max-w-3xl mx-auto space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
+      <SEOHelmet title="Post a Case" description="Post your legal case requirements." canonical="/post-case" />
+
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Post a Legal Requirement</h1>
-        <p className="text-muted-foreground mt-1">
-          Describe your legal need. Verified lawyers will review and reach out.
-        </p>
+        <p className="text-gray-400 mt-1 text-sm">Describe your legal need. Verified lawyers will review and reach out.</p>
       </div>
 
-      <div className="bg-card border border-card-border rounded-xl p-6 space-y-6 shadow-sm">
+      <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6" style={{ border: "1px solid #F1F5F9" }}>
+        {/* Title */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Case Title <span className="text-destructive">*</span></label>
-          <input
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (fieldErrors.title) setFieldErrors(prev => ({ ...prev, title: "" }));
-            }}
+          <label className="text-sm font-medium">Case Title <span className="text-red-500">*</span></label>
+          <input value={title} onChange={(e) => { setTitle(e.target.value); if (fieldErrors.title) setFieldErrors(p => ({ ...p, title: "" })); }}
             placeholder="e.g., Property dispute with neighbour in Banjara Hills"
-            className={cn(
-              "w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2",
-              fieldErrors.title ? "border-destructive focus:ring-destructive/50" : "border-input focus:ring-ring"
-            )}
-            data-testid="case-title-input"
-          />
-          {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
+            className={cn("w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2",
+              fieldErrors.title ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-blue-200")} />
+          {fieldErrors.title && <p className="text-xs text-red-500">{fieldErrors.title}</p>}
         </div>
 
+        {/* Case Type */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Case Type <span className="text-destructive">*</span></label>
-          <div className={cn(
-            "grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-lg p-1",
-            fieldErrors.caseType ? "border border-destructive bg-destructive/5" : ""
-          )}>
+          <label className="text-sm font-medium">Case Type <span className="text-red-500">*</span></label>
+          <div className={cn("grid grid-cols-2 sm:grid-cols-3 gap-2", fieldErrors.caseType ? "border border-red-300 rounded-lg p-1 bg-red-50/30" : "")}>
             {CASE_TYPES.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setCaseType(id);
-                  if (fieldErrors.caseType) setFieldErrors(prev => ({ ...prev, caseType: "" }));
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-all",
-                  caseType === id
-                    ? "border-primary bg-primary/5 text-primary font-medium"
-                    : "border-border hover:border-muted-foreground/30"
-                )}
-                data-testid={`case-type-${id}`}
-              >
+              <button key={id} onClick={() => { setCaseType(id); if (fieldErrors.caseType) setFieldErrors(p => ({ ...p, caseType: "" })); }}
+                className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-all",
+                  caseType === id ? "border-blue-500 bg-blue-50 text-blue-700 font-medium" : "border-gray-200 hover:border-gray-300 text-gray-600")}>
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{label}</span>
+                {caseType === id && <Check className="w-3.5 h-3.5 ml-auto text-blue-600" />}
               </button>
             ))}
           </div>
-          {fieldErrors.caseType && <p className="text-xs text-destructive">{fieldErrors.caseType}</p>}
+          {fieldErrors.caseType && <p className="text-xs text-red-500">{fieldErrors.caseType}</p>}
         </div>
 
+        {/* Description */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value);
-              if (fieldErrors.description) setFieldErrors(prev => ({ ...prev, description: "" }));
-            }}
+          <textarea value={description} onChange={(e) => { setDescription(e.target.value); if (fieldErrors.description) setFieldErrors(p => ({ ...p, description: "" })); }}
             placeholder="Describe the situation in detail. Include relevant dates, parties involved, and what outcome you seek."
-            rows={5}
-            className={cn(
-              "w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 resize-none",
-              fieldErrors.description ? "border-destructive focus:ring-destructive/50" : "border-input focus:ring-ring"
-            )}
-            data-testid="case-description-input"
-          />
+            rows={5} className={cn("w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 resize-none",
+              fieldErrors.description ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-blue-200")} />
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Be specific. Lawyers need details to assess your case.</p>
-            <p className={cn("text-xs tabular-nums", description.length > 2000 ? "text-destructive font-semibold" : "text-muted-foreground")}>
-              {description.length} / 2,000
-            </p>
+            <p className="text-xs text-gray-400">Be specific. Lawyers need details to assess your case.</p>
+            <p className={cn("text-xs tabular-nums", description.length > 2000 ? "text-red-500 font-semibold" : "text-gray-400")}>{description.length} / 2,000</p>
           </div>
-          {fieldErrors.description && <p className="text-xs text-destructive">{fieldErrors.description}</p>}
+          {fieldErrors.description && <p className="text-xs text-red-500">{fieldErrors.description}</p>}
         </div>
 
+        {/* Location + Budget */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5" /> Location
-            </label>
-            <input
-              value={locationVal}
-              onChange={(e) => setLocationVal(e.target.value)}
+            <label className="text-sm font-medium flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Location</label>
+            <input value={locationVal} onChange={(e) => setLocationVal(e.target.value)}
               placeholder="e.g., Hyderabad, Telangana"
-              className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-1.5">
-              <Coins className="w-3.5 h-3.5" /> Budget Range
-            </label>
-            <div className="relative">
-              <select
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Select budget...</option>
-                {BUDGET_RANGES.map((b) => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
-            </div>
+            <label className="text-sm font-medium flex items-center gap-1.5"><Coins className="w-3.5 h-3.5" /> Budget Range</label>
+            <select value={budget} onChange={(e) => setBudget(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+              <option value="">Select budget...</option>
+              {BUDGET_RANGES.map((b) => <option key={b} value={b}>{b}</option>)}
+            </select>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/30">
-          <button
-            onClick={() => setIsAnonymous(!isAnonymous)}
-            className={cn(
-              "w-5 h-5 rounded border flex items-center justify-center transition-colors",
-              isAnonymous
-                ? "bg-primary border-primary"
-                : "border-input bg-background"
-            )}
-          >
-            {isAnonymous && <EyeOff className="w-3 h-3 text-primary-foreground" />}
+        {/* Anonymous */}
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border" style={{ background: "#F8FAFC", borderColor: "#F1F5F9" }}>
+          <button onClick={() => setIsAnonymous(!isAnonymous)}
+            className={cn("w-5 h-5 rounded border flex items-center justify-center transition-colors",
+              isAnonymous ? "bg-[#1a2744] border-[#1a2744]" : "border-gray-300 bg-white")}>
+            {isAnonymous && <Check className="w-3 h-3 text-white" />}
           </button>
           <div>
             <p className="text-sm font-medium">Post Anonymously</p>
-            <p className="text-xs text-muted-foreground">Your name will be hidden until you accept a lawyer's proposal.</p>
+            <p className="text-xs text-gray-400">Your name will be hidden until you accept a lawyer's proposal.</p>
           </div>
         </div>
 
-        {error && (
-          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</div>
-        )}
+        {error && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
 
-        <Button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full"
-          data-testid="post-case-submit"
-        >
+        <Button onClick={handleSubmit} disabled={submitting} className="w-full bg-[#1a2744] hover:bg-[#243656] text-white">
           <Send className="w-4 h-4 mr-2" />
           {submitting ? "Posting..." : "Post Requirement"}
         </Button>
