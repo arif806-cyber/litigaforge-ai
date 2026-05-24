@@ -53,7 +53,8 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 - **Watch Mode** — background scheduler monitors cases and parties for court date changes
 - **WhatsApp Alerts** — hearing reminders and forge results via Twilio WhatsApp
 - **Sandbox Mode** — Mee Seva TG and Transport TS make live calls to `sandbox.api-setu.in` using the public demo key
-- **Light / White UI** — clean white backgrounds, amber/gold accent, particle canvas, Framer Motion animations, fully mobile-responsive. Client pages use a navy (#1a2744) sidebar with gold accents; lawyer pages use a white sidebar
+- **Unified Design System** — both Client and Advocate roles share the same sidebar design via CSS design tokens (`bg-sidebar`, `text-sidebar-foreground`, `bg-sidebar-primary`, etc.) with a subtle role badge (CLIENT / LAWYER) instead of full color change. All non-dashboard pages use a `PageShell` wrapper for consistent title, subtitle, icon, and action-slot headers
+- **Light / White UI** — clean white backgrounds, amber/gold accent, particle canvas, Framer Motion animations, fully mobile-responsive
 - **Mobile-First Navigation** — hamburger drawer with animated slide-in sidebar for clients on mobile. Fixed bottom tab bar on all pages for quick one-tap navigation
 - **AI Safety Guardrails** — prompt injection detection (15 attack patterns), input sanitization on every route, Pydantic v2 field validators, unoverridable legal system prompt wrapper, automatic "not legal advice" disclaimer on every AI response, AI output validation against jailbreak red flags
 - **Platform Disclaimer** — mandatory first-visit acknowledgment and persistent footer: "This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
