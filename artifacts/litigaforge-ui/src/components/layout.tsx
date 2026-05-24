@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
-  Crown, LogOut, User, ChevronRight, MessageSquare, FileSearch,
+  Crown, LogOut, User as UserIcon, ChevronRight, MessageSquare, FileSearch,
   BookOpen, Users, Heart, Sun, Moon, Plus, Gavel, MessageSquareText,
   AlertTriangle, Shield, Star
 } from "lucide-react";
@@ -11,20 +11,23 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { ParticleCanvas } from "@/components/graphics/ParticleCanvas";
-import { useAuth, TIER_LABELS, TIER_LIMITS } from "@/lib/auth-context";
+import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 
-const mainNav = [
+const clientNav = [
   { href: "/",          label: "Forge",       icon: Scale },
   { href: "/post-case", label: "Post Case",   icon: Plus },
   { href: "/my-cases",  label: "My Cases",    icon: FileText },
-  { href: "/lawyers",   label: "Find Lawyer", icon: Users },
   { href: "/matches",   label: "Matches",     icon: Gavel },
+];
+
+const lawyerNav = [
+  { href: "/",          label: "Forge",       icon: Scale },
   { href: "/lawyer-dashboard", label: "Lawyer Dashboard", icon: Star },
 ];
 
-const serviceNav = [
+const commonNav = [
   { href: "/legal-chat", label: "AI Legal Chat",  icon: MessageSquareText },
   { href: "/ask",        label: "Legal Q&A",      icon: MessageSquare },
   { href: "/review",     label: "Doc Analyzer",   icon: FileSearch },
@@ -33,6 +36,8 @@ const serviceNav = [
   { href: "/use-cases",  label: "Use Cases",      icon: Lightbulb },
   { href: "/legal-aid",  label: "Free Aid",       icon: Heart },
 ];
+
+// Removed old serviceNav, using commonNav below
 
 function AnimatedCounter({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(0);
@@ -117,7 +122,7 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
     <div className="border-t border-sidebar-border px-4 py-4 space-y-4">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-          <User className="w-4 h-4 text-primary-foreground" />
+          <UserIcon className="w-4 h-4 text-primary-foreground" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
@@ -137,13 +142,15 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
 }
 
 function SidebarContent({
-  location, health, stats, onNav,
+  location, health, stats, onNav, user,
 }: {
   location: string;
   health: { dummy_mode: boolean; ai_mode?: string; active_providers?: string[] } | undefined;
   stats: { total_cases: number; total_patterns: number } | undefined;
   onNav?: () => void;
+  user: User | null;
 }) {
+  const roleNav = user?.role === "lawyer" ? lawyerNav : clientNav;
   return (
     <>
       <div className="px-6 py-6 border-b border-sidebar-border flex-shrink-0 flex items-center gap-3">
@@ -152,13 +159,15 @@ function SidebarContent({
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <div className="px-3 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Match & Connect</div>
-        {mainNav.map(item => (
+        <div className="px-3 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+          {user?.role === "lawyer" ? "Lawyer Portal" : "Match & Connect"}
+        </div>
+        {roleNav.map(item => (
           <NavItem key={item.href} {...item} location={location} onClick={onNav} />
         ))}
 
         <div className="px-3 pt-6 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Legal Tools</div>
-        {serviceNav.map(item => (
+        {commonNav.map(item => (
           <NavItem key={item.href} {...item} location={location} onClick={onNav} />
         ))}
         <AdminNavItem location={location} onNav={onNav} />
@@ -216,7 +225,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex-col relative z-10 shadow-lg">
-          <SidebarContent location={location} health={health} stats={stats} />
+          <SidebarContent location={location} health={health} stats={stats} user={user} />
         </aside>
 
         <AnimatePresence>
@@ -247,7 +256,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
               <SidebarContent
                 location={location} health={health} stats={stats}
-                onNav={() => setDrawerOpen(false)}
+                onNav={() => setDrawerOpen(false)} user={user}
               />
             </motion.aside>
           )}
@@ -292,7 +301,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border flex items-center justify-around px-1 z-30 shadow-lg">
-        {mainNav.map(({ href, label, icon: Icon }) => {
+        {(user?.role === "lawyer" ? lawyerNav : clientNav).map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? location === "/" : location.startsWith(href);
           return (
             <Link key={href} href={href}
@@ -306,8 +315,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           );
         })}
         <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center justify-center gap-1 min-w-[56px] h-full">
-           <Menu className={cn("w-5 h-5 transition-colors", serviceNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
-           <span className={cn("text-[10px] font-medium", serviceNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")}>
+           <Menu className={cn("w-5 h-5 transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
+           <span className={cn("text-[10px] font-medium", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")}>
              More
            </span>
         </button>

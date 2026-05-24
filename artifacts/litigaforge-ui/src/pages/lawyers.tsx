@@ -327,7 +327,7 @@ export default function LawyersPage() {
             Verified Telangana & AP advocates — filter by district, practice area, and language.
           </p>
         </div>
-        {user && (
+        {user?.role === "lawyer" && (
           <Button onClick={() => setShowRegister(true)} size="lg" className="shadow-md flex-shrink-0">
             <Plus className="w-5 h-5 mr-2" /> List Your Profile
           </Button>
@@ -396,15 +396,9 @@ export default function LawyersPage() {
                 <p className="text-muted-foreground font-medium max-w-md text-center mb-8">
                   Try adjusting your filters or search query to find relevant advocates.
                 </p>
-                {user ? (
+                {user?.role === "lawyer" && (
                   <Button onClick={() => setShowRegister(true)} size="lg">
                     <Plus className="w-5 h-5 mr-2" /> List Your Profile
-                  </Button>
-                ) : (
-                  <Button asChild size="lg">
-                    <a href="/register">
-                      <Plus className="w-5 h-5 mr-2" /> Sign Up to List Profile
-                    </a>
                   </Button>
                 )}
               </div>

@@ -6,10 +6,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase, FileText, User, MessageSquare,
-  Gavel, Search, Plus, ChevronRight, X, Menu, Phone,
+  Gavel, Plus, ChevronRight, X, Menu, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
-  Scale, Calendar, FileCheck,
-  Building2, FileSearch, Hash,
+  Scale, Calendar, FileCheck, Heart, FileSearch, Building2, Hash,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -106,7 +105,6 @@ function ClientSidebar({ onNav }: { onNav?: () => void }) {
     { path: "/matches", label: "Match Proposals", icon: Sparkles },
     { path: "/legal-chat", label: "AI Legal Chat", icon: MessageSquare },
     { path: "/ask", label: "Legal Q&A", icon: Gavel },
-    { path: "/lawyers", label: "Find Lawyer", icon: Search },
     { path: "/judgments", label: "Judgments", icon: Scale },
     { path: "/legal-aid", label: "Free Legal Aid", icon: Shield },
   ];
@@ -257,9 +255,9 @@ export default function ClientDashboard() {
 
   const quickActions = [
     { label: "Post a Case", icon: Plus, color: "#2563EB", bg: "#EFF6FF", border: "#DBEAFE", action: () => setLocation("/post-case") },
-    { label: "Find Lawyer", icon: Search, color: "#059669", bg: "#ECFDF5", border: "#D1FAE5", action: () => setLocation("/lawyers") },
     { label: "Document Analyzer", icon: FileSearch, color: "#7C3AED", bg: "#F5F3FF", border: "#EDE9FE", action: () => setLocation("/review") },
     { label: "Legal Q&A", icon: Gavel, color: "#D97706", bg: "#FEF3C7", border: "#FDE68A", action: () => setLocation("/ask") },
+    { label: "Legal Aid", icon: Heart, color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", action: () => setLocation("/legal-aid") },
   ];
 
   const firstName = user?.name?.split(" ")[0] ?? "Client";
