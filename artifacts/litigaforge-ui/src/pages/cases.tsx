@@ -6,6 +6,7 @@ import { FileText, ChevronRight, AlertTriangle, ArrowRight } from "lucide-react"
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 import { EmptyStateArt } from "@/components/graphics/EmptyStateArt";
+import { PageShell } from "@/components/PageShell";
 
 interface CaseListItem {
   case_id: string;
@@ -33,17 +34,7 @@ export default function Cases() {
 
   return (<>
       <SEOHelmet title="Case History" description="Browse all previously forged legal cases with entity extraction and chain results." canonical="/cases" />
-    <div className="max-w-5xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-          <FileText className="w-8 h-8 text-primary" />
-          Case Archives
-        </h1>
-        <p className="text-muted-foreground mt-2 font-medium">
-          Historical records of all generated legal strategies and extracted intelligence.
-        </p>
-      </div>
-
+    <PageShell title="Case Archives" subtitle="Historical records of all generated legal strategies and extracted intelligence." icon={<FileText className="w-6 h-6 text-primary" />}>
       <div className="space-y-6">
         {isLoading && (
           <div className="space-y-4" data-testid="cases-loading">
@@ -125,6 +116,6 @@ export default function Cases() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   </>);
 }

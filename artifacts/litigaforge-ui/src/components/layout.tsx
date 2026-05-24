@@ -234,13 +234,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors active:scale-95"
+            aria-label="Toggle theme"
           >
             {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           <button
-            className="flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors active:scale-95"
             onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -290,7 +292,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
 
         {/* Main content */}
-        <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-20 md:pb-0 bg-background">
+        <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background">
           {/* Desktop sticky header */}
           <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card/80 backdrop-blur-md px-6 items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
@@ -331,36 +333,36 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[68px] bg-card/95 backdrop-blur-lg border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] safe-area-inset-bottom">
         {(user?.role === "lawyer" ? lawyerNav : clientNav).map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? location === "/" : location.startsWith(href);
           return (
             <Link key={href} href={href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-16 h-full rounded-xl transition-all",
+                "flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl transition-all duration-200 active:scale-95",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >
               <div className={cn(
-                "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+                "flex items-center justify-center w-10 h-10 rounded-xl transition-all",
                 active ? "bg-primary/10" : ""
               )}>
-                <Icon className={cn("w-5 h-5 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
+                <Icon className={cn("w-[22px] h-[22px] transition-colors", active ? "text-primary" : "text-muted-foreground")} />
               </div>
-              <span className={cn("text-[10px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>
+              <span className={cn("text-[11px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>
                 {label}
               </span>
             </Link>
           );
         })}
-        <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center justify-center gap-1 w-16 h-full rounded-xl">
+        <button onClick={() => setDrawerOpen(true)} className="flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl active:scale-95 transition-all">
           <div className={cn(
-            "flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+            "flex items-center justify-center w-10 h-10 rounded-xl transition-all",
             commonNav.some(s => location.startsWith(s.href)) ? "bg-primary/10" : ""
           )}>
-            <Menu className={cn("w-5 h-5 transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
+            <Menu className={cn("w-[22px] h-[22px] transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
           </div>
-          <span className={cn("text-[10px] font-medium leading-none", commonNav.some(s => location.startsWith(s.href)) ? "text-primary font-semibold" : "text-muted-foreground")}>
+          <span className={cn("text-[11px] font-medium leading-none", commonNav.some(s => location.startsWith(s.href)) ? "text-primary font-semibold" : "text-muted-foreground")}>
             More
           </span>
         </button>

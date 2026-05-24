@@ -8,6 +8,7 @@ import { ArrowLeft, AlertTriangle, FileText, Database, Scale, LayoutList } from 
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { PageShell } from "@/components/PageShell";
 
 const ENTITY_CONFIG: Record<string, { label: string; color: string }> = {
   pan:            { label: "PAN",       color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
@@ -43,26 +44,30 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
   if (isLoading) {
     return (<>
       <SEOHelmet title="Case Details" description="View full chain results, strategy, and entities for a specific case." canonical="/cases" />
-      <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12 space-y-6" data-testid="case-loading">
-        <Skeleton className="h-10 w-32 bg-card rounded-lg" />
-        <Skeleton className="h-12 w-64 bg-card rounded-lg" />
-        <Skeleton className="h-32 w-full bg-card rounded-xl" />
-        <Skeleton className="h-64 w-full bg-card rounded-xl" />
-      </div>
+      <PageShell title="Case File" subtitle="Loading case details...">
+        <div className="max-w-4xl mx-auto space-y-6" data-testid="case-loading">
+          <Skeleton className="h-10 w-32 bg-card rounded-lg" />
+          <Skeleton className="h-12 w-64 bg-card rounded-lg" />
+          <Skeleton className="h-32 w-full bg-card rounded-xl" />
+          <Skeleton className="h-64 w-full bg-card rounded-xl" />
+        </div>
+      </PageShell>
     </>);
   }
 
   if (isError) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12">
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-6 flex items-start gap-4">
-          <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0" />
-          <div>
-            <h4 className="text-destructive font-semibold">Failed to load case file</h4>
-            <p className="text-sm text-destructive/80 mt-1">{String(error)}</p>
+      <PageShell title="Case File" subtitle="Error loading case details.">
+        <div className="max-w-4xl mx-auto">
+          <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-6 flex items-start gap-4">
+            <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0" />
+            <div>
+              <h4 className="text-destructive font-semibold">Failed to load case file</h4>
+              <p className="text-sm text-destructive/80 mt-1">{String(error)}</p>
+            </div>
           </div>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -75,16 +80,17 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
   const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <Button
-        variant="ghost"
-        onClick={() => setLocation("/cases")}
-        data-testid="button-back"
-        className="text-muted-foreground hover:text-foreground hover:bg-accent -ml-4 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Archives
-      </Button>
+    <PageShell title="Case File" subtitle="Full chain results, strategy, and extracted entities.">
+      <div className="max-w-4xl mx-auto">
+        <Button
+          variant="ghost"
+          onClick={() => setLocation("/cases")}
+          data-testid="button-back"
+          className="text-muted-foreground hover:text-foreground hover:bg-accent -ml-4 mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Archives
+        </Button>
 
       <div className="mb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -199,6 +205,7 @@ export default function CaseDetail({ params }: { params: { id: string } }) {
           );
         })()}
       </motion.div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

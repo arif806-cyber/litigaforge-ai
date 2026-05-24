@@ -6,6 +6,7 @@ import {
   ArrowRight, Zap, ChevronRight, Lightbulb
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PageShell } from "@/components/PageShell";
 
 interface UseCase {
   id: string;
@@ -161,17 +162,7 @@ export default function UseCases() {
 
   return (<>
       <SEOHelmet title="Use Cases" description="Interactive scenario cards for real-world legal situations." canonical="/use-cases" />
-    <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-          <Lightbulb className="w-8 h-8 text-primary" />
-          Scenario Library
-        </h1>
-        <p className="text-muted-foreground mt-2 font-medium max-w-2xl">
-          Real-world scenarios for Telangana &amp; AP advocates. Select a template to run live analysis instantly.
-        </p>
-      </div>
-
+    <PageShell title="Scenario Library" subtitle="Real-world scenarios for Telangana & AP advocates. Select a template to run live analysis instantly." icon={<Lightbulb className="w-6 h-6 text-primary" />}>
       <motion.div
         variants={container}
         initial="hidden"
@@ -248,6 +239,6 @@ export default function UseCases() {
           );
         })}
       </motion.div>
-    </div>
+    </PageShell>
   </>);
 }

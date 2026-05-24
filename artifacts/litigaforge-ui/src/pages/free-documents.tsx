@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PageShell } from "@/components/PageShell";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Home, Mail, FileKey, FileCheck, Shield, Scroll,
@@ -114,17 +115,7 @@ export default function FreeDocuments() {
         description="Generate free, AI-powered legal documents for India. Rent agreements, legal notices, wills, NDAs, and more."
         canonical="/free-documents"
       />
-      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
-            Free Legal Documents
-          </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-base md:text-lg">
-            Generate legally sound documents in minutes. Fill the form, let AI draft it,
-            download instantly. No lawyer fees for standard templates.
-          </p>
-        </div>
-
+      <PageShell title="Free Legal Documents" subtitle="Generate legally sound documents in minutes. Fill the form, let AI draft it, download instantly. No lawyer fees for standard templates.">
         {/* Search + Filter */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
@@ -191,7 +182,7 @@ export default function FreeDocuments() {
           <p className="font-medium mb-1">Important Disclaimer</p>
           <p>These AI-generated documents are templates for informational use. For legally binding documents or complex situations, consult a qualified lawyer. LitigaForge is not a law firm.</p>
         </div>
-      </div>
+      </PageShell>
     </>
   );
 }

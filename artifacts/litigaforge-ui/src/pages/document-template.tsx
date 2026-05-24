@@ -12,6 +12,7 @@ import {
   UserMinus, Receipt, Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageShell } from "@/components/PageShell";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Home, Mail, FileKey, FileCheck, Shield, Scroll,
@@ -132,20 +133,18 @@ export default function DocumentTemplatePage() {
         description={`Generate a free ${template.title.toLowerCase()} in minutes. Fill the form, AI drafts it, download instantly.`}
         canonical={`/free-documents/${slug}`}
       />
-      <div className="max-w-4xl mx-auto px-4 py-6 md:py-10">
-        {/* Header */}
-        <div className="mb-8">
+      <PageShell title={template.title} subtitle={template.description} icon={<Icon className="w-6 h-6 text-primary" />}>
+        <div className="max-w-4xl mx-auto">
           <Link href="/free-documents">
             <Button variant="ghost" size="sm" className="mb-4 -ml-2">
               <ArrowLeft className="w-4 h-4 mr-1" /> All Templates
             </Button>
           </Link>
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4 mb-8">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
               <Icon className="w-7 h-7 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">{template.title}</h1>
               <p className="text-muted-foreground mt-1">{template.description}</p>
               <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
@@ -322,7 +321,7 @@ export default function DocumentTemplatePage() {
             LitigaForge is not a law firm and does not provide legal advice.
           </p>
         </div>
-      </div>
+      </PageShell>
     </>
   );
 }

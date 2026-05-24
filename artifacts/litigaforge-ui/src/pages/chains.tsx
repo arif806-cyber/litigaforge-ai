@@ -6,6 +6,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ChainDiagram } from "@/components/graphics/ChainDiagram";
+import { PageShell } from "@/components/PageShell";
 
 interface Chain {
   name: string;
@@ -45,17 +46,7 @@ export default function Chains() {
 
   return (<>
       <SEOHelmet title="API Chains" description="Explore 16 government API integrations for legal intelligence." canonical="/chains" />
-    <div className="space-y-6 px-4 md:px-6 py-5 max-w-7xl mx-auto">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight flex items-center gap-3">
-            <Link2 className="w-7 h-7 text-primary" />
-            Data Pipelines
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl">The nervous system of LitigaForge. These independent API chains are dynamically orchestrated to build comprehensive intelligence.</p>
-        </div>
-      </div>
-
+    <PageShell title="Data Pipelines" subtitle="The nervous system of LitigaForge. These independent API chains are dynamically orchestrated to build comprehensive intelligence." icon={<Link2 className="w-6 h-6 text-primary" />}>
       <div className="space-y-8">
         {/* Architecture diagram */}
         <motion.div
@@ -167,6 +158,6 @@ export default function Chains() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   </>);
 }

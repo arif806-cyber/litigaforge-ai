@@ -7,6 +7,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PageShell } from "@/components/PageShell";
 
 interface Plan {
   id: string;
@@ -134,17 +135,7 @@ export default function Subscription() {
 
   return (<>
       <SEOHelmet title="Subscription Plans" description="Upgrade to Professional or Advocate Pro plans." canonical="/subscription" />
-    <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
-      <div className="mb-12 text-center max-w-2xl mx-auto">
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight flex items-center justify-center gap-3 mb-4">
-          <Crown className="w-8 h-8 text-primary" />
-          Subscription Plans
-        </h1>
-        <p className="text-lg text-muted-foreground font-medium">
-          Choose the plan that fits your practice. Upgrade or downgrade anytime.
-        </p>
-      </div>
-
+    <PageShell title="Subscription Plans" subtitle="Choose the plan that fits your practice. Upgrade or downgrade anytime." icon={<Crown className="w-6 h-6 text-primary" />}>
       <div className="space-y-10">
         {user && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -326,6 +317,6 @@ export default function Subscription() {
           </motion.div>
         )}
       </div>
-    </div>
+    </PageShell>
   </>);
 }
