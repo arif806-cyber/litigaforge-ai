@@ -193,6 +193,59 @@ async def my_case_requirements(current_user: Optional[dict] = Depends(get_curren
     return {"total": len(rows), "cases": rows}
 
 
+
+class UpdateRequirementRequest(BaseModel):
+    title: str = ""
+    case_type: str = ""
+    description: str = ""
+    location: str = ""
+    budget_range: str = ""
+    is_anonymous: bool = False
+
+
+@router.patch("/cases/requirements/{req_id}")
+async def update_case_requirement(
+    req_id: int,
+    body: UpdateRequirementRequest,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    existing = await fetchrow(
+        "SELECT id FROM case_requirements WHERE id = $1 AND user_id = $2",
+        req_id, current_user["id"],
+    )
+    if not existing:
+        raise HTTPException(404, "Case requirement not found")
+    fields = []
+    params = []
+    if body.title:
+        fields.append(f"title = ${len(params)+1}")
+        params.append(sanitize_text(body.title, max_length=200, field_name="title"))
+    if body.case_type:
+        fields.append(f"case_type = ${len(params)+1}")
+        params.append(sanitize_text(body.case_type, max_length=100, field_name="case_type"))
+    if body.description != "":
+        fields.append(f"description = ${len(params)+1}")
+        params.append(sanitize_text(body.description, max_length=2000, field_name="description"))
+    if body.location != "":
+        fields.append(f"location = ${len(params)+1}")
+        params.append(sanitize_text(body.location, max_length=100, field_name="location"))
+    if body.budget_range != "":
+        fields.append(f"budget_range = ${len(params)+1}")
+        params.append(sanitize_text(body.budget_range, max_length=50, field_name="budget_range"))
+    if body.is_anonymous is not None:
+        fields.append(f"is_anonymous = ${len(params)+1}")
+        params.append(body.is_anonymous)
+    if not fields:
+        raise HTTPException(400, "No fields to update")
+    query = f"UPDATE case_requirements SET {', '.join(fields)} WHERE id = ${len(params)+1} RETURNING *"
+    params.append(req_id)
+    row = await fetchrow(query, *params)
+    row["created_at"] = str(row["created_at"])
+    return {"message": "Case requirement updated", "case": row}
+
+
 # ── AI Matching Engine ──────────────────────────────────────────────────────
 
 class MatchRequest(BaseModel):

@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import {
   FileText, MapPin, Clock, EyeOff, ArrowRight, Plus,
-  Search, Filter, Loader2, AlertTriangle
+  Search, Filter, Loader2, AlertTriangle, PenSquare, X, Check
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,29 @@ const STATUS_COLORS: Record<string, string> = {
   closed: "bg-muted text-muted-foreground",
 };
 
+const CASE_TYPES = [
+  "Property Dispute", "Family Matter", "Criminal", "Civil", "Consumer",
+  "Labour", "Tax", "IP / Trademark", "Other"
+];
+
 export default function MyCases() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [editingCase, setEditingCase] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ title: "", case_type: "", description: "", location: "", budget_range: "", is_anonymous: false });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["my-cases"],
     queryFn: () => apiFetch("/cases/requirements/mine"),
     enabled: !!user,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: number; body: any }) => apiFetch(`/cases/requirements/${vars.id}`, { method: "PATCH", body: vars.body }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-cases"] });
+      setEditingCase(null);
+    },
   });
 
   if (!user) {
@@ -131,10 +148,28 @@ export default function MyCases() {
                     <p className="text-sm text-muted-foreground line-clamp-2">{c.description}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", STATUS_COLORS[c.status] || STATUS_COLORS.open)}>
                     {c.status?.toUpperCase()}
                   </span>
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => {
+                      setEditingCase(c);
+                      setEditForm({
+                        title: c.title || "",
+                        case_type: c.case_type || "",
+                        description: c.description || "",
+                        location: c.location || "",
+                        budget_range: c.budget_range || "",
+                        is_anonymous: c.is_anonymous || false,
+                      });
+                    }}
+                    data-testid={`edit-case-${c.id}`}
+                  >
+                    <PenSquare className="w-3.5 h-3.5 mr-1" />
+                    Edit
+                  </Button>
                   <Link href={`/matches?case=${c.id}`}>
                     <Button variant="outline" size="sm">
                       Find Lawyers
@@ -147,6 +182,75 @@ export default function MyCases() {
           ))}
         </div>
       )}
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editingCase && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setEditingCase(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+              className="bg-card border border-card-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg">Edit Case Requirement</h3>
+                <button onClick={() => setEditingCase(null)} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Title</label>
+                  <input className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Case Type</label>
+                  <select className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={editForm.case_type} onChange={e => setEditForm(f => ({ ...f, case_type: e.target.value }))}>
+                    {CASE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Description</label>
+                  <textarea rows={3} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Location</label>
+                    <input className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Budget</label>
+                    <input className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" value={editForm.budget_range} onChange={e => setEditForm(f => ({ ...f, budget_range: e.target.value }))} />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={editForm.is_anonymous} onChange={e => setEditForm(f => ({ ...f, is_anonymous: e.target.checked }))} />
+                  <EyeOff className="w-3.5 h-3.5" /> Post anonymously
+                </label>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setEditingCase(null)}>Cancel</Button>
+                <Button
+                  className="flex-1"
+                  disabled={updateMutation.isPending}
+                  onClick={() => updateMutation.mutate({ id: editingCase.id, body: editForm })}
+                  data-testid="save-edit-case"
+                >
+                  {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+                  Save Changes
+                </Button>
+              </div>
+              {updateMutation.isError && (
+                <p className="text-xs text-destructive text-center">{(updateMutation.error as Error)?.message}</p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
