@@ -3,8 +3,14 @@ Modular router aggregator: 9 clean routers, lifespan, CORS, rate limiting,
 structured logging, request middleware, Sentry (conditional).
 """
 import os
+import sys
 import time
 from contextlib import asynccontextmanager
+
+# Ensure imports work when run from project root (production) or script dir (dev)
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+if _script_dir not in sys.path:
+    sys.path.insert(0, _script_dir)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -310,8 +316,10 @@ app.include_router(alerts_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
 app.include_router(lawyer_router,      prefix=BASE_PATH)
 
-# Serve uploaded client documents
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Serve uploaded client documents (ensure dir exists before mounting)
+_uploads_dir = os.path.join(_script_dir, "uploads")
+os.makedirs(_uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
 
 if __name__ == "__main__":
     import uvicorn

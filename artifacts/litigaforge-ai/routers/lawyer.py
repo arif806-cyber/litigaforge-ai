@@ -489,9 +489,10 @@ async def upload_client_document(
     if not file.filename:
         raise HTTPException(400, "No file provided")
 
-    # Save to local uploads directory
-    import shutil, pathlib
-    uploads_dir = pathlib.Path("uploads")
+    # Save to local uploads directory (use script dir for consistency in dev+prod)
+    import shutil, pathlib, os
+    _script_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__))).parent
+    uploads_dir = _script_dir / "uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
     safe_name = sanitize_text(file.filename, max_length=255, field_name="filename")
