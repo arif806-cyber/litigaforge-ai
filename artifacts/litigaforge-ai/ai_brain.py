@@ -191,12 +191,22 @@ def _call_openai(system: str, user: str, temperature: float = 0.3,
 # Entity Extraction — Gemini leads (fast), regex fallback
 # ──────────────────────────────────────────────────────────────────────────────
 
-EXTRACT_SYSTEM = """You are an expert legal entity extractor for Indian law cases.
+EXTRACT_SYSTEM = """You are an expert legal entity extractor for Indian law cases operating in Telangana and Andhra Pradesh.
 
 Given ANY user input — a legal case description, a casual stock query, a vehicle lookup,
-a GST question, or anything else — extract ALL relevant entities.
+a GST question, or anything else — extract ALL relevant entities with maximum precision.
 
-Return ONLY valid JSON with these fields (use null for missing):
+EXTRACTION RULES:
+1. Identify ALL parties (plaintiff/petitioner, defendant/respondent, opposing counsel if named)
+2. Extract ALL government identifiers: GSTIN, PAN, Aadhaar, vehicle number, DL, IFSC, CIN, pincode
+3. Detect case type from keywords AND context (not just keyword matching)
+4. Identify the primary relief sought (money, injunction, declaration, possession, compensation, etc.)
+5. Note the procedural stage if mentioned (pre-litigation, filed, notice served, hearing pending, judgment reserved)
+6. Extract dates mentioned (accident date, contract date, notice date, limitation deadline)
+7. Identify the primary legal domain (civil, criminal, constitutional, tax, labour, consumer, property, family, corporate)
+8. Default state_code to TS (Telangana) if not mentioned; AP if Andhra Pradesh cities are named
+
+Return ONLY valid JSON. Use null for missing fields. Do not include markdown.
 {
   "gstin": "15-char GSTIN or null",
   "pan": "10-char PAN or null",
@@ -206,16 +216,25 @@ Return ONLY valid JSON with these fields (use null for missing):
   "ifsc_code": "11-char IFSC or null",
   "pincode": "6-digit pincode or null",
   "cin": "21-char CIN or null",
-  "company_name": "NSE/BSE listed company name in lowercase (infosys, tcs, reliance, wipro, etc.) or null",
-  "stock_symbol": "NSE symbol like INFY, TCS etc. or null",
-  "currency": "Foreign currency code if mentioned (USD, GBP, AED etc.) or null",
-  "party_name": "Person/company name as party or null",
+  "company_name": "NSE/BSE listed company name in lowercase or null",
+  "stock_symbol": "NSE symbol or null",
+  "currency": "Foreign currency code or null",
+  "party_name": "Primary party name or null",
+  "party_role": "plaintiff | petitioner | complainant | applicant | appellant | null",
   "opponent_name": "Opposing party name or null",
+  "opponent_role": "defendant | respondent | accused | opposite_party | null",
   "case_number": "Case number if any or null",
+  "cnr_number": "CNR number if any or null",
+  "court_name": "Court or tribunal name or null",
   "case_type": "Detected case type or null",
-  "state_code": "2-letter Indian state code (TS, AP, MH, DL, KA...) or TS by default",
+  "legal_domain": "civil | criminal | constitutional | tax | labour | consumer | property | family | corporate | general | null",
+  "relief_sought": "Primary relief: money | injunction | declaration | possession | compensation | divorce | bail | null",
+  "procedural_stage": "pre-litigation | notice_stage | filed | summons | hearing | arguments | reserved | judgment | appeal | null",
+  "key_dates": {"contract_date": "YYYY-MM-DD or null", "notice_date": "YYYY-MM-DD or null", "accident_date": "YYYY-MM-DD or null", "limitation_deadline": "YYYY-MM-DD or null"},
+  "amount_in_dispute": "Numeric amount with currency or null",
+  "state_code": "2-letter Indian state code or TS by default",
   "location": "City or district name or null",
-  "intent": "One of: stock_lookup | gstin_lookup | vehicle_lookup | ifsc_lookup | pincode_lookup | forex_lookup | company_lookup | legal_case | general",
+  "intent": "stock_lookup | gstin_lookup | vehicle_lookup | ifsc_lookup | pincode_lookup | forex_lookup | company_lookup | legal_case | general",
   "primary_query": "What the user is primarily asking for in one sentence"
 }
 
@@ -351,68 +370,108 @@ def _regex_extract_entities(prompt: str) -> Dict[str, Any]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 LEGAL_OUTPUT_FORMAT = """
-=== CASE ANALYSIS ===
+CASE ANALYSIS REPORT
+==================
 
-1. FACTS SUMMARY
-----------------
-[Brief, neutral summary of case facts. 3-5 sentences. Only facts from the user's input.]
+1. CASE SUMMARY
+---------------
+[A concise 3-5 sentence narrative of the dispute. Capture the parties, the cause of action, the relief sought, and the current procedural posture. Base every fact on the user's input or verified API data. No speculation.]
 
-2. IDENTIFIED ISSUES
+2. KEY LEGAL ISSUES
+-------------------
+- Primary Issue: [The central legal question the court/tribunal must decide]
+- Secondary Issue(s):
+  - [Subsidiary legal question]
+  - [Procedural or evidentiary hurdle]
+
+3. APPLICABLE LAWS & PROVISIONS
+--------------------------------
+| Act / Regulation | Section / Rule | Relevance to This Case |
+|------------------|----------------|------------------------|
+| [Act Name, Year] | Section X | [One-line relevance: what it mandates/prohibits/permits for this dispute] |
+| [Act Name, Year] | Section Y | [One-line relevance] |
+
+[Every law must have a verifiable Act name, year, and section number. If a provision is only tentatively applicable, note it as "Tentative — requires factual confirmation."]
+
+4. RELEVANT CASE LAW
 --------------------
-- Issue 1: [concise legal issue]
-- Issue 2: [concise legal issue]
+- [Case Name] ([Year]) [Court] — [One-line holding and why it supports or distinguishes this case]
+- [Precedent] — [Ratio decidendi relevant to the facts]
+[If no directly applicable precedents can be identified, state: "No directly on-point precedents identified from current data."]
 
-3. APPLICABLE LAWS
-------------------
-- [Act Name, Section X] — [one-line relevance to this case]
-- [Act Name, Section Y] — [one-line relevance]
-[Every law must have a verifiable Act name and section number.]
-
-4. GOVERNMENT DATA FINDINGS
+5. GOVERNMENT DATA FINDINGS
 ---------------------------
-[Only if API chains returned data. List verified facts per chain, with source.]
-[If no data returned, write: "No government data available for this case."]
+[Only if API chains returned verified data. Present as structured facts with exact source attribution.]
+| Source | Finding | Data Point |
+|--------|---------|------------|
+| [GSTIN — GSTN Portal] | Registration status | Active / Suspended / Cancelled |
+| [VAHAN — NIC] | RC status | [Vehicle details] |
+[If no data returned: "No government data available for this case. Verification recommended via official portals."]
 
-5. RECOMMENDED STRATEGY
------------------------
-Immediate (within 7 days):
-- Action 1: [who, what, under which law]
-- Action 2: [who, what, under which law]
+6. RECOMMENDED LEGAL STRATEGY
+-----------------------------
+Immediate Actions (0-7 days):
+- Action 1: [Specific step] — [Legal basis: Act, Section] — [Responsible party]
+- Action 2: [Specific step] — [Legal basis] — [Responsible party]
 
-Medium-term (within 30 days):
-- Action 1
-- Action 2
+Short-Term Actions (7-30 days):
+- Action 1: [Specific step] — [Legal basis]
+- Action 2: [Specific step] — [Legal basis]
 
-6. DOCUMENT CHECKLIST
+Medium-Term Actions (1-3 months):
+- Action 1: [Specific step] — [Legal basis]
+[Each action must be specific enough to act upon immediately. No vague advice.]
+
+7. DOCUMENTS REQUIRED
 ---------------------
-- [ ] Document 1 (purpose)
-- [ ] Document 2 (purpose)
+Essential (without which the case cannot proceed):
+- [ ] [Document name] — [Purpose and who provides it]
+- [ ] [Document name] — [Purpose]
 
-7. DISCLAIMERS & CAVEATS
---------------------------
-[Specific caveats: what this analysis cannot determine without further evidence.]
-[Standard legal disclaimer.]
+Supporting (strengthens the case):
+- [ ] [Document name] — [Purpose]
+- [ ] [Document name] — [Purpose]
+
+8. POTENTIAL RISKS & CHALLENGES
+-------------------------------
+| Risk | Likelihood | Mitigation |
+|------|------------|------------|
+| [Specific risk, e.g., limitation bar] | High / Medium / Low | [Specific mitigation step] |
+| [Jurisdictional objection] | Medium | [Pre-emptive filing strategy] |
+
+9. NEXT STEPS
+-------------
+1. [Immediate concrete action — who does what by when]
+2. [Next concrete action with deadline]
+3. [Longer-term action with estimated timeline]
+
+10. CONFIDENCE & LIMITATIONS
+-----------------------------
+Confidence Level: [High / Medium / Low] — [Brief justification based on data completeness]
+Limitations:
+- [What this analysis cannot determine without further evidence]
+- [What additional facts would improve the quality of advice]
+- [Jurisdictional or procedural caveats]
+
+---
+NOTE: This analysis is generated by LitigaForge AI and is legal information, not legal advice. The final strategy must be validated by a qualified advocate admitted to practice in the relevant jurisdiction before any court or tribunal filing. Statutory references are current as of the date of generation; recent amendments may apply.
 """
 
-STRATEGY_SYSTEM = """You are a senior Indian advocate drafting a case analysis for a fellow advocate to use in court or tribunal proceedings in Telangana or Andhra Pradesh.
+STRATEGY_SYSTEM = """You are a senior Indian advocate with 20+ years of practice before the High Courts of Telangana, Andhra Pradesh, and the Supreme Court of India. You are drafting a case analysis memorandum for a fellow advocate or for your own file. The reader is a busy litigator who needs actionable, precise guidance in under 3 minutes.
 
-SOURCES YOU MAY USE:
-- The user's original query / case facts
-- Real data retrieved from government APIs (GSTN, VAHAN, NSE, RBI IFSC, India Post, etc.)
-- Established Indian statutes and reported case law
-
-OUTPUT RULES — violation of any rule is a critical error:
-1. Use ONLY the exact section headings in LEGAL_OUTPUT_FORMAT. No extra sections.
-2. Every fact in "FACTS SUMMARY" must be traceable to the user's input or an API result.
-3. Every law in "APPLICABLE LAWS" must state the Act name AND section number.
-4. "GOVERNMENT DATA FINDINGS" must name the exact source chain (e.g., "GSTIN — GSTN Portal").
-5. "RECOMMENDED STRATEGY" must name the specific Act/Section that authorises each action.
-6. Never invent facts, parties, dates, amounts, or legal provisions not present in the input.
-7. Never use speculative language ("may", "might", "could", "possibly"). Use "requires", "mandates", "prohibits".
-8. Never include generic boilerplate examples, sample clauses, or template text.
-9. Never include marketing language, emojis, ASCII art, or self-referential AI commentary.
-10. Maximum length: 800 words. Be concise. A busy advocate must read this in under 2 minutes.
-11. If a section has no content, write "Not applicable" — do not omit the heading."""
+WRITING PRINCIPLES:
+1. TONE: Authoritative, concise, senior-counsel level. No hedging ("maybe", "perhaps", "it is suggested"). Use "requires", "mandates", "prohibits", "entitles".
+2. FACTS: Every fact must trace to the user's input or a verified government API result. Never invent parties, dates, amounts, or legal provisions.
+3. LAW: Every statute must include the Act name, year, and specific section number. Every case law must include the case name, year, and court.
+4. STRATEGY: Each recommended action must name (a) the specific step, (b) the legal basis (Act + Section), and (c) who is responsible. No vague advice.
+5. RISKS: Identify SPECIFIC risks (limitation bars, jurisdictional objections, evidentiary gaps) — not generic warnings.
+6. OUTPUT RULES:
+   - Use ONLY the exact section headings in LEGAL_OUTPUT_FORMAT.
+   - Maximum length: 1200 words. A busy advocate must read this in under 3 minutes.
+   - If a section genuinely has no content, write "Not applicable" — do not omit the heading.
+   - Never include marketing language, emojis, ASCII art, or self-referential AI commentary.
+   - Never include generic boilerplate examples, sample clauses, or template text.
+   - Present tables where the format calls for them (Applicable Laws, Risks, Government Data)."""
 
 
 def smart_legal_strategy(
@@ -439,44 +498,47 @@ def smart_legal_strategy(
         if isinstance(result, dict) and result.get("status") not in ("skipped", None)
     }
 
-    safe_context = wrap_user_prompt(f"""User Query / Case Facts:
+    safe_context = wrap_user_prompt(f"""CASE FACTS:
 {prompt}
 
-Detected Intent: {intent}
-Company/Entity: {company or 'Not specified'}
-Case Type: {case_type}
-Location: {location}
-Case ID: {case_id}
-Active AI Providers: {', '.join(active)}
+EXTRACTED ENTITIES:
+- Intent: {intent}
+- Case Type: {case_type}
+- Location: {location}
+- Company/Entity: {company or 'Not specified'}
+- State Code: {entities.get('state_code', 'TS')}
+- Parties: {entities.get('party_name', 'Not specified')} vs {entities.get('opponent_name', 'Not specified')}
+- Identifiers: PAN={entities.get('pan', 'N/A')}, GSTIN={entities.get('gstin', 'N/A')}, Vehicle={entities.get('vehicle_number', 'N/A')}, CIN={entities.get('cin', 'N/A')}
 
 {LEGAL_OUTPUT_FORMAT}
 
-Real Government API Data Retrieved:
+VERIFIED GOVERNMENT API DATA:
 {json.dumps(data_summary, indent=2, default=str)[:7000]}
+
+Active AI Providers: {', '.join(active)}
+Case ID: {case_id}
 """)
 
-    # 1️⃣ Try Claude Sonnet 4-6 — best for structured legal documents
+    # Cascade: Claude (best structured writing) → GPT-5 → Gemini → smart template
+    strategy_text = None
     if "claude" in active:
         logger.info(f"[AI_BRAIN] Strategy via Claude Sonnet 4-6 (case {case_id})")
-        result = _call_claude(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
-        if result and len(result) > 300:
-            return safe_ai_output(result, api_results)
+        strategy_text = _call_claude(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8000)
+        if strategy_text and len(strategy_text) > 400:
+            return safe_ai_output(strategy_text, api_results)
 
-    # 2️⃣ Try OpenAI GPT-5-mini
     if "openai" in active:
         logger.info(f"[AI_BRAIN] Strategy via GPT-5-mini (case {case_id})")
-        result = _call_openai(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
-        if result and len(result) > 300:
-            return safe_ai_output(result, api_results)
+        strategy_text = _call_openai(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8000)
+        if strategy_text and len(strategy_text) > 400:
+            return safe_ai_output(strategy_text, api_results)
 
-    # 3️⃣ Try Gemini 2.5 Flash
     if "gemini" in active:
         logger.info(f"[AI_BRAIN] Strategy via Gemini 2.5 Flash (case {case_id})")
-        result = _call_gemini(STRATEGY_SYSTEM, safe_context, temperature=0.3, max_tokens=6000)
-        if result and len(result) > 300:
-            return safe_ai_output(result, api_results)
+        strategy_text = _call_gemini(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8192)
+        if strategy_text and len(strategy_text) > 400:
+            return safe_ai_output(strategy_text, api_results)
 
-    # 4️⃣ Smart data-driven template — never generic
     logger.info(f"[AI_BRAIN] All AI providers failed — using smart data template (case {case_id})")
     fallback = _smart_fallback_strategy(prompt, entities, api_results, case_id)
     return safe_ai_output(fallback, None)
@@ -557,151 +619,224 @@ def _smart_fallback_strategy(
     active_chains = [k for k, v in api_results.items()
                      if isinstance(v, dict) and v.get("status") not in ("skipped", "no_api_key", "error")]
 
-    # Build structured output matching LEGAL_OUTPUT_FORMAT
+    # Build structured output matching the new LEGAL_OUTPUT_FORMAT
     lines = [
-        "=== CASE ANALYSIS ===",
+        "CASE ANALYSIS REPORT",
+        "====================",
         "",
-        "1. FACTS SUMMARY",
-        "----------------",
-        prompt[:300] if len(prompt) > 20 else "No case facts provided.",
+        f"Case ID: {case_id} | Date: {__import__('datetime').datetime.now().strftime('%d %b %Y')} | Jurisdiction: {location}, {entities.get('state_code', 'TS')}",
         "",
-        "2. IDENTIFIED ISSUES",
-        "--------------------",
+        "1. CASE SUMMARY",
+        "---------------",
+        prompt[:400] if len(prompt) > 20 else "No case facts provided.",
+        "",
+        "2. KEY LEGAL ISSUES",
+        "-------------------",
     ]
 
-    # Add issues based on intent
+    # Add issues based on intent with more specificity
     if "stock" in intent or "nse" in intent:
-        lines.append("- Securities law compliance and valuation of listed assets")
-        lines.append("- Potential insider trading or market manipulation under SEBI Act 1992")
+        lines.append(f"Primary Issue: Securities law compliance and valuation of listed assets involving {company or 'the company'}.")
+        lines.append("Secondary Issue(s):")
+        lines.append("  - Potential insider trading or market manipulation under SEBI Act 1992, S.12A")
+        lines.append("  - UPSI disclosure obligations under SEBI (PIT) Regulations 2015, Reg. 4")
     elif "ifsc" in intent or "bank" in intent:
-        lines.append("- Dishonour of cheque and recovery under Negotiable Instruments Act 1881")
-        lines.append("- Territorial jurisdiction of the drawee bank")
+        lines.append("Primary Issue: Dishonour of cheque and recovery under Negotiable Instruments Act 1881, S.138.")
+        lines.append("Secondary Issue(s):")
+        lines.append("  - Territorial jurisdiction of the drawee bank (NI Act 1881, S.142)")
+        lines.append("  - Limitation period for filing complaint (NI Act 1881, S.142 read with Limitation Act 1963, Art. 35)")
     elif "gstin" in intent or "gst" in intent:
-        lines.append("- Tax compliance and registration status under CGST Act 2017")
-        lines.append("- Attachment risk under S.83 if registration is inactive")
+        lines.append("Primary Issue: Tax compliance and registration status under CGST Act 2017.")
+        lines.append("Secondary Issue(s):")
+        lines.append("  - Attachment risk under CGST Act 2017, S.83 if registration is inactive or cancelled")
+        lines.append("  - Penalty exposure under CGST Act 2017, S.132 for tax evasion")
     elif "vehicle" in intent or "vahan" in intent:
-        lines.append("- Motor vehicle accident liability under Motor Vehicles Act 1988")
-        lines.append("- Insurance claim validity based on RC and permit status")
+        lines.append("Primary Issue: Motor vehicle accident liability under Motor Vehicles Act 1988, S.166.")
+        lines.append("Secondary Issue(s):")
+        lines.append("  - Insurance claim validity based on RC and permit status (MV Act 1988, S.146)")
+        lines.append("  - Quantum of compensation under structured formula (MV Act 1988, S.168)")
     elif "pincode" in intent or "property" in intent:
-        lines.append("- Territorial jurisdiction for civil proceedings (CPC S.20)")
-        lines.append("- Venue for sub-registrar verification and summons service")
+        lines.append("Primary Issue: Territorial jurisdiction for civil proceedings (CPC 1908, S.20).")
+        lines.append("Secondary Issue(s):")
+        lines.append("  - Venue for sub-registrar verification and summons service (CPC 1908, O.V)")
+        lines.append("  - Title verification and encumbrance check (Registration Act 1908, S.17)")
     else:
-        lines.append("- General legal matter requiring further factual clarification")
-        lines.append("- Jurisdiction and applicable substantive law to be determined")
+        lines.append("Primary Issue: General legal matter requiring further factual clarification.")
+        lines.append("Secondary Issue(s):")
+        lines.append("  - Jurisdiction and applicable substantive law to be determined after full fact-finding")
+        lines.append("  - Limitation period assessment requires complete chronology of events")
 
     lines.extend([
         "",
-        "3. APPLICABLE LAWS",
-        "------------------",
+        "3. APPLICABLE LAWS & PROVISIONS",
+        "--------------------------------",
+        "| Act / Regulation | Section / Rule | Relevance to This Case |",
+        "|------------------|----------------|------------------------|",
     ])
 
     if "stock" in intent or "nse" in intent:
-        lines.append("- SEBI Act 1992, S.11, S.11B, S.12A — market manipulation and insider trading")
-        lines.append("- SEBI (Prohibition of Insider Trading) Regulations 2015, Reg. 4 — UPSI disclosure")
-        lines.append("- Companies Act 2013, S.447 — fraud in relation to securities")
+        lines.append("| SEBI Act 1992 | S.11, S.11B, S.12A | Market manipulation and insider trading prohibition |")
+        lines.append("| SEBI (PIT) Regulations 2015 | Reg. 4 | UPSI disclosure obligations |")
+        lines.append("| Companies Act 2013 | S.447 | Fraud in relation to securities |")
     elif "ifsc" in intent or "bank" in intent:
-        lines.append("- Negotiable Instruments Act 1881, S.138 — cheque dishonour and penalty")
-        lines.append("- Negotiable Instruments Act 1881, S.142 — jurisdiction for complaint")
-        lines.append("- RBI Act 1934 — banking regulation and customer grievance")
+        lines.append("| Negotiable Instruments Act 1881 | S.138 | Cheque dishonour and penalty |")
+        lines.append("| Negotiable Instruments Act 1881 | S.142 | Jurisdiction for complaint filing |")
+        lines.append("| RBI Act 1934 | S.35A | Banking regulation and customer grievance |")
     elif "gstin" in intent or "gst" in intent:
-        lines.append("- CGST Act 2017, S.83 — provisional attachment in pending proceedings")
-        lines.append("- CGST Act 2017, S.132 — tax evasion and penalties")
-        lines.append("- CGST Act 2017, S.29 — cancellation of registration")
+        lines.append("| CGST Act 2017 | S.83 | Provisional attachment in pending proceedings |")
+        lines.append("| CGST Act 2017 | S.132 | Tax evasion and penalties |")
+        lines.append("| CGST Act 2017 | S.29 | Cancellation of registration |")
     elif "vehicle" in intent or "vahan" in intent:
-        lines.append("- Motor Vehicles Act 1988, S.146 — compulsory third-party insurance")
-        lines.append("- Motor Vehicles Act 1988, S.166 — claim for compensation")
-        lines.append("- CPC 1908, O.37 R.1 — summary suit for recovery")
+        lines.append("| Motor Vehicles Act 1988 | S.146 | Compulsory third-party insurance |")
+        lines.append("| Motor Vehicles Act 1988 | S.166 | Claim for compensation (MACT) |")
+        lines.append("| Motor Vehicles Act 1988 | S.168 | Structured formula for compensation |")
     elif "pincode" in intent or "property" in intent:
-        lines.append("- CPC 1908, S.20 — place of suing (territorial jurisdiction)")
-        lines.append("- CPC 1908, O.V — service of summons")
-        lines.append("- Registration Act 1908, S.17 — documents requiring registration")
+        lines.append("| CPC 1908 | S.20 | Place of suing (territorial jurisdiction) |")
+        lines.append("| CPC 1908 | O.V | Service of summons |")
+        lines.append("| Registration Act 1908 | S.17 | Documents requiring compulsory registration |")
     else:
-        lines.append("- To be determined upon review of complete case facts")
+        lines.append("| To be determined | — | Requires review of complete case facts |")
 
     lines.extend([
         "",
-        "4. GOVERNMENT DATA FINDINGS",
+        "4. RELEVANT CASE LAW",
+        "--------------------",
+        "No directly on-point precedents identified from current data. Research recommended on IndianKanoon.org.",
+        "",
+        "5. GOVERNMENT DATA FINDINGS",
         "---------------------------",
     ])
     if gov_data:
+        lines.append("| Source | Finding | Data Point |")
+        lines.append("|--------|---------|------------|")
         for item in gov_data:
-            lines.append(f"- {item}")
+            parts = item.split(":", 1)
+            if len(parts) == 2:
+                lines.append(f"| {parts[0].strip()} | {parts[1].strip()} | Verified |")
+            else:
+                lines.append(f"| {item} | — | Verified |")
     else:
-        lines.append("No government data available for this case.")
+        lines.append("No government data available for this case. Verification recommended via official portals.")
 
     lines.extend([
         "",
-        "5. RECOMMENDED STRATEGY",
-        "-----------------------",
-        "Immediate (within 7 days):",
+        "6. RECOMMENDED LEGAL STRATEGY",
+        "-----------------------------",
+        "Immediate Actions (0-7 days):",
     ])
 
     if "stock" in intent or "nse" in intent:
-        lines.append("- Obtain certified NSE/BSE trade reports for the disputed period")
-        lines.append("- File complaint on SEBI SCORES portal (scores.sebi.gov.in) with trade history")
+        lines.append(f"- Action 1: Obtain certified NSE/BSE trade reports for the disputed period involving {company or 'the company'} — SEBI Act 1992, S.11 — Client/Investor")
+        lines.append("- Action 2: File complaint on SEBI SCORES portal (scores.sebi.gov.in) with complete trade history — SEBI Act 1992, S.11B — Client")
     elif "ifsc" in intent or "bank" in intent:
-        lines.append("- Send statutory demand notice under NI Act S.138 within 30 days of dishonour")
-        lines.append("- File complaint in court of payee's bank jurisdiction (NI Act S.142)")
+        lines.append("- Action 1: Send statutory demand notice under NI Act S.138 within 30 days of dishonour — NI Act 1881, S.138 — Payee/Client")
+        lines.append("- Action 2: Preserve bank memo and dishonoured cheque as primary evidence — NI Act 1881, S.138 — Payee")
     elif "gstin" in intent or "gst" in intent:
-        lines.append("- Verify registration status on GSTN portal and preserve screenshots")
-        lines.append("- File DRC-01 if tax demand arises; seek stay under CGST Act S.83 if attachment threatened")
+        lines.append("- Action 1: Verify registration status on GSTN portal and preserve screenshots — CGST Act 2017, S.25 — Client/Taxpayer")
+        lines.append("- Action 2: File DRC-01 if tax demand arises; seek stay under CGST Act S.83 if attachment threatened — CGST Act 2017, S.83 — Client")
     elif "vehicle" in intent or "vahan" in intent:
-        lines.append("- File insurance claim with RC, permit, and FIR copies within 30 days")
-        lines.append("- Initiate MACT proceedings under Motor Vehicles Act S.166 for compensation")
+        lines.append("- Action 1: File insurance claim with RC, permit, and FIR copies within 30 days — MV Act 1988, S.146 — Claimant")
+        lines.append("- Action 2: Initiate MACT proceedings under Motor Vehicles Act S.166 for compensation — MV Act 1988, S.166 — Claimant/Lawyer")
     elif "pincode" in intent or "property" in intent:
-        lines.append("- Verify territorial jurisdiction at district court (CPC S.20)")
-        lines.append("- Engage local process server for summons via registered post (CPC O.V)")
+        lines.append("- Action 1: Verify territorial jurisdiction at district court of {location} — CPC 1908, S.20 — Lawyer")
+        lines.append("- Action 2: Engage local process server for summons via registered post — CPC 1908, O.V — Lawyer")
     else:
-        lines.append("- Gather complete case facts and supporting documents")
-        lines.append("- Identify all parties, causes of action, and desired relief")
+        lines.append("- Action 1: Gather complete case facts and supporting documents — General — Client")
+        lines.append("- Action 2: Identify all parties, causes of action, and desired relief — General — Lawyer")
 
     lines.extend([
         "",
-        "Medium-term (within 30 days):",
-        "- Engage local counsel in the identified jurisdiction",
-        "- Prepare draft pleadings and evidence bundle",
+        "Short-Term Actions (7-30 days):",
+        "- Engage local counsel in the identified jurisdiction with relevant subject-matter expertise",
+        "- Prepare draft pleadings (plaint/written statement) and evidence bundle index",
         "",
-        "6. DOCUMENT CHECKLIST",
+        "Medium-Term Actions (1-3 months):",
+        "- File case before appropriate forum (District Court / High Court / Tribunal / Commission)",
+        "- Prepare for first hearing with complete documentation and witness list",
+        "",
+        "7. DOCUMENTS REQUIRED",
         "---------------------",
+        "Essential (without which the case cannot proceed):",
     ])
 
     if "stock" in intent or "nse" in intent:
-        lines.append("- [ ] Certified NSE/BSE trade reports")
-        lines.append("- [ ] SEBI SCORES complaint acknowledgement")
-        lines.append("- [ ] Board resolutions and insider trading policy (if corporate)")
+        lines.append("- [ ] Certified NSE/BSE trade reports — Primary evidence of trades")
+        lines.append("- [ ] SEBI SCORES complaint acknowledgement — Proof of regulatory complaint")
+        lines.append("- [ ] Board resolutions and insider trading policy (if corporate) — Evidence of compliance framework")
     elif "ifsc" in intent or "bank" in intent:
-        lines.append("- [ ] Dishonoured cheque and bank memo")
-        lines.append("- [ ] Statutory demand notice with proof of service")
-        lines.append("- [ ] IFSC verification printout from RBI registry")
+        lines.append("- [ ] Dishonoured cheque and bank memo — Primary evidence of dishonour")
+        lines.append("- [ ] Statutory demand notice with proof of service — Mandatory precondition under NI Act S.138")
+        lines.append("- [ ] IFSC verification printout from RBI registry — Bank branch verification")
     elif "gstin" in intent or "gst" in intent:
-        lines.append("- [ ] GST registration certificate and ARN")
-        lines.append("- [ ] Return filing history (GSTR-1, GSTR-3B)")
-        lines.append("- [ ] Demand-cum-show-cause notice (if any)")
+        lines.append("- [ ] GST registration certificate and ARN — Proof of registration status")
+        lines.append("- [ ] Return filing history (GSTR-1, GSTR-3B) — Compliance evidence")
+        lines.append("- [ ] Demand-cum-show-cause notice (if any) — Basis of the dispute")
     elif "vehicle" in intent or "vahan" in intent:
-        lines.append("- [ ] FIR copy and police investigation report")
-        lines.append("- [ ] RC book and valid insurance policy")
-        lines.append("- [ ] Medical records and disability certificate (if injury)")
+        lines.append("- [ ] FIR copy and police investigation report — Crime record")
+        lines.append("- [ ] RC book and valid insurance policy — Vehicle ownership and insurance coverage")
+        lines.append("- [ ] Medical records and disability certificate (if injury) — Quantum of compensation evidence")
     elif "pincode" in intent or "property" in intent:
-        lines.append("- [ ] Sale deed / title documents")
-        lines.append("- [ ] Encumbrance certificate (EC) for 30 years")
-        lines.append("- [ ] Address proof and voter ID for summons verification")
+        lines.append("- [ ] Sale deed / title documents — Proof of ownership")
+        lines.append("- [ ] Encumbrance certificate (EC) for 30 years — Title verification")
+        lines.append("- [ ] Address proof and voter ID for summons verification — Service of process")
     else:
-        lines.append("- [ ] All relevant contracts, correspondence, and receipts")
-        lines.append("- [ ] Identity and address proof of all parties")
-        lines.append("- [ ] Timeline of events with dates and witnesses")
+        lines.append("- [ ] All relevant contracts, correspondence, and receipts — Evidence of the dispute")
+        lines.append("- [ ] Identity and address proof of all parties — Party verification")
+        lines.append("- [ ] Timeline of events with dates and witnesses — Factual chronology")
 
     lines.extend([
         "",
-        "7. DISCLAIMERS & CAVEATS",
-        "--------------------------",
-        "- This analysis is based on the facts and government data available at the time of generation.",
-        "- Further investigation may reveal additional facts that alter the legal position.",
-        "- Jurisdictional nuances (High Court, District Court, Tribunal) require case-specific advice.",
-        "- Statutory references are current as of the date of this report; amendments may apply.",
+        "Supporting (strengthens the case):",
+        "- [ ] Expert opinion affidavit (if technical matter)",
+        "- [ ] Affidavit of witness statements",
+        "- [ ] Photographs or video evidence (if relevant)",
+        "",
+        "8. POTENTIAL RISKS & CHALLENGES",
+        "-------------------------------",
+        "| Risk | Likelihood | Mitigation |",
+        "|------|------------|------------|",
+    ])
+
+    if "stock" in intent or "nse" in intent:
+        lines.append("| SEBI investigation delay | Medium | File parallel civil suit for recovery |")
+        lines.append("| Evidentiary gaps in trade records | Medium | Obtain certified broker statements |")
+    elif "ifsc" in intent or "bank" in intent:
+        lines.append("| Limitation bar under NI Act S.142 | High | Verify date of dishonour immediately; file within 30 days |")
+        lines.append("| Jurisdictional objection | Medium | Confirm payee bank branch IFSC and jurisdiction |")
+    elif "gstin" in intent or "gst" in intent:
+        lines.append("| Provisional attachment under S.83 | High | File stay application before Adjudicating Authority |")
+        lines.append("| Registration cancellation | Medium | Submit revocation application with compliance proof |")
+    elif "vehicle" in intent or "vahan" in intent:
+        lines.append("| Insurance claim denial | Medium | Verify policy validity and coverage exclusions |")
+        lines.append("| Structured formula underestimation | Low | Engage actuary for future loss computation |")
+    elif "pincode" in intent or "property" in intent:
+        lines.append("| Title defect discovered | Medium | Obtain EC for 30 years before purchase |")
+        lines.append("| Jurisdictional objection | Low | File in court of defendant's residence or property location |")
+    else:
+        lines.append("| Incomplete facts leading to incorrect strategy | High | Conduct detailed client interview immediately |")
+        lines.append("| Limitation period expiry | Medium | Verify cause of action date and calculate limitation |")
+
+    lines.extend([
+        "",
+        "9. NEXT STEPS",
+        "-------------",
+        "1. Retain a qualified advocate admitted to practice in the relevant jurisdiction within 7 days.",
+        "2. Commence document collection and witness identification immediately.",
+        "3. File case before appropriate forum within limitation period after complete preparation.",
+        "",
+        "10. CONFIDENCE & LIMITATIONS",
+        "----------------------------",
+        f"Confidence Level: {'Medium' if gov_data else 'Low'} — {'Government data partially available; further verification recommended.' if gov_data else 'Limited factual input and no government data retrieved.'}",
+        "Limitations:",
+        "- This analysis is based solely on the facts provided and government data available at generation time.",
+        "- Additional facts may alter the legal position substantially.",
+        "- Jurisdictional nuances (High Court, District Court, Tribunal, Commission) require case-specific advice.",
+        "- Statutory references are current as of the date of generation; recent amendments may apply.",
+        "- No privileged attorney-client relationship is created by this analysis.",
         "",
         "---",
-        "Generated by LitigaForge AI | Case ID: {case_id} | Chains: {chains}",
-        "This is legal information, not legal advice. Consult a qualified advocate before taking action.",
+        f"Generated by LitigaForge AI | Case ID: {case_id} | Chains Executed: {', '.join(active_chains) or 'General'}",
+        "This is legal information, not legal advice. Consult a qualified advocate before taking any action.",
     ])
 
-    return "\n".join(lines).format(case_id=case_id, chains=", ".join(active_chains) or "General")
+    return "\n".join(lines)

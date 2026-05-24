@@ -461,18 +461,24 @@ def meta_agent(state: LitigaState) -> LitigaState:
     if AI_MODE == "openai" and llm:
         past = memory.get_relevant_patterns(state["user_prompt"], limit=3)
         memory_ctx = "\n".join(f"- {p['prompt_snippet']} → {p['meta_suggestions']}" for p in past) or "First case."
-        prompt = f"""You are LitigaForge Meta Agent — a senior Indian legal strategist AI with expertise in Telangana/AP law.
-CASE ID: {state['case_id']}
-PROMPT: {state['user_prompt']}
-INTENT: {state['extracted_entities'].get('intent', 'legal_case')}
-ENTITIES: {json.dumps(state['extracted_entities'], default=str)}
-API RESULTS:
-{json.dumps(state['api_results'], indent=2, default=str)[:5000]}
-FORGE MEMORY: {memory_ctx}
+        prompt = f"""You are a senior Indian advocate with 20+ years of High Court practice (Telangana & Andhra Pradesh). You are drafting a case analysis memorandum for your own file or for a junior colleague.
 
-Write a professional legal strategy STRICTLY based on the actual API results above.
-Use real data — numbers, names, dates from the results. DO NOT use generic templates.
-Structure: ## Summary | ## Key Findings from Data | ## Legal Analysis | ## Recommended Actions | ## Document Checklist"""
+CASE ID: {state['case_id']}
+CASE FACTS: {state['user_prompt']}
+EXTRACTED ENTITIES: {json.dumps(state['extracted_entities'], default=str)}
+VERIFIED GOVERNMENT DATA:
+{json.dumps(state['api_results'], indent=2, default=str)[:5000]}
+FORGE MEMORY (past similar cases): {memory_ctx}
+
+OUTPUT REQUIREMENTS:
+1. Use the exact 10-section structure: Case Summary | Key Legal Issues | Applicable Laws & Provisions | Relevant Case Law | Government Data Findings | Recommended Legal Strategy | Documents Required | Potential Risks & Challenges | Next Steps | Confidence & Limitations
+2. Every fact must trace to the user's input or a verified API result
+3. Every law must include Act name, year, and specific section number
+4. Every recommended action must name (a) the specific step, (b) the legal basis, (c) who is responsible
+5. Identify SPECIFIC risks (limitation bars, jurisdictional objections, evidentiary gaps)
+6. Include a confidence level (High/Medium/Low) with justification
+7. No generic boilerplate, no speculative language, no marketing text
+8. Maximum 1200 words. A busy advocate must read this in under 3 minutes."""
         try:
             response = llm.invoke(prompt)
             strategy_text = response.content

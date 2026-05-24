@@ -4,11 +4,11 @@ import { useLocation } from "wouter";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2 } from "lucide-react";
+import { Scale, Loader2, ChevronRight, AlertTriangle, Zap, CheckCircle2, FileText, Gavel, BookOpen, ShieldAlert, ClipboardList, Calendar, BarChart3, Scale as ScaleIcon } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ScalesHero } from "@/components/graphics/ScalesHero";
+// ScalesHero removed — not used on this page
 
 interface ForgeResult {
   status: string;
@@ -24,14 +24,31 @@ interface ForgeResult {
 const ENTITY_CONFIG: Record<string, { label: string; color: string }> = {
   pan:            { label: "PAN",       color: "text-violet-700 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300" },
   gstin:          { label: "GSTIN",     color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300" },
-  vehicle_number: { label: "Vehicle No.", color: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300" },
+  vehicle_number: { label: "Vehicle",   color: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300" },
+  dl_number:      { label: "DL",        color: "text-indigo-700 bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300" },
+  ifsc_code:      { label: "IFSC",      color: "text-sky-700 bg-sky-100 dark:bg-sky-900/30 dark:text-sky-300" },
+  pincode:        { label: "Pincode",   color: "text-pink-700 bg-pink-100 dark:bg-pink-900/30 dark:text-pink-300" },
+  cin:            { label: "CIN",       color: "text-slate-700 bg-slate-100 dark:bg-slate-900/30 dark:text-slate-300" },
+  aadhaar:        { label: "Aadhaar",   color: "text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300" },
   party_name:     { label: "Party",     color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300" },
-  case_number:    { label: "Case No.",  color: "text-rose-700 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300" },
+  party_role:     { label: "Role",      color: "text-lime-700 bg-lime-100 dark:bg-lime-900/30 dark:text-lime-300" },
+  opponent_name:  { label: "Opponent",  color: "text-rose-700 bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300" },
+  opponent_role:  { label: "Opp. Role", color: "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300" },
+  case_number:    { label: "Case No.",  color: "text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300" },
+  cnr_number:     { label: "CNR",       color: "text-cyan-700 bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300" },
+  court_name:     { label: "Court",     color: "text-teal-700 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300" },
+  case_type:      { label: "Type",      color: "text-fuchsia-700 bg-fuchsia-100 dark:bg-fuchsia-900/30 dark:text-fuchsia-300" },
+  legal_domain:   { label: "Domain",    color: "text-purple-700 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300" },
+  relief_sought:  { label: "Relief",    color: "text-yellow-700 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  procedural_stage:{ label: "Stage",  color: "text-gray-700 bg-gray-100 dark:bg-gray-900/30 dark:text-gray-300" },
+  amount_in_dispute:{ label: "Amount", color: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300" },
   state_code:     { label: "State",     color: "text-cyan-700 bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300" },
   location:       { label: "Location",  color: "text-teal-700 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300" },
-  case_type:      { label: "Case Type", color: "text-fuchsia-700 bg-fuchsia-100 dark:bg-fuchsia-900/30 dark:text-fuchsia-300" },
-  dl_number:      { label: "DL No.",    color: "text-indigo-700 bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300" },
-  aadhaar:        { label: "Aadhaar",   color: "text-orange-700 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300" },
+  company_name:   { label: "Company",   color: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300" },
+  stock_symbol:   { label: "Symbol",    color: "text-indigo-700 bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300" },
+  intent:         { label: "Intent",    color: "text-gray-700 bg-gray-100 dark:bg-gray-900/30 dark:text-gray-300" },
+  primary_query:  { label: "Query",     color: "text-gray-700 bg-gray-100 dark:bg-gray-900/30 dark:text-gray-300" },
+  currency:       { label: "Currency",  color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300" },
 };
 
 const EXAMPLE_PROMPTS = [
@@ -39,6 +56,126 @@ const EXAMPLE_PROMPTS = [
   { text: "Road accident / MACT case — enter vehicle registration, driver licence number, accident location, and date.", hotkey: "2" },
   { text: "GST dispute case — enter GSTIN, PAN, case number, court details, and department notice sections.", hotkey: "3" },
 ];
+
+const SECTION_META: Record<string, { title: string; icon: React.ReactNode; color: string; border: string }> = {
+  "case summary":            { title: "Case Summary",            icon: <FileText className="w-4 h-4"/>,    color: "text-blue-700",  border: "border-l-4 border-blue-500" },
+  "key legal issues":        { title: "Key Legal Issues",        icon: <ScaleIcon className="w-4 h-4"/>,   color: "text-rose-700",  border: "border-l-4 border-rose-500" },
+  "applicable laws":         { title: "Applicable Laws & Provisions", icon: <BookOpen className="w-4 h-4"/>,   color: "text-amber-700", border: "border-l-4 border-amber-500" },
+  "relevant case law":       { title: "Relevant Case Law",       icon: <Gavel className="w-4 h-4"/>,      color: "text-purple-700",border: "border-l-4 border-purple-500" },
+  "government data":         { title: "Government Data Findings",icon: <BarChart3 className="w-4 h-4"/>,  color: "text-green-700", border: "border-l-4 border-green-500" },
+  "recommended legal strategy": { title: "Recommended Legal Strategy", icon: <ShieldAlert className="w-4 h-4"/>, color: "text-indigo-700",border: "border-l-4 border-indigo-500" },
+  "documents required":      { title: "Documents Required",      icon: <ClipboardList className="w-4 h-4"/>, color: "text-teal-700",  border: "border-l-4 border-teal-500" },
+  "potential risks":         { title: "Potential Risks & Challenges", icon: <AlertTriangle className="w-4 h-4"/>, color: "text-orange-700",border: "border-l-4 border-orange-500" },
+  "next steps":              { title: "Next Steps",              icon: <Calendar className="w-4 h-4"/>,   color: "text-cyan-700",  border: "border-l-4 border-cyan-500" },
+  "confidence":              { title: "Confidence & Limitations",icon: <CheckCircle2 className="w-4 h-4"/>, color: "text-gray-700",  border: "border-l-4 border-gray-500" },
+};
+
+function parseSections(text: string): { heading: string; content: string }[] {
+  const sections: { heading: string; content: string }[] = [];
+  const lines = text.split("\n");
+  let current: { heading: string; content: string[] } | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const sectionMatch = trimmed.match(/^\d+\.\s+(.+)$/i);
+    const altMatch = trimmed.match(/^([A-Z][A-Z\s&/]+)\s*$/);
+
+    if (sectionMatch) {
+      if (current) sections.push({ heading: current.heading, content: current.content.join("\n").trim() });
+      current = { heading: sectionMatch[1].trim(), content: [] };
+    } else if (altMatch && altMatch[1].length > 3 && !trimmed.includes("|") && !trimmed.includes("-")) {
+      if (current) sections.push({ heading: current.heading, content: current.content.join("\n").trim() });
+      current = { heading: altMatch[1].trim(), content: [] };
+    } else if (current) {
+      current.content.push(line);
+    }
+  }
+  if (current) sections.push({ heading: current.heading, content: current.content.join("\n").trim() });
+
+  // If no sections parsed, treat entire text as one
+  if (sections.length === 0 && text.trim()) {
+    sections.push({ heading: "Analysis", content: text.trim() });
+  }
+  return sections;
+}
+
+function renderSections(text: string) {
+  const sections = parseSections(text);
+  return sections.map((section, idx) => {
+    const lower = section.heading.toLowerCase();
+    const metaKey = Object.keys(SECTION_META).find(k => lower.includes(k));
+    const meta = metaKey ? SECTION_META[metaKey] : { title: section.heading, icon: <FileText className="w-4 h-4"/>, color: "text-foreground", border: "border-l-4 border-border" };
+
+    const isTable = section.content.includes("|") && section.content.includes("---");
+    const isChecklist = section.content.includes("- [ ]") || section.content.includes("- [x]");
+
+    return (
+      <motion.div
+        key={idx}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: idx * 0.05 }}
+        className={cn("rounded-xl bg-card border border-border shadow-sm overflow-hidden", meta.border)}
+      >
+        <div className={cn("px-5 py-3 bg-muted/50 border-b border-border flex items-center gap-2 font-semibold text-sm", meta.color)}>
+          {meta.icon}
+          {meta.title}
+        </div>
+        <div className="p-5 text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap font-serif">
+          {isTable ? renderTable(section.content) : isChecklist ? renderChecklist(section.content) : section.content}
+        </div>
+      </motion.div>
+    );
+  });
+}
+
+function renderTable(content: string) {
+  const rows = content.split("\n").filter(l => l.trim() && !l.trim().startsWith("|") || l.includes("|"));
+  const dataRows = rows.filter(r => r.includes("|") && !r.includes("---"));
+  if (dataRows.length === 0) return <pre className="whitespace-pre-wrap">{content}</pre>;
+
+  const cells = dataRows[0].split("|").filter(c => c.trim());
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse">
+        <tbody>
+          {dataRows.map((row, ri) => {
+            const cols = row.split("|").filter(c => c.trim());
+            return (
+              <tr key={ri} className={cn("border-b border-border", ri === 0 && "bg-muted/50 font-medium")}>
+                {cols.map((cell, ci) => (
+                  <td key={ci} className="px-3 py-2 text-foreground/80">{cell.trim()}</td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function renderChecklist(content: string) {
+  return (
+    <div className="space-y-1">
+      {content.split("\n").map((line, i) => {
+        const trimmed = line.trim();
+        const checked = trimmed.includes("- [x]");
+        const unchecked = trimmed.includes("- [ ]");
+        if (!checked && !unchecked) return <div key={i} className="text-foreground/80">{line}</div>;
+        const text = trimmed.replace(/- \[[x ]\]/, "").trim();
+        return (
+          <div key={i} className="flex items-start gap-2">
+            <span className={cn("mt-0.5 w-4 h-4 rounded border flex items-center justify-center text-xs flex-shrink-0", checked ? "bg-green-500 border-green-500 text-white" : "border-border bg-background")}>
+              {checked && "✓"}
+            </span>
+            <span className="text-foreground/80">{text}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function PipelineLoading() {
   return (<>
@@ -212,56 +349,94 @@ export default function Forge() {
           {forge.isPending && <PipelineLoading />}
           
           {result && !forge.isPending && (
-             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-12 space-y-8"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-card border border-border rounded-2xl shadow-sm">
-                   <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
-                     </div>
-                     <div>
-                       <h3 className="font-semibold text-lg">Synthesis Complete</h3>
-                       <p className="text-sm font-mono text-muted-foreground">{result.case_id}</p>
-                     </div>
-                   </div>
-                   <Button onClick={() => setLocation(`/cases/${result.case_id}`)} variant="outline" className="gap-2">
-                      View Full File <ChevronRight className="w-4 h-4" />
-                   </Button>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-12 space-y-8"
+            >
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-card border border-border rounded-2xl shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Case Analysis Complete</h3>
+                    <p className="text-sm font-mono text-muted-foreground">{result.case_id}</p>
+                  </div>
                 </div>
+                <Button onClick={() => setLocation(`/cases/${result.case_id}`)} variant="outline" className="gap-2">
+                  View Full File <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
 
-                {Object.keys(result.entities_found).length > 0 && (
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Extracted Entities</h4>
-                    <div className="flex flex-wrap gap-2">
-                       {Object.entries(result.entities_found).map(([key, value]) => {
-                          if (!value) return null;
-                          const config = ENTITY_CONFIG[key] || { label: key, color: "bg-muted text-muted-foreground" };
-                          return (
-                            <div key={key} className={cn("px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2", config.color)}>
-                              <span className="opacity-70">{config.label}:</span>
-                              <span className="font-mono">{value}</span>
-                            </div>
-                          );
-                       })}
-                    </div>
+              {/* Chain Status */}
+              {result.chain_map.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {result.chain_map.map((c) => (
+                    <span key={c.chain} className={cn(
+                      "px-3 py-1 rounded-full text-xs font-medium",
+                      c.status === "success" && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+                      c.status === "skipped" && "bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400",
+                      c.status === "error" && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+                      c.status === "mock" && "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+                      !["success","skipped","error","mock"].includes(c.status) && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    )}>
+                      {c.chain}: {c.status}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Extracted Entities */}
+              {Object.keys(result.entities_found).length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" /> Extracted Entities
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(result.entities_found).map(([key, value]) => {
+                      if (!value || value === "null" || value === "N/A") return null;
+                      const config = ENTITY_CONFIG[key] || { label: key, color: "bg-muted text-muted-foreground" };
+                      return (
+                        <div key={key} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5", config.color)}>
+                          <span className="opacity-70 uppercase">{config.label}:</span>
+                          <span className="font-mono">{String(value).slice(0, 40)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
+              )}
 
-                {result.final_output && (
+              {/* Strategy Output — Sectioned Display */}
+              {result.final_output && (
+                <div className="space-y-6">
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Gavel className="w-4 h-4" /> Case Analysis Report
+                  </h4>
                   <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Strategy</h4>
-                    <div className="p-8 bg-card border border-border rounded-2xl shadow-sm prose prose-sm dark:prose-invert max-w-none">
-                       <div className="whitespace-pre-wrap font-serif text-lg leading-relaxed text-foreground/90">
-                         {result.final_output}
-                       </div>
-                    </div>
+                    {renderSections(result.final_output)}
                   </div>
-                )}
+                </div>
+              )}
 
-              </motion.div>
+              {/* Unthought Chains */}
+              {result.meta_suggestions.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Zap className="w-4 h-4" /> Unthought Chains
+                  </h4>
+                  <div className="grid gap-2">
+                    {result.meta_suggestions.map((s, i) => (
+                      <div key={i} className="p-3 rounded-lg bg-primary/5 border border-primary/10 text-sm text-foreground/80">
+                        {s}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
           )}
 
         </div>
