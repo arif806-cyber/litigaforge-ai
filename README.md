@@ -26,9 +26,13 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 
 ## Features
 
+- **Role-Based Access** — register as Client or Lawyer. Each role gets its own dedicated dashboard with role-specific tools and workflows
+- **Lawyer Dashboard** (`/lawyer-dashboard`) — full case management for advocates: create/edit/delete cases, upload and analyze client documents, track case status (active/pending/closed), add CNR numbers, write notes, and view match proposals
+- **Client Dashboard** (`/client-dashboard`) — central hub for clients: view posted cases, browse AI match proposals with accept/decline, message connected lawyers, quick access to legal tools, and NALSA helpline
 - **Client-Lawyer AI Matching** — clients post case requirements; AI scores and ranks lawyers (0-100) based on practice area overlap, location proximity, experience, and rating. Personalized AI explanations for each match
 - **Post a Case** — clients post legal needs with case type, location, budget range, and anonymous option. Lawyer proposals arrive with match scores
 - **My Cases** — clients track their posted cases, view match proposals, accept or decline lawyer connections
+- **CNR Tracking** — lawyers can attach Case Number Reference (CNR) numbers to every case for eCourts lookup and government record linkage
 - **AI Legal Chat** — interactive chat with Claude/Gemini for legal drafting. Templates: legal notice, agreement, court petition, reply to notice. Full chat history persists
 - **The Forge** — paste case facts, get a full legal strategy with entity extraction, chain orchestration, and multi-AI synthesis
 - **Legal Q&A with AI** — ask any legal question, Claude/Gemini answers instantly with applicable Indian law, Telangana/AP procedure, and next steps. Community knowledge base of past Q&As
@@ -97,6 +101,8 @@ litigaforge-ai/
 │   │       │   ├── judgments.tsx      # Judgment Finder — precedent search + IndianKanoon links
 │   │       │   ├── lawyers.tsx        # Lawyer Directory — advocate profiles + registration
 │   │       │   ├── legal-aid.tsx      # Free Legal Aid — eligibility wizard + helplines
+│   │       │   ├── lawyer-dashboard.tsx # Lawyer Dashboard — case management, documents, status tracking
+│   │       │   ├── client-dashboard.tsx # Client Dashboard — cases, matches, messages, quick actions
 │   │       │   └── admin.tsx          # Admin panel — lawyer verification, user management
 │   │       ├── components/
 │   │       │   ├── layout.tsx            # Sidebar, topbar, mobile nav, user panel
@@ -124,8 +130,8 @@ litigaforge-ai/
 │       ├── models.py                # Pydantic v2 request validators with field-level injection checks
 │       ├── logger.py                # Structured JSON logging (production) + readable format (dev)
 │       ├── requirements.txt
-│       ├── routers/                 # 9 modular FastAPI routers
-│       │   ├── auth.py              # Register, login, logout, me
+│       ├── routers/                 # 10 modular FastAPI routers
+│       │   ├── auth.py              # Register, login, logout, me — role-based
 │       │   ├── forge.py             # The Forge, cases, memory, chains, healthz
 │       │   ├── subscription.py      # Plans, Razorpay create-order, verify
 │       │   ├── matching.py          # Post requirements, AI find-lawyers, match management
@@ -133,7 +139,8 @@ litigaforge-ai/
 │       │   ├── community.py         # Legal Q&A, Doc Analyzer, Judgments, Lawyers, Legal Aid
 │       │   ├── watch.py             # Watch mode start/stop/add/list/remove
 │       │   ├── alerts.py            # WhatsApp alerts, hearing reminders
-│       │   └── admin.py             # Pending lawyer verification, approve/reject, user management
+│       │   ├── admin.py             # Pending lawyer verification, approve/reject, user management
+│       │   └── lawyer.py            # Lawyer case/document CRUD, CNR tracking, AI analysis, notes
 │       ├── api_chains/              # 16 government API chain modules
 │       │   ├── gstin.py             # GST Network
 │       │   ├── pan.py               # PAN verification
@@ -179,12 +186,13 @@ litigaforge-ai/
 
 ### How auth works
 
-- **Register** at `/register` — name, email, password (min 8 chars, with live strength indicator). Account created in PostgreSQL, returns a 30-day JWT.
-- **Login** at `/login` — email + password. Verifies bcrypt hash, returns JWT.
+- **Register** at `/register` — name, email, password, and **role** (Client or Lawyer). Account created in PostgreSQL, returns a 30-day JWT.
+- **Login** at `/login` — email + password. Verifies bcrypt hash, returns JWT with role info.
+- **Role-based redirect** — after login/registration, lawyers are sent to `/lawyer-dashboard` and clients to `/client-dashboard`
 - JWT is stored in `localStorage` (`lf_token`) and automatically attached to every API request via `apiFetch`.
 - All main pages are protected — unauthenticated users are redirected to `/login`.
 - Auth state has a loading spinner to prevent the login page from flashing during initial token verification.
-- The sidebar shows the logged-in user's name, email, tier badge, monthly usage bar, and Sign Out button.
+- The sidebar shows the logged-in user's name, email, tier badge, monthly usage bar, role indicator, and Sign Out button.
 
 ### Subscription tiers
 
@@ -213,6 +221,8 @@ CREATE TABLE users (
   subscription_tier TEXT NOT NULL DEFAULT 'free',
   cases_this_month  INTEGER NOT NULL DEFAULT 0,
   month_reset_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+  is_superuser      BOOLEAN DEFAULT FALSE,
+  role              TEXT NOT NULL DEFAULT 'client',  -- 'client' or 'lawyer'
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -287,6 +297,33 @@ CREATE TABLE chat_messages (
   sender_role TEXT DEFAULT 'user',
   content     TEXT NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Lawyer case management (Lawyer Dashboard)
+CREATE TABLE lawyer_cases (
+  id            SERIAL PRIMARY KEY,
+  lawyer_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  case_type     TEXT NOT NULL,
+  description   TEXT,
+  client_name   TEXT,
+  court_name    TEXT,
+  cnr_number    TEXT,                          -- Case Number Reference for eCourts linkage
+  status        TEXT DEFAULT 'active',         -- active / pending / closed
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE lawyer_documents (
+  id            SERIAL PRIMARY KEY,
+  lawyer_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  case_id       INTEGER REFERENCES lawyer_cases(id) ON DELETE SET NULL,
+  filename      TEXT NOT NULL,
+  file_type     TEXT NOT NULL,
+  file_url      TEXT,
+  content_text  TEXT,
+  ai_summary    TEXT,                          -- AI-generated document analysis
+  notes         TEXT,                          -- Lawyer-written notes per document
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
@@ -561,9 +598,9 @@ All backend routes are prefixed with `/litigaforge`.
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `POST` | `/litigaforge/auth/register` | None | Create account — sets httpOnly cookie + returns JWT |
-| `POST` | `/litigaforge/auth/login` | None | Login — sets httpOnly cookie + returns JWT |
-| `GET` | `/litigaforge/auth/me` | Cookie / Bearer | Current user info |
+| `POST` | `/litigaforge/auth/register` | None | Create account — accepts `role` (client/lawyer), sets httpOnly cookie + returns JWT |
+| `POST` | `/litigaforge/auth/login` | None | Login — sets httpOnly cookie + returns JWT with role |
+| `GET` | `/litigaforge/auth/me` | Cookie / Bearer | Current user info (includes `role`) |
 | `POST` | `/litigaforge/auth/logout` | Cookie / Bearer | Clear auth cookie |
 
 ### Subscription
@@ -597,6 +634,22 @@ All backend routes are prefixed with `/litigaforge`.
 | `GET` | `/litigaforge/lawyers` | None | Search advocate directory (district, area, language, text) |
 | `POST` | `/litigaforge/lawyers/register` | Bearer | Register as an advocate (login required) |
 | `GET` | `/litigaforge/legal-aid/contacts` | None | NALSA helpline + all 8 TSLSA DLSA contacts |
+
+### Lawyer Dashboard (Case & Document Management)
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/litigaforge/lawyer/cases` | Bearer | Create a new case (title, type, client, court, CNR, status) |
+| `GET` | `/litigaforge/lawyer/cases` | Bearer | List all cases for the logged-in lawyer (optional `?status=` filter) |
+| `GET` | `/litigaforge/lawyer/cases/{id}` | Bearer | Get a single case with attached documents |
+| `PATCH` | `/litigaforge/lawyer/cases/{id}` | Bearer | Edit case details (title, type, client, court, CNR, status) |
+| `DELETE` | `/litigaforge/lawyer/cases/{id}` | Bearer | Delete a case and its documents |
+| `PATCH` | `/litigaforge/lawyer/cases/{id}/status` | Bearer | Quick status change (active → pending → closed) |
+| `POST` | `/litigaforge/lawyer/documents` | Bearer | Upload a document (plain text or AI-analyzed) |
+| `GET` | `/litigaforge/lawyer/documents` | Bearer | List all documents for the lawyer |
+| `POST` | `/litigaforge/lawyer/documents/{id}/analyze` | Bearer | AI analyze a document (generates risk summary) |
+| `POST` | `/litigaforge/lawyer/documents/{id}/notes` | Bearer | Save lawyer notes on a document |
+| `GET` | `/litigaforge/lawyer/stats` | Bearer | Quick stats: active/pending/closed counts + document count |
 
 ### Client-Lawyer Matching
 
@@ -652,10 +705,15 @@ Interactive Swagger UI: `/litigaforge/docs`
 ## Forge Request Example
 
 ```bash
-# Register first
+# Register as a lawyer
 curl -X POST https://YOUR_DOMAIN/litigaforge/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"Adv. Ramesh Kumar","email":"ramesh@example.com","password":"advocate123"}'
+  -d '{"name":"Adv. Ramesh Kumar","email":"ramesh@example.com","password":"advocate123","role":"lawyer"}'
+
+# Or register as a client
+curl -X POST https://YOUR_DOMAIN/litigaforge/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ravi Kumar","email":"ravi@example.com","password":"client123","role":"client"}'
 
 # Use the returned token
 TOKEN="eyJ..."
