@@ -4,7 +4,7 @@ import {
   Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
   Crown, LogOut, User as UserIcon, ChevronRight, MessageSquare, FileSearch,
   BookOpen, Users, Heart, Sun, Moon, Plus, Gavel, MessageSquareText,
-  AlertTriangle, Shield, Star
+  AlertTriangle, Shield, Star, Briefcase, Sparkles, FileCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -16,14 +16,19 @@ import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 
 const clientNav = [
-  { href: "/",          label: "Forge",       icon: Scale },
-  { href: "/post-case", label: "Post Case",   icon: Plus },
-  { href: "/my-cases",  label: "My Cases",    icon: FileText },
-  { href: "/matches",   label: "Matches",     icon: Gavel },
+  { href: "/client-dashboard", label: "Dashboard",       icon: Briefcase },
+  { href: "/post-case",       label: "Post a Case",     icon: Plus },
+  { href: "/my-cases",        label: "My Cases",        icon: FileText },
+  { href: "/matches",         label: "Match Proposals", icon: Sparkles },
+  { href: "/documents",       label: "Documents",       icon: FileCheck },
+  { href: "/legal-chat",      label: "AI Legal Chat",   icon: MessageSquareText },
+  { href: "/ask",             label: "Legal Q&A",       icon: Gavel },
+  { href: "/judgments",       label: "Judgments",       icon: Scale },
+  { href: "/legal-aid",       label: "Free Legal Aid",  icon: Heart },
 ];
 
 const lawyerNav = [
-  { href: "/",          label: "Forge",       icon: Scale },
+  { href: "/",                 label: "Forge",            icon: Scale },
   { href: "/lawyer-dashboard", label: "Lawyer Dashboard", icon: Star },
 ];
 
@@ -34,8 +39,9 @@ const commonNav = [
   { href: "/judgments",  label: "Judgments",      icon: BookOpen },
   { href: "/chains",     label: "API Chains",     icon: Link2 },
   { href: "/use-cases",  label: "Use Cases",      icon: Lightbulb },
-  { href: "/legal-aid",  label: "Free Aid",       icon: Heart },
+  { href: "/legal-aid",  label: "Free Legal Aid", icon: Heart },
 ];
+
 
 // Removed old serviceNav, using commonNav below
 
@@ -60,63 +66,90 @@ function AnimatedCounter({ value }: { value: number }) {
 }
 
 function NavItem({
-  href, label, icon: Icon, location, onClick,
+  href, label, icon: Icon, location, onClick, isClient,
 }: {
-  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void;
+  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; isClient?: boolean;
 }) {
   const active = href === "/" ? location === "/" : location.startsWith(href);
+  if (isClient) {
+    return (
+      <Link href={href} data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`} onClick={onClick}
+        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left ${
+          active ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"
+        }`}>
+        <Icon className="w-4 h-4 flex-shrink-0" />
+        <span>{label}</span>
+      </Link>
+    );
+  }
   return (
-    <Link
-      href={href}
-      data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
-      onClick={onClick}
+    <Link href={href} data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`} onClick={onClick}
       className={cn(
         "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer relative group",
-        active
-          ? "bg-primary text-primary-foreground font-medium shadow-sm"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-      )}
-    >
+        active ? "bg-primary text-primary-foreground font-medium shadow-sm" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+      )}>
       <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-primary-foreground" : "group-hover:text-sidebar-foreground")} />
       <span className="tracking-wide relative z-10 text-sm font-medium">{label}</span>
     </Link>
   );
 }
 
-function AdminNavItem({ location, onNav }: { location: string; onNav?: () => void }) {
+function AdminNavItem({ location, onNav, isClient }: { location: string; onNav?: () => void; isClient?: boolean }) {
   const { user } = useAuth();
   if (!user?.is_superuser) return null;
   const href = "/admin";
   const active = location.startsWith(href);
+  if (isClient) {
+    return (
+      <Link href={href} data-testid="nav-admin" onClick={onNav}
+        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left ${
+          active ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"
+        }`}>
+        <Shield className="w-4 h-4 flex-shrink-0" />
+        <span>Admin</span>
+      </Link>
+    );
+  }
   return (
-    <Link
-      href={href}
-      data-testid="nav-admin"
-      onClick={onNav}
+    <Link href={href} data-testid="nav-admin" onClick={onNav}
       className={cn(
         "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer relative group",
-        active
-          ? "bg-primary text-primary-foreground font-medium shadow-sm"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-      )}
-    >
+        active ? "bg-primary text-primary-foreground font-medium shadow-sm" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+      )}>
       <Shield className={cn("w-4 h-4 flex-shrink-0", active ? "text-primary-foreground" : "group-hover:text-sidebar-foreground")} />
       <span className="tracking-wide relative z-10 text-sm font-medium">Admin</span>
     </Link>
   );
 }
 
-function UserPanel({ onNav }: { onNav?: () => void }) {
+function UserPanel({ onNav, isClient }: { onNav?: () => void; isClient?: boolean }) {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
-
   if (!user) return null;
 
-  const handleLogout = () => {
-    logout();
-    if (onNav) onNav();
-    setLocation("/login");
-  };
+  const handleLogout = () => { logout(); if (onNav) onNav(); setLocation("/login"); };
+
+  if (isClient) {
+    return (
+      <div className="px-3 pb-4">
+        <div className="border-t border-white/10 pt-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.1)" }}>
+              <UserIcon className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user.name}</p>
+              <p className="text-[11px] text-white/50 truncate">{user.email}</p>
+            </div>
+          </div>
+          <button onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-all text-xs font-medium">
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-sidebar-border px-4 py-4 space-y-4">
@@ -129,13 +162,9 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
           <p className="text-xs text-sidebar-foreground/60 truncate">{user.email}</p>
         </div>
       </div>
-
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all text-xs font-medium"
-      >
-        <LogOut className="w-4 h-4" />
-        Sign Out
+      <button onClick={handleLogout}
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all text-xs font-medium">
+        <LogOut className="w-4 h-4" /> Sign Out
       </button>
     </div>
   );
@@ -150,29 +179,47 @@ function SidebarContent({
   onNav?: () => void;
   user: User | null;
 }) {
-  const roleNav = user?.role === "lawyer" ? lawyerNav : clientNav;
+  const isClient = user?.role !== "lawyer";
+  const roleNav = isClient ? clientNav : lawyerNav;
+  const toolsNav = isClient ? commonNav.filter(i => !["/chains","/use-cases"].includes(i.href)) : commonNav;
+
+  if (isClient) {
+    return (
+      <div className="h-full flex flex-col" style={{ background: "#1a2744", color: "#fff" }}>
+        <div className="px-5 pt-6 pb-4">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)" }}>
+              <Scale className="w-4 h-4" style={{ color: "#FBBF24" }} />
+            </div>
+            <span className="font-bold text-sm tracking-tight">LitigaForge</span>
+          </div>
+          <p className="text-[11px] opacity-50 font-medium">Client Portal</p>
+        </div>
+        <nav className="flex-1 px-3 space-y-1 overflow-auto">
+          <div className="px-3 pb-2 text-[11px] font-semibold opacity-40 uppercase tracking-wider">Match & Connect</div>
+          {roleNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} isClient />)}
+          <div className="px-3 pt-4 pb-2 text-[11px] font-semibold opacity-40 uppercase tracking-wider">Legal Tools</div>
+          {toolsNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} isClient />)}
+          <AdminNavItem location={location} onNav={onNav} isClient />
+        </nav>
+        <UserPanel onNav={onNav} isClient />
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="px-6 py-6 border-b border-sidebar-border flex-shrink-0 flex items-center gap-3">
         <Scale className="w-6 h-6 text-primary-foreground" />
         <span className="text-sidebar-foreground font-bold text-lg tracking-tight">LitigaForge AI</span>
       </div>
-
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <div className="px-3 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-          {user?.role === "lawyer" ? "Lawyer Portal" : "Match & Connect"}
-        </div>
-        {roleNav.map(item => (
-          <NavItem key={item.href} {...item} location={location} onClick={onNav} />
-        ))}
-
+        <div className="px-3 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Lawyer Portal</div>
+        {roleNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} />)}
         <div className="px-3 pt-6 pb-2 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">Legal Tools</div>
-        {commonNav.map(item => (
-          <NavItem key={item.href} {...item} location={location} onClick={onNav} />
-        ))}
+        {toolsNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} />)}
         <AdminNavItem location={location} onNav={onNav} />
       </div>
-
       <UserPanel onNav={onNav} />
     </>
   );

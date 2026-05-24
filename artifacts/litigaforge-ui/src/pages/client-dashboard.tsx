@@ -6,10 +6,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase, FileText, User, MessageSquare,
-  Gavel, Plus, ChevronRight, X, Menu, Phone,
+  Gavel, Plus, ChevronRight, X, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
   Scale, Calendar, FileCheck, Heart, FileSearch, Building2, Hash,
-  PenSquare, Download, Share2, Search, Upload, Trash2,
+  PenSquare, Download, Share2, Search, Upload, Trash2, Menu,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -301,7 +301,6 @@ export default function ClientDashboard() {
 
       {/* Main */}
       <main className="flex-1 h-full overflow-auto pb-16 md:pb-0">
-        {/* Header */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b px-5 py-3 flex items-center justify-between" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-center gap-3">
             <button className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors" onClick={() => setDrawerOpen(true)}>
