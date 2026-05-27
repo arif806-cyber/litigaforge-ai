@@ -179,6 +179,32 @@ async def increment_case_count(user_id: int) -> dict:
     return dict(row)
 
 
+# ── Refresh token CRUD ────────────────────────────────────────────────────────
+
+async def store_refresh_token(user_id: int, token: str, expires_at) -> None:
+    await execute(
+        """INSERT INTO refresh_tokens (user_id, token, expires_at)
+           VALUES ($1, $2, $3)""",
+        user_id, token, expires_at,
+    )
+
+
+async def get_refresh_token(token: str) -> dict | None:
+    return await fetchrow(
+        """SELECT id, user_id, expires_at FROM refresh_tokens
+           WHERE token = $1""",
+        token,
+    )
+
+
+async def delete_refresh_token(token: str) -> None:
+    await execute("DELETE FROM refresh_tokens WHERE token = $1", token)
+
+
+async def delete_all_user_refresh_tokens(user_id: int) -> None:
+    await execute("DELETE FROM refresh_tokens WHERE user_id = $1", user_id)
+
+
 async def update_subscription(user_id: int, tier: str) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:

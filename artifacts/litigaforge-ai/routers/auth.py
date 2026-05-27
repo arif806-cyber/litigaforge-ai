@@ -1,17 +1,24 @@
 """
 LitigaForge AI — Auth Router
-Registration, login, logout, and user profile.
+Registration, login, logout, token refresh, and user profile.
 """
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
-from typing import Optional
 
 from auth import (
-    hash_password, verify_password, create_token,
+    hash_password, verify_password, create_token, create_refresh_token,
     get_current_user, require_user,
     set_auth_cookie, clear_auth_cookie,
+    set_refresh_cookie, clear_refresh_cookie,
+    REFRESH_TOKEN_DAYS,
 )
-from database import create_user, get_user_by_email
+from database import (
+    create_user, get_user_by_email, get_user_by_id,
+    store_refresh_token, get_refresh_token,
+    delete_refresh_token, delete_all_user_refresh_tokens,
+)
 from rate_limit import limiter
 from sanitizer import sanitize_text
 import re as _re
@@ -29,6 +36,17 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+async def _issue_tokens(user_id: int, response: Response) -> str:
+    """Create access + refresh tokens, set cookies, persist refresh token."""
+    access_token = create_token(user_id)
+    refresh_token = create_refresh_token()
+    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_DAYS)
+    await store_refresh_token(user_id, refresh_token, expires_at)
+    set_auth_cookie(response, access_token)
+    set_refresh_cookie(response, refresh_token)
+    return access_token
 
 
 @router.post("/auth/register")
@@ -53,8 +71,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
-    token = create_token(user["id"])
-    set_auth_cookie(response, token)
+    token = await _issue_tokens(user["id"], response)
     return {"user": user, "token": token}
 
 
@@ -64,10 +81,8 @@ async def login(req: LoginRequest, request: Request, response: Response):
     user = await get_user_by_email(req.email)
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    # Remove password hash from response
     user.pop("password_hash", None)
-    token = create_token(user["id"])
-    set_auth_cookie(response, token)
+    token = await _issue_tokens(user["id"], response)
     return {"user": user, "token": token}
 
 
@@ -76,7 +91,44 @@ async def me(current_user: dict = Depends(require_user)):
     return current_user
 
 
+@router.post("/auth/refresh")
+@limiter.limit("30/minute")
+async def refresh_token(request: Request, response: Response):
+    """
+    Reads the lf_refresh cookie, validates it against the DB,
+    rotates the refresh token (old one deleted, new one stored),
+    and issues a fresh access token cookie.
+    """
+    raw = request.cookies.get("lf_refresh")
+    if not raw:
+        raise HTTPException(status_code=401, detail="No refresh token")
+
+    row = await get_refresh_token(raw)
+    if not row:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    if row["expires_at"].replace(tzinfo=None) < datetime.utcnow():
+        await delete_refresh_token(raw)
+        clear_refresh_cookie(response)
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+
+    user_id = row["user_id"]
+    user = await get_user_by_id(user_id)
+    if not user:
+        await delete_refresh_token(raw)
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # Rotate: delete old refresh token and issue a fresh pair
+    await delete_refresh_token(raw)
+    token = await _issue_tokens(user_id, response)
+    return {"token": token}
+
+
 @router.post("/auth/logout")
-async def logout(response: Response):
+async def logout(request: Request, response: Response):
+    raw = request.cookies.get("lf_refresh")
+    if raw:
+        await delete_refresh_token(raw)
     clear_auth_cookie(response)
+    clear_refresh_cookie(response)
     return {"message": "Logged out successfully"}

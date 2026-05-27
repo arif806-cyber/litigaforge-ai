@@ -1,9 +1,12 @@
 """
 JWT authentication + password hashing for LitigaForge AI.
 Uses bcrypt directly (avoids passlib 1.7.x / bcrypt 4.x+ compatibility issues).
-Auth token is read from httpOnly cookie first, with Authorization header as fallback.
+Access token: JWT, 15 min, httpOnly cookie "lf_token".
+Refresh token: opaque 32-byte urlsafe token, 7 days, httpOnly cookie "lf_refresh",
+               stored in the refresh_tokens DB table.
 """
 import os
+import secrets
 from datetime import datetime, timedelta
 
 import bcrypt
@@ -14,23 +17,51 @@ from database import get_user_by_id
 
 SECRET_KEY = os.getenv("SESSION_SECRET", "litigaforge-dev-secret-change-in-prod")
 ALGORITHM = "HS256"
-TOKEN_EXPIRE_DAYS = 30
+ACCESS_TOKEN_MINUTES = 15
+REFRESH_TOKEN_DAYS = 7
+
+
+# ── Cookie helpers ────────────────────────────────────────────────────────────
+
+def _is_prod() -> bool:
+    return os.getenv("ENVIRONMENT", "development").lower() in ("production", "prod")
 
 
 def set_auth_cookie(response: Response, token: str) -> None:
+    prod = _is_prod()
     response.set_cookie(
         key="lf_token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=60 * 60 * 24 * TOKEN_EXPIRE_DAYS,
+        secure=prod,
+        samesite="strict" if prod else "lax",
+        max_age=ACCESS_TOKEN_MINUTES * 60,
+        path="/",
     )
 
 
 def clear_auth_cookie(response: Response) -> None:
-    response.delete_cookie("lf_token")
+    response.delete_cookie("lf_token", path="/")
 
+
+def set_refresh_cookie(response: Response, token: str) -> None:
+    prod = _is_prod()
+    response.set_cookie(
+        key="lf_refresh",
+        value=token,
+        httponly=True,
+        secure=prod,
+        samesite="strict" if prod else "lax",
+        max_age=REFRESH_TOKEN_DAYS * 24 * 60 * 60,
+        path="/litigaforge/auth/refresh",  # scoped: only sent to the refresh endpoint
+    )
+
+
+def clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie("lf_refresh", path="/litigaforge/auth/refresh")
+
+
+# ── Token creation / verification ─────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
     pw = password.encode("utf-8")
@@ -50,8 +81,14 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_token(user_id: int) -> str:
-    expire = datetime.utcnow() + timedelta(days=TOKEN_EXPIRE_DAYS)
+    """Short-lived JWT access token (15 min)."""
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_MINUTES)
     return jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_refresh_token() -> str:
+    """Opaque 32-byte URL-safe refresh token."""
+    return secrets.token_urlsafe(32)
 
 
 def decode_token(token: str) -> int:
@@ -62,8 +99,10 @@ def decode_token(token: str) -> int:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+# ── FastAPI dependencies ───────────────────────────────────────────────────────
+
 def _extract_token(request: Request) -> str | None:
-    """Read token from cookie first, then Authorization header fallback."""
+    """Read access token from cookie first, then Authorization header fallback."""
     token = request.cookies.get("lf_token")
     if token:
         return token
@@ -74,7 +113,6 @@ def _extract_token(request: Request) -> str | None:
 
 
 def _token_dependency(request: Request) -> str | None:
-    """FastAPI dependency that extracts token from request."""
     return _extract_token(request)
 
 
