@@ -83,7 +83,7 @@ function Router() {
         <Layout>
           <Switch>
             <Route path="/"             component={() => <ProtectedRoute component={Forge} />} />
-            <Route path="/cases"        component={() => <ErrorBoundary section="cases"><ProtectedRoute component={Cases} /></ErrorBoundary>} />
+            <Route path="/cases"        component={() => <ErrorBoundary section="cases"><Cases /></ErrorBoundary>} />
             <Route path="/cases/:id"    component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
             <Route path="/chains"       component={() => <ErrorBoundary section="chains"><Chains /></ErrorBoundary>} />
             <Route path="/use-cases"    component={() => <ErrorBoundary section="use-cases"><UseCases /></ErrorBoundary>} />
@@ -100,6 +100,7 @@ function Router() {
             <Route path="/legal-chat"   component={() => <ErrorBoundary section="legal-chat"><ProtectedRoute component={LegalChat} /></ErrorBoundary>} />
             <Route path="/free-documents" component={() => <ErrorBoundary section="free-documents"><FreeDocuments /></ErrorBoundary>} />
             <Route path="/free-documents/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
+            <Route path="/document-template/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
             <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
             <Route component={NotFound} />
           </Switch>

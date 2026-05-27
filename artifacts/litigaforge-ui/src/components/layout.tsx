@@ -28,14 +28,15 @@ const lawyerNav = [
 ];
 
 const commonNav = [
-  { href: "/legal-chat", label: "AI Legal Chat",  icon: MessageSquareText },
-  { href: "/ask",        label: "Legal Q&A",      icon: MessageSquare },
-  { href: "/review",     label: "Doc Analyzer",   icon: FileSearch },
-  { href: "/judgments",  label: "Judgments",      icon: BookOpen },
-  { href: "/chains",     label: "API Chains",     icon: Link2 },
-  { href: "/use-cases",  label: "Use Cases",      icon: Lightbulb },
-  { href: "/legal-aid",  label: "Free Legal Aid", icon: Heart },
-  { href: "/free-documents", label: "Free Documents", icon: FileCheck },
+  { href: "/legal-chat",     label: "AI Legal Chat",   icon: MessageSquareText },
+  { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare },
+  { href: "/review",         label: "Doc Analyzer",    icon: FileSearch },
+  { href: "/judgments",      label: "Judgments",       icon: BookOpen },
+  { href: "/cases",          label: "Forged Cases",    icon: Gavel },
+  { href: "/use-cases",      label: "Use Cases",       icon: Lightbulb },
+  { href: "/free-documents", label: "Free Documents",  icon: FileCheck },
+  { href: "/chains",         label: "API Chains",      icon: Link2 },
+  { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart },
 ];
 
 /* ─── Animated counter ─── */
@@ -139,7 +140,7 @@ function SidebarContent({
 }) {
   const isClient = user?.role !== "lawyer";
   const roleNav = isClient ? clientNav : lawyerNav;
-  const toolsNav = isClient ? commonNav.filter(i => !["/chains","/use-cases"].includes(i.href)) : commonNav;
+  const toolsNav = isClient ? commonNav.filter(i => i.href !== "/chains") : commonNav;
   const roleLabel = isClient ? "Client" : "Advocate";
 
   return (
