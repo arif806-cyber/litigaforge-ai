@@ -47,6 +47,23 @@
         "Cross-chain GSTIN + PAN + eCourts for combined tax + civil dispute strategy"
       ],
       "outcome_summary": "# CASE ANALYSIS MEMORANDUM\n**Case ID:** 43B70C45 | **Jurisdiction:** Telangana \u2014 GST Tribunal / High Court of Telangana | **GSTIN:** 36AABCU9603R1ZX\n\n---\n\n## 1. CASE SUMMARY\n\nThe registered taxpayer bearing GSTIN 36AABCU9603R1ZX, registered in Hyderabad, Telangana (State Code 36), has received a sho"
+    },
+    {
+      "id": 4,
+      "timestamp": "2026-05-27T22:03:41.211211",
+      "prompt_snippet": "My client Mr. Ravi Kumar has a cheque bounce case against HDFC Bank in Hyderabad. Cheque number 001234 for Rs 50000 was dishonoured.",
+      "chains_used": [
+        "NSE_INDIA",
+        "STOCK_EXCHANGE",
+        "MCA_COMPANY",
+        "MERIPEHCHAAN",
+        "MEE_SEVA_TG",
+        "eCourts"
+      ],
+      "meta_suggestions": [
+        "Activate Watch Mode on eCourts for automatic hearing date alerts"
+      ],
+      "outcome_summary": "CASE ANALYSIS REPORT\n====================\n\nCase ID: 074E11F1 | Date: 27 May 2026 | Jurisdiction: Hyderabad, TS\n\n1. CASE SUMMARY\n---------------\nMy client Mr. Ravi Kumar has a cheque bounce case against HDFC Bank in Hyderabad. Cheque number 001234 for Rs 50000 was dishonoured.\n\n2. KEY LEGAL ISSUES\n--"
     }
   ],
   "cases": [
@@ -1240,6 +1257,297 @@
         }
       },
       "final_output": "LITIGAFORGE AI \u2014 CASE 43B70C45 [AI-Generated]\n---\n\n# CASE ANALYSIS MEMORANDUM\n**Case ID:** 43B70C45 | **Jurisdiction:** Telangana \u2014 GST Tribunal / High Court of Telangana | **GSTIN:** 36AABCU9603R1ZX\n\n---\n\n## 1. CASE SUMMARY\n\nThe registered taxpayer bearing GSTIN 36AABCU9603R1ZX, registered in Hyderabad, Telangana (State Code 36), has received a show cause notice (SCN) under Section 74 of the Central Goods and Services Tax Act, 2017. Section 74 proceedings are invoked where the revenue authority alleges short payment, non-payment, erroneous refund, or wrongful availment of Input Tax Credit attributable to **fraud, wilful misstatement, or suppression of facts**. The notice mandates a formal reply within the statutory period. No party names, demand quantum, or tax period have been provided; the analysis proceeds on the statutory framework applicable to all S.74 proceedings. The immediate procedural posture is pre-adjudication: the noticee must respond before the adjudicating authority passes an order under S.74(9).\n\n---\n\n## 2. KEY LEGAL ISSUES\n\n- **Primary Issue:** Whether the conditions precedent for invoking S.74 \u2014 specifically fraud, wilful misstatement, or suppression of facts \u2014 are established on the facts, and whether the demand quantum is legally sustainable.\n- **Secondary Issues:**\n  - Whether the extended limitation period of five years (S.74 read with S.73) applies, and whether the SCN was issued within that window.\n  - Whether Input Tax Credit (ITC) was lawfully availed under S.16, and whether any reversal demand is maintainable.\n  - Whether the SCN specifies the grounds with sufficient particularity to satisfy natural justice (absence of which renders the notice void).\n  - Whether the taxpayer is entitled to reduced penalty under S.74(5) by paying tax and interest before adjudication.\n\n---\n\n## 3. APPLICABLE LAWS & PROVISIONS\n\n| Act / Regulation | Section / Rule | Relevance to This Case |\n|---|---|---|\n| CGST Act, 2017 | S.74 | Primary charging provision \u2014 SCN alleging demand due to fraud/misstatement; adjudication framework |\n| CGST Act, 2017 | S.73 | Distinguishes cases without fraud; determines correct section and limitation period |\n| CGST Act, 2017 | S.16 | Governs ITC eligibility conditions; unlawful availment is primary trigger for S.74 proceedings |\n| CGST Act, 2017 | S.74(5) | Entitles noticee to pay tax + interest + 15% penalty before adjudication to close proceedings |\n| CGST Act, 2017 | S.74(9) | Mandates adjudicating officer to pass order within five years of due date of annual return |\n| CGST Act, 2017 | S.75(4) | Mandates opportunity of personal hearing before adverse order is passed |\n| CGST Act, 2017 | S.107 | Provides right of appeal to GST Appellate Authority within three months of order |\n| CGST Act, 2017 | S.112 | Second appeal to GST Appellate Tribunal (GSTAT) |\n| CGST Act, 2017 | S.132 | Prosecution provision for offences involving fraud \u2014 applies if demand exceeds threshold |\n| IGST Act, 2017 | S.20 | Applies CGST provisions to inter-state supplies \u2014 Tentative; requires factual confirmation of supply type |\n| CGST Rules, 2017 | Rule 142 | Prescribes Form DRC-01 (SCN), DRC-03 (voluntary payment), DRC-06 (reply format) |\n| Constitution of India | Art. 226 | High Court of Telangana jurisdiction \u2014 writ if SCN is without jurisdiction or violates natural justice |\n\n---\n\n## 4. RELEVANT CASE LAW\n\n- **Dhadda Exports v. Union of India** (2019) Rajasthan HC \u2014 SCN that does not specify particulars of fraud/misstatement is void for violation of natural justice; applicable where the SCN in this case lacks precise allegations.\n- **Solar Industries India Ltd. v. Assistant Commissioner of CGST** (2022) Bombay HC \u2014 Held that mere non-filing of returns does not constitute \"suppression\" under S.74; revenue must independently establish mens rea.\n- **Metl Forging Ltd. v. Union of India** (2023) Allahabad HC \u2014 Confirmed that S.74(5) benefit (15% penalty) is available only before the adjudicating authority passes order; post-order payment forfeits this concession.\n- **Khoday Distilleries Ltd. v. State of Karnataka** (1995) SC \u2014 Established that SCN must disclose the case the noticee must meet; directly supports a challenge where the notice is vague.\n- **Union of India v. Bharti Airtel Ltd.** (2021) SC \u2014 Held that ITC availment based on GSTR-2A data does not automatically establish wrongful claim; revenue must demonstrate actual ineligibility.\n\n---\n\n## 5. GOVERNMENT DATA FINDINGS\n\n| Source | Finding | Data Point |\n|---|---|---|\n| GSTN Portal (API) | GSTIN Lookup | No live data \u2014 API key absent. Manual verification mandatory at gstin.gov.in |\n| MeriPehchaan / DigiLocker | Citizen identity documents | Mock data only \u2014 not attributable to the taxpayer entity in this matter |\n| Mee Seva TG | Certificates | Sandbox/mock data \u2014 not applicable to this GST dispute |\n\n**Live GSTIN status for 36AABCU9603R1ZX must be verified manually at** `https://www.gst.gov.in` **\u2192 Search Taxpayer before any filing.**\n\n---\n\n## 6. RECOMMENDED LEGAL STRATEGY\n\n**Immediate Actions (0\u20137 days):**\n- **Action 1:** Obtain certified copy of the SCN (Form DRC-01) and verify the date of issue, tax period, demand head (CGST/SGST/IGST/Cess), and the specific allegation (fraud/misstatement/suppression) \u2014 CGST Act S.74(1), Rule 142(1) \u2014 **Noticee/Advocate**.\n- **Action 2:** Calculate the reply deadline (SCN mandates reply within 30 days of service) and calendar the personal hearing date \u2014 CGST Act S.75(4) \u2014 **Advocate**.\n- **Action 3:** Pull all GSTR-1, GSTR-3B, GSTR-2A/2B filings for the disputed tax period from the GST portal to identify the exact discrepancy alleged \u2014 CGST Rules, Rule 59, Rule 60 \u2014 **Chartered Accountant/Tax Consultant**.\n\n**Short-Term Actions (7\u201330 days):**\n- **Action 1:** File a detailed written reply in Form DRC-06, specifically challenging (a) jurisdiction to invoke S.74 in absence of fraud evidence and (b) the demand computation \u2014 CGST Act S.74, Rule 142(3) \u2014 **Advocate + CA jointly**.\n- **Action 2:** If tax liability is not genuinely disputed, evaluate voluntary payment of tax + interest + 15% penalty via Form DRC-03 to extinguish proceedings under S.74(5) \u2014 CGST Act S.74(5) \u2014 **Noticee with CA**.\n- **Action 3:** Request and attend personal hearing before the adjudicating authority; submit written submissions simultaneously \u2014 CGST Act S.75(4) \u2014 **Advocate**.\n\n**Medium-Term Actions (1\u20133 months):**\n- **Action 1:** If adverse order is passed, file appeal before the GST Appellate Authority (Commissioner Appeals) in Form APL-01 within three months, depositing 10% pre-deposit \u2014 CGST Act S.107(6) \u2014 **Advocate**.\n- **Action 2:** If SCN is jurisdictionally infirm (e.g., issued post limitation, or without fraud allegation), file writ petition under Art. 226 before the High Court of Telangana \u2014 Constitution of India Art. 226 \u2014 **Senior Advocate**.\n\n---\n\n## 7. DOCUMENTS REQUIRED\n\n**Essential:**\n- [ ] Original SCN in Form DRC-01 \u2014 Establishes the demand, tax period, and allegations; provided by revenue authority\n- [ ] GSTR-1, GSTR-3B returns for disputed tax period \u2014 Primary evidentiary base; pulled from GST portal by noticee\n- [ ] GSTR-2A/2B reconciliation statements \u2014 Establishes ITC eligibility; generated from GST portal\n- [ ] Tax payment challans (Form PMT-06/GST PMT-07) for disputed period \u2014 Proves amounts already paid\n- [ ] GST Registration Certificate \u2014 Confirms registration status and category; GSTN portal\n\n**Supporting:**\n- [ ] Purchase invoices and e-way bills for transactions in dispute \u2014 Establishes genuineness of supplies and ITC\n- [ ] Bank statements for the disputed period \u2014 Corroborates transaction genuineness\n- [ ] Audited financial statements / books of accounts \u2014 Reconciles turnover declared vs. assessed\n- [ ] Correspondence with the Department (prior notices, replies) \u2014 Establishes procedural history\n\n---\n\n## 8. POTENTIAL RISKS & CHALLENGES\n\n| Risk | Likelihood | Mitigation |\n|---|---|---|\n| Limitation: S.74 order must be passed within 5 years of annual return due date; if demand is time-barred, SCN is void | Medium \u2014 depends on tax period (not disclosed) | Verify exact tax period from SCN; file preliminary objection on limitation in DRC-06 reply |\n| S.74 invocation challenged as improper (no fraud element) \u2014 Revenue may not have established mens rea | High \u2014 S.74 requires positive allegation of fraud/wilful misstatement | Challenge in reply; cite Solar Industries (2022) and Khoday Distilleries (1995) |\n| Prosecution risk under S.132 if demand exceeds \u20b95 crore | Low\u2013Medium \u2014 depends on quantum (not disclosed) | Ascertain demand quantum immediately; if threshold approached, retain criminal counsel |\n| Adverse ex-parte order if reply deadline is missed | High if deadline not tracked | Calendar reply deadline today; seek extension in writing if required |\n| ITC reversal demand creating cash flow disruption | Medium | Assess DRC-03 voluntary payment option to cap penalty at 15% under S.74(5) |\n\n---\n\n## 9. NEXT STEPS\n\n1. **By Day 2:** Advocate to obtain and scrutinise the SCN \u2014 verify tax period, demand amount, and the basis of fraud allegation \u2014 and calendar the 30-day reply window.\n2. **By Day 5:** CA to prepare full GSTR reconciliation for the disputed period and quantify the exact discrepancy; share with Advocate.\n3. **By Day 25 (before reply deadline):** Advocate to file Form DRC-06 reply with legal and factual submissions; simultaneously evaluate S.74(5) voluntary payment if liability is acknowledged in part.\n4. **Within 30 days of adverse order (if passed):** Advocate to file APL-01 appeal before Commissioner (Appeals) with 10% pre-deposit under S.107(6).\n\n---\n\n## 10. CONFIDENCE & LIMITATIONS\n\n**Confidence Level: Medium** \u2014 The statutory framework applicable to S.74 proceedings is well-settled; however, the absence of party names, demand quantum, tax period, and the specific allegation in the SCN limits the precision of this analysis.\n\n**Limitations:**\n- GSTIN live status (active/suspended/cancelled) could not be verified \u2014 API key absent; manual verification mandatory.\n- The demand quantum and tax period are unknown; limitation analysis and S.132 prosecution risk cannot be assessed without these facts.\n- The specific nature of the alleged irregularity (ITC fraud, turnover suppression, fake invoices) determines the defence strategy; this analysis covers all S.74 scenarios.\n- MeriPehchaan and Mee Seva data returned are mock/sandbox \u2014 not attributable to the taxpayer and not relied upon in this analysis.\n- Recent GST Council amendments and GSTAT operationalisation status in Telangana require confirmation at the time of filing.\n\n---\n\n> **This is legal information, not legal advice. Consult a qualified advocate admitted to practice before the High Court of Telangana or the GST Appellate Authority before taking any action in this matter.**\n\n[CITATION CHECK] Citation \"Section 74(9)\" appears without a named Act nearby Citation \"Section 73\" appears without a named Act nearby Citation \"Section 16\" appears without a named Act nearby\n\n---\nUNTHOUGHT CHAINS:\n- Activate Watch Mode on eCourts for automatic hearing date alerts\n- Cross-chain GSTIN + PAN + eCourts for combined tax + civil dispute strategy\n\nCHAINS:  GSTIN, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS:  GSTIN:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:skipped\n---"
+    },
+    {
+      "case_id": "074E11F1",
+      "timestamp": "2026-05-27T22:03:41.213605",
+      "prompt": "My client Mr. Ravi Kumar has a cheque bounce case against HDFC Bank in Hyderabad. Cheque number 001234 for Rs 50000 was dishonoured.",
+      "api_results": {
+        "NSE_INDIA": {
+          "chain": "NSE_INDIA",
+          "status": "partial",
+          "symbol": "HDFCBANK",
+          "data_source": "NSE India (National Stock Exchange) \u2014 live public API, no key",
+          "results": {
+            "live_quote": {
+              "error": "<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n<H1>Access Denied</H1>\n \nYou don't have permission to access \"ht",
+              "http": 403
+            }
+          },
+          "legal_relevance": {
+            "applicable_laws": [
+              "SEBI Act 1992 \u2014 securities fraud, market manipulation",
+              "SEBI (Prohibition of Insider Trading) Regulations 2015",
+              "Companies Act 2013 S.447 \u2014 fraud in listed companies",
+              "IBC 2016 \u2014 market value for corporate insolvency proceedings",
+              "FEMA 1999 \u2014 FII/FPI shareholding limits"
+            ],
+            "use_cases": [
+              "Live share price for court-ordered asset valuation (divorce, partition)",
+              "Price history for insider trading investigation (SEBI PIT)",
+              "52-week range for NPA attachment \u2014 current market value",
+              "Announcements for corporate fraud evidence",
+              "Nifty 50 membership \u2014 credibility of company in proceedings"
+            ]
+          }
+        },
+        "STOCK_EXCHANGE": {
+          "chain": "STOCK_EXCHANGE",
+          "status": "no_api_key",
+          "note": "Add RAPIDAPI_KEY secret. Subscribe free at rapidapi.com \u2192 'Indian Stock Exchange API2'."
+        },
+        "MCA_COMPANY": {
+          "chain": "MCA_COMPANY",
+          "data_source": "MCA21 / OpenCorporates India",
+          "status": "no_api_key",
+          "search_query": "hdfc bank",
+          "note": "Add OPENCORPORATES_API_KEY (free at opencorporates.com/api_accounts/new) for live company registry search. CIN structural validation is available without a key.",
+          "mca_direct_link": "https://www.mca.gov.in/mcafoportal/viewCompanyMasterData.do",
+          "efiling_link": "https://efiling.mca.gov.in/eFiling/helpdeskSearch",
+          "legal_relevance": {
+            "applicable_laws": [
+              "Companies Act 2013 \u2014 S.7 (formation), S.271 (winding up)",
+              "IBC 2016 \u2014 corporate insolvency, NCLT proceedings",
+              "PMLA 2002 \u2014 shell company investigations",
+              "SEBI Act \u2014 listed company regulatory action"
+            ],
+            "notes": "CIN (Corporate Identification Number) is essential for any litigation against a company. Verify existence, registered address, and status before filing. Director details and charges are available on MCA21 portal."
+          }
+        },
+        "MERIPEHCHAAN": {
+          "chain": "MERIPEHCHAAN",
+          "status": "mock",
+          "oauth2_provider": "MeriPehchaan \u2014 National eGovernance Division (NIC/MeitY)",
+          "auth_endpoint": "https://dev-meripehchaan.dl6.in/public/oauth2/1/authorize",
+          "citizen_profile": {
+            "sub": "dummy-citizen-001",
+            "name": "Mr. Ravi Kumar",
+            "given_name": "Mr.",
+            "family_name": "Kumar",
+            "email": "citizen@mock.gov.in",
+            "email_verified": true,
+            "phone_number": "+91-9999999999",
+            "phone_number_verified": true,
+            "digilocker_id": "DL-XXXXXXXX",
+            "aadhaar_linked": true,
+            "pan_linked": true
+          },
+          "documents": [
+            {
+              "docType": "ADHAR",
+              "name": "Aadhaar Card",
+              "issuedBy": "Unique Identification Authority of India",
+              "issuedOn": "2019-03-15",
+              "validTill": "Lifetime",
+              "docNumber": "XXXX-XXXX-1234",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "245 KB",
+              "uri": "in.gov.uidai-ADHAR-XXXXXXXX1234"
+            },
+            {
+              "docType": "PANCRD",
+              "name": "PAN Card",
+              "issuedBy": "Income Tax Department, Government of India",
+              "issuedOn": "2015-07-22",
+              "validTill": "Lifetime",
+              "docNumber": "ABCDE1234F",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "189 KB",
+              "uri": "in.gov.incometax-PANCRD-ABCDE1234F"
+            },
+            {
+              "docType": "DRVLC",
+              "name": "Driving Licence",
+              "issuedBy": "Ministry of Road Transport & Highways",
+              "issuedOn": "2018-11-05",
+              "validTill": "2038-11-04",
+              "docNumber": "TS14-XXXXXXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "312 KB",
+              "uri": "in.gov.sarathi-DRVLC-TS14XXXXXXXXXX"
+            },
+            {
+              "docType": "INCOME",
+              "name": "Income Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2024-01-10",
+              "validTill": "2025-01-09",
+              "docNumber": "INCOME-TS-2024-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "156 KB",
+              "uri": "in.gov.telangana-INCOME-2024XXXXXX"
+            },
+            {
+              "docType": "DOMICILE",
+              "name": "Domicile Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2023-06-18",
+              "validTill": "Lifetime",
+              "docNumber": "DOM-TS-2023-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "143 KB",
+              "uri": "in.gov.telangana-DOMICILE-2023XXXXXX"
+            },
+            {
+              "docType": "CASTE",
+              "name": "Caste Certificate",
+              "issuedBy": "Revenue Department, Government of Telangana",
+              "issuedOn": "2022-09-01",
+              "validTill": "Lifetime",
+              "docNumber": "CASTE-TS-2022-XXXXXX",
+              "verified": true,
+              "mime": "application/pdf",
+              "size": "167 KB",
+              "uri": "in.gov.telangana-CASTE-2022XXXXXX"
+            }
+          ],
+          "total_documents": 6,
+          "document_types_fetched": [
+            "ADHAR",
+            "PANCRD",
+            "DRVLC",
+            "INCOME",
+            "DOMICILE",
+            "CASTE"
+          ],
+          "legal_relevance": {
+            "identity_proof": true,
+            "address_proof": true,
+            "caste_income_eligible": true,
+            "driving_verified": true,
+            "notes": "All DigiLocker documents fetched via MeriPehchaan OAuth2 SSO. Admissible under IT Act 2000 Section 65B as government-certified digital records. Can be submitted directly in court without physical copy attestation."
+          },
+          "note": "Mock data \u2014 set MERIPEHCHAAN_CLIENT_ID + MERIPEHCHAAN_CLIENT_SECRET and provide an authorization_code for live DigiLocker document access"
+        },
+        "MEE_SEVA_TG": {
+          "chain": "MEE_SEVA_TG",
+          "status": "success",
+          "provider": "Mee Seva \u2014 Government of Telangana (tg.meeseva.gov.in)",
+          "applicant": "Mr. Ravi Kumar",
+          "state_code": "TS",
+          "certificates_fetched": 3,
+          "certificates": {
+            "incer": {
+              "cert_code": "incer",
+              "cert_name": "Income Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Income Certificate",
+                "application_number": "IC0272C6C66010",
+                "applicant_name": "Mr. Ravi Kumar",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "28-11-2025",
+                "valid_till": "28-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "annual_income": "\u20b94,50,000",
+                "income_source": "Salaried Employment",
+                "income_category": "Below \u20b98 Lakh (EWS/OBC eligible)"
+              },
+              "legal_use": "EWS/OBC income eligibility, legal aid applications, court fee waiver",
+              "applicable_law": "TG Court Fees and Suits Valuation Act; Legal Services Authorities Act 1987"
+            },
+            "rscer": {
+              "cert_code": "rscer",
+              "cert_name": "Residence Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Residence Certificate",
+                "application_number": "IC020D046231B7",
+                "applicant_name": "Mr. Ravi Kumar",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "28-11-2025",
+                "valid_till": "28-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "address": "Flat No. 101, XYZ Apartments, Kukatpally, Hyderabad \u2014 500072",
+                "years_of_residence": 8,
+                "residence_since": "2016",
+                "landlord_name": "Landlord (Mock)"
+              },
+              "legal_use": "Address proof in court, eviction cases, voter roll, property mutation",
+              "applicable_law": "Indian Evidence Act S.35; IT Act 2000 S.65B (digital record admissibility)"
+            },
+            "ctcer": {
+              "cert_code": "ctcer",
+              "cert_name": "Caste Certificate",
+              "status": "sandbox_connected_no_record",
+              "sandbox_connected": true,
+              "api_error": "HTTP 404: {\"error\":\"record_not_found\",\"errorDescription\":\"No record available in issuer database for given document parameters. Please check your document parameters and try again.\"}\n",
+              "note": "Sandbox API connected (sandbox.api-setu.in) \u2014 document number not found in Mee Seva database. Provide a real Mee Seva ApplicationNo for live certificate data.",
+              "data": {
+                "certificate_type": "Caste Certificate",
+                "application_number": "IC02E0249E6C57",
+                "applicant_name": "Mr. Ravi Kumar",
+                "issued_by": "Mee Seva \u2014 Government of Telangana",
+                "issued_date": "28-11-2025",
+                "valid_till": "28-11-2026",
+                "district": "Hyderabad",
+                "mandal": "Kukatpally",
+                "village": "Kukatpally",
+                "state": "Telangana",
+                "digital_signature": "Verified",
+                "digilocker_synced": true,
+                "format": "XML",
+                "caste": "BC-B",
+                "sub_caste": "Yadav",
+                "category": "Backward Class \u2014 B",
+                "caste_verified_from": "Revenue Records"
+              },
+              "legal_use": "SC/ST reservation, government scheme eligibility, admission cases",
+              "applicable_law": "Constitution of India Art. 341/342; TG Scheduled Castes Act"
+            }
+          },
+          "legal_relevance_summary": {
+            "income_proof": true,
+            "address_proof": true,
+            "caste_verified": true,
+            "obc_eligible": false,
+            "family_tree_verified": false,
+            "telangana_domicile": false,
+            "court_fee_waiver_eligible": true,
+            "notes": "All Mee Seva certificates are issued by the Government of Telangana and are admissible as evidence under Indian Evidence Act S.35 (public documents) and IT Act 2000 S.65B (electronic records). No physical copy attestation required. Income Certificate qualifies for court fee waiver under TG Court Fees Act."
+          },
+          "note": "Live data from Mee Seva API Setu"
+        },
+        "eCourts": {
+          "chain": "eCourts",
+          "status": "live",
+          "mode": "search",
+          "query": "Mr. Ravi Kumar",
+          "total_hits": 0,
+          "page": 1,
+          "page_size": 10,
+          "total_pages": 0,
+          "has_next": false,
+          "cases": [],
+          "facets": {},
+          "processing_time_ms": 10,
+          "request_id": "400479f9-000c-ce00-b63f-84710c7967bb"
+        }
+      },
+      "final_output": "LITIGAFORGE AI \u2014 CASE 074E11F1 [AI-Generated]\n---\n\nCASE ANALYSIS REPORT\n====================\n\nCase ID: 074E11F1 | Date: 27 May 2026 | Jurisdiction: Hyderabad, TS\n\n1. CASE SUMMARY\n---------------\nMy client Mr. Ravi Kumar has a cheque bounce case against HDFC Bank in Hyderabad. Cheque number 001234 for Rs 50000 was dishonoured.\n\n2. KEY LEGAL ISSUES\n-------------------\nPrimary Issue: General legal matter requiring further factual clarification.\nSecondary Issue(s):\n  - Jurisdiction and applicable substantive law to be determined after full fact-finding\n  - Limitation period assessment requires complete chronology of events\n\n3. APPLICABLE LAWS & PROVISIONS\n--------------------------------\n| Act / Regulation | Section / Rule | Relevance to This Case |\n|------------------|----------------|------------------------|\n| To be determined | \u2014 | Requires review of complete case facts |\n\n4. RELEVANT CASE LAW\n--------------------\nNo directly on-point precedents identified from current data. Research recommended on IndianKanoon.org.\n\n5. GOVERNMENT DATA FINDINGS\n---------------------------\nNo government data available for this case. Verification recommended via official portals.\n\n6. RECOMMENDED LEGAL STRATEGY\n-----------------------------\nImmediate Actions (0-7 days):\n- Action 1: Gather complete case facts and supporting documents \u2014 General \u2014 Client\n- Action 2: Identify all parties, causes of action, and desired relief \u2014 General \u2014 Lawyer\n\nShort-Term Actions (7-30 days):\n- Engage local counsel in the identified jurisdiction with relevant subject-matter expertise\n- Prepare draft pleadings (plaint/written statement) and evidence bundle index\n\nMedium-Term Actions (1-3 months):\n- File case before appropriate forum (District Court / High Court / Tribunal / Commission)\n- Prepare for first hearing with complete documentation and witness list\n\n7. DOCUMENTS REQUIRED\n---------------------\nEssential (without which the case cannot proceed):\n- [ ] All relevant contracts, correspondence, and receipts \u2014 Evidence of the dispute\n- [ ] Identity and address proof of all parties \u2014 Party verification\n- [ ] Timeline of events with dates and witnesses \u2014 Factual chronology\n\nSupporting (strengthens the case):\n- [ ] Expert opinion affidavit (if technical matter)\n- [ ] Affidavit of witness statements\n- [ ] Photographs or video evidence (if relevant)\n\n8. POTENTIAL RISKS & CHALLENGES\n-------------------------------\n| Risk | Likelihood | Mitigation |\n|------|------------|------------|\n| Incomplete facts leading to incorrect strategy | High | Conduct detailed client interview immediately |\n| Limitation period expiry | Medium | Verify cause of action date and calculate limitation |\n\n9. NEXT STEPS\n-------------\n1. Retain a qualified advocate admitted to practice in the relevant jurisdiction within 7 days.\n2. Commence document collection and witness identification immediately.\n3. File case before appropriate forum within limitation period after complete preparation.\n\n10. CONFIDENCE & LIMITATIONS\n----------------------------\nConfidence Level: Low \u2014 Limited factual input and no government data retrieved.\nLimitations:\n- This analysis is based solely on the facts provided and government data available at generation time.\n- Additional facts may alter the legal position substantially.\n- Jurisdictional nuances (High Court, District Court, Tribunal, Commission) require case-specific advice.\n- Statutory references are current as of the date of generation; recent amendments may apply.\n- No privileged attorney-client relationship is created by this analysis.\n\n---\nGenerated by  | Case ID: 074E11F1 | Chains Executed: NSE_INDIA, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nThis is legal information, not legal advice. Consult a qualified advocate before taking any action.\n\n---\nUNTHOUGHT CHAINS:\n- Activate Watch Mode on eCourts for automatic hearing date alerts\n\nCHAINS:  NSE_INDIA, STOCK_EXCHANGE, MCA_COMPANY, MERIPEHCHAAN, MEE_SEVA_TG, eCourts\nSTATUS:  NSE_INDIA:partial | STOCK_EXCHANGE:no_api_key | MCA_COMPANY:no_api_key | MERIPEHCHAAN:mock | MEE_SEVA_TG:success | eCourts:live\n---"
     }
   ],
   "watch_list": []

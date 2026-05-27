@@ -14,13 +14,15 @@ import logging
 from typing import TypedDict, Annotated, List, Dict, Any
 import operator
 
+import asyncio
+
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
 
 from api_chains import CHAIN_MAP
 from forge_memory import ForgeMemory
 from alerts.whatsapp import send_whatsapp_alert
-from ai_brain import smart_extract_entities, smart_legal_strategy
+from ai_brain import smart_extract_entities, smart_legal_strategy, smart_legal_strategy_async
 
 load_dotenv()
 logger = logging.getLogger("litigaforge.engine")
@@ -411,43 +413,64 @@ Return ONLY a JSON array of chain names to run in order. No markdown.
 
 # ─── Node 3: Chain Executor ───────────────────────────────────────────────────
 
-def execute_chains(state: LitigaState) -> LitigaState:
-    logger.info(f"[{state['case_id']}] Executing {len(state['planned_chains'])} chain(s)")
-    entities = state["extracted_entities"]
-    results = {}
+CHAIN_TIMEOUT = 15.0  # seconds per chain call
 
-    for chain_name in state["planned_chains"]:
+async def execute_chains(state: LitigaState) -> LitigaState:
+    """Run all planned chains concurrently; each gets CHAIN_TIMEOUT seconds."""
+    logger.info(
+        "[%s] Executing %d chain(s) concurrently (timeout=%.0fs each)",
+        state["case_id"], len(state["planned_chains"]), CHAIN_TIMEOUT,
+    )
+    entities = state["extracted_entities"]
+    chain_kwargs = dict(
+        gstin=entities.get("gstin"),
+        pan=entities.get("pan"),
+        aadhaar=entities.get("aadhaar"),
+        vehicle_number=entities.get("vehicle_number"),
+        dl_number=entities.get("dl_number"),
+        party_name=entities.get("party_name"),
+        case_number=entities.get("case_number"),
+        state_code=entities.get("state_code", "TS"),
+        name=entities.get("party_name"),
+        ifsc_code=entities.get("ifsc_code"),
+        pincode=entities.get("pincode"),
+        company_name=entities.get("company_name"),
+        stock_symbol=entities.get("stock_symbol"),
+        address=entities.get("address"),
+    )
+
+    async def _run_one(chain_name: str):
         fn = CHAIN_MAP.get(chain_name)
         if not fn:
-            results[chain_name] = {"chain": chain_name, "status": "unknown"}
-            continue
+            return chain_name, {"chain": chain_name, "status": "unknown"}
         try:
-            result = fn(
-                gstin=entities.get("gstin"),
-                pan=entities.get("pan"),
-                aadhaar=entities.get("aadhaar"),
-                vehicle_number=entities.get("vehicle_number"),
-                dl_number=entities.get("dl_number"),
-                party_name=entities.get("party_name"),
-                case_number=entities.get("case_number"),
-                state_code=entities.get("state_code", "TS"),
-                name=entities.get("party_name"),
-                # New departments
-                ifsc_code=entities.get("ifsc_code"),
-                pincode=entities.get("pincode"),
-                company_name=entities.get("company_name"),
-                stock_symbol=entities.get("stock_symbol"),
-                address=entities.get("address"),
+            result = await asyncio.wait_for(
+                asyncio.to_thread(fn, **chain_kwargs),
+                timeout=CHAIN_TIMEOUT,
             )
-            results[chain_name] = result
-            for cm in state["chain_map"]:
-                if cm["chain"] == chain_name:
-                    cm["status"] = result.get("status", "done")
+            return chain_name, result
+        except asyncio.TimeoutError:
+            logger.warning("[%s] chain %s timed out after %.0fs", state["case_id"], chain_name, CHAIN_TIMEOUT)
+            return chain_name, {"chain": chain_name, "status": "timeout"}
         except Exception as e:
-            results[chain_name] = {"chain": chain_name, "status": "error", "detail": str(e)}
-            for cm in state["chain_map"]:
-                if cm["chain"] == chain_name:
-                    cm["status"] = "error"
+            logger.warning("[%s] chain %s error: %s", state["case_id"], chain_name, e)
+            return chain_name, {"chain": chain_name, "status": "error", "detail": str(e)}
+
+    gathered = await asyncio.gather(
+        *[_run_one(name) for name in state["planned_chains"]],
+        return_exceptions=True,
+    )
+
+    results: Dict[str, Any] = {}
+    for item in gathered:
+        if isinstance(item, Exception):
+            logger.warning("[%s] chain gather exception: %s", state["case_id"], item)
+            continue
+        chain_name, result = item
+        results[chain_name] = result
+        for cm in state["chain_map"]:
+            if cm["chain"] == chain_name:
+                cm["status"] = result.get("status", "done")
 
     state["api_results"] = results
     return state
@@ -455,13 +478,13 @@ def execute_chains(state: LitigaState) -> LitigaState:
 
 # ─── Node 4: Meta Agent ───────────────────────────────────────────────────────
 
-def meta_agent(state: LitigaState) -> LitigaState:
+async def meta_agent(state: LitigaState) -> LitigaState:
     logger.info(f"[{state['case_id']}] Running Meta Agent (AI_MODE={AI_MODE})")
 
     if AI_MODE == "openai" and llm:
         past = memory.get_relevant_patterns(state["user_prompt"], limit=3)
         memory_ctx = "\n".join(f"- {p['prompt_snippet']} → {p['meta_suggestions']}" for p in past) or "First case."
-        prompt = f"""You are a senior Indian advocate with 20+ years of High Court practice (Telangana & Andhra Pradesh). You are drafting a case analysis memorandum for your own file or for a junior colleague.
+        llm_prompt = f"""You are a senior Indian advocate with 20+ years of High Court practice (Telangana & Andhra Pradesh). You are drafting a case analysis memorandum for your own file or for a junior colleague.
 
 CASE ID: {state['case_id']}
 CASE FACTS: {state['user_prompt']}
@@ -480,27 +503,34 @@ OUTPUT REQUIREMENTS:
 7. No generic boilerplate, no speculative language, no marketing text
 8. Maximum 1200 words. A busy advocate must read this in under 3 minutes."""
         try:
-            response = llm.invoke(prompt)
+            response = await asyncio.wait_for(
+                asyncio.to_thread(llm.invoke, llm_prompt),
+                timeout=15.0,
+            )
             strategy_text = response.content
-        except Exception as e:
-            logger.warning(f"OpenAI meta agent failed ({e}), using AI brain")
-            strategy_text = smart_legal_strategy(
+        except (asyncio.TimeoutError, Exception) as e:
+            logger.warning("OpenAI meta agent failed (%s), using AI brain async", e)
+            strategy_text = await smart_legal_strategy_async(
                 state["user_prompt"], state["extracted_entities"],
-                state["api_results"], state["case_id"]
+                state["api_results"], state["case_id"],
             )
         try:
-            sug = llm.invoke(
+            sug_prompt = (
                 f"Extract 1-3 creative 'Unthought Chain' ideas as a JSON array of short strings.\n"
                 f"Analysis: {strategy_text[:600]}\nReturn ONLY a JSON array."
+            )
+            sug = await asyncio.wait_for(
+                asyncio.to_thread(llm.invoke, sug_prompt),
+                timeout=10.0,
             )
             suggestions = json.loads(sug.content.strip().strip("```json").strip("```").strip())
         except Exception:
             suggestions = _dummy_suggestions(state["user_prompt"])
     else:
-        # Gemini or smart fallback — both via ai_brain
-        strategy_text = smart_legal_strategy(
+        # Claude → GPT-5 → Gemini → smart template, all with 15 s per-model timeout
+        strategy_text = await smart_legal_strategy_async(
             state["user_prompt"], state["extracted_entities"],
-            state["api_results"], state["case_id"]
+            state["api_results"], state["case_id"],
         )
         suggestions = _dummy_suggestions(state["user_prompt"])
 
@@ -543,9 +573,10 @@ _wf.add_edge("meta_agent", END)
 forge_graph = _wf.compile()
 
 
-def forge_case(user_prompt: str) -> dict:
+async def forge_case(user_prompt: str) -> dict:
+    """Async entry-point — uses ainvoke so async nodes are awaited natively."""
     case_id = str(uuid.uuid4())[:8].upper()
-    return forge_graph.invoke({
+    return await forge_graph.ainvoke({
         "case_id": case_id,
         "user_prompt": user_prompt,
         "extracted_entities": {},

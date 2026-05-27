@@ -11,6 +11,7 @@ Cascade for strategy synthesis: Claude → GPT-5 → Gemini → smart data templ
 
 No API keys needed from the user — all provisioned free via Replit AI Integrations.
 """
+import asyncio
 import os
 import re
 import json
@@ -18,6 +19,8 @@ import logging
 from typing import Dict, Any
 
 import requests as _req
+
+AI_CALL_TIMEOUT = 15.0  # seconds — each model gets this before falling through
 
 logger = logging.getLogger("litigaforge.ai_brain")
 
@@ -184,6 +187,55 @@ def _call_openai(system: str, user: str, temperature: float = 0.3,
         return text.strip() or None
     except Exception as e:
         logger.warning(f"[OPENAI] call failed: {e}")
+        return None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Async wrappers — each model gets AI_CALL_TIMEOUT seconds, then falls through
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def _call_claude_async(system: str, user: str, temperature: float = 0.3,
+                              max_tokens: int = 8000) -> str | None:
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_call_claude, system, user, temperature, max_tokens),
+            timeout=AI_CALL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("[CLAUDE] timed out after %.0fs — falling through to next model", AI_CALL_TIMEOUT)
+        return None
+    except Exception as e:
+        logger.warning("[CLAUDE] async call failed: %s", e)
+        return None
+
+
+async def _call_gemini_async(system: str, user: str, temperature: float = 0.2,
+                              max_tokens: int = 8192) -> str | None:
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_call_gemini, system, user, temperature, max_tokens),
+            timeout=AI_CALL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("[GEMINI] timed out after %.0fs — falling through to next model", AI_CALL_TIMEOUT)
+        return None
+    except Exception as e:
+        logger.warning("[GEMINI] async call failed: %s", e)
+        return None
+
+
+async def _call_openai_async(system: str, user: str, temperature: float = 0.3,
+                              max_tokens: int = 8000) -> str | None:
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_call_openai, system, user, temperature, max_tokens),
+            timeout=AI_CALL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("[OPENAI] timed out after %.0fs — falling through to next model", AI_CALL_TIMEOUT)
+        return None
+    except Exception as e:
+        logger.warning("[OPENAI] async call failed: %s", e)
         return None
 
 
@@ -622,6 +674,131 @@ REWRITE ONLY THE SECTION CONTENT. Do not include heading or numbering.""")
 
     # Fallback: return original with note
     logger.info(f"[AI_BRAIN] All AI providers failed for refinement — returning original (case {case_id})")
+    return current_text + "\n\n[Note: AI refinement unavailable at this time. Original text preserved.]"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Async versions of the two public functions — used by the async engine nodes
+# Each model gets AI_CALL_TIMEOUT seconds; on timeout it falls through silently.
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def smart_legal_strategy_async(
+    prompt: str,
+    entities: Dict[str, Any],
+    api_results: Dict[str, Any],
+    case_id: str,
+) -> str:
+    """Async strategy synthesis: Claude → GPT-5 → Gemini → smart template, 15 s per model."""
+    _init_providers()
+    active = get_active_providers()
+
+    intent    = entities.get("intent", "legal_case")
+    company   = entities.get("company_name", "")
+    case_type = entities.get("case_type", "General")
+    location  = entities.get("location", "Hyderabad")
+
+    data_summary = {
+        chain: result for chain, result in api_results.items()
+        if isinstance(result, dict) and result.get("status") not in ("skipped", None)
+    }
+
+    safe_context = wrap_user_prompt(f"""CASE FACTS:
+{prompt}
+
+EXTRACTED ENTITIES:
+- Intent: {intent}
+- Case Type: {case_type}
+- Location: {location}
+- Company/Entity: {company or 'Not specified'}
+- State Code: {entities.get('state_code', 'TS')}
+- Parties: {entities.get('party_name', 'Not specified')} vs {entities.get('opponent_name', 'Not specified')}
+- Identifiers: PAN={entities.get('pan', 'N/A')}, GSTIN={entities.get('gstin', 'N/A')}, Vehicle={entities.get('vehicle_number', 'N/A')}, CIN={entities.get('cin', 'N/A')}
+
+{LEGAL_OUTPUT_FORMAT}
+
+VERIFIED GOVERNMENT API DATA:
+{json.dumps(data_summary, indent=2, default=str)[:7000]}
+
+Active AI Providers: {', '.join(active)}
+Case ID: {case_id}
+""")
+
+    if "claude" in active:
+        logger.info("[AI_BRAIN] [async] Strategy via Claude Sonnet 4-6 (case %s)", case_id)
+        result = await _call_claude_async(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8000)
+        if result and len(result) > 400:
+            return safe_ai_output(result, api_results)
+
+    if "openai" in active:
+        logger.info("[AI_BRAIN] [async] Strategy via GPT-5-mini (case %s)", case_id)
+        result = await _call_openai_async(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8000)
+        if result and len(result) > 400:
+            return safe_ai_output(result, api_results)
+
+    if "gemini" in active:
+        logger.info("[AI_BRAIN] [async] Strategy via Gemini 2.5 Flash (case %s)", case_id)
+        result = await _call_gemini_async(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8192)
+        if result and len(result) > 400:
+            return safe_ai_output(result, api_results)
+
+    logger.info("[AI_BRAIN] [async] All AI providers timed out/failed — smart template (case %s)", case_id)
+    fallback = _smart_fallback_strategy(prompt, entities, api_results, case_id)
+    return safe_ai_output(fallback, None)
+
+
+async def smart_refine_section_async(
+    original_prompt: str,
+    section_name: str,
+    current_text: str,
+    full_output: str,
+    instruction: str,
+    api_results: Dict[str, Any],
+    case_id: str,
+) -> str:
+    """Async section refinement: Claude → GPT-5 → Gemini, 15 s per model."""
+    _init_providers()
+    active = get_active_providers()
+
+    modifier = REFINE_INSTRUCTIONS.get(instruction, REFINE_INSTRUCTIONS["refine"])
+
+    safe_context = wrap_user_prompt(f"""FULL CASE FACTS:
+{original_prompt}
+
+ORIGINAL COMPLETE ANALYSIS (for context only):
+{full_output[:4000]}
+
+VERIFIED GOVERNMENT DATA:
+{json.dumps(api_results, indent=2, default=str)[:3000]}
+
+SECTION TO REWRITE: {section_name}
+
+CURRENT SECTION TEXT:
+{current_text[:4000]}
+
+INSTRUCTION:
+{modifier}
+
+REWRITE ONLY THE SECTION CONTENT. Do not include heading or numbering.""")
+
+    if "claude" in active:
+        logger.info("[AI_BRAIN] [async] Refine via Claude (section: %s, case: %s)", section_name, case_id)
+        result = await _call_claude_async(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4000)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
+    if "openai" in active:
+        logger.info("[AI_BRAIN] [async] Refine via GPT-5-mini (section: %s, case: %s)", section_name, case_id)
+        result = await _call_openai_async(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4000)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
+    if "gemini" in active:
+        logger.info("[AI_BRAIN] [async] Refine via Gemini (section: %s, case: %s)", section_name, case_id)
+        result = await _call_gemini_async(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4096)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
+    logger.info("[AI_BRAIN] [async] All AI providers timed out for refinement — original preserved (case %s)", case_id)
     return current_text + "\n\n[Note: AI refinement unavailable at this time. Original text preserved.]"
 
 

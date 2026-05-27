@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from litigaforge_engine import forge_case, memory
-from ai_brain import smart_refine_section
+from ai_brain import smart_refine_section_async
 from alerts.whatsapp import send_whatsapp_alert
 from database import increment_case_count, TIER_LIMITS
 from auth import get_current_user
@@ -107,7 +107,7 @@ async def forge(
             )
 
     try:
-        result = forge_case(safe_prompt)
+        result = await forge_case(safe_prompt)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Engine error: {str(e)}")
 
@@ -200,7 +200,7 @@ async def refine_section(
         raise HTTPException(status_code=404, detail=f"Case {body.case_id} not found")
 
     try:
-        refined = smart_refine_section(
+        refined = await smart_refine_section_async(
             original_prompt=case.get("prompt", ""),
             section_name=body.section_name,
             current_text=safe_current,
