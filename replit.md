@@ -97,6 +97,11 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 | `TWILIO_AUTH_TOKEN` | twilio.com console | WhatsApp alerts |
 | `TWILIO_FROM_NUMBER` | Twilio sandbox: `whatsapp:+14155238886` | WhatsApp sender |
 | `ADVOCATE_WHATSAPP` | Your number e.g. `whatsapp:+919876543210` | WhatsApp recipient |
+| `SMTP_HOST` | e.g. `smtp.gmail.com` | Email notifications (verification/rejection) |
+| `SMTP_PORT` | `587` (STARTTLS) or `465` (SSL) | Email port, defaults to 587 |
+| `SMTP_USER` | Your email login | SMTP authentication |
+| `SMTP_PASSWORD` | App password / SMTP password | SMTP authentication |
+| `SMTP_FROM` | Display From address | Defaults to SMTP_USER if not set |
 | `MERIPEHCHAAN_CLIENT_ID` | meripehchaan.gov.in | Live DigiLocker OAuth |
 | `MERIPEHCHAAN_CLIENT_SECRET` | meripehchaan.gov.in | Live DigiLocker OAuth |
 | `ECOURTS_API_KEY` | webapi.ecourtsindia.com/dashboard/settings?activate=partner | Live eCourts case lookup (CNR, search, orders)

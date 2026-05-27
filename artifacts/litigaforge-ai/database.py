@@ -147,9 +147,12 @@ async def get_user_by_email(email: str) -> dict | None:
 
 async def get_user_by_id(user_id: int) -> dict | None:
     row = await fetchrow(
-        """SELECT id, email, name, subscription_tier,
-                  cases_this_month, month_reset_date, is_superuser, role, created_at
-           FROM users WHERE id = $1""",
+        """SELECT u.id, u.email, u.name, u.subscription_tier,
+                  u.cases_this_month, u.month_reset_date, u.is_superuser, u.role, u.created_at,
+                  COALESCE(l.verified, FALSE) AS is_verified
+           FROM users u
+           LEFT JOIN lawyers l ON l.user_id = u.id
+           WHERE u.id = $1""",
         user_id,
     )
     if not row:

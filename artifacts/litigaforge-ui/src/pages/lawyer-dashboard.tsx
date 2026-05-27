@@ -8,6 +8,7 @@ import {
   FileSearch, Gavel, Phone, Award, AlertTriangle, IndianRupee,
   Shield, MapPin, Clock, XCircle, Loader2, Trash2, Sparkles,
   FolderOpen, PenSquare, ChevronDown, Check, Download, Share2, StickyNote, Send, Copy,
+  Hourglass,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
@@ -160,7 +161,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 
 // ── Main Page ─────────────────────────────────────────────────────────────────────────
 export default function LawyerDashboard() {
-  const { user } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const [location] = useLocation();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -180,6 +181,13 @@ export default function LawyerDashboard() {
   const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => { setDrawerOpen(false); }, [location]);
+
+  // ── Verification polling ──
+  useEffect(() => {
+    if (user?.role !== "lawyer" || user?.is_verified) return;
+    const id = setInterval(() => { refreshUser(); }, 30_000);
+    return () => clearInterval(id);
+  }, [user?.role, user?.is_verified, refreshUser]);
 
   // ── Queries ──
   const { data: lawyerCases } = useQuery({
@@ -274,6 +282,113 @@ export default function LawyerDashboard() {
     { label: "Closed", value: cases.filter((c) => c.status === "closed").length, sub: "resolved / archived", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "#ECFDF5", iconColor: "#059669", borderColor: "#D1FAE5" },
     { label: "Documents", value: docs.length, sub: "uploaded files", iconEl: <FileText className="w-5 h-5" />, iconBg: "#F5F3FF", iconColor: "#7C3AED", borderColor: "#EDE9FE" },
   ];
+
+  // ── Verification wall ──
+  if (user?.role === "lawyer" && !user?.is_verified) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-4"
+        style={{ background: "#F8FAFC", fontFamily: "'Space Grotesk', sans-serif" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md text-center"
+        >
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-2.5 mb-8">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#1a2744" }}>
+              <Scale className="w-5 h-5 text-amber-400" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">LitigaForge AI</span>
+          </div>
+
+          {/* Card */}
+          <div className="rounded-2xl bg-white shadow-lg border border-gray-100 px-8 py-10">
+            <motion.div
+              animate={{ rotate: [0, -8, 8, -8, 8, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+              style={{ background: "#EFF6FF", border: "1.5px solid #BFDBFE" }}
+            >
+              <Hourglass className="w-7 h-7 text-blue-500" />
+            </motion.div>
+
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Awaiting Verification</h1>
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
+              Your advocate profile has been submitted. Our team will review your Bar Council credentials and
+              verify your account — usually within 24 hours.
+            </p>
+
+            {/* Steps */}
+            <div className="space-y-3 text-left mb-6">
+              {[
+                { label: "Profile submitted", done: true },
+                { label: "Bar Council credentials review", done: false, active: true },
+                { label: "Account activated", done: false },
+              ].map(({ label, done, active }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: done ? "#ECFDF5" : active ? "#EFF6FF" : "#F1F5F9",
+                      border: `1.5px solid ${done ? "#6EE7B7" : active ? "#93C5FD" : "#E2E8F0"}`,
+                    }}
+                  >
+                    {done ? (
+                      <Check className="w-3 h-3 text-emerald-500" />
+                    ) : active ? (
+                      <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
+                    ) : (
+                      <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                    )}
+                  </div>
+                  <span
+                    className="text-sm"
+                    style={{ color: done ? "#059669" : active ? "#2563EB" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Polling notice */}
+            <div
+              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-blue-600 mb-4"
+              style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}
+            >
+              <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+              <span>Checking for updates every 30 seconds — this page will refresh automatically once approved.</span>
+            </div>
+
+            <button
+              onClick={() => refreshUser()}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+              style={{ background: "#1a2744", color: "#ffffff" }}
+            >
+              Check now
+            </button>
+          </div>
+
+          {/* Footer */}
+          <p className="mt-5 text-xs text-gray-400">
+            Questions?{" "}
+            <a href="mailto:support@litigaforge.ai" className="underline hover:text-gray-600">
+              Contact support
+            </a>
+          </p>
+          <button
+            onClick={() => { logout(); }}
+            className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline"
+          >
+            Sign out
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Space Grotesk', sans-serif" }}>

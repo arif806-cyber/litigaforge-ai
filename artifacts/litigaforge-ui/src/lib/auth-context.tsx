@@ -13,6 +13,7 @@ export interface User {
   is_superuser: boolean;
   role: "client" | "lawyer";
   created_at: string;
+  is_verified?: boolean;
 }
 
 interface AuthCtx {
