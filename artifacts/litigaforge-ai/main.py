@@ -356,15 +356,70 @@ async def serve_sitemap():
   <url><loc>https://litiga-forge-ai.replit.app/blog/file-consumer-forum-complaint-online-india</loc><lastmod>2026-05-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/blog/rera-property-buyers-andhra-pradesh</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/blog/check-court-case-status-ecourts-india</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- Telangana districts -->
   <url><loc>https://litiga-forge-ai.replit.app/lawyers/hyderabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/lawyers/secunderabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://litiga-forge-ai.replit.app/lawyers/warangal</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://litiga-forge-ai.replit.app/lawyers/karimnagar</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/rangareddy</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/medchal</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/sangareddy</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/medak</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/lawyers/nizamabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://litiga-forge-ai.replit.app/lawyers/vijayawada</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/karimnagar</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/warangal</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/hanumakonda</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/warangal-rural</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/khammam</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/nalgonda</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/suryapet</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/rajanna-sircilla</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/peddapalli</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/mancherial</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/adilabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/kumuram-bheem</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/nirmal</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/jagtial</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/kamareddy</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/siddipet</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/jangaon</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/mahabubnagar</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/nagarkurnool</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/wanaparthy</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/gadwal</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/narayanpet</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/vikarabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/mahabubabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/jayashankar-bhupalpally</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/mulugu</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/bhadradri-kothagudem</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/yadadri</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <!-- Andhra Pradesh districts -->
   <url><loc>https://litiga-forge-ai.replit.app/lawyers/visakhapatnam</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/vijayawada</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/ntr-district</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/lawyers/guntur</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/bapatla</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/palnadu</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/ongole</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/nellore</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/kurnool</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/nandyal</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/anantapur</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/sri-sathya-sai</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/kadapa</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/chittoor</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/lawyers/tirupati</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/sri-balaji</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/rajahmundry</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/kakinada</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/konaseema</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/eluru</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/bhimavaram</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/krishna</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/srikakulam</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/vizianagaram</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/anakapalli</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/alluri-sitharama-raju</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/parvathipuram</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
 </urlset>"""
     return Response(content=content, media_type="application/xml")
 

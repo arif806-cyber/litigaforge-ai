@@ -5,275 +5,574 @@ import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
-  MapPin, Star, Clock, Phone, ChevronDown, ChevronUp,
-  ArrowRight, Scale, Users, BadgeCheck, Building2,
+  MapPin, Star, Clock, ArrowRight, Scale, Users,
+  BadgeCheck, Building2, ChevronDown, ChevronUp,
 } from "lucide-react";
-
-/* ─── Static city data ─────────────────────────────────────────────────── */
-
-interface CityInfo {
-  name: string;
-  district: string;          // passed to /lawyers?district=
-  state: "Telangana" | "Andhra Pradesh";
-  courts: string[];
-  feeRange: string;
-  avgConsultation: string;
-  faqs: { q: string; a: string }[];
-}
-
-const CITIES: Record<string, CityInfo> = {
-  hyderabad: {
-    name: "Hyderabad",
-    district: "Hyderabad",
-    state: "Telangana",
-    courts: ["Telangana High Court", "Hyderabad District Court", "City Civil Court", "Nampally Metropolitan Court"],
-    feeRange: "₹15,000–₹1,00,000 per case",
-    avgConsultation: "₹1,000–₹5,000",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Hyderabad?",
-        a: "Consultation fees in Hyderabad typically range from ₹1,000 to ₹5,000. Full representation in property and civil cases costs ₹15,000–₹1,00,000 depending on complexity. High Court criminal defence advocates charge ₹50,000–₹5,00,000. Corporate lawyers at Banjara Hills and HITEC City firms often charge ₹10,000+ per hour.",
-      },
-      {
-        q: "Which courts operate in Hyderabad?",
-        a: "Hyderabad houses the Telangana High Court (state's apex court), the Hyderabad District Court at Nampally, City Civil Court, Metropolitan Magistrate Courts, and key tribunals — RERA Telangana, District Consumer Forum, DRAT, Labour Court, and NCLT Bench.",
-      },
-      {
-        q: "What types of cases are most common in Hyderabad?",
-        a: "The most common cases include property and land disputes (especially in the IT corridor, old city, and Cyberabad areas), criminal bail matters at Nampally Court, family disputes (divorce, custody, maintenance) at the Family Court, consumer complaints against builders and banks, and corporate litigation.",
-      },
-      {
-        q: "How long does a legal case take in Hyderabad?",
-        a: "Consumer forum cases typically resolve in 3–6 months. Family court matters (divorce by mutual consent) take 6–18 months. Property civil suits can take 2–7 years in the District Court. High Court matters vary widely. Using AI matching to find the right specialist reduces delays significantly.",
-      },
-    ],
-  },
-  secunderabad: {
-    name: "Secunderabad",
-    district: "Hyderabad",
-    state: "Telangana",
-    courts: ["Secunderabad Magistrate Court", "Cantonment Board Court", "Hyderabad District Court"],
-    feeRange: "₹10,000–₹75,000 per case",
-    avgConsultation: "₹800–₹3,000",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Secunderabad?",
-        a: "Advocate fees in Secunderabad are slightly lower than Hyderabad's Banjara Hills rates. Consultations cost ₹800–₹3,000, while full case representation ranges from ₹10,000 to ₹75,000. Cantonment and civil matters are the most common, and experienced advocates for these specialisations charge a premium.",
-      },
-      {
-        q: "Which courts operate in Secunderabad?",
-        a: "Secunderabad falls under the Hyderabad District Court jurisdiction at Nampally. The Secunderabad Cantonment area has the Cantonment Board and its associated civil authority. Criminal matters are handled at the Metropolitan Magistrate Courts. The Telangana High Court covers all appeals.",
-      },
-      {
-        q: "What types of cases are most common in Secunderabad?",
-        a: "Cantonment property disputes, lease and tenancy issues in the twin-city corridor, criminal matters at the Secunderabad railway police station jurisdiction, and consumer complaints are the most frequent. Army and defence personnel often need advocates for service-related matters.",
-      },
-      {
-        q: "Can I find an advocate in Secunderabad for cantonment matters?",
-        a: "Yes. Secunderabad has advocates who specialise in cantonment board land regulations, military service matters, and the unique property laws that apply in cantonment areas. Use LitigaForge AI to filter by district and find verified advocates with relevant experience.",
-      },
-    ],
-  },
-  warangal: {
-    name: "Warangal",
-    district: "Warangal",
-    state: "Telangana",
-    courts: ["Warangal District Court", "Hanamkonda Sessions Court", "Consumer Forum Warangal"],
-    feeRange: "₹8,000–₹50,000 per case",
-    avgConsultation: "₹500–₹2,000",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Warangal?",
-        a: "Advocate fees in Warangal are significantly lower than Hyderabad. Consultations cost ₹500–₹2,000, and full case representation in property or criminal matters ranges from ₹8,000 to ₹50,000. Land dispute cases involving agricultural land may require additional survey and revenue record fees.",
-      },
-      {
-        q: "Which courts operate in Warangal?",
-        a: "Warangal has the Warangal District Court, Sessions Court at Hanamkonda, Warangal Rural and Urban Magistrate Courts, Consumer Disputes Redressal Forum, and Labour Courts. The Telangana High Court in Hyderabad handles all appeals from Warangal district.",
-      },
-      {
-        q: "What types of cases are most common in Warangal?",
-        a: "Agricultural land disputes, tenancy and pattadar passbook-related matters, criminal cases at the Sessions Court, and property inheritance disputes are the most common in Warangal. Industrial disputes related to the Kazipet railway junction and textile sector also arise frequently.",
-      },
-      {
-        q: "How can I find a property lawyer in Warangal?",
-        a: "LitigaForge AI lists verified advocates in Warangal district filtered by practice area. For agricultural land disputes, you need an advocate familiar with Telangana land revenue records and the Dharani portal. Post your case requirement and receive proposals from matching advocates within 24 hours.",
-      },
-    ],
-  },
-  karimnagar: {
-    name: "Karimnagar",
-    district: "Karimnagar",
-    state: "Telangana",
-    courts: ["Karimnagar District Court", "Karimnagar Sessions Court", "Consumer Forum Karimnagar"],
-    feeRange: "₹6,000–₹40,000 per case",
-    avgConsultation: "₹400–₹1,500",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Karimnagar?",
-        a: "Legal fees in Karimnagar are among the most affordable in Telangana. Consultations cost ₹400–₹1,500 and case fees range from ₹6,000 to ₹40,000. For serious criminal matters or large property disputes, advocates may charge ₹50,000–₹1,00,000 for full representation including multiple hearings.",
-      },
-      {
-        q: "Which courts operate in Karimnagar?",
-        a: "Karimnagar has the District and Sessions Court complex on Jagtial Road, Magistrate Courts, Family Court, Consumer Disputes Redressal Forum, and Labour Court. Revenue Divisional Offices handle land record disputes. Appeals go to Telangana High Court, Hyderabad.",
-      },
-      {
-        q: "What types of cases are most common in Karimnagar?",
-        a: "Agricultural land and patta disputes dominate Karimnagar's courts, followed by criminal cases, family disputes, and matters related to the steel and handloom industries. SCCL (coal company) employee disputes and land acquisition cases near industrial zones are also common.",
-      },
-      {
-        q: "Is there free legal aid available in Karimnagar?",
-        a: "Yes. The Karimnagar District Legal Services Authority (DLSA) provides free legal aid to income-eligible persons (below ₹3 lakh/year), SC/ST citizens, women, and persons in custody. Contact DLSA Karimnagar at +91-878-2234567 or call the NALSA helpline 15100.",
-      },
-    ],
-  },
-  nizamabad: {
-    name: "Nizamabad",
-    district: "Nizamabad",
-    state: "Telangana",
-    courts: ["Nizamabad District Court", "Sessions Court Nizamabad", "Consumer Forum Nizamabad"],
-    feeRange: "₹6,000–₹40,000 per case",
-    avgConsultation: "₹400–₹1,500",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Nizamabad?",
-        a: "Legal fees in Nizamabad are affordable. Consultation charges are ₹400–₹1,500. Full representation in property or criminal cases typically costs ₹6,000–₹40,000. For complex matters involving cement industry land or Godavari basin water rights, specialist advocates may charge more.",
-      },
-      {
-        q: "Which courts operate in Nizamabad?",
-        a: "Nizamabad has the District and Sessions Court, various Civil Judge and Magistrate Courts, Family Court, Consumer Forum, and Revenue Division Offices. The Telangana High Court is the appellate authority for all Nizamabad district matters.",
-      },
-      {
-        q: "What types of cases are most common in Nizamabad?",
-        a: "Agricultural land disputes (paddy and sugarcane belt), rural tenancy matters, criminal cases related to border district issues, and family property disputes are the most common. Cases related to cement plant acquisitions near Adilabad and Nizamabad border also arise.",
-      },
-      {
-        q: "How do I verify a lawyer's credentials in Nizamabad?",
-        a: "All advocates must be enrolled with the Bar Council of Telangana. Ask for their enrollment number and verify on barcouncilofindia.org. LitigaForge AI verifies all listed advocates before they appear on the platform, giving you a pre-screened directory.",
-      },
-    ],
-  },
-  vijayawada: {
-    name: "Vijayawada",
-    district: "Krishna",
-    state: "Andhra Pradesh",
-    courts: ["Vijayawada District Court", "Krishna Sessions Court", "AP High Court (Amaravati)"],
-    feeRange: "₹12,000–₹75,000 per case",
-    avgConsultation: "₹800–₹3,000",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Vijayawada?",
-        a: "Advocate fees in Vijayawada (Krishna district) range from ₹800–₹3,000 for consultations and ₹12,000–₹75,000 for full case representation. Commercial and real estate lawyers near the Krishna River delta charge a premium due to high demand. AP High Court senior advocates charge ₹50,000+ per appearance.",
-      },
-      {
-        q: "Which courts operate in Vijayawada?",
-        a: "Vijayawada has the Krishna District Court, Sessions Court, City Civil Court, Consumer Disputes Redressal Commission, and the Commercial Court. The Andhra Pradesh High Court is located at Amaravati (30km away). RERA AP adjudicates property disputes across the state.",
-      },
-      {
-        q: "What types of cases are most common in Vijayawada?",
-        a: "Commercial disputes, property and land matters in the Krishna-Guntur corridor, banking recovery cases, family disputes, and construction/builder complaints are the most common in Vijayawada. As a major trade hub, cheque bounce cases under Section 138 NI Act are very frequent.",
-      },
-      {
-        q: "How do RERA complaints work for AP property buyers in Vijayawada?",
-        a: "Vijayawada falls under RERA AP jurisdiction. File complaints at rera.ap.gov.in. RERA AP must adjudicate within 60 days. For builders who haven't delivered on time or changed approved plans, you can seek a full refund with interest under Section 18 of RERA. An advocate who specialises in RERA AP matters will be most effective.",
-      },
-    ],
-  },
-  visakhapatnam: {
-    name: "Visakhapatnam",
-    district: "Visakhapatnam",
-    state: "Andhra Pradesh",
-    courts: ["Visakhapatnam District Court", "VIZAG Sessions Court", "Consumer Forum Vizag"],
-    feeRange: "₹12,000–₹80,000 per case",
-    avgConsultation: "₹800–₹3,500",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Visakhapatnam?",
-        a: "Legal fees in Visakhapatnam (Vizag) range from ₹800–₹3,500 for consultations and ₹12,000–₹80,000 for representation. Maritime and admiralty law specialists near the Visakhapatnam Port Trust area command higher fees. Industrial dispute lawyers near RINL Vizag Steel also charge a premium.",
-      },
-      {
-        q: "Which courts operate in Visakhapatnam?",
-        a: "Vizag has the District and Sessions Court complex, City Civil Court, Family Court, Consumer Disputes Redressal Commission, Labour Court, and specialised RINL and port-related tribunals. The AP High Court in Amaravati handles appeals. The Admiralty jurisdiction covers maritime disputes at Vizag Port.",
-      },
-      {
-        q: "What types of cases are most common in Visakhapatnam?",
-        a: "Industrial and labour disputes (RINL, HPCL, BHPV), property matters in beach-corridor areas, maritime and port-related cases, family disputes, and environmental litigation related to the GVMC and industrial zones are most common. Tourism-related consumer complaints also arise frequently.",
-      },
-      {
-        q: "Where can I find a maritime lawyer in Visakhapatnam?",
-        a: "Vizag is one of the few cities in AP with advocates practising admiralty and maritime law due to the Visakhapatnam Port Trust's presence. Use LitigaForge AI to filter by practice area. Post your requirement with 'maritime' or 'admiralty' in the case description to reach specialists.",
-      },
-    ],
-  },
-  guntur: {
-    name: "Guntur",
-    district: "Guntur",
-    state: "Andhra Pradesh",
-    courts: ["Guntur District Court", "Guntur Sessions Court", "Consumer Forum Guntur"],
-    feeRange: "₹8,000–₹50,000 per case",
-    avgConsultation: "₹500–₹2,000",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Guntur?",
-        a: "Legal fees in Guntur are moderate. Consultations cost ₹500–₹2,000, and full representation ranges from ₹8,000–₹50,000. Agricultural land and revenue matters — very common in the Guntur delta — are typically handled at ₹10,000–₹30,000. Civil suits for large land parcels may cost more.",
-      },
-      {
-        q: "Which courts operate in Guntur?",
-        a: "Guntur has the District and Sessions Court, Civil Judge Courts, Family Court, Consumer Disputes Redressal Commission, Labour Court, and Revenue Division Offices. RERA AP handles property disputes. Appeals go to the AP High Court in Amaravati (30km from Guntur).",
-      },
-      {
-        q: "What types of cases are most common in Guntur?",
-        a: "Agricultural land disputes in the tobacco and paddy belt, property inheritance matters in joint families, criminal cases, tenancy disputes, and cheque bounce cases under Section 138 NI Act are most common. Consumer cases against fertilizer and agri-input companies also arise frequently.",
-      },
-      {
-        q: "How close is Guntur to the AP High Court?",
-        a: "The AP High Court is located in Amaravati, approximately 30km from Guntur. This makes Guntur advocates particularly well-placed for High Court practice. Many Guntur-based advocates regularly appear at the AP High Court, making them a cost-effective alternative to Vijayawada advocates for AP HC matters.",
-      },
-    ],
-  },
-  tirupati: {
-    name: "Tirupati",
-    district: "Chittoor",
-    state: "Andhra Pradesh",
-    courts: ["Tirupati District Court", "Chittoor Sessions Court", "Consumer Forum Tirupati"],
-    feeRange: "₹8,000–₹50,000 per case",
-    avgConsultation: "₹500–₹2,000",
-    faqs: [
-      {
-        q: "How much does a lawyer cost in Tirupati?",
-        a: "Advocate fees in Tirupati (Chittoor district) are affordable. Consultations cost ₹500–₹2,000, and case fees range from ₹8,000 to ₹50,000. Property disputes near the Tirumala hills and TTD land cases may involve more complex revenue law and require specialist advocates who charge a premium.",
-      },
-      {
-        q: "Which courts operate in Tirupati?",
-        a: "Tirupati has the District and Sessions Court for Chittoor, Magistrate Courts, Family Court, Consumer Disputes Redressal Commission, and the TTD (Tirumala Tirupati Devasthanam) administrative court for trust-related matters. AP High Court in Amaravati is the appellate authority.",
-      },
-      {
-        q: "What types of cases are most common in Tirupati?",
-        a: "Land disputes near TTD-controlled areas, religious endowment property matters (AP Charitable and Hindu Religious Institutions Act), pilgrim-related consumer complaints, property inheritance cases, and criminal matters are most common. Tourism and hospitality sector disputes are also on the rise.",
-      },
-      {
-        q: "Are there advocates in Tirupati who handle TTD land disputes?",
-        a: "Yes. Some Tirupati-based advocates specialise in cases involving TTD land acquisition, temple property disputes, and the AP Charitable and Hindu Religious Institutions and Endowments Act. When posting your case on LitigaForge AI, mention 'TTD land' or 'religious endowment' in your case description to attract these specialists.",
-      },
-    ],
-  },
-};
-
-const ALL_CITIES = Object.entries(CITIES).map(([slug, data]) => ({ slug, name: data.name }));
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
-interface Lawyer {
-  id: number;
+type StateType = "Telangana" | "Andhra Pradesh";
+
+interface CityData {
   name: string;
-  district: string;
-  practice_areas: string[];
-  languages: string[];
-  experience_years: number;
-  rating: number;
-  hourly_rate: number;
-  availability: string;
-  verified: boolean;
-  bio: string;
+  district: string;        // passed to /lawyers?district= (ILIKE)
+  state: StateType;
+  courts: string[];
+  avgConsultation: string;
+  feeRange: string;
+  caseTypes: string[];     // fed into generated FAQs
+  faqs?: { q: string; a: string }[]; // optional override
+}
+
+/* ─── FAQ generator ─────────────────────────────────────────────────────── */
+
+function buildFaqs(d: CityData): { q: string; a: string }[] {
+  if (d.faqs) return d.faqs;
+  const hc  = d.state === "Telangana" ? "Telangana High Court, Hyderabad" : "AP High Court, Amaravati";
+  const bc  = d.state === "Telangana" ? "Bar Council of Telangana" : "Bar Council of Andhra Pradesh";
+  const hub = d.state === "Telangana" ? "Hyderabad" : "Amaravati";
+  const portal = d.state === "Telangana" ? "Dharani portal" : "AP WebLand portal";
+  return [
+    {
+      q: `How much does a lawyer cost in ${d.name}?`,
+      a: `Consultation fees in ${d.name} typically range from ${d.avgConsultation}. Full case representation costs ${d.feeRange} depending on the court, the advocate's experience, and case complexity. For High Court appeals, senior advocates from ${hub} may charge significantly more. LitigaForge AI shows each advocate's hourly rate and experience upfront so you can compare before committing.`,
+    },
+    {
+      q: `Which courts operate in ${d.name}?`,
+      a: `${d.name} has the ${d.courts.join(", ")}. All appeals from ${d.name} go to the ${hc}. Revenue disputes on land records start at the Mandal Revenue Officer (MRO) or Revenue Divisional Officer (RDO) level before reaching civil courts. Consumer disputes are handled by the District Consumer Disputes Redressal Commission.`,
+    },
+    {
+      q: `What types of cases are most common in ${d.name}?`,
+      a: `The most frequently litigated matters in ${d.name} include ${d.caseTypes.join(", ")}. Land and property records — managed through the ${portal} — are at the heart of many civil disputes here. Post your case on LitigaForge AI to receive proposals from advocates who specialise in the relevant area of law and have experience in ${d.name} district courts.`,
+    },
+    {
+      q: `How can I find a verified advocate in ${d.name}?`,
+      a: `LitigaForge AI lists verified advocates practising in ${d.name} district, enrolled with the ${bc}. Post your case requirement and receive AI-matched proposals scored by practice area, experience, and district. Free legal aid is available through DLSA ${d.name} for income-eligible citizens (below ₹3 lakh/year), SC/ST, women, and persons in custody. Call the NALSA helpline 15100 for free advice.`,
+    },
+  ];
+}
+
+/* ─── City data ─────────────────────────────────────────────────────────── */
+
+const CITIES: Record<string, CityData> = {
+
+  /* ══════════════════════════════════════════════════════
+     TELANGANA — 33 districts
+  ══════════════════════════════════════════════════════ */
+
+  hyderabad: {
+    name: "Hyderabad", district: "Hyderabad", state: "Telangana",
+    courts: ["Telangana High Court", "Hyderabad District Court", "City Civil Court", "Nampally Metropolitan Court"],
+    avgConsultation: "₹1,000–₹5,000", feeRange: "₹15,000–₹1,00,000",
+    caseTypes: ["property and land disputes", "criminal bail matters", "family disputes (divorce, custody)", "consumer complaints", "corporate litigation"],
+    faqs: [
+      { q: "How much does a lawyer cost in Hyderabad?", a: "Consultation fees in Hyderabad typically range from ₹1,000 to ₹5,000. Full representation in property and civil cases costs ₹15,000–₹1,00,000 depending on complexity. High Court criminal defence advocates charge ₹50,000–₹5,00,000. Corporate lawyers at Banjara Hills and HITEC City firms often charge ₹10,000+ per hour." },
+      { q: "Which courts operate in Hyderabad?", a: "Hyderabad houses the Telangana High Court (state's apex court), the Hyderabad District Court at Nampally, City Civil Court, Metropolitan Magistrate Courts, and key tribunals — RERA Telangana, District Consumer Forum, DRAT, Labour Court, and NCLT Bench." },
+      { q: "What types of cases are most common in Hyderabad?", a: "The most common cases include property and land disputes (especially in the IT corridor, old city, and Cyberabad areas), criminal bail matters at Nampally Court, family disputes (divorce, custody, maintenance) at the Family Court, consumer complaints against builders and banks, and corporate litigation." },
+      { q: "How long does a legal case take in Hyderabad?", a: "Consumer forum cases typically resolve in 3–6 months. Family court matters (divorce by mutual consent) take 6–18 months. Property civil suits can take 2–7 years in the District Court. High Court matters vary widely. Using AI matching to find the right specialist reduces delays significantly." },
+    ],
+  },
+
+  secunderabad: {
+    name: "Secunderabad", district: "Hyderabad", state: "Telangana",
+    courts: ["Secunderabad Magistrate Court", "Cantonment Board Court", "Hyderabad District Court"],
+    avgConsultation: "₹800–₹3,000", feeRange: "₹10,000–₹75,000",
+    caseTypes: ["cantonment property disputes", "lease and tenancy matters", "criminal cases", "consumer complaints", "defence service matters"],
+    faqs: [
+      { q: "How much does a lawyer cost in Secunderabad?", a: "Advocate fees in Secunderabad are slightly lower than Hyderabad's Banjara Hills rates. Consultations cost ₹800–₹3,000, while full case representation ranges from ₹10,000 to ₹75,000. Cantonment and civil matters are the most common, and experienced advocates for these specialisations charge a premium." },
+      { q: "Which courts operate in Secunderabad?", a: "Secunderabad falls under the Hyderabad District Court jurisdiction at Nampally. The Secunderabad Cantonment area has the Cantonment Board and its associated civil authority. Criminal matters are handled at the Metropolitan Magistrate Courts. The Telangana High Court covers all appeals." },
+      { q: "What types of cases are most common in Secunderabad?", a: "Cantonment property disputes, lease and tenancy issues in the twin-city corridor, criminal matters at the Secunderabad railway police station jurisdiction, and consumer complaints are the most frequent. Army and defence personnel often need advocates for service-related matters." },
+      { q: "Can I find an advocate in Secunderabad for cantonment matters?", a: "Yes. Secunderabad has advocates who specialise in cantonment board land regulations, military service matters, and the unique property laws that apply in cantonment areas. Use LitigaForge AI to filter by district and find verified advocates with relevant experience." },
+    ],
+  },
+
+  rangareddy: {
+    name: "Rangareddy", district: "Rangareddy", state: "Telangana",
+    courts: ["Rangareddy District Court", "Sessions Court Rangareddy", "Consumer Forum Rangareddy"],
+    avgConsultation: "₹600–₹2,500", feeRange: "₹10,000–₹60,000",
+    caseTypes: ["real estate and housing disputes", "IT corridor property matters", "HMDA layout regularisation", "commercial disputes", "cheque bounce cases"],
+  },
+
+  medchal: {
+    name: "Medchal-Malkajgiri", district: "Medchal", state: "Telangana",
+    courts: ["Medchal-Malkajgiri District Court", "Sessions Court Medchal"],
+    avgConsultation: "₹600–₹2,500", feeRange: "₹10,000–₹60,000",
+    caseTypes: ["real estate and property disputes", "housing layout fraud", "GHMC and HMDA permit violations", "commercial matters", "criminal cases"],
+  },
+
+  sangareddy: {
+    name: "Sangareddy", district: "Sangareddy", state: "Telangana",
+    courts: ["Sangareddy District Court", "Sessions Court Sangareddy"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹40,000",
+    caseTypes: ["pharmaceutical and industrial disputes", "agricultural land acquisition", "real estate matters near Patancheru", "labour law cases", "criminal cases"],
+  },
+
+  medak: {
+    name: "Medak", district: "Medak", state: "Telangana",
+    courts: ["Medak District Court", "Sessions Court Medak"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["agricultural land records and patta disputes", "property inheritance cases", "criminal matters", "tenancy disputes", "cheque bounce cases"],
+  },
+
+  nizamabad: {
+    name: "Nizamabad", district: "Nizamabad", state: "Telangana",
+    courts: ["Nizamabad District Court", "Sessions Court Nizamabad", "Consumer Forum Nizamabad"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹40,000",
+    caseTypes: ["agricultural land disputes (paddy and sugarcane belt)", "rural tenancy matters", "criminal cases", "family property disputes"],
+    faqs: [
+      { q: "How much does a lawyer cost in Nizamabad?", a: "Legal fees in Nizamabad are affordable. Consultation charges are ₹400–₹1,500. Full representation in property or criminal cases typically costs ₹6,000–₹40,000. For complex matters involving cement industry land or Godavari basin water rights, specialist advocates may charge more." },
+      { q: "Which courts operate in Nizamabad?", a: "Nizamabad has the District and Sessions Court, Civil Judge and Magistrate Courts, Family Court, Consumer Forum, and Revenue Division Offices. The Telangana High Court is the appellate authority for all Nizamabad district matters." },
+      { q: "What types of cases are most common in Nizamabad?", a: "Agricultural land disputes (paddy and sugarcane belt), rural tenancy matters, criminal cases related to border district issues, and family property disputes are the most common. Cases related to cement plant acquisitions near Adilabad and Nizamabad border also arise." },
+      { q: "How do I verify a lawyer's credentials in Nizamabad?", a: "All advocates must be enrolled with the Bar Council of Telangana. Ask for their enrollment number and verify on barcouncilofindia.org. LitigaForge AI verifies all listed advocates before they appear on the platform, giving you a pre-screened directory." },
+    ],
+  },
+
+  karimnagar: {
+    name: "Karimnagar", district: "Karimnagar", state: "Telangana",
+    courts: ["Karimnagar District Court", "Karimnagar Sessions Court", "Consumer Forum Karimnagar"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹40,000",
+    caseTypes: ["agricultural land and patta disputes", "criminal cases", "family disputes", "SCCL employee matters", "land acquisition near industrial zones"],
+    faqs: [
+      { q: "How much does a lawyer cost in Karimnagar?", a: "Legal fees in Karimnagar are among the most affordable in Telangana. Consultations cost ₹400–₹1,500 and case fees range from ₹6,000 to ₹40,000. For serious criminal matters or large property disputes, advocates may charge ₹50,000–₹1,00,000 for full representation." },
+      { q: "Which courts operate in Karimnagar?", a: "Karimnagar has the District and Sessions Court complex on Jagtial Road, Magistrate Courts, Family Court, Consumer Disputes Redressal Forum, and Labour Court. Revenue Divisional Offices handle land record disputes. Appeals go to Telangana High Court, Hyderabad." },
+      { q: "What types of cases are most common in Karimnagar?", a: "Agricultural land and patta disputes dominate Karimnagar's courts, followed by criminal cases, family disputes, and matters related to the steel and handloom industries. SCCL (coal company) employee disputes and land acquisition cases near industrial zones are also common." },
+      { q: "Is there free legal aid available in Karimnagar?", a: "Yes. The Karimnagar DLSA provides free legal aid to income-eligible persons, SC/ST citizens, women, and persons in custody. Contact DLSA Karimnagar at +91-878-2234567 or call the NALSA helpline 15100." },
+    ],
+  },
+
+  warangal: {
+    name: "Warangal", district: "Warangal", state: "Telangana",
+    courts: ["Warangal District Court", "Hanamkonda Sessions Court", "Consumer Forum Warangal"],
+    avgConsultation: "₹500–₹2,000", feeRange: "₹8,000–₹50,000",
+    caseTypes: ["agricultural land disputes", "tenancy and pattadar passbook matters", "criminal cases", "property inheritance disputes", "industrial disputes"],
+    faqs: [
+      { q: "How much does a lawyer cost in Warangal?", a: "Advocate fees in Warangal are significantly lower than Hyderabad. Consultations cost ₹500–₹2,000, and full case representation in property or criminal matters ranges from ₹8,000 to ₹50,000. Land dispute cases involving agricultural land may require additional survey and revenue record fees." },
+      { q: "Which courts operate in Warangal?", a: "Warangal has the Warangal District Court, Sessions Court at Hanamkonda, Warangal Rural and Urban Magistrate Courts, Consumer Disputes Redressal Forum, and Labour Courts. The Telangana High Court in Hyderabad handles all appeals from Warangal district." },
+      { q: "What types of cases are most common in Warangal?", a: "Agricultural land disputes, tenancy and pattadar passbook-related matters, criminal cases at the Sessions Court, and property inheritance disputes are the most common in Warangal. Industrial disputes related to the Kazipet railway junction and textile sector also arise frequently." },
+      { q: "How can I find a property lawyer in Warangal?", a: "LitigaForge AI lists verified advocates in Warangal district filtered by practice area. For agricultural land disputes, you need an advocate familiar with Telangana land revenue records and the Dharani portal. Post your case requirement and receive proposals from matching advocates within 24 hours." },
+    ],
+  },
+
+  hanumakonda: {
+    name: "Hanumakonda", district: "Hanumakonda", state: "Telangana",
+    courts: ["Hanumakonda District Court", "Warangal Urban Sessions Court"],
+    avgConsultation: "₹500–₹2,000", feeRange: "₹8,000–₹45,000",
+    caseTypes: ["property disputes", "criminal cases", "commercial disputes", "educational institution matters", "cheque bounce cases"],
+  },
+
+  "warangal-rural": {
+    name: "Warangal Rural", district: "Warangal", state: "Telangana",
+    courts: ["Warangal Rural District Court", "Sessions Court Warangal Rural"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["agricultural land records", "Dharani portal disputes", "criminal cases", "paddy and cotton crop matters", "tenancy disputes"],
+  },
+
+  khammam: {
+    name: "Khammam", district: "Khammam", state: "Telangana",
+    courts: ["Khammam District Court", "Sessions Court Khammam"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["tobacco and forest produce disputes", "Godavari project land acquisition", "coal mining matters", "tribal land rights", "cheque bounce cases"],
+  },
+
+  nalgonda: {
+    name: "Nalgonda", district: "Nalgonda", state: "Telangana",
+    courts: ["Nalgonda District Court", "Sessions Court Nalgonda"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["fluoride contamination compensation cases", "Nagarjunasagar dam land disputes", "pharmaceutical industry disputes", "agricultural land records", "criminal cases"],
+  },
+
+  suryapet: {
+    name: "Suryapet", district: "Suryapet", state: "Telangana",
+    courts: ["Suryapet District Court", "Sessions Court Suryapet"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["textile and handloom disputes", "agricultural land records", "criminal cases", "Krishna-Godavari water rights", "tenancy matters"],
+  },
+
+  "rajanna-sircilla": {
+    name: "Rajanna Sircilla", district: "Sircilla", state: "Telangana",
+    courts: ["Rajanna Sircilla District Court", "Sessions Court Sircilla"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["handloom and textile industry disputes", "labour law matters", "agricultural land records", "criminal cases", "cheque bounce under Section 138 NI Act"],
+  },
+
+  peddapalli: {
+    name: "Peddapalli", district: "Peddapalli", state: "Telangana",
+    courts: ["Peddapalli District Court", "Sessions Court Peddapalli"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["NTPC and SCCL industrial employee disputes", "coal belt land acquisition", "criminal cases", "agricultural property disputes"],
+  },
+
+  mancherial: {
+    name: "Mancherial", district: "Mancherial", state: "Telangana",
+    courts: ["Mancherial District Court", "Sessions Court Mancherial"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["coal mining and SCCL employee disputes", "land acquisition matters", "criminal cases", "forest rights", "agricultural land records"],
+  },
+
+  adilabad: {
+    name: "Adilabad", district: "Adilabad", state: "Telangana",
+    courts: ["Adilabad District Court", "Sessions Court Adilabad"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["tribal land disputes", "forest rights cases", "PESA Act matters", "criminal cases", "agricultural land records"],
+  },
+
+  "kumuram-bheem": {
+    name: "Kumuram Bheem Asifabad", district: "Kumuram", state: "Telangana",
+    courts: ["Kumuram Bheem Asifabad District Court", "Sessions Court Asifabad"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["tribal land rights and PESA Act matters", "forest rights cases", "criminal cases", "agricultural land disputes", "Kadam river project land matters"],
+  },
+
+  nirmal: {
+    name: "Nirmal", district: "Nirmal", state: "Telangana",
+    courts: ["Nirmal District Court", "Sessions Court Nirmal"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["tribal forest rights", "agricultural land records", "criminal cases", "cotton crop disputes", "cheque bounce matters"],
+  },
+
+  jagtial: {
+    name: "Jagtial", district: "Jagtial", state: "Telangana",
+    courts: ["Jagtial District Court", "Sessions Court Jagtial"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["agricultural land disputes", "tenancy record matters", "criminal cases", "cheque bounce under Section 138 NI Act", "family property disputes"],
+  },
+
+  kamareddy: {
+    name: "Kamareddy", district: "Kamareddy", state: "Telangana",
+    courts: ["Kamareddy District Court", "Sessions Court Kamareddy"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["agricultural land records and patta disputes", "Dharani portal challenges", "criminal cases", "cheque bounce matters", "family property disputes"],
+  },
+
+  siddipet: {
+    name: "Siddipet", district: "Siddipet", state: "Telangana",
+    courts: ["Siddipet District Court", "Sessions Court Siddipet"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["agricultural land records", "Dharani portal disputes", "criminal cases", "property inheritance", "tenancy matters"],
+  },
+
+  jangaon: {
+    name: "Jangaon", district: "Jangaon", state: "Telangana",
+    courts: ["Jangaon District Court", "Sessions Court Jangaon"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["agricultural property disputes", "criminal cases", "land acquisition matters", "family disputes", "Dharani land records"],
+  },
+
+  mahabubnagar: {
+    name: "Mahabubnagar", district: "Mahabubnagar", state: "Telangana",
+    courts: ["Mahabubnagar District Court", "Sessions Court Mahabubnagar"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["agricultural land disputes", "Krishna River water rights", "criminal cases", "cattle and livestock disputes", "property inheritance"],
+  },
+
+  nagarkurnool: {
+    name: "Nagarkurnool", district: "Nagarkurnool", state: "Telangana",
+    courts: ["Nagarkurnool District Court", "Sessions Court Nagarkurnool"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["Srisailam dam land acquisition disputes", "agricultural land records", "criminal cases", "NTPC industrial matters", "tribal rights near Amrabad"],
+  },
+
+  wanaparthy: {
+    name: "Wanaparthy", district: "Wanaparthy", state: "Telangana",
+    courts: ["Wanaparthy District Court", "Sessions Court Wanaparthy"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["agricultural land disputes", "cotton and groundnut crop disputes", "criminal cases", "property inheritance", "tenancy matters"],
+  },
+
+  gadwal: {
+    name: "Jogulamba Gadwal", district: "Gadwal", state: "Telangana",
+    courts: ["Jogulamba Gadwal District Court", "Sessions Court Gadwal"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["agricultural land disputes in semi-arid Telangana", "sugar cane levy matters", "criminal cases", "family property inheritance", "tenancy disputes"],
+  },
+
+  narayanpet: {
+    name: "Narayanpet", district: "Narayanpet", state: "Telangana",
+    courts: ["Narayanpet District Court", "Sessions Court Narayanpet"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["agricultural land disputes", "criminal cases", "family property inheritance", "tenancy matters", "cheque bounce cases"],
+  },
+
+  vikarabad: {
+    name: "Vikarabad", district: "Vikarabad", state: "Telangana",
+    courts: ["Vikarabad District Court", "Sessions Court Vikarabad"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["agricultural and forest land disputes", "granite mining cases", "criminal matters", "tribal rights near Ananthagiri", "tenancy disputes"],
+  },
+
+  mahabubabad: {
+    name: "Mahabubabad", district: "Mahabubabad", state: "Telangana",
+    courts: ["Mahabubabad District Court", "Sessions Court Mahabubabad"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["tribal land rights", "agricultural disputes", "criminal cases", "forest produce matters", "PESA Act cases"],
+  },
+
+  "jayashankar-bhupalpally": {
+    name: "Jayashankar Bhupalpally", district: "Jayashankar", state: "Telangana",
+    courts: ["Jayashankar Bhupalpally District Court", "Sessions Court Bhupalpally"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["tribal land rights and PESA Act cases", "forest rights", "Godavari dam land acquisition", "criminal cases", "agricultural disputes"],
+  },
+
+  mulugu: {
+    name: "Mulugu", district: "Mulugu", state: "Telangana",
+    courts: ["Mulugu District Court", "Sessions Court Mulugu"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["tribal land rights", "forest rights cases", "PESA Act matters", "Mulugu eco-tourism land disputes", "criminal cases"],
+  },
+
+  "bhadradri-kothagudem": {
+    name: "Bhadradri Kothagudem", district: "Bhadradri", state: "Telangana",
+    courts: ["Bhadradri Kothagudem District Court", "Kothagudem Sessions Court"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["coal mining lease disputes", "forest rights", "SCCL employee matters", "tribal land rights", "criminal cases"],
+  },
+
+  yadadri: {
+    name: "Yadadri Bhuvanagiri", district: "Yadadri", state: "Telangana",
+    courts: ["Yadadri Bhuvanagiri District Court", "Sessions Court Bhongir"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["religious endowment and temple land disputes", "pharmaceutical industry matters", "agricultural land records", "criminal cases", "cheque bounce"],
+  },
+
+  /* ══════════════════════════════════════════════════════
+     ANDHRA PRADESH — 26 districts
+  ══════════════════════════════════════════════════════ */
+
+  visakhapatnam: {
+    name: "Visakhapatnam", district: "Visakhapatnam", state: "Andhra Pradesh",
+    courts: ["Visakhapatnam District Court", "Vizag Sessions Court", "Consumer Forum Vizag"],
+    avgConsultation: "₹800–₹3,500", feeRange: "₹12,000–₹80,000",
+    caseTypes: ["industrial and labour disputes", "property matters", "maritime and port cases", "family disputes", "environmental litigation"],
+    faqs: [
+      { q: "How much does a lawyer cost in Visakhapatnam?", a: "Legal fees in Visakhapatnam (Vizag) range from ₹800–₹3,500 for consultations and ₹12,000–₹80,000 for representation. Maritime and admiralty law specialists near the Visakhapatnam Port Trust area command higher fees. Industrial dispute lawyers near RINL Vizag Steel also charge a premium." },
+      { q: "Which courts operate in Visakhapatnam?", a: "Vizag has the District and Sessions Court complex, City Civil Court, Family Court, Consumer Disputes Redressal Commission, Labour Court, and specialised RINL and port-related tribunals. The AP High Court in Amaravati handles appeals. The Admiralty jurisdiction covers maritime disputes at Vizag Port." },
+      { q: "What types of cases are most common in Visakhapatnam?", a: "Industrial and labour disputes (RINL, HPCL, BHPV), property matters in beach-corridor areas, maritime and port-related cases, family disputes, and environmental litigation related to the GVMC and industrial zones are most common." },
+      { q: "Where can I find a maritime lawyer in Visakhapatnam?", a: "Vizag is one of the few cities in AP with advocates practising admiralty and maritime law due to the Visakhapatnam Port Trust's presence. Use LitigaForge AI to filter by practice area. Post your requirement with 'maritime' or 'admiralty' in the case description to reach specialists." },
+    ],
+  },
+
+  vijayawada: {
+    name: "Vijayawada", district: "Krishna", state: "Andhra Pradesh",
+    courts: ["Vijayawada District Court", "Krishna Sessions Court", "AP High Court (Amaravati)"],
+    avgConsultation: "₹800–₹3,000", feeRange: "₹12,000–₹75,000",
+    caseTypes: ["commercial disputes", "real estate and property matters", "cheque bounce cases", "family disputes", "corporate litigation"],
+    faqs: [
+      { q: "How much does a lawyer cost in Vijayawada?", a: "Advocate fees in Vijayawada (Krishna district) range from ₹800–₹3,000 for consultations and ₹12,000–₹75,000 for full case representation. Commercial and real estate lawyers near the Krishna River delta charge a premium. AP High Court senior advocates charge ₹50,000+ per appearance." },
+      { q: "Which courts operate in Vijayawada?", a: "Vijayawada has the Krishna District Court, Sessions Court, City Civil Court, Consumer Disputes Redressal Commission, and the Commercial Court. The Andhra Pradesh High Court is located at Amaravati (30km away). RERA AP adjudicates property disputes across the state." },
+      { q: "What types of cases are most common in Vijayawada?", a: "Commercial disputes, property and land matters in the Krishna-Guntur corridor, banking recovery cases, family disputes, and construction/builder complaints are most common. As a major trade hub, cheque bounce cases under Section 138 NI Act are very frequent." },
+      { q: "How do RERA complaints work for AP property buyers in Vijayawada?", a: "Vijayawada falls under RERA AP jurisdiction. File complaints at rera.ap.gov.in. RERA AP must adjudicate within 60 days. For builders who haven't delivered on time or changed approved plans, you can seek a full refund with interest under Section 18 of RERA." },
+    ],
+  },
+
+  "ntr-district": {
+    name: "NTR District", district: "NTR", state: "Andhra Pradesh",
+    courts: ["NTR District Court", "Sessions Court NTR District"],
+    avgConsultation: "₹600–₹2,500", feeRange: "₹10,000–₹60,000",
+    caseTypes: ["commercial and property disputes", "river-front development matters", "construction disputes", "corporate litigation", "cheque bounce cases"],
+  },
+
+  guntur: {
+    name: "Guntur", district: "Guntur", state: "Andhra Pradesh",
+    courts: ["Guntur District Court", "Guntur Sessions Court", "Consumer Forum Guntur"],
+    avgConsultation: "₹500–₹2,000", feeRange: "₹8,000–₹50,000",
+    caseTypes: ["agricultural land disputes in tobacco and paddy belt", "property inheritance matters", "criminal cases", "tenancy disputes", "cheque bounce under Section 138 NI Act"],
+    faqs: [
+      { q: "How much does a lawyer cost in Guntur?", a: "Legal fees in Guntur are moderate. Consultations cost ₹500–₹2,000, and full representation ranges from ₹8,000–₹50,000. Agricultural land and revenue matters — very common in the Guntur delta — are typically handled at ₹10,000–₹30,000." },
+      { q: "Which courts operate in Guntur?", a: "Guntur has the District and Sessions Court, Civil Judge Courts, Family Court, Consumer Disputes Redressal Commission, Labour Court, and Revenue Division Offices. RERA AP handles property disputes. Appeals go to the AP High Court in Amaravati (30km from Guntur)." },
+      { q: "What types of cases are most common in Guntur?", a: "Agricultural land disputes in the tobacco and paddy belt, property inheritance matters in joint families, criminal cases, tenancy disputes, and cheque bounce cases under Section 138 NI Act are most common. Consumer cases against fertilizer and agri-input companies also arise frequently." },
+      { q: "How close is Guntur to the AP High Court?", a: "The AP High Court is located in Amaravati, approximately 30km from Guntur. This makes Guntur advocates particularly well-placed for High Court practice. Many Guntur-based advocates regularly appear at the AP High Court, making them a cost-effective alternative to Vijayawada advocates for AP HC matters." },
+    ],
+  },
+
+  bapatla: {
+    name: "Bapatla", district: "Bapatla", state: "Andhra Pradesh",
+    courts: ["Bapatla District Court", "Sessions Court Bapatla"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["coastal agricultural land disputes", "aquaculture and fisheries matters", "criminal cases", "tenant disputes", "cheque bounce cases"],
+  },
+
+  palnadu: {
+    name: "Palnadu", district: "Palnadu", state: "Andhra Pradesh",
+    courts: ["Palnadu District Court (Narasaraopet)", "Sessions Court Narasaraopet"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["agricultural and tobacco land disputes", "criminal cases", "limestone and granite quarrying matters", "property inheritance", "tenancy disputes"],
+  },
+
+  ongole: {
+    name: "Ongole (Prakasam)", district: "Ongole", state: "Andhra Pradesh",
+    courts: ["Prakasam District Court (Ongole)", "Sessions Court Ongole"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["cotton and chilli agricultural disputes", "fishing industry matters", "criminal cases", "APMC market disputes", "property inheritance"],
+  },
+
+  nellore: {
+    name: "Nellore", district: "Nellore", state: "Andhra Pradesh",
+    courts: ["SPSR Nellore District Court", "Sessions Court Nellore"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["aquaculture and shrimp farming disputes", "Krishnapatnam Port area property", "criminal cases", "agricultural matters", "cheque bounce cases"],
+  },
+
+  kurnool: {
+    name: "Kurnool", district: "Kurnool", state: "Andhra Pradesh",
+    courts: ["Kurnool District Court", "Sessions Court Kurnool"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["agriculture and water rights disputes", "Tungabhadra project land matters", "criminal cases", "transport route disputes", "property inheritance"],
+  },
+
+  nandyal: {
+    name: "Nandyal", district: "Nandyal", state: "Andhra Pradesh",
+    courts: ["Nandyal District Court", "Sessions Court Nandyal"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["cement and limestone mining disputes", "agricultural land records", "criminal cases", "land acquisition for industrial projects", "property disputes"],
+  },
+
+  anantapur: {
+    name: "Anantapur", district: "Anantapur", state: "Andhra Pradesh",
+    courts: ["Ananthapur District Court", "Sessions Court Ananthapur"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["groundnut and APMC market disputes", "criminal cases", "land records disputes", "property inheritance", "agricultural tenancy matters"],
+  },
+
+  "sri-sathya-sai": {
+    name: "Sri Sathya Sai", district: "Sri Sathya Sai", state: "Andhra Pradesh",
+    courts: ["Sri Sathya Sai District Court (Kadiri)", "Sessions Court Kadiri"],
+    avgConsultation: "₹300–₹1,000", feeRange: "₹5,000–₹25,000",
+    caseTypes: ["manganese and granite mining disputes", "agricultural land records", "religious trust property matters", "criminal cases", "property inheritance"],
+  },
+
+  kadapa: {
+    name: "YSR Kadapa", district: "Kadapa", state: "Andhra Pradesh",
+    courts: ["YSR Kadapa District Court", "Sessions Court Kadapa"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["cement and mining industry disputes", "land acquisition matters", "agricultural land records", "criminal cases", "property inheritance"],
+  },
+
+  chittoor: {
+    name: "Chittoor", district: "Chittoor", state: "Andhra Pradesh",
+    courts: ["Chittoor District Court", "Sessions Court Chittoor"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["horticulture and mango export disputes", "agricultural land records", "border property disputes", "criminal cases", "property inheritance"],
+  },
+
+  tirupati: {
+    name: "Tirupati", district: "Tirupati", state: "Andhra Pradesh",
+    courts: ["Tirupati District Court", "Chittoor Sessions Court", "Consumer Forum Tirupati"],
+    avgConsultation: "₹500–₹2,000", feeRange: "₹8,000–₹50,000",
+    caseTypes: ["TTD and religious endowment land disputes", "property inheritance cases", "pilgrim-area consumer complaints", "construction permits", "criminal matters"],
+    faqs: [
+      { q: "How much does a lawyer cost in Tirupati?", a: "Advocate fees in Tirupati (Chittoor district) are affordable. Consultations cost ₹500–₹2,000, and case fees range from ₹8,000 to ₹50,000. Property disputes near the Tirumala hills and TTD land cases may involve more complex revenue law and require specialist advocates who charge a premium." },
+      { q: "Which courts operate in Tirupati?", a: "Tirupati has the District and Sessions Court for Chittoor, Magistrate Courts, Family Court, Consumer Disputes Redressal Commission, and the TTD (Tirumala Tirupati Devasthanam) administrative court for trust-related matters. AP High Court in Amaravati is the appellate authority." },
+      { q: "What types of cases are most common in Tirupati?", a: "Land disputes near TTD-controlled areas, religious endowment property matters (AP Charitable and Hindu Religious Institutions Act), pilgrim-related consumer complaints, property inheritance cases, and criminal matters are most common." },
+      { q: "Are there advocates in Tirupati who handle TTD land disputes?", a: "Yes. Some Tirupati-based advocates specialise in cases involving TTD land acquisition, temple property disputes, and the AP Charitable and Hindu Religious Institutions and Endowments Act. Mention 'TTD land' or 'religious endowment' in your case description on LitigaForge AI to attract these specialists." },
+    ],
+  },
+
+  "sri-balaji": {
+    name: "Sri Balaji", district: "Sri Balaji", state: "Andhra Pradesh",
+    courts: ["Sri Balaji District Court", "Sessions Court Sri Balaji"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["TTD and religious endowment land disputes", "pilgrimage-area property matters", "construction permit disputes", "criminal cases", "property inheritance"],
+  },
+
+  rajahmundry: {
+    name: "Rajahmundry (East Godavari)", district: "Rajahmundry", state: "Andhra Pradesh",
+    courts: ["East Godavari District Court (Rajamahendravaram)", "Sessions Court Rajahmundry"],
+    avgConsultation: "₹500–₹2,000", feeRange: "₹8,000–₹45,000",
+    caseTypes: ["Godavari delta agricultural land disputes", "oil and gas (ONGC) matters", "real estate cases", "criminal cases", "river-related disputes"],
+  },
+
+  kakinada: {
+    name: "Kakinada", district: "Kakinada", state: "Andhra Pradesh",
+    courts: ["Kakinada District Court", "East Godavari Sessions Court"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["port trade and fishing industry disputes", "real estate matters", "ONGC and GSPC industrial matters", "criminal cases", "cheque bounce under Section 138"],
+  },
+
+  konaseema: {
+    name: "Dr. B.R. Ambedkar Konaseema", district: "Konaseema", state: "Andhra Pradesh",
+    courts: ["Konaseema District Court", "Sessions Court Amalapuram"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["coconut and paddy agricultural disputes", "delta land records", "flood-related land disputes", "aquaculture matters", "criminal cases"],
+  },
+
+  eluru: {
+    name: "Eluru", district: "Eluru", state: "Andhra Pradesh",
+    courts: ["Eluru District Court", "West Godavari Sessions Court"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["agricultural and aquaculture disputes", "Godavari delta land records", "commercial matters", "criminal cases", "property inheritance"],
+  },
+
+  bhimavaram: {
+    name: "Bhimavaram (West Godavari)", district: "Bhimavaram", state: "Andhra Pradesh",
+    courts: ["West Godavari District Court", "Sessions Court Bhimavaram"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["aquaculture and paddy land disputes", "commercial trade matters", "criminal cases", "tenancy disputes", "cheque bounce cases"],
+  },
+
+  krishna: {
+    name: "Krishna (Machilipatnam)", district: "Krishna", state: "Andhra Pradesh",
+    courts: ["Krishna District Court (Machilipatnam)", "Sessions Court Machilipatnam"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["historical port and delta agricultural land disputes", "commercial matters", "criminal cases", "inheritance disputes", "property records"],
+  },
+
+  srikakulam: {
+    name: "Srikakulam", district: "Srikakulam", state: "Andhra Pradesh",
+    courts: ["Srikakulam District Court", "Sessions Court Srikakulam"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["coastal fishing rights disputes", "tribal land and forest rights", "agricultural land records", "criminal cases", "cheque bounce matters"],
+  },
+
+  vizianagaram: {
+    name: "Vizianagaram", district: "Vizianagaram", state: "Andhra Pradesh",
+    courts: ["Vizianagaram District Court", "Sessions Court Vizianagaram"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["agricultural land disputes", "tribal rights", "mining and quarrying matters", "criminal cases", "cheque bounce under Section 138"],
+  },
+
+  anakapalli: {
+    name: "Anakapalli", district: "Anakapalli", state: "Andhra Pradesh",
+    courts: ["Anakapalli District Court", "Sessions Court Anakapalli"],
+    avgConsultation: "₹400–₹1,500", feeRange: "₹6,000–₹35,000",
+    caseTypes: ["industrial and commercial disputes", "APSEZ and port-area property matters", "real estate cases", "criminal matters", "cheque bounce cases"],
+  },
+
+  "alluri-sitharama-raju": {
+    name: "Alluri Sitharama Raju", district: "Alluri", state: "Andhra Pradesh",
+    courts: ["Alluri Sitharama Raju District Court", "Sessions Court Paderu"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["tribal land rights and PESA Act cases", "forest rights matters", "mining and quarrying disputes", "criminal cases", "agricultural land records"],
+  },
+
+  parvathipuram: {
+    name: "Parvathipuram Manyam", district: "Parvathipuram", state: "Andhra Pradesh",
+    courts: ["Parvathipuram Manyam District Court", "Sessions Court Parvathipuram"],
+    avgConsultation: "₹300–₹900", feeRange: "₹4,000–₹20,000",
+    caseTypes: ["tribal land rights and PESA Act cases", "forest rights", "Vansadhara river project land disputes", "mining matters", "criminal cases"],
+  },
+};
+
+/* ─── All cities for internal links ─────────────────────────────────────── */
+
+const TG_CITIES = Object.entries(CITIES)
+  .filter(([, d]) => d.state === "Telangana")
+  .map(([slug, d]) => ({ slug, name: d.name }));
+
+const AP_CITIES = Object.entries(CITIES)
+  .filter(([, d]) => d.state === "Andhra Pradesh")
+  .map(([slug, d]) => ({ slug, name: d.name }));
+
+const ALL_CITIES = Object.entries(CITIES).map(([slug, d]) => ({ slug, name: d.name }));
+
+/* ─── Lawyer type ────────────────────────────────────────────────────────── */
+
+interface Lawyer {
+  id: number; name: string; district: string;
+  practice_areas: string[]; languages: string[];
+  experience_years: number; rating: number;
+  hourly_rate: number; availability: string;
+  verified: boolean; bio: string;
 }
 
 /* ─── Sub-components ─────────────────────────────────────────────────────── */
@@ -281,8 +580,7 @@ interface Lawyer {
 function LawyerCard({ lawyer, i }: { lawyer: Lawyer; i: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.06 }}
       className="bg-card border border-border rounded-2xl p-5 hover:shadow-md hover:border-primary/30 transition-all"
     >
@@ -294,21 +592,17 @@ function LawyerCard({ lawyer, i }: { lawyer: Lawyer; i: number }) {
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-semibold text-foreground text-sm">{lawyer.name}</span>
-              {lawyer.verified && (
-                <BadgeCheck className="w-4 h-4 text-primary flex-shrink-0" />
-              )}
+              {lawyer.verified && <BadgeCheck className="w-4 h-4 text-primary flex-shrink-0" />}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              <MapPin className="w-3 h-3" />
-              {lawyer.district}
+              <MapPin className="w-3 h-3" />{lawyer.district}
             </div>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           {lawyer.rating > 0 && (
             <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
-              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-              {lawyer.rating.toFixed(1)}
+              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />{lawyer.rating.toFixed(1)}
             </div>
           )}
           {lawyer.hourly_rate > 0 && (
@@ -316,31 +610,20 @@ function LawyerCard({ lawyer, i }: { lawyer: Lawyer; i: number }) {
           )}
         </div>
       </div>
-
       {lawyer.practice_areas?.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {lawyer.practice_areas.slice(0, 4).map(area => (
-            <span key={area} className="px-2 py-0.5 bg-primary/8 text-primary rounded-full text-xs font-medium border border-primary/15">
-              {area}
-            </span>
+            <span key={area} className="px-2 py-0.5 bg-primary/8 text-primary rounded-full text-xs font-medium border border-primary/15">{area}</span>
           ))}
         </div>
       )}
-
-      {lawyer.bio && (
-        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{lawyer.bio}</p>
-      )}
-
+      {lawyer.bio && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{lawyer.bio}</p>}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {lawyer.experience_years > 0 && (
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{lawyer.experience_years}yr exp</span>
           )}
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-            lawyer.availability === "available"
-              ? "bg-green-100 text-green-700"
-              : "bg-amber-100 text-amber-700"
-          }`}>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${lawyer.availability === "available" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
             {lawyer.availability === "available" ? "Available" : "Busy"}
           </span>
         </div>
@@ -357,28 +640,38 @@ function LawyerCard({ lawyer, i }: { lawyer: Lawyer; i: number }) {
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
   return (
     <div className="border border-border rounded-xl overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left bg-card hover:bg-muted/50 transition-colors"
-      >
+      <button onClick={onToggle} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left bg-card hover:bg-muted/50 transition-colors">
         <span className="font-semibold text-foreground text-sm">{q}</span>
         {open ? <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <p className="px-5 py-4 text-sm text-muted-foreground leading-relaxed border-t border-border bg-card">
-              {a}
-            </p>
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+            <p className="px-5 py-4 text-sm text-muted-foreground leading-relaxed border-t border-border bg-card">{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/* ─── City links section ─────────────────────────────────────────────────── */
+
+function CityLinksSection({ currentSlug, state, cities, label }: { currentSlug: string; state: string; cities: { slug: string; name: string }[]; label: string }) {
+  const others = cities.filter(c => c.slug !== currentSlug).slice(0, 12);
+  if (others.length === 0) return null;
+  return (
+    <div className="mb-2">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {others.map(c => (
+          <Link key={c.slug} href={`/lawyers/${c.slug}`}>
+            <span className="px-2.5 py-1 bg-muted hover:bg-primary/10 hover:text-primary border border-border rounded-full text-xs text-muted-foreground transition-colors cursor-pointer">
+              {c.name}
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -390,6 +683,7 @@ export default function CityPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const cityData = city ? CITIES[city.toLowerCase()] : undefined;
+  const faqs = cityData ? buildFaqs(cityData) : [];
 
   const { data, isLoading } = useQuery({
     queryKey: ["lawyers-city", cityData?.district],
@@ -408,9 +702,7 @@ export default function CityPage() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
         <Scale className="w-12 h-12 text-muted-foreground/40" />
         <h1 className="text-2xl font-bold text-foreground">City Not Found</h1>
-        <p className="text-muted-foreground">
-          We don't have a page for this city yet.
-        </p>
+        <p className="text-muted-foreground">We don't have a page for this city yet.</p>
         <Link href="/lawyers">
           <button className="flex items-center gap-2 text-primary font-semibold hover:underline">
             Browse all lawyers <ArrowRight className="w-4 h-4" />
@@ -420,49 +712,27 @@ export default function CityPage() {
     );
   }
 
-  const siteUrl = "https://litiga-forge-ai.replit.app";
-  const pageUrl = `${siteUrl}/lawyers/${city}`;
   const lawyers = data?.lawyers ?? [];
-  const otherCities = ALL_CITIES.filter(c => c.slug !== city);
+  const stateLabel = cityData.state;
+  const highCourt = stateLabel === "Telangana" ? "Telangana High Court" : "AP High Court, Amaravati";
 
   return (
     <>
       <SEOHelmet
         title={`Best Lawyers in ${cityData.name} | LitigaForge AI`}
-        description={`Connect with verified advocates in ${cityData.name}. AI-powered matching for property, criminal, family & civil cases. Free to post your case. ${cityData.state}.`}
+        description={`Connect with verified advocates in ${cityData.name}, ${stateLabel}. AI-powered matching for property, criminal, family & civil cases. Free to post your case.`}
         canonical={`/lawyers/${city}`}
-        keywords={`lawyer ${cityData.name}, advocate ${cityData.name}, best lawyer ${cityData.name}, verified advocate ${cityData.name}, ${cityData.state} lawyer`}
+        keywords={`lawyer ${cityData.name}, advocate ${cityData.name}, best lawyer ${cityData.name}, verified advocate ${cityData.name}, ${stateLabel} lawyer, ${cityData.name} court advocate`}
         structuredData={{
           "@context": "https://schema.org",
           "@type": "LegalService",
           "name": `LitigaForge AI — Lawyers in ${cityData.name}`,
-          "description": `Find verified advocates in ${cityData.name}, ${cityData.state}. AI-powered matching for all legal matters.`,
-          "url": pageUrl,
-          "areaServed": {
-            "@type": "City",
-            "name": cityData.name,
-            "containedInPlace": {
-              "@type": "State",
-              "name": cityData.state,
-            },
-          },
-          "hasOfferCatalog": {
-            "@type": "OfferCatalog",
-            "name": "Legal Services",
-            "itemListElement": [
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Property Law" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Criminal Law" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Family Law" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Consumer Law" } },
-            ],
-          },
+          "description": `Find verified advocates in ${cityData.name}, ${stateLabel}. AI-powered matching for all legal matters.`,
+          "url": `https://litiga-forge-ai.replit.app/lawyers/${city}`,
+          "areaServed": { "@type": "City", "name": cityData.name, "containedInPlace": { "@type": "State", "name": stateLabel } },
           "mainEntity": {
             "@type": "FAQPage",
-            "mainEntity": cityData.faqs.map(f => ({
-              "@type": "Question",
-              "name": f.q,
-              "acceptedAnswer": { "@type": "Answer", "text": f.a },
-            })),
+            "mainEntity": faqs.map(f => ({ "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } })),
           },
         }}
       />
@@ -477,22 +747,18 @@ export default function CityPage() {
               <span>/</span>
               <span className="text-foreground">{cityData.name}</span>
             </div>
-
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <MapPin className="w-5 h-5 text-primary" />
               </div>
-              <span className="text-sm font-semibold text-primary uppercase tracking-widest">{cityData.state}</span>
+              <span className="text-sm font-semibold text-primary uppercase tracking-widest">{stateLabel}</span>
             </div>
-
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
               Find Verified Lawyers in {cityData.name}
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mb-6">
               AI-powered matching connects you with verified advocates in {cityData.name} for property, criminal, family, and civil matters — free to post, no commitment.
             </p>
-
-            {/* Trust strip */}
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><BadgeCheck className="w-4 h-4 text-primary" /> Bar Council verified</span>
               <span className="flex items-center gap-1.5"><Scale className="w-4 h-4 text-primary" /> AI match score (0–100)</span>
@@ -505,15 +771,13 @@ export default function CityPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            {/* Left: Lawyers list */}
+            {/* Lawyers list */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-bold text-foreground">
                   {isLoading ? "Loading advocates…" : `${lawyers.length > 0 ? lawyers.length : "No"} verified advocate${lawyers.length !== 1 ? "s" : ""} in ${cityData.name}`}
                 </h2>
-                <Link href="/lawyers">
-                  <button className="text-xs text-primary hover:underline font-medium">View all →</button>
-                </Link>
+                <Link href="/lawyers"><button className="text-xs text-primary hover:underline font-medium">View all →</button></Link>
               </div>
 
               {isLoading ? (
@@ -522,13 +786,9 @@ export default function CityPage() {
                     <div key={i} className="bg-card border border-border rounded-2xl p-5 animate-pulse">
                       <div className="flex gap-3 mb-3">
                         <div className="w-10 h-10 rounded-full bg-muted" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-muted rounded w-1/3" />
-                          <div className="h-3 bg-muted rounded w-1/4" />
-                        </div>
+                        <div className="flex-1 space-y-2"><div className="h-4 bg-muted rounded w-1/3" /><div className="h-3 bg-muted rounded w-1/4" /></div>
                       </div>
-                      <div className="h-3 bg-muted rounded w-full mb-2" />
-                      <div className="h-3 bg-muted rounded w-2/3" />
+                      <div className="h-3 bg-muted rounded w-full mb-2" /><div className="h-3 bg-muted rounded w-2/3" />
                     </div>
                   ))}
                 </div>
@@ -536,9 +796,7 @@ export default function CityPage() {
                 <div className="bg-card border border-border rounded-2xl p-8 text-center">
                   <Scale className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                   <p className="font-semibold text-foreground mb-1">No advocates listed yet in {cityData.name}</p>
-                  <p className="text-sm text-muted-foreground mb-5">
-                    Post your case and receive proposals from matching advocates across {cityData.state}.
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-5">Post your case and receive proposals from matching advocates across {stateLabel}.</p>
                   <Link href="/post-case">
                     <button className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
                       Post Your Case <ArrowRight className="w-4 h-4" />
@@ -552,9 +810,7 @@ export default function CityPage() {
               {lawyers.length > 0 && (
                 <div className="bg-gradient-to-br from-primary/8 to-primary/3 border border-primary/20 rounded-2xl p-6 text-center mt-4">
                   <h3 className="font-bold text-foreground mb-1">Don't see the right advocate?</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Post your case and let AI match you with the best-fit advocates in {cityData.name} and nearby districts.
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">Post your case and let AI match you with the best-fit advocates in {cityData.name} and nearby districts.</p>
                   <Link href="/post-case">
                     <button className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors">
                       Post Your Case Free <ArrowRight className="w-4 h-4" />
@@ -564,58 +820,45 @@ export default function CityPage() {
               )}
             </div>
 
-            {/* Right: Courts + other cities */}
+            {/* Sidebar */}
             <div className="space-y-6">
-              {/* Courts */}
               <div className="bg-card border border-border rounded-2xl p-5">
-                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-primary" /> Courts in {cityData.name}
-                </h3>
+                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2"><Building2 className="w-4 h-4 text-primary" /> Courts in {cityData.name}</h3>
                 <ul className="space-y-2">
                   {cityData.courts.map(court => (
                     <li key={court} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                      {court}
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />{court}
                     </li>
                   ))}
+                  <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />{highCourt} (appeals)
+                  </li>
                 </ul>
               </div>
 
-              {/* Fee guide */}
               <div className="bg-card border border-border rounded-2xl p-5">
-                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-primary" /> Fee Guide
-                </h3>
+                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2"><Scale className="w-4 h-4 text-primary" /> Fee Guide</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Consultation</span>
-                    <span className="font-medium text-foreground">{cityData.avgConsultation}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Full case</span>
-                    <span className="font-medium text-foreground">{cityData.feeRange}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Free legal aid</span>
-                    <span className="font-medium text-green-600">NALSA: 15100</span>
-                  </div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Consultation</span><span className="font-medium text-foreground">{cityData.avgConsultation}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Full case</span><span className="font-medium text-foreground">{cityData.feeRange}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Free legal aid</span><span className="font-medium text-green-600">NALSA: 15100</span></div>
                 </div>
               </div>
 
-              {/* Other cities */}
+              {/* Same-state links */}
               <div className="bg-card border border-border rounded-2xl p-5">
-                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" /> Lawyers in Other Cities
-                </h3>
-                <div className="space-y-1">
-                  {otherCities.map(c => (
-                    <Link key={c.slug} href={`/lawyers/${c.slug}`}>
-                      <div className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-muted transition-colors cursor-pointer group">
-                        <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{c.name}</span>
-                        <ArrowRight className="w-3 h-3 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                      </div>
-                    </Link>
-                  ))}
+                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> {stateLabel} Districts</h3>
+                <div className="max-h-48 overflow-y-auto space-y-0.5 pr-1">
+                  {(stateLabel === "Telangana" ? TG_CITIES : AP_CITIES)
+                    .filter(c => c.slug !== city)
+                    .map(c => (
+                      <Link key={c.slug} href={`/lawyers/${c.slug}`}>
+                        <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-muted transition-colors cursor-pointer group">
+                          <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{c.name}</span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
+                        </div>
+                      </Link>
+                    ))}
                 </div>
               </div>
             </div>
@@ -623,44 +866,26 @@ export default function CityPage() {
 
           {/* FAQ */}
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-foreground mb-6">
-              Frequently Asked Questions — Lawyers in {cityData.name}
-            </h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">Frequently Asked Questions — Lawyers in {cityData.name}</h2>
             <div className="space-y-3">
-              {cityData.faqs.map((faq, i) => (
-                <FaqItem
-                  key={i}
-                  q={faq.q}
-                  a={faq.a}
-                  open={openFaq === i}
-                  onToggle={() => setOpenFaq(openFaq === i ? null : i)}
-                />
+              {faqs.map((faq, i) => (
+                <FaqItem key={i} q={faq.q} a={faq.a} open={openFaq === i} onToggle={() => setOpenFaq(openFaq === i ? null : i)} />
               ))}
             </div>
           </div>
 
-          {/* Internal links footer */}
+          {/* Internal links — both states */}
           <div className="mt-12 border-t border-border pt-8">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-              Find Lawyers in Other Cities
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {otherCities.map(c => (
-                <Link key={c.slug} href={`/lawyers/${c.slug}`}>
-                  <span className="px-3 py-1.5 bg-muted hover:bg-primary/10 hover:text-primary border border-border rounded-full text-sm text-muted-foreground transition-colors cursor-pointer">
-                    Lawyers in {c.name}
-                  </span>
-                </Link>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <CityLinksSection currentSlug={city ?? ""} state="Telangana" cities={TG_CITIES} label="Telangana Districts" />
+              <CityLinksSection currentSlug={city ?? ""} state="Andhra Pradesh" cities={AP_CITIES} label="Andhra Pradesh Districts" />
             </div>
           </div>
 
           {/* Bottom CTA */}
           <div className="mt-10">
             <div className="bg-gradient-to-br from-primary/8 to-primary/3 border border-primary/20 rounded-2xl p-8 text-center">
-              <h2 className="text-xl font-bold text-foreground mb-2">
-                Need a Lawyer in {cityData.name}?
-              </h2>
+              <h2 className="text-xl font-bold text-foreground mb-2">Need a Lawyer in {cityData.name}?</h2>
               <p className="text-muted-foreground text-sm mb-5 max-w-lg mx-auto">
                 Post your case for free. LitigaForge AI scores and ranks verified advocates in {cityData.name} by practice area, experience, and rating — you pick the best fit.
               </p>
