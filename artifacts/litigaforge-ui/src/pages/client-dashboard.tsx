@@ -3,14 +3,13 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "@/components/PageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase, FileText, User, MessageSquare,
   Gavel, Plus, ChevronRight, X, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
   Scale, Calendar, FileCheck, Heart, FileSearch, Building2, Hash,
-  PenSquare, Download, Share2, Search, Upload, Trash2, Menu,
+  PenSquare, Download, Share2, Search, Upload, Trash2,
 } from "lucide-react";
 
 interface MyRequirement {
@@ -95,64 +94,6 @@ function stageLabel(stage: string) {
   return labels[stage] || stage;
 }
 
-// ── Sidebar ────────────────────────────────────────────────────────────────────────────
-function ClientSidebar({ onNav }: { onNav?: () => void }) {
-  const [location] = useLocation();
-  const { user, logout } = useAuth();
-  const [, setLocation] = useLocation();
-  const items = [
-    { path: "/client-dashboard", label: "Dashboard", icon: Briefcase },
-    { path: "/post-case", label: "Post a Case", icon: Plus },
-    { path: "/my-cases", label: "My Cases", icon: FileText },
-    { path: "/matches", label: "Match Proposals", icon: Sparkles },
-    { path: "/documents", label: "Documents", icon: FileCheck },
-    { path: "/legal-chat", label: "AI Legal Chat", icon: MessageSquare },
-    { path: "/ask", label: "Legal Q&A", icon: Gavel },
-    { path: "/judgments", label: "Judgments", icon: Scale },
-    { path: "/legal-aid", label: "Free Legal Aid", icon: Shield },
-  ];
-  return (
-    <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
-      <div className="px-5 pt-6 pb-4">
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sidebar-accent">
-            <Scale className="w-4 h-4 text-sidebar-primary" />
-          </div>
-          <span className="font-bold text-sm tracking-tight text-sidebar-foreground">LitigaForge</span>
-        </div>
-        <p className="text-[11px] text-sidebar-foreground/50 font-medium">Client Portal</p>
-      </div>
-      <nav className="flex-1 px-3 space-y-1 overflow-auto">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = location === item.path;
-          return (
-            <button key={item.path} onClick={() => { setLocation(item.path); onNav?.(); }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all text-left ${active ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"}`}>
-              <Icon className="w-4 h-4 flex-shrink-0" /> {item.label}
-            </button>
-          );
-        })}
-      </nav>
-      <div className="px-4 py-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-sidebar-primary">
-            <User className="w-4 h-4 text-sidebar-primary-foreground" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[12px] font-semibold truncate text-sidebar-foreground">{user?.name || "Client"}</p>
-            <p className="text-[10px] text-sidebar-foreground/50 truncate">{user?.email}</p>
-          </div>
-        </div>
-        <button onClick={() => { logout(); setLocation("/login"); }}
-          className="w-full text-[11px] font-semibold py-2 rounded-lg border border-sidebar-border text-sidebar-foreground/70 hover:text-sidebar-foreground hover:border-sidebar-border/80 transition-all">
-          Sign Out
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Modal ────────────────────────────────────────────────────────────────────────────
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
   if (!open) return null;
@@ -195,7 +136,6 @@ export default function ClientDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
   const [showMatchDetail, setShowMatchDetail] = useState<MatchProposal | null>(null);
   const [showMessageModal, setShowMessageModal] = useState<{ matchId: number; lawyerName: string } | null>(null);
@@ -281,30 +221,8 @@ export default function ClientDashboard() {
   const firstName = user?.name?.split(" ")[0] ?? "Client";
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Mobile overlay */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <>
-            <motion.div key="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 md:hidden bg-black/60"  onClick={() => setDrawerOpen(false)} />
-            <motion.aside key="drawer" initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed left-0 top-0 bottom-0 w-72 z-50 md:hidden shadow-2xl">
-              <ClientSidebar onNav={() => setDrawerOpen(false)} />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Desktop sidebar */}
-      <aside className="hidden md:block w-64 flex-shrink-0 h-full"><ClientSidebar /></aside>
-
-      {/* Main */}
-      <main className="flex-1 h-full overflow-auto pb-16 md:pb-0">
-        <PageHeader onMenuClick={() => setDrawerOpen(true)} />
-
-        <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+    <>
+      <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
           {/* Page greeting */}
           <div>
             <h1 className="text-xl font-bold text-foreground">Good day, {firstName} 👋</h1>
@@ -319,10 +237,11 @@ export default function ClientDashboard() {
               const Icon = a.icon;
               return (
                 <button key={a.label} onClick={a.action}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-all hover:shadow-sm"
-                  style={{ background: a.bg, borderColor: a.border, color: a.color }}>
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-[13px] font-semibold">{a.label}</span>
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-border bg-card shadow-sm text-left transition-all hover:shadow-md active:scale-95">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: a.bg }}>
+                    <Icon className="w-4 h-4" style={{ color: a.color }} />
+                  </div>
+                  <span className="text-[13px] font-semibold text-foreground">{a.label}</span>
                 </button>
               );
             })}
@@ -332,7 +251,7 @@ export default function ClientDashboard() {
             {/* Left column — Cases & Matches */}
             <div className="lg:col-span-2 space-y-6">
               {/* Client Stats */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Active Cases", value: activeCases, icon: Briefcase, color: "#2563EB", bg: "#EFF6FF" },
                   { label: "Hearings", value: upcomingHearings, icon: Calendar, color: "#D97706", bg: "#FEF3C7" },
@@ -666,7 +585,6 @@ export default function ClientDashboard() {
             </aside>
           </div>
         </div>
-      </main>
 
       {/* Case Detail Modal */}
       <Modal open={!!showCaseDetail} onClose={() => { setShowCaseDetail(null); setCaseDocs([]); }} title={showCaseDetail?.title || "Case Details"}>
@@ -941,6 +859,6 @@ export default function ClientDashboard() {
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
