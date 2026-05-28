@@ -290,8 +290,7 @@ function renderChecklist(content: string) {
 }
 
 function PipelineLoading() {
-  return (<>
-      <SEOHelmet title="The Forge" description="Transform case facts into legal entities, government API chains, and AI-generated strategy." canonical="/" />
+  return (
     <div className="flex flex-col items-center justify-center py-32 space-y-6">
       <div className="relative w-16 h-16 flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-primary relative z-10" />
@@ -300,7 +299,7 @@ function PipelineLoading() {
       <p className="text-lg font-medium text-foreground tracking-tight">Synthesizing Strategy...</p>
       <p className="text-sm text-muted-foreground">Extracting entities and running API chains</p>
     </div>
-  </>);
+  );
 }
 
 export default function Forge() {
@@ -396,6 +395,12 @@ export default function Forge() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
+      <SEOHelmet
+        title="LitigaForge AI | Legal Strategy Platform"
+        description="Transform your case facts into legal entities, 16 government API chains, and a full AI-generated legal strategy — powered by Claude, Gemini, and GPT. Free for Telangana & AP."
+        canonical="/"
+        keywords="legal strategy AI India, case filing Telangana, eCourts case status, legal entity extraction, AI lawyer tool India"
+      />
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
         <div className="max-w-2xl">
           <motion.h1

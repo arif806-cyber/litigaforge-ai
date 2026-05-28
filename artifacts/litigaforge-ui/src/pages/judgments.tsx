@@ -57,7 +57,12 @@ export default function Judgments() {
   const selectedCourt = COURTS.find(c => c.id === court) ?? COURTS[0];
 
   return (<>
-      <SEOHelmet title="Judgment Finder" description="Search case law precedents with IndianKanoon links." canonical="/judgments" />
+      <SEOHelmet
+      title="Search Court Judgments India | LitigaForge"
+      description="Search High Court and Supreme Court judgments from Telangana, Andhra Pradesh, and all India courts. AI-curated case law precedents with IndianKanoon links."
+      canonical="/judgments"
+      keywords="search court judgments India, Supreme Court precedents, Telangana High Court orders, IndianKanoon search, case law finder Andhra Pradesh"
+    />
     <PageShell title="Judgment Finder" subtitle="Search Indian case law — AI finds relevant precedents with citations and plain-language summaries." icon={<BookOpen className="w-6 h-6 text-primary" />}>
 
       <div className="space-y-8">

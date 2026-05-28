@@ -41,8 +41,7 @@ function RiskScoreBadge({ score }: { score: number }) {
     : score >= 4 ? "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
     : "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800";
   const label = score >= 7 ? "High Risk" : score >= 4 ? "Medium Risk" : "Low Risk";
-  return (<>
-      <SEOHelmet title="Document Analyzer" description="AI-powered contract and document risk analysis." canonical="/review" />
+  return (
     <div className={cn("inline-flex items-center gap-4 px-5 py-3 rounded-2xl border", color)}>
       <span className="text-3xl font-bold tracking-tighter">{score}<span className="text-lg opacity-50">/10</span></span>
       <div className="text-left border-l border-current/20 pl-4">
@@ -50,7 +49,7 @@ function RiskScoreBadge({ score }: { score: number }) {
         <div className="text-sm font-semibold">{label}</div>
       </div>
     </div>
-  </>);
+  );
 }
 
 export default function Review() {
@@ -71,6 +70,12 @@ export default function Review() {
 
   return (
     <PageShell title="Document Analyzer" subtitle="Paste any legal document — AI identifies risks, missing clauses, and jurisdiction issues under Indian law." icon={<FileSearch className="w-6 h-6 text-primary" />}>
+      <SEOHelmet
+        title="Free Legal Document Analyzer | LitigaForge AI"
+        description="Paste any contract, FIR, rental agreement, or legal document and get an instant AI risk score, missing clause detection, and recommendations. Free online legal document analyzer for India."
+        canonical="/review"
+        keywords="legal document analyzer India, contract review online free, FIR analysis, rental agreement check, missing clause detector India"
+      />
 
       <div className="space-y-8">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">

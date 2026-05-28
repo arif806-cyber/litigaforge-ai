@@ -95,7 +95,12 @@ export default function LegalAid() {
 
   return (
     <PageShell title="Free Legal Aid" subtitle="Check if you qualify for free legal aid under NALSA and find your nearest Telangana DLSA office." icon={<Heart className="w-6 h-6 text-primary" />}>
-      <SEOHelmet title="Free Legal Aid" description="NALSA eligibility wizard and DLSA helplines." canonical="/legal-aid" />
+      <SEOHelmet
+      title="Free Legal Aid Contacts Telangana | LitigaForge"
+      description="Find free legal aid in Telangana and Andhra Pradesh. NALSA eligibility checker, TSLSA helplines, all 8 DLSA district contacts. Toll-free: 15100."
+      canonical="/legal-aid"
+      keywords="free legal aid Telangana, NALSA helpline, TSLSA contact, DLSA Hyderabad, legal aid eligibility India, free lawyer government scheme"
+    />
 
       <div className="space-y-8">
         {/* Eligibility wizard */}

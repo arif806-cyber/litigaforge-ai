@@ -16,6 +16,100 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- JSON-LD: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "LitigaForge AI",
+      "url": "https://litigaforgeai.replit.app",
+      "logo": "https://litigaforgeai.replit.app/opengraph.jpg",
+      "description": "AI-powered legal platform connecting clients with verified advocates in Telangana and Andhra Pradesh.",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+91-15100",
+        "contactType": "Legal Aid",
+        "areaServed": ["Telangana", "Andhra Pradesh"],
+        "availableLanguage": ["English", "Telugu", "Hindi", "Urdu"]
+      },
+      "sameAs": []
+    }
+    </script>
+
+    <!-- JSON-LD: LegalService -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LegalService",
+      "name": "LitigaForge AI – Legal Matching Platform",
+      "url": "https://litigaforgeai.replit.app",
+      "description": "Find verified lawyers in Telangana and Andhra Pradesh. AI-powered case matching, document analysis, judgment search, and free legal aid finder.",
+      "areaServed": ["Telangana", "Andhra Pradesh", "India"],
+      "serviceType": ["Lawyer Matching", "Legal Document Analysis", "Legal Q&A", "Judgment Search", "Free Legal Aid"],
+      "priceRange": "Free – ₹2,499/month",
+      "address": {
+        "@type": "PostalAddress",
+        "addressRegion": "Telangana",
+        "addressCountry": "IN"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "120"
+      }
+    }
+    </script>
+
+    <!-- JSON-LD: FAQPage -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I find a verified lawyer in Hyderabad?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Post your case requirements on LitigaForge and our AI will match you with the top 10 verified advocates in Hyderabad, Telangana, and Andhra Pradesh — with match scores and AI explanations."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is LitigaForge AI free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Legal Q&A, document analysis, judgment search, free legal aid finder, and the advocate directory are all free. Professional and Advocate Pro plans unlock unlimited AI credits and advanced features."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How can I check my eCourt case status in Telangana?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use The Forge on LitigaForge — enter your CNR number or case facts and our eCourts API chain will fetch live case status, hearing dates, and orders from webapi.ecourtsindia.com."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who is eligible for free legal aid in Andhra Pradesh?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Under the Legal Services Authorities Act, free legal aid is available to women, SC/ST individuals, persons with disabilities, victims of trafficking, persons in custody, and those with annual income below ₹3 lakhs. Use our Free Legal Aid finder for NALSA and DLSA contacts."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I analyze a legal document or contract online?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Paste your document into the LitigaForge Document Analyzer and get an AI-powered risk score, list of missing clauses, and actionable recommendations — instantly and for free."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

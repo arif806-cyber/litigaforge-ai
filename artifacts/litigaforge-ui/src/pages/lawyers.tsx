@@ -324,6 +324,12 @@ export default function LawyersPage() {
         </Button>
       ) : undefined}>
       <div className="space-y-8">
+        <SEOHelmet
+          title="Find Verified Lawyers in Hyderabad | LitigaForge"
+          description="Search verified advocates in Hyderabad, Telangana, and Andhra Pradesh. Filter by district, practice area, language, and ratings. View bar registration, hourly rates, and contact directly."
+          canonical="/lawyers"
+          keywords="find lawyer Hyderabad, verified advocate Telangana, advocate directory Andhra Pradesh, best criminal lawyer Hyderabad, family lawyer Telangana, property lawyer AP"
+        />
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />

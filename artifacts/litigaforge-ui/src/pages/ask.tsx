@@ -46,8 +46,7 @@ function QACard({ item }: { item: QAItem }) {
   const [expanded, setExpanded] = useState(false);
   const color = CAT_COLORS[item.category] ?? CAT_COLORS.general;
 
-  return (<>
-      <SEOHelmet title="Legal Q&A" description="Ask any legal question and get instant AI-powered answers." canonical="/ask" />
+  return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -95,7 +94,7 @@ function QACard({ item }: { item: QAItem }) {
         )}
       </AnimatePresence>
     </motion.div>
-  </>);
+  );
 }
 
 export default function Ask() {
@@ -129,6 +128,12 @@ export default function Ask() {
 
   return (
     <PageShell title="Legal Q&A" subtitle="Ask any legal question — get instant answers grounded in Indian law and local procedures." icon={<MessageSquare className="w-6 h-6 text-primary" />}>
+      <SEOHelmet
+        title="Free Legal Q&A | Ask a Lawyer Online – LitigaForge"
+        description="Ask any legal question and get an instant AI-powered answer based on Indian law — IPC, CrPC, consumer rights, property, family law. Free. No login required."
+        canonical="/ask"
+        keywords="ask lawyer online free India, legal question answer Hindi, IPC section help, consumer court query, free legal advice Hyderabad"
+      />
 
       <div className="space-y-10">
         {/* Ask form */}
