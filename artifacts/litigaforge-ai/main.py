@@ -12,7 +12,7 @@ _script_dir = os.path.dirname(os.path.abspath(__file__))
 if _script_dir not in sys.path:
     sys.path.insert(0, _script_dir)
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -328,6 +328,22 @@ app.include_router(alerts_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
 app.include_router(lawyer_router,      prefix=BASE_PATH)
 app.include_router(documents_free_router, prefix=BASE_PATH)
+
+@app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
+async def serve_sitemap():
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://litiga-forge-ai.replit.app/</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/ask</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/review</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/judgments</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/legal-aid</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/use-cases</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/cases</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/free-documents</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+</urlset>"""
+    return Response(content=content, media_type="application/xml")
 
 # Serve uploaded client documents (ensure dir exists before mounting)
 _uploads_dir = os.path.join(_script_dir, "uploads")

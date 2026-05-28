@@ -1,2 +1,20 @@
 User-agent: *
 Allow: /
+Allow: /ask
+Allow: /review
+Allow: /judgments
+Allow: /lawyers
+Allow: /legal-aid
+Allow: /use-cases
+Allow: /cases
+Allow: /free-documents
+Disallow: /client-dashboard
+Disallow: /lawyer-dashboard
+Disallow: /admin
+Disallow: /post-case
+Disallow: /my-cases
+Disallow: /matches
+Disallow: /legal-chat
+Disallow: /subscription
+
+Sitemap: https://litiga-forge-ai.replit.app/sitemap.xml
