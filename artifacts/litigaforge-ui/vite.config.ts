@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import compression from "vite-plugin-compression2";
+import { VitePWA } from "vite-plugin-pwa";
 
 const rawPort = process.env.PORT;
 
@@ -33,6 +34,98 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    VitePWA({
+      registerType: "autoUpdate",
+      injectRegister: "auto",
+      devOptions: {
+        enabled: false,
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/litigaforge\//],
+        cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          {
+            urlPattern: /\/litigaforge\//,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 3600,
+              },
+              networkTimeoutSeconds: 10,
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "google-fonts-stylesheets",
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-webfonts",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
+            },
+          },
+        ],
+      },
+      manifest: {
+        name: "LitigaForge AI",
+        short_name: "LitigaForge",
+        description:
+          "AI Legal Platform for Telangana & AP — find verified lawyers, analyze documents, search judgments, get free legal aid.",
+        theme_color: "#1a2744",
+        background_color: "#ffffff",
+        display: "standalone",
+        orientation: "portrait-primary",
+        start_url: "/",
+        scope: "/",
+        lang: "en-IN",
+        categories: ["legal", "productivity", "utilities"],
+        icons: [
+          {
+            src: "favicon.svg",
+            sizes: "any",
+            type: "image/svg+xml",
+            purpose: "any maskable",
+          },
+          {
+            src: "opengraph.jpg",
+            sizes: "192x192",
+            type: "image/jpeg",
+          },
+        ],
+        shortcuts: [
+          {
+            name: "Ask a Legal Question",
+            short_name: "Q&A",
+            url: "/ask",
+            description: "Get instant AI-powered answers to legal questions",
+          },
+          {
+            name: "Analyze a Document",
+            short_name: "Analyzer",
+            url: "/review",
+            description: "AI risk analysis for contracts and legal documents",
+          },
+          {
+            name: "Find a Lawyer",
+            short_name: "Lawyers",
+            url: "/lawyers",
+            description: "Browse verified advocates in Telangana & AP",
+          },
+        ],
+      },
+    }),
     compression({ algorithm: "gzip" }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
