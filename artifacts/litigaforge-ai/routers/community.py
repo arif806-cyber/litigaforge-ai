@@ -9,7 +9,7 @@ import re
 from typing import List, Optional
 
 import requests as _req
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from auth import get_current_user
@@ -147,7 +147,8 @@ Be specific, cite real law, and avoid unhelpful generic disclaimers."""
 
 
 @router.get("/ask")
-async def list_questions(limit: int = 20, category: Optional[str] = None):
+async def list_questions(response: Response, limit: int = 20, category: Optional[str] = None):
+    response.headers["Cache-Control"] = "public, max-age=3600"
     if category and category != "all":
         rows = await fetch(
             "SELECT id, question, category, ai_answer, upvotes, created_at "
@@ -286,11 +287,13 @@ class LawyerRegisterRequest(BaseModel):
 
 @router.get("/lawyers")
 async def list_lawyers(
+    response: Response,
     district: Optional[str] = None,
     practice_area: Optional[str] = None,
     language: Optional[str] = None,
     search: Optional[str] = None,
 ):
+    response.headers["Cache-Control"] = "public, max-age=3600"
     conds, params = ["verified = TRUE"], []
     if district:
         conds.append("district ILIKE $" + str(len(params) + 2))
@@ -342,7 +345,8 @@ async def register_lawyer(
 # ── Legal Aid contacts (static + eligibility) ─────────────────────────────────────────────
 
 @router.get("/legal-aid/contacts")
-async def legal_aid_contacts():
+async def legal_aid_contacts(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=3600"
     return {
         "national": {
             "name": "NALSA — National Legal Services Authority",

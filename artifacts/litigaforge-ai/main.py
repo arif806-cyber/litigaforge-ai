@@ -14,6 +14,7 @@ if _script_dir not in sys.path:
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
@@ -298,8 +299,13 @@ _cors_origins = [f"https://{d.strip()}" for d in os.getenv("REPLIT_DOMAINS", "")
 _frontend_url = os.environ.get("FRONTEND_URL", "").strip()
 if _frontend_url:
     _cors_origins.append(_frontend_url)
+# Always include the canonical production domain
+_prod_domain = "https://litiga-forge-ai.replit.app"
+if _prod_domain not in _cors_origins:
+    _cors_origins.append(_prod_domain)
 if not _cors_origins:
     _cors_origins = ["http://localhost:5173", "http://localhost:4173"]
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
