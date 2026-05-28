@@ -12,9 +12,11 @@ _script_dir = os.path.dirname(os.path.abspath(__file__))
 if _script_dir not in sys.path:
     sys.path.insert(0, _script_dir)
 
+from pathlib import Path as _Path
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
@@ -355,6 +357,30 @@ async def serve_sitemap():
 _uploads_dir = os.path.join(_script_dir, "uploads")
 os.makedirs(_uploads_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
+
+# ── Frontend serving — FastAPI owns the HTML response so the platform
+#    cannot inject or override meta tags at the CDN/static layer. ─────────
+_frontend_dist = _Path(_script_dir).parent / "litigaforge-ui" / "dist" / "public"
+
+if _frontend_dist.exists():
+    @app.get("/", include_in_schema=False)
+    async def serve_root():
+        """Return index.html directly from Python — correct meta tags guaranteed."""
+        with open(_frontend_dist / "index.html", encoding="utf-8") as _f:
+            _html = _f.read()
+        return HTMLResponse(
+            content=_html,
+            headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+        )
+
+    # Serve all other static assets (JS, CSS, images, fonts, etc.)
+    # html=True means any path with no matching file falls back to index.html
+    # (SPA routing: /ask, /login, /forge etc. all get the React app)
+    app.mount(
+        "/",
+        StaticFiles(directory=str(_frontend_dist), html=True),
+        name="frontend",
+    )
 
 if __name__ == "__main__":
     import uvicorn

@@ -18,8 +18,6 @@ localPort = 23790
 run = "pnpm --filter @workspace/litigaforge-ui run dev"
 
 [services.production]
-publicDir = "artifacts/litigaforge-ui/dist/public"
-serve = "static"
 
 [services.production.build]
 args = [ "pnpm", "--filter", "@workspace/litigaforge-ui", "run", "build" ]
@@ -28,10 +26,6 @@ args = [ "pnpm", "--filter", "@workspace/litigaforge-ui", "run", "build" ]
 PORT = "23790"
 BASE_PATH = "/"
 NODE_ENV = "production"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
 
 [services.env]
 PORT = "23790"
