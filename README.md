@@ -10,6 +10,9 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 
 | Date | Change |
 |---|---|
+| May 28 | **Legal Guides / Blog** — 5 long-form SEO articles at `/blog` targeting high-intent legal keywords (how to find a lawyer in Hyderabad, free legal aid NALSA guide, consumer forum eDaakhil, RERA AP, eCourts case status). Each article has breadcrumb, legal disclaimer banner, JSON-LD BlogPosting schema, category badges, keyword tags, and a dual CTA (post case / ask AI). "Legal Guides" added to sidebar nav and footer |
+| May 28 | **SEO pass** — per-page `<SEOHelmet>` with title, description, canonical, keywords, and JSON-LD structured data on every public page. `sitemap.xml` now includes all 20+ pages including all blog article slugs. Node.js injects correct Open Graph meta tags at request time (no stale CDN cache) |
+| May 28 | **Node.js meta injection** — `api-server` reads `dist/public/index.html` at startup, injects per-route title + description + OG tags, serves the SPA for all non-API paths. Express 5 wildcard fixed (`*` → `/{*splat}`). Frontend built with `BASE_PATH=/` for correct asset resolution via Node.js |
 | May 28 | **Consistent mobile tab bar** — all authenticated pages (client-dashboard, lawyer-dashboard, and all Layout pages) now show the same 6-item bottom tab bar. client-dashboard moved inside shared `<Layout>` |
 | May 28 | **Shared PageHeader component** — standardized mobile top-bar (logo + role badge + dark-mode toggle + hamburger) across all pages via `src/components/PageHeader.tsx` |
 | May 28 | **client-dashboard layout polish** — stat cards now 2×2 grid on mobile, quick-action buttons restyled to match app card system (rounded-2xl border bg-card shadow-sm), consistent px-4 padding |
@@ -57,6 +60,8 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 - **Document Analyzer** — paste contract/FIR/sale deed/petition text; AI identifies legal risks, missing clauses, jurisdiction issues, and recommends amendments. Risk score 1–10
 - **Judgment Finder** — search Indian case law by keyword/court; AI finds 5 relevant precedents with real citations and plain-language summaries. Direct links to IndianKanoon
 - **Lawyer Directory** — searchable directory of Telangana & AP advocates. Filter by district, practice area, language. Verified advocate profiles with contact details, hourly rates, and availability status. Self-registration for advocates
+- **Legal Guides / Blog** — 5 long-form SEO articles at `/blog` targeting high-intent search queries: how to find a lawyer in Hyderabad, free legal aid in Telangana (NALSA), filing consumer forum complaints via eDaakhil, RERA rights for AP property buyers, and eCourts case status tracking. Each article has breadcrumb nav, a legal disclaimer banner, JSON-LD `BlogPosting` structured data, keyword tags, reading time, and a "Find a Lawyer / Ask AI" CTA. "Legal Guides" link added to sidebar nav and page footer
+- **SEO & Social Sharing** — per-page `<SEOHelmet>` with title, description, canonical URL, Open Graph + Twitter Card meta, and JSON-LD structured data (WebSite, LegalService, BlogPosting). `sitemap.xml` includes all public pages + all article slugs. Node.js API server injects correct meta tags at request time so crawlers and link-preview bots (WhatsApp, Twitter, Telegram) always see page-specific content
 - **Free Legal Documents** — 10 AI-generated fill-in legal document templates (rent agreement, legal notice, power of attorney, affidavit, NDA, will, consumer complaint, termination letter, promissory note, commercial lease). Fill the form, AI drafts a complete document via Claude/GPT-5/Gemini cascade, download as .txt, copy, share, or print. No lawyer fees for standard templates
 - **16 Government API Chains** — GSTIN, PAN, eCourts, VAHAN, SARATHI, DigiLocker, BPCL LPG, MeriPehchaan, Mee Seva Telangana, Transport TS, NSE India, Stock Exchange, FOREX, MCA Company, IFSC, and Pincode
 - **Multi-AI Cascade** — Claude Sonnet 4-6 (strategy) → Gemini 2.5 Flash (entities) → GPT-5 (fallback) — all free via Replit AI Integrations
@@ -123,6 +128,8 @@ litigaforge-ai/
 │   │       │   ├── legal-aid.tsx      # Free Legal Aid — eligibility wizard + helplines
 │   │       │   ├── free-documents.tsx   # Free Legal Documents — 10 AI-powered document template cards
 │   │       │   ├── document-template.tsx # Document Template Fill Form — dynamic fields, AI generate, download/share/print
+│   │       │   ├── blog.tsx             # Legal Guides listing — 5 SEO articles with category, read time, keyword tags
+│   │       │   ├── blog-post.tsx        # Article page — breadcrumb, disclaimer, JSON-LD BlogPosting, CTA
 │   │       │   ├── lawyer-dashboard.tsx # Lawyer Dashboard — case management, documents, status tracking
 │   │       │   ├── client-dashboard.tsx # Client Dashboard — cases, matches, messages, quick actions
 │   │       │   └── admin.tsx          # Admin panel — lawyer verification, user management
@@ -141,6 +148,8 @@ litigaforge-ai/
 │   │       │   ├── LoadingSpinner.tsx    # Full-screen spinner with message overlay
 │   │       │   ├── EmptyState.tsx        # Illustrated empty state with action button
 │   │       │   └── ErrorMessage.tsx      # Styled inline error banner with retry CTA
+│   │       ├── data/
+│   │       │   └── articles.ts          # 5 long-form SEO articles (ContentBlock[] structure for clean rendering)
 │   │       └── lib/
 │   │           ├── api.ts                # apiFetch (auto-attaches Bearer token); improved error parsing
 │   │           ├── auth-context.tsx      # AuthProvider, useAuth hook; loading state prevents login flash
