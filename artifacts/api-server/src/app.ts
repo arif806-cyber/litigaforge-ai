@@ -36,7 +36,7 @@ app.use("/api", router);
 // ── Frontend serving (production only) ───────────────────────────────────
 // Node.js injects the correct meta tags so the CDN/static layer cannot
 // override them. Only active when NODE_ENV=production and dist exists.
-if (process.env["NODE_ENV"] === "production") {
+if (true) { // serve frontend in both dev and production when dist exists
   const _candidates = [
     resolve(process.cwd(), "artifacts/litigaforge-ui/dist/public"),
     resolve(process.cwd(), "../litigaforge-ui/dist/public"),
@@ -79,7 +79,7 @@ if (process.env["NODE_ENV"] === "production") {
 
       // SPA fallback: any path not under /api or /litigaforge returns the
       // React app so client-side routing works (/ask, /login, /forge, etc.)
-      app.get("*", (req, res, next) => {
+      app.get("/{*splat}", (req, res, next) => {
         if (
           req.path.startsWith("/api") ||
           req.path.startsWith("/litigaforge")

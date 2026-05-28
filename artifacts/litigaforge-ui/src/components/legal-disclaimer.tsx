@@ -1,4 +1,5 @@
 import { ShieldAlert } from "lucide-react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 export function LegalDisclaimerBanner({ className }: { className?: string }) {
@@ -35,9 +36,16 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
             This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice.
           </span>
         </div>
-        <span className="text-muted-foreground/60 whitespace-nowrap">
-          LitigaForge AI
-        </span>
+        <div className="flex items-center gap-4">
+          <Link href="/blog">
+            <span className="text-muted-foreground/70 hover:text-primary transition-colors cursor-pointer whitespace-nowrap text-xs">
+              Legal Guides
+            </span>
+          </Link>
+          <span className="text-muted-foreground/60 whitespace-nowrap">
+            LitigaForge AI
+          </span>
+        </div>
       </div>
     </footer>
   );

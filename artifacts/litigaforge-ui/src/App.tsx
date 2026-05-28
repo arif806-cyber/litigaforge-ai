@@ -35,6 +35,8 @@ const ClientDashboard     = lazy(() => import("@/pages/client-dashboard"));
 const DocumentsPage       = lazy(() => import("@/pages/documents"));
 const FreeDocuments       = lazy(() => import("@/pages/free-documents"));
 const DocumentTemplatePage = lazy(() => import("@/pages/document-template"));
+const Blog                = lazy(() => import("@/pages/blog"));
+const BlogPost            = lazy(() => import("@/pages/blog-post"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +113,8 @@ function Router() {
               <Route path="/free-documents" component={() => <ErrorBoundary section="free-documents"><FreeDocuments /></ErrorBoundary>} />
               <Route path="/free-documents/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
               <Route path="/document-template/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
+              <Route path="/blog"          component={() => <ErrorBoundary section="blog"><Blog /></ErrorBoundary>} />
+              <Route path="/blog/:slug"    component={() => <ErrorBoundary section="blog-post"><BlogPost /></ErrorBoundary>} />
               <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
               <Route component={NotFound} />
             </Switch>

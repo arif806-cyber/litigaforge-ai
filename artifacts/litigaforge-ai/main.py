@@ -350,6 +350,12 @@ async def serve_sitemap():
   <url><loc>https://litiga-forge-ai.replit.app/use-cases</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/cases</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/free-documents</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/blog</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/blog/how-to-find-good-lawyer-hyderabad</loc><lastmod>2026-05-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/blog/free-legal-aid-telangana-nalsa-guide</loc><lastmod>2026-05-05</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/blog/file-consumer-forum-complaint-online-india</loc><lastmod>2026-05-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/blog/rera-property-buyers-andhra-pradesh</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/blog/check-court-case-status-ecourts-india</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
 </urlset>"""
     return Response(content=content, media_type="application/xml")
 

@@ -4,7 +4,7 @@ import {
   Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
   Crown, LogOut, User as UserIcon, ChevronRight, MessageSquare, FileSearch,
   BookOpen, Users, Heart, Sun, Moon, Plus, Gavel, MessageSquareText,
-  AlertTriangle, Shield, Star, Briefcase, Sparkles, FileCheck
+  AlertTriangle, Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -41,6 +41,7 @@ const commonNav = [
   { href: "/free-documents", label: "Free Documents",  icon: FileCheck },
   { href: "/chains",         label: "API Chains",      icon: Link2 },
   { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart },
+  { href: "/blog",           label: "Legal Guides",    icon: Newspaper },
 ];
 
 /* ─── Animated counter ─── */
