@@ -356,6 +356,15 @@ async def serve_sitemap():
   <url><loc>https://litiga-forge-ai.replit.app/blog/file-consumer-forum-complaint-online-india</loc><lastmod>2026-05-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/blog/rera-property-buyers-andhra-pradesh</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://litiga-forge-ai.replit.app/blog/check-court-case-status-ecourts-india</loc><lastmod>2026-05-20</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/hyderabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/secunderabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/warangal</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/karimnagar</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/nizamabad</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/vijayawada</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/visakhapatnam</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/guntur</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://litiga-forge-ai.replit.app/lawyers/tirupati</loc><lastmod>2026-05-28</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
 </urlset>"""
     return Response(content=content, media_type="application/xml")
 

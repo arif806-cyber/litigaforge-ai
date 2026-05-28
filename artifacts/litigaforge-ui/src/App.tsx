@@ -37,6 +37,7 @@ const FreeDocuments       = lazy(() => import("@/pages/free-documents"));
 const DocumentTemplatePage = lazy(() => import("@/pages/document-template"));
 const Blog                = lazy(() => import("@/pages/blog"));
 const BlogPost            = lazy(() => import("@/pages/blog-post"));
+const CityPage            = lazy(() => import("@/pages/city"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +104,7 @@ function Router() {
               <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
               <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
               <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />
+              <Route path="/lawyers/:city" component={() => <ErrorBoundary section="city-lawyers"><CityPage /></ErrorBoundary>} />
               <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />
               <Route path="/legal-aid"    component={() => <ErrorBoundary section="legal-aid"><LegalAid /></ErrorBoundary>} />
               <Route path="/post-case"    component={() => <ErrorBoundary section="post-case"><ProtectedRoute component={PostCase} /></ErrorBoundary>} />
