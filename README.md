@@ -6,6 +6,21 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 
 ---
 
+## Recent Changes — May 2026
+
+| Date | Change |
+|---|---|
+| May 28 | **Consistent mobile tab bar** — all authenticated pages (client-dashboard, lawyer-dashboard, and all Layout pages) now show the same 6-item bottom tab bar. client-dashboard moved inside shared `<Layout>` |
+| May 28 | **Shared PageHeader component** — standardized mobile top-bar (logo + role badge + dark-mode toggle + hamburger) across all pages via `src/components/PageHeader.tsx` |
+| May 28 | **client-dashboard layout polish** — stat cards now 2×2 grid on mobile, quick-action buttons restyled to match app card system (rounded-2xl border bg-card shadow-sm), consistent px-4 padding |
+| May 27 | **Advocate verification notifications** — admin approve/reject triggers email (SMTP) + WhatsApp (Twilio) automatically. Lawyer dashboard polls and shows a verification wall until approved |
+| May 27 | **UI/UX Audit** — all 16 pages: skeleton loading states, retry buttons, empty states with illustrations, autoFocus + Enter key submission on AI inputs, 44px min touch targets on mobile |
+| May 27 | **Shared UI components** — `SkeletonCard`, `CopyButton`, `RetryButton`, `TrustBadge`, `StructuredResult` added to `src/components/` for consistent AI result display |
+| May 26 | **Free Legal Documents** — 10 AI-generated document templates at `/free-documents` with fill-in form, AI draft, download/copy/share/print |
+| May 26 | **New navigation routes** — `/cases`, `/use-cases`, `/free-documents`, `/free-documents/:slug`, `/document-template/:slug` all added to sidebar and routing |
+
+---
+
 ## Table of Contents
 
 - [Features](#features)
@@ -55,7 +70,7 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 - **Sandbox Mode** — Mee Seva TG and Transport TS make live calls to `sandbox.api-setu.in` using the public demo key
 - **Unified Design System** — both Client and Advocate roles share the same sidebar design via CSS design tokens (`bg-sidebar`, `text-sidebar-foreground`, `bg-sidebar-primary`, etc.) with a subtle role badge (CLIENT / LAWYER) instead of full color change. All non-dashboard pages use a `PageShell` wrapper for consistent title, subtitle, icon, and action-slot headers
 - **Light / White UI** — clean white backgrounds, amber/gold accent, particle canvas, Framer Motion animations, fully mobile-responsive
-- **Mobile-First Navigation** — hamburger drawer with animated slide-in sidebar for clients on mobile. Fixed bottom tab bar on all pages for quick one-tap navigation
+- **Mobile-First Navigation** — hamburger drawer with animated slide-in sidebar on mobile. Shared `PageHeader` component (logo + role badge + dark-mode toggle + hamburger) on every page. Fixed 6-item bottom tab bar (Dashboard · Post a Case · My Cases · Match Proposals · Documents · More) on **all** authenticated pages including the standalone dashboards
 - **AI Safety Guardrails** — prompt injection detection (15 attack patterns), input sanitization on every route, Pydantic v2 field validators, unoverridable legal system prompt wrapper, automatic "not legal advice" disclaimer on every AI response, AI output validation against jailbreak red flags
 - **Platform Disclaimer** — mandatory first-visit acknowledgment and persistent footer: "This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
 
@@ -106,14 +121,23 @@ litigaforge-ai/
 │   │       │   ├── judgments.tsx      # Judgment Finder — precedent search + IndianKanoon links
 │   │       │   ├── lawyers.tsx        # Lawyer Directory — advocate profiles + registration
 │   │       │   ├── legal-aid.tsx      # Free Legal Aid — eligibility wizard + helplines
+│   │       │   ├── free-documents.tsx   # Free Legal Documents — 10 AI-powered document template cards
+│   │       │   ├── document-template.tsx # Document Template Fill Form — dynamic fields, AI generate, download/share/print
 │   │       │   ├── lawyer-dashboard.tsx # Lawyer Dashboard — case management, documents, status tracking
 │   │       │   ├── client-dashboard.tsx # Client Dashboard — cases, matches, messages, quick actions
 │   │       │   └── admin.tsx          # Admin panel — lawyer verification, user management
 │   │       ├── components/
-│   │       │   ├── layout.tsx            # Sidebar, topbar, mobile nav, user panel
+│   │       │   ├── layout.tsx            # Sidebar, topbar, mobile drawer, 6-item tab bar, user panel
+│   │       │   ├── PageHeader.tsx        # Shared mobile top-bar (logo + role badge + theme toggle + hamburger)
 │   │       │   ├── legal-disclaimer.tsx  # Footer disclaimer on every page
 │   │       │   ├── graphics/             # ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
-│   │       │   ├── ErrorBoundary.tsx     # Per-route error isolation (prevents one broken page from crashing the sidebar)
+│   │       │   ├── ui/SkeletonCard.tsx   # Pulse-shimmer skeleton loader (React.memo)
+│   │       │   ├── CopyButton.tsx        # Copy-to-clipboard with tick animation (React.memo)
+│   │       │   ├── RetryButton.tsx       # Retry CTA for failed API calls (React.memo)
+│   │       │   ├── TrustBadge.tsx        # AI / Live API / Fallback / Community source labels (React.memo)
+│   │       │   ├── StructuredResult.tsx  # Consistent AI response card with badge + copy + disclaimer
+│   │       │   ├── OnboardingModal.tsx   # First-visit walkthrough modal
+│   │       │   ├── ErrorBoundary.tsx     # Per-route error isolation
 │   │       │   ├── LoadingSpinner.tsx    # Full-screen spinner with message overlay
 │   │       │   ├── EmptyState.tsx        # Illustrated empty state with action button
 │   │       │   └── ErrorMessage.tsx      # Styled inline error banner with retry CTA
