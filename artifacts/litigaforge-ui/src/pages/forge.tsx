@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -667,6 +667,171 @@ export default function Forge() {
              </ul>
           </div>
         </div>
+      </div>
+
+      {/* ── SEO Content ─────────────────────────────────────────────────────── */}
+      <div className="mt-24 border-t border-border/40 pt-16 space-y-20 text-sm text-muted-foreground">
+
+        {/* 1 · About */}
+        <section aria-labelledby="about-heading">
+          <h2 id="about-heading" className="text-2xl font-bold text-foreground mb-4">
+            AI-Powered Legal Help for Telangana &amp; Andhra Pradesh
+          </h2>
+          <p className="max-w-3xl leading-relaxed">
+            LitigaForge is an <strong>advocate matching and legal AI platform</strong> built
+            specifically for clients and lawyers in Telangana and Andhra Pradesh. Our
+            AI-powered engine connects you with <strong>verified Hyderabad lawyers</strong> and
+            advocates across the region, analyses your case facts against{" "}
+            <strong>16 government API chains</strong> — including live{" "}
+            <strong>eCourts integration</strong> for CNR lookup and hearing dates — and
+            synthesises a full legal strategy using Claude, Gemini, and GPT. Whether you need
+            a criminal lawyer, a property dispute advocate, or family law counsel, LitigaForge
+            is the fastest way to access <strong>legal AI in India</strong> without paying
+            consultation fees upfront.
+          </p>
+        </section>
+
+        {/* 2 · How It Works */}
+        <section aria-labelledby="how-heading">
+          <h2 id="how-heading" className="text-xl font-bold text-foreground mb-8">
+            How It Works
+          </h2>
+          <ol className="grid md:grid-cols-3 gap-8 list-none">
+            {[
+              {
+                step: "1",
+                title: "Describe Your Case",
+                body: "Type your case facts in plain language — names, dates, sections, CNR numbers. The Forge extracts every legal entity automatically.",
+              },
+              {
+                step: "2",
+                title: "AI Matches You with Verified Advocates",
+                body: "Our matching engine scores lawyers 0–100 on practice area, district, experience, and availability. You see AI explanations for every score.",
+              },
+              {
+                step: "3",
+                title: "Get Legal Strategy in Minutes",
+                body: "Multi-AI synthesis (Claude → Gemini → GPT) generates arguments, precedents, and an actionable step-by-step strategy — all grounded in Indian law.",
+              },
+            ].map(({ step, title, body }) => (
+              <li key={step} className="flex gap-4">
+                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center">
+                  {step}
+                </span>
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">{title}</h3>
+                  <p className="leading-relaxed">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* 3 · Legal Tools */}
+        <section aria-labelledby="tools-heading">
+          <h2 id="tools-heading" className="text-xl font-bold text-foreground mb-6">
+            Free Legal Tools
+          </h2>
+          <ul className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 list-none">
+            {[
+              {
+                href: "/ask",
+                title: "Ask a Legal Question",
+                desc: "Get instant AI answers on IPC, CrPC, consumer rights, property law — free, no login required.",
+              },
+              {
+                href: "/review",
+                title: "Analyze a Legal Document",
+                desc: "Paste any contract, FIR, or rental agreement and get a risk score, missing clauses, and recommendations.",
+              },
+              {
+                href: "/judgments",
+                title: "Search Court Judgments",
+                desc: "Find relevant case law and High Court precedents from Telangana and Andhra Pradesh.",
+              },
+              {
+                href: "/lawyers",
+                title: "Browse Verified Lawyers",
+                desc: "Search the advocate directory by district, practice area, and language across Telangana and AP.",
+              },
+            ].map(({ href, title, desc }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="block p-4 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-colors group"
+                >
+                  <span className="font-semibold text-foreground group-hover:text-primary transition-colors block mb-1">
+                    {title}
+                  </span>
+                  <span className="text-xs leading-relaxed">{desc}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 4 · Coverage Area */}
+        <section aria-labelledby="coverage-heading">
+          <h2 id="coverage-heading" className="text-xl font-bold text-foreground mb-4">
+            Coverage Area
+          </h2>
+          <p className="max-w-3xl leading-relaxed mb-4">
+            LitigaForge serves clients and advocates across all districts of{" "}
+            <strong>Telangana</strong> and <strong>Andhra Pradesh</strong>, with a focus on the
+            major urban and judicial centres:
+          </p>
+          <ul className="flex flex-wrap gap-2 list-none">
+            {[
+              "Hyderabad", "Secunderabad", "Warangal", "Karimnagar", "Nizamabad",
+              "Khammam", "Vijayawada", "Visakhapatnam", "Guntur", "Tirupati",
+              "Kurnool", "Nellore", "Telangana High Court", "Andhra Pradesh High Court",
+            ].map((city) => (
+              <li
+                key={city}
+                className="px-3 py-1 rounded-full bg-muted text-xs font-medium text-foreground/70 border border-border"
+              >
+                {city}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 5 · FAQ */}
+        <section aria-labelledby="faq-heading">
+          <h2 id="faq-heading" className="text-xl font-bold text-foreground mb-8">
+            Frequently Asked Questions
+          </h2>
+          <dl className="max-w-3xl space-y-8">
+            {[
+              {
+                q: "How do I find a lawyer in Hyderabad?",
+                a: "Post your case requirements on LitigaForge and our AI matches you with the top 10 verified advocates in Hyderabad and across Telangana — with match scores and detailed AI explanations for each match. You can also browse the full advocate directory filtered by district, practice area, and language.",
+              },
+              {
+                q: "Is LitigaForge free to use?",
+                a: "Yes. Legal Q&A, document analysis, judgment search, the advocate directory, and the free legal aid finder are all completely free. Professional (₹999/month) and Advocate Pro (₹2,499/month) plans unlock unlimited AI credits, priority matching, and advanced Forge features.",
+              },
+              {
+                q: "What types of cases does LitigaForge handle?",
+                a: "LitigaForge supports criminal cases (IPC/CrPC), civil disputes, property and real estate matters, family law (divorce, custody, maintenance), consumer court cases, labour and employment disputes, cheque bounce (NI Act 138), cyber crime, and constitutional matters — across all district and High Courts in Telangana and Andhra Pradesh.",
+              },
+              {
+                q: "How does AI legal document analysis work?",
+                a: "Paste your contract, FIR, rental agreement, power of attorney, or any legal document into the Document Analyzer. Our AI reads every clause, assigns a risk score out of 10, identifies missing standard clauses, flags jurisdiction issues under Indian law, and gives you prioritised recommendations — all in under 30 seconds.",
+              },
+              {
+                q: "What is free legal aid in Telangana?",
+                a: "Under the Legal Services Authorities Act 1987, free legal representation is available to women, SC/ST individuals, persons with disabilities, victims of trafficking, persons in custody, and those with annual income below ₹3 lakhs. In Telangana, the TSLSA and 10 District Legal Services Authorities (DLSAs) provide free legal aid. Call NALSA helpline 15100. Use our Free Legal Aid Finder for all DLSA contacts.",
+              },
+            ].map(({ q, a }) => (
+              <div key={q}>
+                <dt><h3 className="font-semibold text-foreground">{q}</h3></dt>
+                <dd className="mt-2 leading-relaxed">{a}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
       </div>
     </div>
   );
