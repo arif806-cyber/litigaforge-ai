@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PageHeader } from "@/components/PageHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase, FileText, User, MessageSquare,
@@ -301,27 +302,17 @@ export default function ClientDashboard() {
 
       {/* Main */}
       <main className="flex-1 h-full overflow-auto pb-16 md:pb-0">
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b px-5 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors" onClick={() => setDrawerOpen(true)}>
-              <Menu className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold text-foreground">Good day, {firstName}</h1>
-              <p className="text-[11px] text-muted-foreground">{clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setLocation("/subscription")} className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-amber-200 text-amber-700 bg-amber-50 transition-colors">
-              <Award className="w-3 h-3" /> {user?.subscription_tier === "free" ? "Free" : user?.subscription_tier === "professional" ? "Pro" : "Advocate Pro"}
-            </button>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary">
-              <User className="w-4 h-4 text-white" />
-            </div>
-          </div>
-        </header>
+        <PageHeader onMenuClick={() => setDrawerOpen(true)} />
 
         <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+          {/* Page greeting */}
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Good day, {firstName} 👋</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected
+            </p>
+          </div>
+
           {/* Quick Actions */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {quickActions.map((a) => {

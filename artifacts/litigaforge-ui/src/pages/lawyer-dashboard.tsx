@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PageHeader } from "@/components/PageHeader";
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
 const lawyerNav = [
@@ -421,44 +422,7 @@ export default function LawyerDashboard() {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* ── Top Nav ── */}
-        <header className="flex-shrink-0 h-14 flex items-center gap-3 px-4 md:px-6 shadow-md z-10 bg-sidebar text-sidebar-foreground">
-          <button className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 bg-sidebar-accent" onClick={() => setDrawerOpen(true)}>
-            <Menu className="w-4 h-4 text-sidebar-foreground" />
-          </button>
-          <div className="flex items-center gap-2 md:hidden">
-            <Scale className="w-5 h-5 text-sidebar-primary" />
-            <span className="font-bold text-sm text-sidebar-foreground">LitigaForge AI</span>
-          </div>
-          <div className="flex-1 max-w-xl mx-auto hidden sm:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground/45" />
-              <input type="text" placeholder="Search Cases, Clients or Laws..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-sm pl-9 pr-4 py-2 rounded-lg focus:outline-none transition-all bg-sidebar-accent/40 border border-sidebar-border/50 text-sidebar-foreground placeholder:text-sidebar-foreground/50"
-                onFocus={(e) => { e.currentTarget.style.borderColor = "hsl(var(--sidebar-primary) / 0.6)"; e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "hsl(var(--sidebar-border) / 0.5)"; e.currentTarget.style.background = "hsl(var(--sidebar-accent) / 0.4)"; }} />
-            </div>
-          </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="hidden lg:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-sidebar-accent/30 border border-sidebar-border/40 text-sidebar-foreground/65">
-              <BookOpen className="w-3 h-3" /> IPC · CrPC · eCourts
-            </span>
-            <button className="relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors bg-sidebar-accent">
-              <Bell className="w-4 h-4 text-sidebar-foreground" />
-              {pendingLeads.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center bg-sidebar-primary text-sidebar-primary-foreground">{pendingLeads.length}</span>
-              )}
-            </button>
-            <button onClick={() => setLocation("/subscription")} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors bg-sidebar-accent/40 border border-sidebar-border/40">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center bg-sidebar-primary">
-                <User className="w-3.5 h-3.5 text-sidebar-primary-foreground" />
-              </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-xs font-semibold leading-tight text-sidebar-foreground truncate max-w-[80px]">{user?.name ?? "Advocate"}</p>
-                <p className="text-[10px] leading-tight text-sidebar-foreground/50">{isAdvocatePro ? "Advocate Pro" : "Free Plan"}</p>
-              </div>
-            </button>
-          </div>
-        </header>
+        <PageHeader onMenuClick={() => setDrawerOpen(true)} />
 
         {/* ── Scrollable Body ── */}
         <div className="flex-1 overflow-auto">
