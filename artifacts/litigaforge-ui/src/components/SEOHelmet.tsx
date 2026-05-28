@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 
-const SITE_URL = "https://litigaforgeai.replit.app";
+const SITE_URL = "https://litiga-forge-ai.replit.app";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/opengraph.jpg`;
 
 const DEFAULT_KEYWORDS =
