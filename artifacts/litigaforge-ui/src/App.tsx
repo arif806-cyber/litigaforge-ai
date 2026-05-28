@@ -77,12 +77,12 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Login} />
-      <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
       <Route>
         <Layout>
           <Switch>
             <Route path="/"             component={() => <ProtectedRoute component={Forge} />} />
             <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
+            <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
             <Route path="/cases"        component={() => <ErrorBoundary section="cases"><Cases /></ErrorBoundary>} />
             <Route path="/cases/:id"    component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
             <Route path="/chains"       component={() => <ErrorBoundary section="chains"><Chains /></ErrorBoundary>} />

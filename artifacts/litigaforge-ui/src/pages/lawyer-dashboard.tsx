@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Scale, Star, Briefcase, Users, FileText, BookOpen, User,
   Search, Bell, ChevronRight, Plus, Upload, CheckCircle2,
-  Menu, X, LogOut, MessageSquare, ExternalLink, Info,
+  X, LogOut, MessageSquare, ExternalLink, Info,
   FileSearch, Gavel, Phone, Award, AlertTriangle, IndianRupee,
   Shield, MapPin, Clock, XCircle, Loader2, Trash2, Sparkles,
   FolderOpen, PenSquare, ChevronDown, Check, Download, Share2, StickyNote, Send, Copy,
@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "@/components/PageHeader";
+
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
 const lawyerNav = [
@@ -166,7 +166,6 @@ export default function LawyerDashboard() {
   const [location] = useLocation();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
   const [statusMenuCaseId, setStatusMenuCaseId] = useState<number | null>(null);
@@ -181,7 +180,6 @@ export default function LawyerDashboard() {
   const [editingNotesDocId, setEditingNotesDocId] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
-  useEffect(() => { setDrawerOpen(false); }, [location]);
 
   // ── Verification polling ──
   useEffect(() => {
@@ -392,72 +390,10 @@ export default function LawyerDashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div className="flex min-h-full" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
 
-      {/* ── Mobile Overlay ── */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <>
-            <motion.div key="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 md:hidden" style={{ background: "rgba(0,0,0,0.6)" }}
-              onClick={() => setDrawerOpen(false)} />
-            <motion.aside key="drawer" initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed left-0 top-0 bottom-0 w-72 z-50 md:hidden shadow-2xl">
-              <button className="absolute top-4 right-4 z-10 w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.8)" }}
-                onClick={() => setDrawerOpen(false)}><X className="w-3.5 h-3.5" /></button>
-              <DashboardSidebar location={location} onNav={() => setDrawerOpen(false)} />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* ── Desktop Sidebar ── */}
-      <aside className="hidden md:flex w-60 lg:w-64 flex-shrink-0 flex-col shadow-lg">
-        <DashboardSidebar location={location} />
-      </aside>
-
-      {/* ── Main Column ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-
-        {/* ── Top Nav ── */}
-        <PageHeader onMenuClick={() => setDrawerOpen(true)} />
-
-        {/* ── Mobile Tab Bar ── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-          {([
-            { label: "Forge",    icon: Scale,     href: "/"         },
-            { label: "Cases",    icon: Briefcase, href: "/cases"     },
-            { label: "Requests", icon: Users,     href: "/matches"   },
-            { label: "Docs",     icon: FileText,  href: "/review"    },
-          ] as const).map(({ href, label, icon: Icon }) => {
-            const active = href === "/" ? location === "/" : location.startsWith(href);
-            return (
-              <button key={href} onClick={() => setLocation(href)}
-                className={cn("flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl transition-all duration-200 active:scale-95", active ? "text-primary" : "text-muted-foreground")}>
-                <div className={cn("flex items-center justify-center w-10 h-10 rounded-xl transition-all", active ? "bg-primary/10" : "")}>
-                  <Icon className={cn("w-[22px] h-[22px] transition-colors", active ? "text-primary" : "text-muted-foreground")} />
-                </div>
-                <span className={cn("text-[11px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>{label}</span>
-              </button>
-            );
-          })}
-          <button onClick={() => setDrawerOpen(true)}
-            className={cn("flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl active:scale-95 transition-all", location.startsWith("/lawyer-dashboard") ? "text-primary" : "text-muted-foreground")}>
-            <div className={cn("flex items-center justify-center w-10 h-10 rounded-xl transition-all", location.startsWith("/lawyer-dashboard") ? "bg-primary/10" : "")}>
-              <Menu className={cn("w-[22px] h-[22px]", location.startsWith("/lawyer-dashboard") ? "text-primary" : "text-muted-foreground")} />
-            </div>
-            <span className={cn("text-[11px] font-medium leading-none", location.startsWith("/lawyer-dashboard") ? "text-primary font-semibold" : "text-muted-foreground")}>More</span>
-          </button>
-        </nav>
-
-        {/* ── Scrollable Body ── */}
-        <div className="flex-1 overflow-auto">
-          <div className="flex h-full">
-
-            {/* ── Main Content ── */}
-            <main className="flex-1 min-w-0 overflow-auto px-4 md:px-6 py-5 pb-[72px] md:pb-5 space-y-5">
+      {/* ── Main Content ── */}
+      <main className="flex-1 min-w-0 px-4 md:px-6 py-5 space-y-5">
 
               {/* Welcome */}
               <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -779,11 +715,7 @@ export default function LawyerDashboard() {
                 </div>
               </div>
 
-            </aside>
-
-          </div>
-        </div>
-      </div>
+      </aside>
 
       {/* ── Add Case Modal ── */}
       <Modal open={showCaseModal} onClose={() => setShowCaseModal(false)} title="Add New Case">

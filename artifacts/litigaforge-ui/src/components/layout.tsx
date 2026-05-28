@@ -23,8 +23,12 @@ const clientNav = [
 ];
 
 const lawyerNav = [
-  { href: "/",                 label: "Forge",            icon: Scale },
   { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star },
+  { href: "/",                 label: "AI Forge",          icon: Scale },
+  { href: "/matches",          label: "Client Requests",  icon: Users },
+  { href: "/cases",            label: "Forged Cases",     icon: Gavel },
+  { href: "/review",           label: "Doc Analyzer",     icon: FileSearch },
+  { href: "/subscription",     label: "Profile & Plans",  icon: Crown },
 ];
 
 const commonNav = [
