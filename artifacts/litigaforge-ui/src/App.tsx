@@ -5,41 +5,50 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-provider";
-import Forge from "@/pages/forge";
-import Cases from "@/pages/cases";
-import CaseDetail from "@/pages/case-detail";
-import Chains from "@/pages/chains";
-import UseCases from "@/pages/use-cases";
-import Login from "@/pages/login";
-import Subscription from "@/pages/subscription";
-import Ask from "@/pages/ask";
-import Review from "@/pages/review";
-import Judgments from "@/pages/judgments";
-import LawyersPage from "@/pages/lawyers";
-import LegalAid from "@/pages/legal-aid";
-import NotFound from "@/pages/not-found";
-import PostCase from "@/pages/post-case";
-import MyCases from "@/pages/my-cases";
-import Matches from "@/pages/matches";
-import LegalChat from "@/pages/legal-chat";
-import AdminPage from "@/pages/admin";
-import LawyerDashboard from "@/pages/lawyer-dashboard";
-import ClientDashboard from "@/pages/client-dashboard";
-import DocumentsPage from "@/pages/documents";
-import FreeDocuments from "@/pages/free-documents";
-import DocumentTemplatePage from "@/pages/document-template";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Loader2, ShieldAlert } from "lucide-react";
-import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkipLink } from "@/components/SkipLink";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SEOHelmet } from "@/components/SEOHelmet";
+
+const Forge               = lazy(() => import("@/pages/forge"));
+const Cases               = lazy(() => import("@/pages/cases"));
+const CaseDetail          = lazy(() => import("@/pages/case-detail"));
+const Chains              = lazy(() => import("@/pages/chains"));
+const UseCases            = lazy(() => import("@/pages/use-cases"));
+const Login               = lazy(() => import("@/pages/login"));
+const Subscription        = lazy(() => import("@/pages/subscription"));
+const Ask                 = lazy(() => import("@/pages/ask"));
+const Review              = lazy(() => import("@/pages/review"));
+const Judgments           = lazy(() => import("@/pages/judgments"));
+const LawyersPage         = lazy(() => import("@/pages/lawyers"));
+const LegalAid            = lazy(() => import("@/pages/legal-aid"));
+const NotFound            = lazy(() => import("@/pages/not-found"));
+const PostCase            = lazy(() => import("@/pages/post-case"));
+const MyCases             = lazy(() => import("@/pages/my-cases"));
+const Matches             = lazy(() => import("@/pages/matches"));
+const LegalChat           = lazy(() => import("@/pages/legal-chat"));
+const AdminPage           = lazy(() => import("@/pages/admin"));
+const LawyerDashboard     = lazy(() => import("@/pages/lawyer-dashboard"));
+const ClientDashboard     = lazy(() => import("@/pages/client-dashboard"));
+const DocumentsPage       = lazy(() => import("@/pages/documents"));
+const FreeDocuments       = lazy(() => import("@/pages/free-documents"));
+const DocumentTemplatePage = lazy(() => import("@/pages/document-template"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 2, staleTime: 30000 },
   },
 });
+
+function PageLoader() {
+  return (
+    <div className="h-full flex items-center justify-center py-32">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, loading } = useAuth();
@@ -74,39 +83,41 @@ function Router() {
   }, [user, loading, setLocation]);
 
   return (
-    <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Login} />
-      <Route>
-        <Layout>
-          <Switch>
-            <Route path="/"             component={() => <ProtectedRoute component={Forge} />} />
-            <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
-            <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
-            <Route path="/cases"        component={() => <ErrorBoundary section="cases"><Cases /></ErrorBoundary>} />
-            <Route path="/cases/:id"    component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
-            <Route path="/chains"       component={() => <ErrorBoundary section="chains"><Chains /></ErrorBoundary>} />
-            <Route path="/use-cases"    component={() => <ErrorBoundary section="use-cases"><UseCases /></ErrorBoundary>} />
-            <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
-            <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
-            <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
-            <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />
-            <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />
-            <Route path="/legal-aid"    component={() => <ErrorBoundary section="legal-aid"><LegalAid /></ErrorBoundary>} />
-            <Route path="/post-case"    component={() => <ErrorBoundary section="post-case"><ProtectedRoute component={PostCase} /></ErrorBoundary>} />
-            <Route path="/my-cases"     component={() => <ErrorBoundary section="my-cases"><ProtectedRoute component={MyCases} /></ErrorBoundary>} />
-            <Route path="/matches"      component={() => <ErrorBoundary section="matches"><ProtectedRoute component={Matches} /></ErrorBoundary>} />
-            <Route path="/documents"    component={() => <ErrorBoundary section="documents"><ProtectedRoute component={DocumentsPage} /></ErrorBoundary>} />
-            <Route path="/legal-chat"   component={() => <ErrorBoundary section="legal-chat"><ProtectedRoute component={LegalChat} /></ErrorBoundary>} />
-            <Route path="/free-documents" component={() => <ErrorBoundary section="free-documents"><FreeDocuments /></ErrorBoundary>} />
-            <Route path="/free-documents/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
-            <Route path="/document-template/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
-            <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
-            <Route component={NotFound} />
-          </Switch>
-        </Layout>
-      </Route>
-    </Switch>
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Login} />
+        <Route>
+          <Layout>
+            <Switch>
+              <Route path="/"             component={() => <ProtectedRoute component={Forge} />} />
+              <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
+              <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
+              <Route path="/cases"        component={() => <ErrorBoundary section="cases"><Cases /></ErrorBoundary>} />
+              <Route path="/cases/:id"    component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
+              <Route path="/chains"       component={() => <ErrorBoundary section="chains"><Chains /></ErrorBoundary>} />
+              <Route path="/use-cases"    component={() => <ErrorBoundary section="use-cases"><UseCases /></ErrorBoundary>} />
+              <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
+              <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
+              <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
+              <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />
+              <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />
+              <Route path="/legal-aid"    component={() => <ErrorBoundary section="legal-aid"><LegalAid /></ErrorBoundary>} />
+              <Route path="/post-case"    component={() => <ErrorBoundary section="post-case"><ProtectedRoute component={PostCase} /></ErrorBoundary>} />
+              <Route path="/my-cases"     component={() => <ErrorBoundary section="my-cases"><ProtectedRoute component={MyCases} /></ErrorBoundary>} />
+              <Route path="/matches"      component={() => <ErrorBoundary section="matches"><ProtectedRoute component={Matches} /></ErrorBoundary>} />
+              <Route path="/documents"    component={() => <ErrorBoundary section="documents"><ProtectedRoute component={DocumentsPage} /></ErrorBoundary>} />
+              <Route path="/legal-chat"   component={() => <ErrorBoundary section="legal-chat"><ProtectedRoute component={LegalChat} /></ErrorBoundary>} />
+              <Route path="/free-documents" component={() => <ErrorBoundary section="free-documents"><FreeDocuments /></ErrorBoundary>} />
+              <Route path="/free-documents/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
+              <Route path="/document-template/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
+              <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
+              <Route component={NotFound} />
+            </Switch>
+          </Layout>
+        </Route>
+      </Switch>
+    </Suspense>
   );
 }
 

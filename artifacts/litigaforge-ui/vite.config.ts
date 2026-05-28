@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import compression from "vite-plugin-compression2";
 
 const rawPort = process.env.PORT;
 
@@ -32,6 +33,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    compression({ algorithm: "gzip" }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -57,14 +59,14 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         manualChunks: {
-          "react-vendor": ["react", "react-dom"],
-          "motion": ["framer-motion"],
-          "query": ["@tanstack/react-query"],
-          "ui": ["lucide-react", "wouter"],
+          vendor: ["react", "react-dom"],
+          motion: ["framer-motion"],
+          query: ["@tanstack/react-query"],
+          icons: ["lucide-react"],
         },
       },
     },
