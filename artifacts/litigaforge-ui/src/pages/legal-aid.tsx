@@ -64,6 +64,52 @@ export default function LegalAid() {
     staleTime: 3600000,
   });
 
+  const govSchema = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "GovernmentService",
+        "name": "NALSA Free Legal Aid Helpline",
+        "description": "Free legal aid provided by the National Legal Services Authority to SC/ST, women, children, persons in police custody, and citizens with annual income below ₹3,00,000.",
+        "provider": {
+          "@type": "GovernmentOrganization",
+          "name": "National Legal Services Authority (NALSA)",
+          "url": "https://nalsa.gov.in",
+        },
+        "telephone": "15100",
+        "serviceType": "Free Legal Aid",
+        "areaServed": { "@type": "Country", "name": "India" },
+        "availableChannel": {
+          "@type": "ServiceChannel",
+          "servicePhone": {
+            "@type": "ContactPoint",
+            "telephone": "15100",
+            "contactType": "customer service",
+            "availableLanguage": ["English", "Hindi", "Telugu"],
+          },
+        },
+      },
+      ...(contacts?.districts ?? []).map(d => ({
+        "@type": "GovernmentService",
+        "name": d.dlsa,
+        "description": `District Legal Services Authority providing free legal aid in ${d.district}, Telangana`,
+        "provider": {
+          "@type": "GovernmentOrganization",
+          "name": d.dlsa,
+        },
+        "telephone": d.phone,
+        "serviceType": "Free Legal Aid",
+        "areaServed": { "@type": "City", "name": d.district, "containedInPlace": { "@type": "State", "name": "Telangana" } },
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": d.address,
+          "addressRegion": "Telangana",
+          "addressCountry": "IN",
+        },
+      })),
+    ],
+  };
+
   const incomeOpt = INCOME_OPTIONS.find(o => o.id === income);
   const catOpt = CATEGORY_OPTIONS.find(o => o.id === category);
 
@@ -96,11 +142,12 @@ export default function LegalAid() {
   return (
     <PageShell title="Free Legal Aid" subtitle="Check if you qualify for free legal aid under NALSA and find your nearest Telangana DLSA office." icon={<Heart className="w-6 h-6 text-primary" />}>
       <SEOHelmet
-      title="Free Legal Aid Contacts Telangana | LitigaForge"
-      description="Find free legal aid in Telangana and Andhra Pradesh. NALSA eligibility checker, TSLSA helplines, all 8 DLSA district contacts. Toll-free: 15100."
-      canonical="/legal-aid"
-      keywords="free legal aid Telangana, NALSA helpline, TSLSA contact, DLSA Hyderabad, legal aid eligibility India, free lawyer government scheme"
-    />
+        title="Free Legal Aid Contacts Telangana | LitigaForge"
+        description="Find free legal aid in Telangana and Andhra Pradesh. NALSA eligibility checker, TSLSA helplines, all 8 DLSA district contacts. Toll-free: 15100."
+        canonical="/legal-aid"
+        keywords="free legal aid Telangana, NALSA helpline, TSLSA contact, DLSA Hyderabad, legal aid eligibility India, free lawyer government scheme"
+        structuredData={govSchema}
+      />
 
       <div className="space-y-8">
         {/* Eligibility wizard */}

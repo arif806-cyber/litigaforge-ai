@@ -109,6 +109,21 @@ export default function Ask() {
     staleTime: 30000,
   });
 
+  const qaSchema = (qaList?.questions?.length ?? 0) > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": qaList!.questions.slice(0, 10).map(item => ({
+          "@type": "Question",
+          "name": item.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": item.ai_answer,
+          },
+        })),
+      }
+    : undefined;
+
   const askMutation = useMutation({
     mutationFn: (data: { question: string; category: string }) =>
       apiFetch("/ask", { method: "POST", body: JSON.stringify(data) }),
@@ -133,6 +148,7 @@ export default function Ask() {
         description="Ask any legal question and get an instant AI-powered answer based on Indian law — IPC, CrPC, consumer rights, property, family law. Free. No login required."
         canonical="/ask"
         keywords="ask lawyer online free India, legal question answer Hindi, IPC section help, consumer court query, free legal advice Hyderabad"
+        structuredData={qaSchema}
       />
 
       <div className="space-y-10">

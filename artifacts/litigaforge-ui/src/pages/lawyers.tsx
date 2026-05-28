@@ -34,6 +34,8 @@ interface Lawyer {
   languages: string[];
   experience_years: number;
   rating: number;
+  review_count?: number;
+  hourly_rate?: number;
   bio: string;
   verified: boolean;
 }
@@ -316,6 +318,37 @@ export default function LawyersPage() {
     staleTime: 60000,
   });
 
+  const lawyersStructuredData = (data?.lawyers?.length ?? 0) > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Verified Lawyers — Telangana & Andhra Pradesh",
+        "description": "AI-matched verified advocates listed by district and practice area on LitigaForge AI",
+        "itemListElement": (data.lawyers as Lawyer[]).slice(0, 20).map((l, i) => ({
+          "@type": "ListItem",
+          "position": i + 1,
+          "item": {
+            "@type": "LegalService",
+            "name": l.name,
+            "description": l.bio || l.practice_areas.join(", ") || "Verified advocate",
+            "areaServed": l.district,
+            ...(l.hourly_rate ? { "priceRange": `₹${l.hourly_rate}/hr` } : {}),
+            ...(l.rating > 0 && (l.review_count ?? 0) > 0
+              ? {
+                  "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": l.rating,
+                    "reviewCount": l.review_count,
+                    "bestRating": 5,
+                    "worstRating": 1,
+                  },
+                }
+              : {}),
+          },
+        })),
+      }
+    : undefined;
+
   return (
     <PageShell title="Advocate Directory" subtitle="Verified Telangana & AP advocates — filter by district, practice area, and language." icon={<Users className="w-6 h-6 text-primary" />}
       action={user?.role === "lawyer" ? (
@@ -329,6 +362,7 @@ export default function LawyersPage() {
           description="Search verified advocates in Hyderabad, Telangana, and Andhra Pradesh. Filter by district, practice area, language, and ratings. View bar registration, hourly rates, and contact directly."
           canonical="/lawyers"
           keywords="find lawyer Hyderabad, verified advocate Telangana, advocate directory Andhra Pradesh, best criminal lawyer Hyderabad, family lawyer Telangana, property lawyer AP"
+          structuredData={lawyersStructuredData}
         />
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
