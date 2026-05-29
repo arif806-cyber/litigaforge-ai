@@ -106,100 +106,312 @@ function Navbar() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   HERO
+   HERO — split layout: editorial left · AI match card right
 ══════════════════════════════════════════════════════════ */
+
+/** Animated score arc (SVG ring) */
+function ScoreRing({ score }: { score: number }) {
+  const r = 32, circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  return (
+    <svg width="84" height="84" viewBox="0 0 84 84" className="rotate-[-90deg]">
+      <circle cx="42" cy="42" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+      <motion.circle
+        cx="42" cy="42" r={r} fill="none"
+        stroke="url(#scoreGrad)" strokeWidth="6"
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        initial={{ strokeDashoffset: circ }}
+        animate={{ strokeDashoffset: circ - dash }}
+        transition={{ duration: 1.4, delay: 0.9, ease: "easeOut" }}
+      />
+      <defs>
+        <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#3b82f6" />
+          <stop offset="100%" stopColor="#a78bfa" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/** Floating AI match result card */
+function MatchCard() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 32, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.7, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        background: "rgba(15,23,42,0.85)",
+        border: "1px solid rgba(59,130,246,0.22)",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)",
+        backdropFilter: "blur(20px)",
+      }}
+      className="w-full max-w-sm rounded-2xl overflow-hidden"
+    >
+      {/* Card header */}
+      <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-semibold" style={{ color: "#94a3b8" }}>AI Match Result</span>
+        </div>
+        <div style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.25)" }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full">
+          <Sparkles className="w-3 h-3" style={{ color: "#60a5fa" }} />
+          <span className="text-[10px] font-bold" style={{ color: "#93c5fd" }}>Claude + Gemini</span>
+        </div>
+      </div>
+
+      {/* Score + lawyer */}
+      <div className="px-5 py-5">
+        <div className="flex items-center gap-4 mb-5">
+          {/* Score ring */}
+          <div className="relative flex-shrink-0">
+            <ScoreRing score={96} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center rotate-90" style={{ top: 0 }}>
+              <span className="text-xl font-extrabold text-white leading-none">96</span>
+              <span className="text-[9px] font-semibold" style={{ color: "#64748b" }}>/ 100</span>
+            </div>
+          </div>
+          {/* Lawyer info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-bold text-white text-[15px]">Adv. Priya Sharma</span>
+              <BadgeCheck className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#34d399" }} />
+            </div>
+            <p className="text-xs mb-2" style={{ color: "#64748b" }}>Criminal Law · Hyderabad · 12 yrs</p>
+            <div className="flex flex-wrap gap-1.5">
+              {["IPC Cases", "Telugu", "Hindi", "English"].map(t => (
+                <span key={t} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* AI explanation */}
+        <div className="rounded-xl p-3.5 mb-4" style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(59,130,246,0.14)" }}>
+          <p className="text-xs leading-relaxed" style={{ color: "#93c5fd" }}>
+            <span className="font-semibold">Why matched:</span> Specialises in IPC §420 fraud cases with 94% success rate in Hyderabad district. High client satisfaction in Telugu-speaking cases. Available this week.
+          </p>
+        </div>
+
+        {/* Status row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-xs font-medium" style={{ color: "#34d399" }}>Available Now</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {[1,2,3,4,5].map(s => (
+                <Star key={s} className="w-3 h-3" style={{ fill: s <= 5 ? "#f59e0b" : "none", color: "#f59e0b" }} />
+              ))}
+            </div>
+          </div>
+          <span className="text-xs font-semibold" style={{ color: "#60a5fa" }}>₹1,500/hr</span>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="px-5 pb-5 flex gap-2.5">
+        <button className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-opacity hover:opacity-90"
+          style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 0 16px rgba(37,99,235,0.35)" }}>
+          Accept Match
+        </button>
+        <button className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors"
+          style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
+          View Profile
+        </button>
+      </div>
+
+      {/* Footer label */}
+      <div className="px-5 pb-4 text-center">
+        <p className="text-[10px]" style={{ color: "#334155" }}>9 more matches ranked by AI · Updated just now</p>
+      </div>
+    </motion.div>
+  );
+}
+
 function Hero() {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center text-center overflow-hidden px-5 pt-16">
-      {/* Background glow orbs */}
-      <GlowOrb className="w-[600px] h-[600px] top-[-100px] left-1/2 -translate-x-1/2 opacity-20" style={{ background: "radial-gradient(circle, #1d4ed8, transparent)" } as React.CSSProperties} />
-      <GlowOrb className="w-[400px] h-[400px] bottom-0 left-[-100px] opacity-10" style={{ background: "radial-gradient(circle, #7c3aed, transparent)" } as React.CSSProperties} />
-      <GlowOrb className="w-[300px] h-[300px] bottom-20 right-[-80px] opacity-10" style={{ background: "radial-gradient(circle, #f59e0b, transparent)" } as React.CSSProperties} />
+    <section className="relative min-h-screen flex items-center overflow-hidden px-5 pt-20 pb-12">
+      {/* ── Background ── */}
+      {/* Deep radial glow — blue left, purple right, gold bottom-right */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-120px] left-[-100px] w-[700px] h-[700px] rounded-full opacity-[0.18]"
+          style={{ background: "radial-gradient(circle, #1d4ed8, transparent 65%)" }} />
+        <div className="absolute top-[-80px] right-[-120px] w-[500px] h-[500px] rounded-full opacity-[0.1]"
+          style={{ background: "radial-gradient(circle, #7c3aed, transparent 65%)" }} />
+        <div className="absolute bottom-0 right-[5%] w-[350px] h-[350px] rounded-full opacity-[0.09]"
+          style={{ background: "radial-gradient(circle, #f59e0b, transparent 65%)" }} />
+        {/* Dot grid */}
+        <div className="absolute inset-0 opacity-[0.025]"
+          style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+        {/* Horizontal separator glow at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.25), rgba(167,139,250,0.2), transparent)" }} />
+      </div>
 
-      {/* Subtle grid overlay */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+      {/* ── Content ── */}
+      <div className="relative z-10 max-w-6xl mx-auto w-full flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
 
-      <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center gap-6">
-        {/* Badge */}
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.1 }}
-          style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(59,130,246,0.3)" }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full">
-          <Sparkles className="w-3.5 h-3.5" style={{ color: "#60a5fa" }} />
-          <span className="text-xs font-semibold tracking-wide" style={{ color: "#93c5fd" }}>AI-POWERED LEGAL PLATFORM · TELANGANA & AP</span>
-        </motion.div>
+        {/* ──────────── LEFT: Editorial copy ──────────── */}
+        <div className="flex-1 flex flex-col items-start text-left max-w-xl">
 
-        {/* Headline */}
-        <motion.h1 variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.18 }}
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.08] tracking-tight text-white">
-          Your Legal Problem.{" "}
-          <span className="block" style={{ background: "linear-gradient(135deg, #3b82f6 0%, #818cf8 50%, #f59e0b 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-            Solved by AI.
-          </span>
-          <span className="block text-white">Connected to Experts.</span>
-        </motion.h1>
+          {/* Overline badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}
+            style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(59,130,246,0.28)" }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: "#93c5fd" }}>
+              India's Legal AI Platform · TG &amp; AP
+            </span>
+          </motion.div>
 
-        {/* Subtitle */}
-        <motion.p variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.26 }}
-          className="text-base md:text-lg max-w-2xl leading-relaxed" style={{ color: "#94a3b8" }}>
-          LitigaForge AI matches clients with verified lawyers across Telangana &amp; Andhra Pradesh using a 0-100 AI scoring engine — backed by Claude, Gemini &amp; GPT. Post your case anonymously, get matched in minutes.
-        </motion.p>
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.13, ease: [0.22, 1, 0.36, 1] }}
+            className="text-4xl sm:text-5xl lg:text-[3.6rem] xl:text-[4rem] font-extrabold leading-[1.06] tracking-tight mb-5">
+            <span className="text-white">Legal Intelligence</span>
+            <br />
+            <span style={{
+              background: "linear-gradient(120deg, #60a5fa 0%, #818cf8 45%, #c084fc 75%, #f59e0b 100%)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+            }}>
+              Built for Telangana &amp; AP
+            </span>
+          </motion.h1>
 
-        {/* CTAs */}
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.34 }}
-          className="flex flex-col sm:flex-row items-center gap-3 mt-2">
-          <Link href="/login"
-            style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 0 32px rgba(37,99,235,0.45), 0 4px 16px rgba(0,0,0,0.4)" }}
-            className="group flex items-center gap-2 px-7 py-3.5 rounded-xl text-white font-bold text-[15px] hover:opacity-90 transition-all hover:scale-[1.02]">
-            Get Started Free
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-          <Link href="/lawyers"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-            className="flex items-center gap-2 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] hover:bg-white/10 transition-all">
-            <Users className="w-4 h-4" style={{ color: "#60a5fa" }} />
-            Browse Lawyers
-          </Link>
-        </motion.div>
+          {/* Subheadline */}
+          <motion.p
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.22 }}
+            className="text-[17px] leading-relaxed mb-8 font-medium" style={{ color: "#94a3b8", maxWidth: "44ch" }}>
+            Post your case, get AI-matched with a verified advocate in minutes, and navigate every step of the legal process with confidence.
+          </motion.p>
 
-        {/* Trust row */}
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.42 }}
-          className="flex flex-wrap items-center justify-center gap-6 mt-4">
-          {[
-            { icon: BadgeCheck, label: "Verified Lawyers", color: "#34d399" },
-            { icon: Zap,       label: "AI-Scored Matches",  color: "#60a5fa" },
-            { icon: Heart,     label: "Free to Start",      color: "#f472b6" },
-            { icon: Globe,     label: "TG & AP Coverage",   color: "#fbbf24" },
-          ].map(({ icon: Icon, label, color }) => (
-            <div key={label} className="flex items-center gap-2">
-              <Icon className="w-4 h-4" style={{ color }} />
-              <span className="text-sm font-medium" style={{ color: "#cbd5e1" }}>{label}</span>
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mb-9">
+            <Link href="/login"
+              style={{ background: "linear-gradient(135deg, #1e40af, #2563eb)", boxShadow: "0 0 36px rgba(37,99,235,0.5), 0 6px 20px rgba(0,0,0,0.45)" }}
+              className="group flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-white font-bold text-[15px] hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.99]">
+              Get Started Free
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+            <a href="#demo"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+              className="group flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] hover:bg-white/[0.09] transition-all">
+              {/* Play circle */}
+              <span className="flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0 transition-transform group-hover:scale-110"
+                style={{ background: "rgba(59,130,246,0.2)", border: "1px solid rgba(59,130,246,0.35)" }}>
+                <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
+                  <path d="M1 1.5L9 6L1 10.5V1.5Z" fill="#60a5fa" />
+                </svg>
+              </span>
+              Watch 60-sec Demo
+            </a>
+          </motion.div>
+
+          {/* Trust signals */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.38 }}
+            className="flex flex-col gap-4">
+            {/* Avatar stack + review count */}
+            <div className="flex items-center gap-4">
+              <div className="flex -space-x-2.5">
+                {["#3b82f6","#8b5cf6","#f59e0b","#10b981","#f472b6"].map((c, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ring-2 flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${c}cc, ${c})`, ringColor: "#060d1a" }}>
+                    {["R","S","P","A","K"][i]}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5" style={{ fill: "#f59e0b", color: "#f59e0b" }} />)}
+                  <span className="text-sm font-bold text-white">4.9</span>
+                </div>
+                <p className="text-xs" style={{ color: "#475569" }}>Trusted by 200+ clients across TG &amp; AP</p>
+              </div>
             </div>
-          ))}
-        </motion.div>
 
-        {/* Stats bar */}
-        <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.5 }}
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-          className="mt-6 grid grid-cols-3 divide-x rounded-2xl overflow-hidden w-full max-w-lg"
-          style2={{ divideColor: "rgba(255,255,255,0.07)" }}>
-          {[
-            { value: "200+", label: "Verified Lawyers" },
-            { value: "3 AI", label: "Providers" },
-            { value: "16",   label: "Gov. API Chains" },
-          ].map(({ value, label }) => (
-            <div key={label} className="flex flex-col items-center py-4 px-2" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-              <span className="text-2xl font-extrabold text-white">{value}</span>
-              <span className="text-xs mt-0.5" style={{ color: "#64748b" }}>{label}</span>
+            {/* Inline chips */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "✓  Verified Advocates Only",        color: "#34d399" },
+                { label: "⚡  Free to start, no credit card", color: "#60a5fa" },
+                { label: "🔒  Anonymous case posting",         color: "#c084fc" },
+              ].map(({ label, color }) => (
+                <span key={label} className="text-[11px] font-semibold px-3 py-1 rounded-full"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color }}>
+                  {label}
+                </span>
+              ))}
             </div>
-          ))}
-        </motion.div>
+
+            {/* "Built for real legal workflows" trust line */}
+            <p className="text-xs font-medium flex items-center gap-2" style={{ color: "#334155" }}>
+              <span className="w-5 h-px bg-slate-700 flex-shrink-0" />
+              Built for real legal workflows in Telangana &amp; AP · Backed by eCourts + Mee Seva APIs
+            </p>
+          </motion.div>
+        </div>
+
+        {/* ──────────── RIGHT: Floating AI match card ──────────── */}
+        <div className="w-full lg:w-auto lg:flex-shrink-0 flex justify-center lg:justify-end">
+          {/* Outer glow wrapper */}
+          <div className="relative">
+            {/* Card glow */}
+            <div className="absolute -inset-6 rounded-3xl opacity-30 blur-2xl pointer-events-none"
+              style={{ background: "radial-gradient(ellipse, #2563eb 0%, #7c3aed 50%, transparent 80%)" }} />
+            <MatchCard />
+
+            {/* Floating mini-badge above the card */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.1, duration: 0.5 }}
+              style={{ background: "rgba(15,23,42,0.9)", border: "1px solid rgba(16,185,129,0.3)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
+              className="absolute -top-4 -right-4 flex items-center gap-2 px-3 py-2 rounded-xl">
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)" }}>
+                <Zap className="w-3.5 h-3.5" style={{ color: "#34d399" }} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-white leading-none">Matched in</p>
+                <p className="text-[10px] font-extrabold leading-none" style={{ color: "#34d399" }}>47 seconds</p>
+              </div>
+            </motion.div>
+
+            {/* Floating mini-badge below the card */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.3, duration: 0.5 }}
+              style={{ background: "rgba(15,23,42,0.9)", border: "1px solid rgba(245,158,11,0.3)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
+              className="absolute -bottom-4 -left-4 flex items-center gap-2.5 px-3 py-2 rounded-xl">
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)" }}>
+                <Shield className="w-3.5 h-3.5" style={{ color: "#fbbf24" }} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-white leading-none">Bar Verified</p>
+                <p className="text-[10px]" style={{ color: "#64748b" }}>AP State Bar Council</p>
+              </div>
+            </motion.div>
+          </div>
+        </div>
       </div>
 
       {/* Scroll hint */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-        <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-500 to-transparent" />
-        <span className="text-xs" style={{ color: "#475569" }}>Scroll to explore</span>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5">
+        <div className="w-px h-7 bg-gradient-to-b from-transparent via-slate-600 to-transparent" />
+        <span className="text-[11px]" style={{ color: "#334155" }}>Scroll to explore</span>
       </motion.div>
     </section>
   );
