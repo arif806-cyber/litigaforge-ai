@@ -328,31 +328,6 @@ export default function Login() {
           <p className="text-center text-[11px] text-muted-foreground mt-6 font-medium">
             By continuing, you agree to our terms of service and privacy policy
           </p>
-
-          {/* Demo link */}
-          <div className="mt-4 flex items-center justify-center gap-3">
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
-            <a
-              href="/demo"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "0.45rem",
-                padding: "0.5rem 1.1rem", borderRadius: "999px",
-                background: "rgba(59,130,246,0.08)",
-                border: "1px solid rgba(59,130,246,0.22)",
-                color: "#60a5fa", fontSize: "0.8rem", fontWeight: 600,
-                textDecoration: "none", whiteSpace: "nowrap",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = "rgba(59,130,246,0.16)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "rgba(59,130,246,0.08)")}
-            >
-              <svg width="11" height="13" viewBox="0 0 11 13" fill="none">
-                <path d="M1 1.5L10 6.5L1 11.5V1.5Z" fill="#60a5fa" />
-              </svg>
-              Watch 60-sec Demo
-            </a>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.08)" }} />
-          </div>
         </motion.div>
       </div>
 
