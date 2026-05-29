@@ -73,40 +73,85 @@ export default function Login() {
     <div className="min-h-screen flex bg-background" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
       <SEOHelmet title={isSignIn ? "Sign In" : "Create Account"} description="Access LitigaForge AI legal tools." canonical="/login" />
 
-      {/* Left: Hero */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10">
-            <Scale className="w-4 h-4 text-amber-400" />
+      {/* Left: Hero panel — navy dark */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 relative overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #1a2744 0%, #0f1a35 60%, #0a1020 100%)" }}>
+
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
+          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+
+        {/* Glow orbs */}
+        <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
+
+        {/* Logo */}
+        <div className="relative flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.25)" }}>
+            <Scale className="w-5 h-5" style={{ color: "#f59e0b" }} />
           </div>
-          <span className="font-bold text-white text-sm tracking-tight">LitigaForge</span>
-        </div>
-        <div className="space-y-4">
-          <h2 className="text-3xl font-bold text-white leading-tight">
-            Legal intelligence<br />for Telangana & AP
-          </h2>
-          <p className="text-sm leading-relaxed text-white/60">
-            Connect with verified lawyers, analyze documents, search judgments, and get AI-powered legal strategy — all in one platform.
-          </p>
-          <div className="flex items-center gap-4 pt-2">
-            <div className="text-center">
-              <p className="text-xl font-bold text-white">16</p>
-              <p className="text-[11px] text-white/50">Gov APIs</p>
-            </div>
-            <div className="w-px h-8 bg-white/15" />
-            <div className="text-center">
-              <p className="text-xl font-bold text-white">3</p>
-              <p className="text-[11px] text-white/50">AI Engines</p>
-            </div>
-            <div className="w-px h-8 bg-white/15" />
-            <div className="text-center">
-              <p className="text-xl font-bold text-white">100+</p>
-              <p className="text-[11px] text-white/50">Lawyers</p>
-            </div>
+          <div>
+            <span className="font-bold text-white text-sm tracking-tight">LitigaForge</span>
+            <span className="font-bold text-sm" style={{ color: "#f59e0b" }}> AI</span>
           </div>
         </div>
-        <p className="text-[11px] text-white/30">
-          Trusted by advocates across Telangana & Andhra Pradesh
+
+        {/* Main copy */}
+        <div className="relative space-y-6">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full"
+              style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
+              Telangana &amp; AP Legal AI
+            </div>
+            <h2 className="text-3xl font-extrabold text-white leading-tight">
+              Legal intelligence<br />
+              <span style={{ background: "linear-gradient(90deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                built for your courts.
+              </span>
+            </h2>
+            <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
+              Connect with verified advocates, analyze documents, search TG &amp; AP judgments, and get AI legal strategy — all in one platform.
+            </p>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex items-center gap-5">
+            {[
+              { n: "16", label: "Gov APIs" },
+              { n: "3", label: "AI Models" },
+              { n: "100+", label: "Lawyers" },
+            ].map(({ n, label }, i, arr) => (
+              <div key={label} className="flex items-center gap-5">
+                <div className="text-center">
+                  <p className="text-lg font-extrabold text-white">{n}</p>
+                  <p className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+                </div>
+                {i < arr.length - 1 && <div className="w-px h-7" style={{ background: "rgba(255,255,255,0.12)" }} />}
+              </div>
+            ))}
+          </div>
+
+          {/* Trust badges */}
+          <div className="space-y-2.5">
+            {[
+              { icon: "✓", text: "Verified advocates with Bar Council IDs" },
+              { icon: "⚡", text: "AI-matched in under 2 minutes" },
+              { icon: "🔒", text: "Anonymous case posting available" },
+            ].map(({ icon, text }) => (
+              <div key={text} className="flex items-center gap-2.5">
+                <span className="text-[13px]">{icon}</span>
+                <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.5)" }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="relative text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+          Trusted by advocates across Telangana &amp; Andhra Pradesh
         </p>
       </div>
 
@@ -189,6 +234,7 @@ export default function Login() {
                     <label className="text-sm font-medium text-foreground">Full Name</label>
                     <input
                       type="text"
+                      autoComplete="name"
                       value={name}
                       onChange={(e) => { setName(e.target.value); setFieldErrors((p) => ({ ...p, name: "" })); }}
                       required={!isSignIn}
@@ -206,6 +252,7 @@ export default function Login() {
                 <label className="text-sm font-medium text-foreground">Email Address</label>
                 <input
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setFieldErrors((p) => ({ ...p, email: "" })); }}
                   required
@@ -222,6 +269,7 @@ export default function Login() {
                 <div className="relative">
                   <input
                     type={showPass ? "text" : "password"}
+                    autoComplete={isSignIn ? "current-password" : "new-password"}
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: "" })); }}
                     required
