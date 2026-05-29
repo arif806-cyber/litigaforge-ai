@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import {
   Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
@@ -206,6 +207,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { setDrawerOpen(false); }, [location]);
 
+  /* Lock body scroll while drawer is open — prevents background scroll
+     capture on Android Chrome that swallows the backdrop tap event */
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    if (drawerOpen) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [drawerOpen]);
+
   const { data: health } = useQuery({
     queryKey: ["health"],
     queryFn: () => apiFetch("/healthz"),
@@ -261,49 +270,53 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SidebarContent location={location} health={health} stats={stats} user={user} />
         </aside>
 
-        {/* Mobile backdrop */}
-        <AnimatePresence>
-          {drawerOpen && (
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden cursor-pointer"
-              onPointerDown={() => setDrawerOpen(false)}
-              aria-label="Close menu"
-              role="button"
-            />
-          )}
-        </AnimatePresence>
+        {/* Mobile drawer + backdrop — rendered via portal into document.body so
+            they have NO overflow-hidden ancestor; this fixes Android Chrome's
+            hit-testing bug where fixed children inside overflow:hidden containers
+            don't receive touch events correctly. */}
+        {typeof document !== "undefined" && createPortal(
+          <>
+            <AnimatePresence>
+              {drawerOpen && (
+                <motion.div
+                  key="backdrop"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 bg-black/60 z-[9998] cursor-pointer"
+                  onPointerDown={() => setDrawerOpen(false)}
+                  aria-label="Close menu"
+                  role="button"
+                />
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {drawerOpen && (
+                <motion.aside
+                  key="drawer"
+                  initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
+                  transition={{ type: "spring", stiffness: 350, damping: 32 }}
+                  className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-sidebar-border flex flex-col z-[9999] shadow-2xl"
+                >
+                  <button
+                    className="absolute top-3.5 right-3.5 flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors z-10"
+                    onClick={() => setDrawerOpen(false)}
+                    aria-label="Close menu"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <SidebarContent
+                    location={location} health={health} stats={stats}
+                    onNav={() => setDrawerOpen(false)} user={user}
+                  />
+                </motion.aside>
+              )}
+            </AnimatePresence>
+          </>,
+          document.body
+        )}
 
-        {/* Mobile drawer */}
-        <AnimatePresence>
-          {drawerOpen && (
-            <motion.aside
-              key="drawer"
-              initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 350, damping: 32 }}
-              className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-sidebar-border flex flex-col z-50 md:hidden shadow-2xl"
-            >
-              <button
-                className="absolute top-3.5 right-3.5 flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors z-50"
-                onClick={() => setDrawerOpen(false)}
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <SidebarContent
-                location={location} health={health} stats={stats}
-                onNav={() => setDrawerOpen(false)} user={user}
-              />
-            </motion.aside>
-          )}
-        </AnimatePresence>
-
-        {/* Main content — disable scroll capture while drawer is open on mobile */}
-        <main className={cn(
-          "flex-1 overflow-auto relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background",
-          drawerOpen && "overflow-hidden pointer-events-none"
-        )}>
+        {/* Main content */}
+        <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background">
           {/* Desktop sticky header */}
           <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card/80 backdrop-blur-md px-6 items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
