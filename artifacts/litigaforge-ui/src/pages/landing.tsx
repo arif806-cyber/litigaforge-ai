@@ -304,7 +304,7 @@ function Hero() {
               Get Started Free
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <a href="#demo"
+            <Link href="/demo"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
               className="group flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] hover:bg-white/[0.09] transition-all">
               {/* Play circle */}
@@ -315,7 +315,7 @@ function Hero() {
                 </svg>
               </span>
               Watch 60-sec Demo
-            </a>
+            </Link>
           </motion.div>
 
           {/* Trust signals */}
