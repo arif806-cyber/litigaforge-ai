@@ -475,44 +475,156 @@ function ProblemSection() {
 /* ══════════════════════════════════════════════════════════
    HOW IT WORKS
 ══════════════════════════════════════════════════════════ */
-const steps = [
-  { num: "01", icon: FileText,   color: "#3b82f6", title: "Post Your Case", desc: "Describe your legal situation. Choose to stay anonymous. Takes under 2 minutes." },
-  { num: "02", icon: Brain,      color: "#8b5cf6", title: "AI Analyses & Scores", desc: "Our multi-AI engine (Claude + Gemini + GPT) finds the top 10 matching lawyers and scores them 0-100." },
-  { num: "03", icon: Star,       color: "#f59e0b", title: "Review Proposals", desc: "Lawyers send proposals with their approach. AI explains each match score with transparent reasoning." },
-  { num: "04", icon: Gavel,      color: "#10b981", title: "Connect & Get Help", desc: "Accept the best match. Chat securely, share documents, and track your case in real time." },
+const howSteps = [
+  {
+    num: "01",
+    icon: MessageSquare,
+    color: "#3b82f6",
+    glow: "rgba(59,130,246,0.18)",
+    label: "Ask or Upload",
+    title: "Ask in Plain Language\nor Upload a Document",
+    desc: "Type your legal question in Telugu or English, paste case facts, or upload a sale deed, FIR, or agreement — no jargon needed.",
+    chips: ["Text question", "Upload PDF", "Case facts"],
+  },
+  {
+    num: "02",
+    icon: Brain,
+    color: "#8b5cf6",
+    glow: "rgba(139,92,246,0.18)",
+    label: "AI Understands",
+    title: "AI Maps Your Case\nto TG & AP Law",
+    desc: "Three AI models analyse your input against Telangana & AP statutes, court procedures, stamp duty tables, and Mee Seva workflows.",
+    chips: ["Regional context", "Statute mapping", "Court-aware"],
+  },
+  {
+    num: "03",
+    icon: Sparkles,
+    color: "#f59e0b",
+    glow: "rgba(245,158,11,0.18)",
+    label: "Get Answers + Strategy",
+    title: "Clear Answer with\na Legal Roadmap",
+    desc: "Get a plain-language answer, TG & AP High Court precedents, risk flags, and a step-by-step legal strategy — in seconds.",
+    chips: ["Risk score", "Precedents", "Next steps"],
+  },
+  {
+    num: "04",
+    icon: Zap,
+    color: "#10b981",
+    glow: "rgba(16,185,129,0.18)",
+    label: "Take Action",
+    title: "Download, Save or\nConnect with a Lawyer",
+    desc: "One-click to download a legal notice, save your case, or get AI-matched with a verified advocate in your district.",
+    chips: ["Download notice", "Find a lawyer", "Save & share"],
+  },
 ];
 
 function HowItWorks() {
   const { ref, inView } = useSection();
   return (
     <motion.section ref={ref} id="how" initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="relative py-24 px-5">
+      className="relative py-24 px-5 overflow-hidden">
+
+      {/* Faint horizontal rule at section top */}
+      <div className="absolute top-0 inset-x-0 h-px"
+        style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+
       <div className="max-w-5xl mx-auto">
-        <motion.div variants={fadeUp} className="text-center mb-14">
+
+        {/* ── Header ── */}
+        <motion.div variants={fadeUp} className="text-center mb-16">
           <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#60a5fa" }}>How It Works</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3">From Case to Lawyer in 4 Steps</h2>
-          <p className="mt-4 text-base max-w-lg mx-auto" style={{ color: "#64748b" }}>No phone calls, no directories. Just post, get matched, review, and connect.</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">
+            From Question to Action<br className="hidden md:block" />
+            <span style={{ color: "#334155" }}> in 4 Simple Steps.</span>
+          </h2>
+          <p className="mt-4 text-base max-w-md mx-auto" style={{ color: "#64748b" }}>
+            No phone calls, no directories — just ask and get results in seconds.
+          </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {steps.map(({ num, icon: Icon, color, title, desc }) => (
-            <motion.div key={num} variants={fadeUp}
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-              className="relative rounded-2xl p-6 group hover:bg-white/[0.05] transition-colors duration-300">
-              {/* Step number */}
-              <div className="absolute top-5 right-5 text-[11px] font-bold" style={{ color: "rgba(255,255,255,0.12)" }}>{num}</div>
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
-                <Icon className="w-5 h-5" style={{ color }} />
-              </div>
-              <h3 className="font-bold text-white text-[15px] mb-2">{title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "#64748b" }}>{desc}</p>
-              {/* Connector arrow — visible on lg */}
-              {num !== "04" && (
-                <ChevronRight className="hidden lg:block absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-5 z-10" style={{ color: "rgba(255,255,255,0.15)" }} />
-              )}
-            </motion.div>
-          ))}
+        {/* ── Steps ── */}
+        <div className="relative">
+
+          {/* Connecting gradient line (desktop only, passes through icon circles) */}
+          <div className="hidden lg:block absolute top-[27px] left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] h-px"
+            style={{ background: "linear-gradient(90deg, #3b82f6, #8b5cf6, #f59e0b, #10b981)", opacity: 0.22 }} />
+          <div className="hidden lg:block absolute top-[27px] left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] h-px"
+            style={{ background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.10) 0px, rgba(255,255,255,0.10) 5px, transparent 5px, transparent 12px)" }} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-4">
+            {howSteps.map(({ num, icon: Icon, color, glow, label, title, desc, chips }, i) => (
+              <motion.div key={num} variants={fadeUp}
+                className="group flex flex-col items-center text-center">
+
+                {/* ── Icon circle (sits on connecting line) ── */}
+                <div className="relative z-10 mb-4 flex-shrink-0">
+                  {/* Soft halo */}
+                  <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ background: glow, filter: "blur(10px)", transform: "scale(1.8)" }} />
+                  {/* Circle */}
+                  <div className="relative w-14 h-14 rounded-full flex items-center justify-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${color}25, ${color}10)`,
+                      border: `1.5px solid ${color}45`,
+                      boxShadow: `0 0 0 4px #080e1c, 0 0 0 5px ${color}22`,
+                    }}>
+                    <Icon className="w-6 h-6" style={{ color }} />
+                  </div>
+                  {/* Number badge */}
+                  <div className="absolute -top-1 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
+                    style={{ background: color, boxShadow: "0 0 0 2px #080e1c" }}>
+                    {i + 1}
+                  </div>
+                </div>
+
+                {/* Step label */}
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-3"
+                  style={{ color: `${color}99` }}>
+                  Step {num} · {label}
+                </p>
+
+                {/* Card */}
+                <div className="relative w-full rounded-2xl p-4 flex flex-col items-center flex-1 transition-all duration-300 group-hover:-translate-y-1"
+                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+
+                  {/* Hover glow overlay */}
+                  <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
+                    style={{ background: `radial-gradient(ellipse at 50% 0%, ${glow} 0%, transparent 70%)` }} />
+                  {/* Hover top accent */}
+                  <div className="absolute top-0 left-[20%] right-[20%] h-px rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-400"
+                    style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
+
+                  <h3 className="relative z-10 font-bold text-white text-[14px] leading-snug mb-2"
+                    style={{ whiteSpace: "pre-line" }}>
+                    {title}
+                  </h3>
+                  <p className="relative z-10 text-[12px] leading-relaxed" style={{ color: "#64748b" }}>
+                    {desc}
+                  </p>
+
+                  {/* "What you get" chips */}
+                  <div className="relative z-10 flex flex-wrap gap-1.5 justify-center mt-4 pt-3 w-full"
+                    style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    {chips.map(chip => (
+                      <span key={chip} className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full"
+                        style={{ background: `${color}12`, color: `${color}cc`, border: `1px solid ${color}22` }}>
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
+
+        {/* ── Bottom note ── */}
+        <motion.div variants={fadeUp} className="mt-12 text-center">
+          <p className="text-sm" style={{ color: "#334155" }}>
+            Takes under 2 minutes · Free to start · No account required for Legal Q&amp;A
+          </p>
+        </motion.div>
+
       </div>
     </motion.section>
   );
