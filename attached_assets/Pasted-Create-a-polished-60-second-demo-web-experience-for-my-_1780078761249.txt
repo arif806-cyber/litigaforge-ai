@@ -1,0 +1,84 @@
+Create a polished 60-second demo web experience for my legal-tech startup landing page, based on the attached mobile screenshot.
+
+Goal:
+Build a cinematic, premium, startup-style product demo that feels like a launch video but runs as a responsive webpage in Replit. The demo should auto-play like a 60-second product walkthrough using smooth scrolling, zoom sections, animated highlights, and elegant transitions. It should look great on mobile first, and also work on desktop.
+
+Product context:
+This is a legal-tech platform for Telangana and Andhra Pradesh. The landing page headline is “Legal Intelligence Built for Telangana & AP.” The core value proposition is: users can post their case, get AI-matched with a verified advocate in minutes, and navigate the legal process with confidence.
+
+Visual style:
+- Dark navy / deep blue premium UI
+- Electric blue glow accents
+- Modern SaaS / startup aesthetic
+- Trustworthy, polished, minimal, high-end
+- Smooth motion, subtle parallax, soft spotlight effects
+- No loud colors, no cheesy gradients, no clutter
+
+Build requirements:
+- Single-page HTML/CSS/JS app
+- Mobile-first responsive design
+- Auto-playing 60-second demo sequence
+- A visible play/replay button
+- Scene progress indicator
+- Smooth scroll-based or timed transitions
+- Use elegant cards, focus rings, glow effects, and motion overlays
+- Add light and dark polish but keep the look close to the screenshot
+- Do not use backend code
+
+Demo storyboard:
+1. Hero intro
+   - Show the main headline: “Legal Intelligence Built for Telangana & AP”
+   - Show supporting text about posting a case and getting AI-matched with a verified advocate in minutes
+   - Highlight two CTA buttons: “Get Started Free” and “Watch 60-sec Demo”
+
+2. Trust signals
+   - Animate in rating, trusted users, verified advocates only, free to start, no credit card, anonymous case posting
+   - Use subtle badge or chip animations
+
+3. Product flow
+   - Simulate a user clicking “Get Started Free”
+   - Show a simple 3-step flow:
+     Step 1: Post your case
+     Step 2: AI analyzes the case
+     Step 3: Match with the right advocate
+
+4. AI match result
+   - Focus on the advocate card
+   - Show a matched advocate named like “Adv. Priya Sharma”
+   - Include criminal law, Hyderabad, 12 years experience, languages, match score, why matched, rating, availability, and consultation fee
+   - Animate a glow or focus frame around key details
+
+5. Final CTA
+   - Return to the hero section
+   - Emphasize “Watch 60-sec Demo” and “Get Started Free”
+   - End with a strong premium finish
+
+Text overlays to use:
+- Post your case
+- Get matched in minutes
+- Verified advocates only
+- Built for Telangana & AP
+- Local expertise, faster legal help
+- Choose with confidence
+
+Motion rules:
+- Use smooth easing and elegant fades
+- Use staggered reveals
+- Use subtle zoom-in on important UI sections
+- Avoid over-animated effects
+- Respect prefers-reduced-motion
+
+Technical expectations:
+- Clean semantic HTML
+- Modern CSS with reusable variables
+- Vanilla JS only
+- Include mock data for the advocate card
+- Add a replay demo button
+- Add a progress timeline for the 60-second sequence
+- Keep the file self-contained and production-looking
+
+Important:
+- Use the attached screenshot as the visual reference
+- Recreate the same premium mobile landing-page feel, not a generic SaaS template
+- Make the page look like a real product demo I can show to investors or users
+- Prioritize polish, spacing, typography, and animation quality

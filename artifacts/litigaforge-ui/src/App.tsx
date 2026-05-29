@@ -39,6 +39,7 @@ const Blog                = lazy(() => import("@/pages/blog"));
 const BlogPost            = lazy(() => import("@/pages/blog-post"));
 const CityPage            = lazy(() => import("@/pages/city"));
 const LandingPage         = lazy(() => import("@/pages/landing"));
+const DemoPage            = lazy(() => import("@/pages/demo"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -90,6 +91,7 @@ function Router() {
     <Suspense fallback={<PageLoader />}>
       <Switch>
         <Route path="/landing" component={LandingPage} />
+        <Route path="/demo" component={DemoPage} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
         <Route>
