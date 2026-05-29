@@ -74,15 +74,19 @@ function NavItem({
 }) {
   const active = href === "/" ? location === "/" : location.startsWith(href);
   return (
-    <Link href={href} data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`} onClick={onClick}
+    <Link
+      href={href}
+      data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      onClick={onClick}
+      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       className={cn(
-        "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
+        "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
         active
           ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
           : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
       )}>
       <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "group-hover:text-sidebar-foreground")} />
-      <span className="tracking-wide relative z-10">{label}</span>
+      <span className="tracking-wide">{label}</span>
     </Link>
   );
 }
@@ -95,8 +99,9 @@ function AdminNavItem({ location, onNav }: { location: string; onNav?: () => voi
   const active = location.startsWith(href);
   return (
     <Link href={href} data-testid="nav-admin" onClick={onNav}
+      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       className={cn(
-        "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
+        "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
         active
           ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
           : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
