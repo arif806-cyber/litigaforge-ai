@@ -519,78 +519,357 @@ function HowItWorks() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   FEATURES
+   FEATURES — 5 premium cards, each with a live mini-preview
 ══════════════════════════════════════════════════════════ */
-const features = [
+
+/* ── Card 1 preview: Document risk scan ── */
+function DocIntelPreview() {
+  const flags = [
+    { dot: "#ef4444", label: "Encumbrance certificate missing" },
+    { dot: "#f59e0b", label: "POA clause — ambiguous language" },
+    { dot: "#34d399", label: "Registration stamp verified ✓" },
+  ];
+  return (
+    <div className="rounded-xl p-4 space-y-2.5" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(59,130,246,0.12)" }}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="w-8 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.2)" }}>
+          <FileSearch className="w-4 h-4" style={{ color: "#60a5fa" }} />
+        </div>
+        <div>
+          <p className="text-[12px] font-semibold text-white leading-none">Sale_Deed_Hyderabad.pdf</p>
+          <p className="text-[10px] mt-0.5" style={{ color: "#475569" }}>14 clauses · AI analysing…</p>
+        </div>
+        <div className="ml-auto w-2 h-2 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
+      </div>
+      {flags.map(({ dot, label }) => (
+        <div key={label} className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
+          <span className="text-[11px]" style={{ color: "#94a3b8" }}>{label}</span>
+        </div>
+      ))}
+      <div className="pt-2.5 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div className="flex justify-between text-[10px] mb-1.5">
+          <span style={{ color: "#475569" }}>Risk Score</span>
+          <span style={{ color: "#f59e0b" }}>67 / 100 · Medium Risk</span>
+        </div>
+        <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div className="h-full rounded-full" style={{ width: "67%", background: "linear-gradient(90deg, #34d399 0%, #f59e0b 70%, #ef4444 100%)" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Card 2 preview: Judgment search results ── */
+function JudgmentPreview() {
+  const results = [
+    { case: "Raju v. State of TG", year: "2023", section: "IPC §420", court: "Hyderabad HC" },
+    { case: "Devi v. Rajeshwar", year: "2021", section: "Reg. Act §17", court: "AP HC" },
+    { case: "K. Rao v. APIIC", year: "2019", section: "Land Acq. §24", court: "AP HC" },
+  ];
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(139,92,246,0.15)" }}>
+      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(139,92,246,0.08)", borderBottom: "1px solid rgba(139,92,246,0.12)" }}>
+        <Search className="w-3 h-3 flex-shrink-0" style={{ color: "#a78bfa" }} />
+        <span className="text-[11px] font-medium" style={{ color: "#c4b5fd" }}>fraud Hyderabad property 2021–2024</span>
+        <div className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>TG &amp; AP</div>
+      </div>
+      <div className="divide-y" style={{ divideColor: "rgba(255,255,255,0.04)" }}>
+        {results.map(({ case: c, year, section, court }) => (
+          <div key={c} className="px-3.5 py-2.5 flex items-start gap-2.5 group/row hover:bg-white/[0.02] transition-colors">
+            <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(139,92,246,0.12)" }}>
+              <Gavel className="w-3 h-3" style={{ color: "#a78bfa" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-white leading-tight truncate">{c}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#475569" }}>{court} · {section} · {year}</p>
+            </div>
+            <ChevronRight className="w-3 h-3 flex-shrink-0 mt-1 opacity-0 group-hover/row:opacity-100 transition-opacity" style={{ color: "#a78bfa" }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Card 3 preview: AI strategy steps ── */
+function StrategyPreview() {
+  const steps = [
+    { n: "01", text: "File FIR under IPC §420 & §406", done: true },
+    { n: "02", text: "Seek anticipatory bail order", done: true },
+    { n: "03", text: "File civil suit for ₹18L recovery", done: false },
+    { n: "04", text: "Attach movable property (Order 38)", done: false },
+  ];
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(245,158,11,0.15)" }}>
+      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(245,158,11,0.06)", borderBottom: "1px solid rgba(245,158,11,0.1)" }}>
+        <Zap className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#fbbf24" }} />
+        <span className="text-[11px] font-bold" style={{ color: "#fbbf24" }}>AI Strategy · Cheating Case · Hyderabad</span>
+        <div className="ml-auto flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px]" style={{ color: "#34d399" }}>Live</span>
+        </div>
+      </div>
+      <div className="p-3.5 space-y-2.5">
+        {steps.map(({ n, text, done }) => (
+          <div key={n} className="flex items-center gap-2.5">
+            <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-extrabold"
+              style={{ background: done ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.05)", color: done ? "#34d399" : "#475569", border: `1px solid ${done ? "rgba(52,211,153,0.3)" : "rgba(255,255,255,0.07)"}` }}>
+              {done ? <Check className="w-2.5 h-2.5" style={{ color: "#34d399" }} /> : n}
+            </div>
+            <span className="text-[11px]" style={{ color: done ? "#94a3b8" : "#cbd5e1", textDecoration: done ? "line-through" : "none", opacity: done ? 0.7 : 1 }}>{text}</span>
+          </div>
+        ))}
+      </div>
+      <div className="px-3.5 pb-3 flex items-center justify-between">
+        <span className="text-[10px]" style={{ color: "#475569" }}>2 of 4 steps complete</span>
+        <div className="flex-1 mx-3 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <div className="h-full rounded-full w-1/2" style={{ background: "linear-gradient(90deg, #f59e0b, #fbbf24)" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Card 4 preview: Notice draft snippet ── */
+function NoticePreview() {
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(52,211,153,0.15)" }}>
+      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(52,211,153,0.06)", borderBottom: "1px solid rgba(52,211,153,0.1)" }}>
+        <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#34d399" }} />
+        <span className="text-[11px] font-bold" style={{ color: "#34d399" }}>Legal Notice — Demand of Money</span>
+        <div className="ml-auto text-[10px]" style={{ color: "#475569" }}>60 sec</div>
+      </div>
+      <div className="p-3.5 space-y-2" style={{ fontFamily: "Georgia, serif" }}>
+        {[
+          { label: "TO", value: "Mr. Ramesh Kumar, Hyderabad" },
+          { label: "DATE", value: "29th May 2025" },
+          { label: "RE", value: "Recovery of ₹2,50,000/-" },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex gap-2">
+            <span className="text-[10px] font-bold w-10 flex-shrink-0" style={{ color: "#475569" }}>{label}</span>
+            <span className="text-[11px] text-white">{value}</span>
+          </div>
+        ))}
+        <div className="mt-2 text-[10px] leading-relaxed" style={{ color: "#64748b" }}>
+          Take notice that my client hereby demands repayment of the aforesaid sum within <span style={{ color: "#34d399" }}>15 days</span> from receipt hereof, failing which legal proceedings under the Negotiable Instruments Act…
+        </div>
+      </div>
+      <div className="px-3.5 pb-3 flex gap-2">
+        <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg" style={{ background: "rgba(52,211,153,0.15)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}>
+          Telugu Version ↓
+        </div>
+        <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
+          Download PDF
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Card 5 preview: Local knowledge base Q&A ── */
+function KnowledgePreview() {
+  const rows = [
+    { topic: "Stamp Duty (TG)", value: "6% on property > ₹30L", color: "#f472b6" },
+    { topic: "EC from MeeSeva", value: "₹25 · Ready in 2 hrs", color: "#f472b6" },
+    { topic: "RERA Complaint", value: "AP RERA · Form G", color: "#f472b6" },
+    { topic: "Motor Accident", value: "MACT · 8% annual int.", color: "#f472b6" },
+  ];
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(244,114,182,0.15)" }}>
+      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(244,114,182,0.06)", borderBottom: "1px solid rgba(244,114,182,0.1)" }}>
+        <Globe className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#f472b6" }} />
+        <span className="text-[11px] font-bold" style={{ color: "#f472b6" }}>TG &amp; AP Legal Knowledge Base</span>
+        <div className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: "rgba(244,114,182,0.15)", color: "#f472b6" }}>Live</div>
+      </div>
+      <div className="divide-y" style={{ divideColor: "rgba(255,255,255,0.04)" }}>
+        {rows.map(({ topic, value }) => (
+          <div key={topic} className="px-3.5 py-2 flex items-center justify-between gap-2 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[11px] font-medium" style={{ color: "#94a3b8" }}>{topic}</span>
+            <span className="text-[11px] font-semibold text-white text-right">{value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="px-3.5 py-2.5 flex items-center gap-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <MessageCircle className="w-3 h-3 flex-shrink-0" style={{ color: "#f472b6" }} />
+        <span className="text-[10px] italic" style={{ color: "#475569" }}>Ask anything about TG &amp; AP law in Telugu or English…</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Feature card renderer ── */
+type FeatureDef = {
+  id: string;
+  color: string;
+  glowColor: string;
+  icon: React.ElementType;
+  tag: string;
+  title: string;
+  desc: string;
+  href: string;
+  preview: React.ReactNode;
+  badge?: string;
+};
+
+const featureDefs: FeatureDef[] = [
   {
-    icon: Scale, color: "#3b82f6", gradient: "from-blue-600/20 to-blue-900/5",
-    title: "AI Legal Forge",
-    desc: "Paste your case facts. Our engine runs 16 government API chains and synthesises a full legal strategy using 3 AI models simultaneously.",
+    id: "doc",
+    color: "#3b82f6",
+    glowColor: "rgba(59,130,246,0.12)",
+    icon: FileSearch,
+    tag: "Document AI",
+    title: "AI Document Intelligence",
+    desc: "Upload any sale deed, EC, or agreement. AI flags risks, missing clauses, and compliance gaps — with a risk score in seconds.",
+    href: "/review",
+    preview: <DocIntelPreview />,
+    badge: "New",
+  },
+  {
+    id: "judgment",
+    color: "#a78bfa",
+    glowColor: "rgba(139,92,246,0.12)",
+    icon: Gavel,
+    tag: "Case Law",
+    title: "Regional Judgment Search",
+    desc: "Search 30+ years of Telangana & AP High Court rulings. AI surfaces the exact precedents that strengthen your argument.",
+    href: "/judgments",
+    preview: <JudgmentPreview />,
+  },
+  {
+    id: "strategy",
+    color: "#f59e0b",
+    glowColor: "rgba(245,158,11,0.1)",
+    icon: Brain,
+    tag: "AI Strategy",
+    title: "Smart Legal Strategy",
+    desc: "Describe your case. AI synthesises a step-by-step legal roadmap — sections, arguments, and court procedures — tailored for TG & AP.",
+    href: "/",
+    preview: <StrategyPreview />,
     badge: "Flagship",
   },
   {
-    icon: Sparkles, color: "#a78bfa", gradient: "from-violet-600/20 to-violet-900/5",
-    title: "Smart Lawyer Matching",
-    desc: "AI scores lawyers 0-100 based on specialisation, location, language, rating, and availability. No guesswork — just transparent ranked proposals.",
-    badge: "",
+    id: "notice",
+    color: "#34d399",
+    glowColor: "rgba(52,211,153,0.1)",
+    icon: FileText,
+    tag: "Drafting",
+    title: "Instant Legal Notice Drafting",
+    desc: "Generate court-ready notices in 60 seconds. Demand letters, vakalatnamas, FIR complaints — bilingual Telugu & English.",
+    href: "/free-documents",
+    preview: <NoticePreview />,
   },
   {
-    icon: MessageSquare, color: "#34d399", gradient: "from-emerald-600/20 to-emerald-900/5",
-    title: "AI Legal Chat",
-    desc: "Interactive drafting assistant with 4 document templates. Chat live with Claude or Gemini to draft contracts, FIRs, complaints, and more.",
-    badge: "",
-  },
-  {
-    icon: FileSearch, color: "#f59e0b", gradient: "from-amber-600/20 to-amber-900/5",
-    title: "Document Analyzer",
-    desc: "Paste any contract, FIR, or agreement. AI returns a risk score, flags missing clauses, and gives actionable recommendations in seconds.",
-    badge: "",
-  },
-  {
-    icon: BookOpen, color: "#f472b6", gradient: "from-pink-600/20 to-pink-900/5",
-    title: "Judgment Finder",
-    desc: "Search decades of Indian case law. AI returns 5 relevant precedents with IndianKanoon links — ready to cite in your case.",
-    badge: "",
-  },
-  {
-    icon: Heart, color: "#fb923c", gradient: "from-orange-600/20 to-orange-900/5",
-    title: "Free Legal Aid Finder",
-    desc: "NALSA eligibility wizard + all 8 Telangana DLSA district contacts. Know your rights and access free government legal aid instantly.",
-    badge: "",
+    id: "kb",
+    color: "#f472b6",
+    glowColor: "rgba(244,114,182,0.1)",
+    icon: Globe,
+    tag: "Local Knowledge",
+    title: "TG & AP Legal Intelligence",
+    desc: "Instant answers on stamp duty, Mee Seva fees, RERA procedures, Motor Vehicles Act claims — specific to Telangana & AP.",
+    href: "/ask",
+    preview: <KnowledgePreview />,
   },
 ];
+
+function FeatureCard({ def, index }: { def: FeatureDef; index: number }) {
+  const { color, glowColor, icon: Icon, tag, title, desc, href, preview, badge } = def;
+  return (
+    <motion.div
+      variants={fadeUp}
+      style={{
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.07)",
+      }}
+      className="group relative rounded-2xl overflow-hidden flex flex-col cursor-default transition-all duration-300 hover:-translate-y-1"
+    >
+      {/* Hover glow layer */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none rounded-2xl"
+        style={{ background: `radial-gradient(ellipse at 50% 0%, ${glowColor} 0%, transparent 70%)`, border: `1px solid ${color}22` }} />
+
+      {/* Top accent bar */}
+      <div className="h-[2px] w-full flex-shrink-0"
+        style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)`, opacity: 0.5 }} />
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col p-5">
+        {/* Tag + badge row */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+              <Icon className="w-4 h-4" style={{ color }} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: `${color}bb` }}>{tag}</span>
+          </div>
+          {badge && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: `${color}18`, color, border: `1px solid ${color}35` }}>
+              {badge}
+            </span>
+          )}
+        </div>
+
+        {/* Mini preview mockup */}
+        <div className="mb-4 transition-transform duration-300 group-hover:scale-[1.01]">
+          {preview}
+        </div>
+
+        {/* Title + desc */}
+        <h3 className="font-bold text-white text-[16px] mb-2 leading-snug">{title}</h3>
+        <p className="text-[13px] leading-relaxed flex-1" style={{ color: "#64748b" }}>{desc}</p>
+
+        {/* Footer CTA */}
+        <Link href={href}
+          className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold transition-all duration-200 group-hover:gap-2.5"
+          style={{ color }}>
+          Try it now
+          <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
 
 function Features() {
   const { ref, inView } = useSection();
   return (
     <motion.section ref={ref} id="features" initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
       className="relative py-24 px-5 overflow-hidden">
-      <GlowOrb className="w-[500px] h-[500px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.06]" style={{ background: "radial-gradient(circle, #3b82f6, transparent)" } as React.CSSProperties} />
+      {/* Background glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-[0.05]"
+          style={{ background: "radial-gradient(circle, #3b82f6, transparent)" }} />
+        <div className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(167,139,250,0.2), transparent)" }} />
+      </div>
+
       <div className="max-w-6xl mx-auto">
+        {/* Section header */}
         <motion.div variants={fadeUp} className="text-center mb-14">
-          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#f59e0b" }}>Features</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3">Everything You Need.<br className="hidden md:block" /> Nothing You Don't.</h2>
-          <p className="mt-4 text-base max-w-lg mx-auto" style={{ color: "#64748b" }}>6 powerful tools — all in one platform — built specifically for Indian legal needs.</p>
+          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#f59e0b" }}>5 Powerful Features</span>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">
+            Built for Real Legal Work.<br className="hidden md:block" />
+            <span style={{ background: "linear-gradient(120deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              Not Generic AI.
+            </span>
+          </h2>
+          <p className="mt-4 text-base max-w-lg mx-auto" style={{ color: "#64748b" }}>
+            Five purpose-built tools, each trained on Telangana &amp; AP legal workflows, court procedures, and regional regulations.
+          </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map(({ icon: Icon, color, gradient, title, desc, badge }) => (
-            <motion.div key={title} variants={fadeUp}
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-              className="group relative rounded-2xl p-6 hover:bg-white/[0.05] transition-all duration-300 cursor-default overflow-hidden">
-              {/* Gradient bg on hover */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
-              <div className="relative z-10">
-                {badge && (
-                  <span className="absolute top-0 right-0 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: `${color}25`, color, border: `1px solid ${color}40` }}>{badge}</span>
-                )}
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
-                  <Icon className="w-5 h-5" style={{ color }} />
-                </div>
-                <h3 className="font-bold text-white text-[17px] mb-2">{title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#64748b" }}>{desc}</p>
-              </div>
-            </motion.div>
+        {/* Row 1 — 3 cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+          {featureDefs.slice(0, 3).map((def, i) => (
+            <FeatureCard key={def.id} def={def} index={i} />
+          ))}
+        </div>
+
+        {/* Row 2 — 2 wider cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {featureDefs.slice(3).map((def, i) => (
+            <FeatureCard key={def.id} def={def} index={i + 3} />
           ))}
         </div>
       </div>
