@@ -268,8 +268,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               key="backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
-              onClick={() => setDrawerOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden cursor-pointer"
+              onPointerDown={() => setDrawerOpen(false)}
+              aria-label="Close menu"
+              role="button"
             />
           )}
         </AnimatePresence>
@@ -297,8 +299,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
         </AnimatePresence>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background">
+        {/* Main content — disable scroll capture while drawer is open on mobile */}
+        <main className={cn(
+          "flex-1 overflow-auto relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background",
+          drawerOpen && "overflow-hidden pointer-events-none"
+        )}>
           {/* Desktop sticky header */}
           <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card/80 backdrop-blur-md px-6 items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
