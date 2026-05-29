@@ -270,35 +270,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SidebarContent location={location} health={health} stats={stats} user={user} />
         </aside>
 
-        {/* Mobile drawer + backdrop — rendered via portal into document.body so
-            they have NO overflow-hidden ancestor; this fixes Android Chrome's
-            hit-testing bug where fixed children inside overflow:hidden containers
-            don't receive touch events correctly. */}
+        {/* Mobile drawer + backdrop — portal into document.body (no overflow ancestor).
+            Backdrop uses a plain <div> (not motion.div) with onTouchStart+preventDefault
+            — the most reliable Android Chrome touch dismiss pattern. */}
         {typeof document !== "undefined" && createPortal(
           <>
-            <AnimatePresence>
-              {drawerOpen && (
-                <motion.div
-                  key="backdrop"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="fixed inset-0 bg-black/60 z-[9998] cursor-pointer"
-                  onPointerDown={() => setDrawerOpen(false)}
-                  aria-label="Close menu"
-                  role="button"
-                />
-              )}
-            </AnimatePresence>
+            {drawerOpen && (
+              <div
+                aria-label="Close menu"
+                role="button"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  backgroundColor: "rgba(0,0,0,0.6)",
+                  zIndex: 9998,
+                  touchAction: "none",
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+                onTouchStart={(e) => { e.preventDefault(); setDrawerOpen(false); }}
+                onPointerDown={() => setDrawerOpen(false)}
+              />
+            )}
             <AnimatePresence>
               {drawerOpen && (
                 <motion.aside
                   key="drawer"
                   initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
                   transition={{ type: "spring", stiffness: 350, damping: 32 }}
-                  className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-sidebar-border flex flex-col z-[9999] shadow-2xl"
+                  style={{ zIndex: 9999 }}
+                  className="fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-sidebar-border flex flex-col shadow-2xl"
                 >
                   <button
-                    className="absolute top-3.5 right-3.5 flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors z-10"
+                    className="absolute top-3.5 right-3.5 flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors"
+                    onTouchStart={(e) => { e.preventDefault(); setDrawerOpen(false); }}
                     onClick={() => setDrawerOpen(false)}
                     aria-label="Close menu"
                   >

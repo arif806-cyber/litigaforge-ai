@@ -41,9 +41,7 @@ export default defineConfig({
         enabled: false,
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/litigaforge\//],
+        globPatterns: ["**/*.{js,css,png,svg,woff2}"],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
