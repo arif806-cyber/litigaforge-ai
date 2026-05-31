@@ -11,15 +11,14 @@
 }
 
 :root {
-  /* Replace these with brand colors */
-  --slide-primary: #4f46e5;
-  --slide-accent: #06b6d4;
-  --slide-bg: #f8fafc;
-  --slide-text: #0f172a;
-  --slide-muted: #64748b;
-  --font-display-family: "Inter", system-ui, sans-serif;
-  --font-body-family: "Inter", system-ui, sans-serif;
-  color-scheme: light;
+  --slide-primary: #C8933F;
+  --slide-accent: #C8933F;
+  --slide-bg: #0F1923;
+  --slide-text: #F5F0E8;
+  --slide-muted: #7A7A7A;
+  --font-display-family: "IBM Plex Sans", system-ui, sans-serif;
+  --font-body-family: "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: dark;
 }
 
 html,
@@ -33,6 +32,7 @@ body,
 body {
   background: var(--slide-bg);
   color: var(--slide-text);
+  font-family: var(--font-body-family);
 }
 
 .slide {

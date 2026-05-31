@@ -1,1 +1,90 @@
-[]
+[
+  {
+    "id": "a1b2c3d4-0001-4e5f-a6b7-c8d9e0f10001",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide01Cover.tsx",
+    "title": "Cover — LitigaForge AI",
+    "description": "Title slide: company name, tagline, deck type, date, confidentiality marker.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0002-4e5f-a6b7-c8d9e0f10002",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide02Executive.tsx",
+    "title": "Executive Summary",
+    "description": "Five-sentence argument summary: the problem, the solution, what is built, the raise, and the three paths to partner.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0003-4e5f-a6b7-c8d9e0f10003",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide03Problem.tsx",
+    "title": "The Problem",
+    "description": "70M+ TG & AP residents face legal issues annually — split view for citizens and advocates.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0004-4e5f-a6b7-c8d9e0f10004",
+    "position": 4,
+    "filepath": "src/pages/slides/Slide04Solution.tsx",
+    "title": "Our Solution — Three Pillars",
+    "description": "Three-column layout: Match & Connect, The Forge, Community Tools.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0005-4e5f-a6b7-c8d9e0f10005",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide05HowItWorks.tsx",
+    "title": "How It Works",
+    "description": "Numbered step journeys for clients and advocates side by side.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0006-4e5f-a6b7-c8d9e0f10006",
+    "position": 6,
+    "filepath": "src/pages/slides/Slide06Technology.tsx",
+    "title": "Technology & AI Stack",
+    "description": "Two-column: application layer vs AI & government APIs. Architecture note.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0007-4e5f-a6b7-c8d9e0f10007",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide07Market.tsx",
+    "title": "Market Opportunity",
+    "description": "Market size table and revenue model bar chart (Recharts).",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0008-4e5f-a6b7-c8d9e0f10008",
+    "position": 8,
+    "filepath": "src/pages/slides/Slide08Traction.tsx",
+    "title": "Traction & Current State",
+    "description": "Two-column: completed features vs 90-day milestones. Proof statement callout.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0009-4e5f-a6b7-c8d9e0f10009",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide09Projections.tsx",
+    "title": "5-Year Projections",
+    "description": "Line chart of revenue vs costs over 5 years with assumptions table.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0010-4e5f-a6b7-c8d9e0f10010",
+    "position": 10,
+    "filepath": "src/pages/slides/Slide10WhyNow.tsx",
+    "title": "Why Now. Why Us.",
+    "description": "Two-column: three structural forces (Why Now) vs three competitive edges (Our Edge).",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0011-4e5f-a6b7-c8d9e0f10011",
+    "position": 11,
+    "filepath": "src/pages/slides/Slide11JoinUs.tsx",
+    "title": "Three Ways to Join Us",
+    "description": "Three partnership paths: Co-Founder, Team, Invest. Contact and links.",
+    "speakerNotes": ""
+  }
+]
