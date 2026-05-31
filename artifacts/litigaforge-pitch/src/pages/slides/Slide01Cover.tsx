@@ -31,7 +31,7 @@ export default function Slide01Cover() {
           <div style={{ fontSize: "1.3vw", color: "#7A7A7A", fontWeight: 400 }}>May 2026 &nbsp;·&nbsp; Seed Stage</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "1.3vw", color: "#7A7A7A" }}>LitigaForge AI &nbsp;·&nbsp; 1 / 11</div>
+          <div style={{ fontSize: "1.3vw", color: "#7A7A7A" }}>LitigaForge AI &nbsp;·&nbsp; 1 / 10</div>
         </div>
       </div>
     </div>

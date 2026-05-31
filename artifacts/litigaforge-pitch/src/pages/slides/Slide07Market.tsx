@@ -64,7 +64,7 @@ export default function Slide07Market() {
 
       <div style={{ position: "absolute", bottom: "4vh", left: "7vw", right: "7vw", display: "flex", justifyContent: "space-between" }}>
         <div style={{ fontSize: "1.2vw", color: "#7A7A7A" }}>Confidential · May 2026</div>
-        <div style={{ fontSize: "1.2vw", color: "#7A7A7A" }}>LitigaForge AI · 7 / 11</div>
+        <div style={{ fontSize: "1.2vw", color: "#7A7A7A" }}>LitigaForge AI · 7 / 10</div>
       </div>
     </div>
   );

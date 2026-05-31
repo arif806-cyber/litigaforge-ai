@@ -35,7 +35,7 @@ export default function Slide04Solution() {
 
       <div style={{ position: "absolute", bottom: "4vh", left: "7vw", right: "7vw", display: "flex", justifyContent: "space-between" }}>
         <div style={{ fontSize: "1.2vw", color: "#7A7A7A" }}>Confidential · May 2026</div>
-        <div style={{ fontSize: "1.2vw", color: "#7A7A7A" }}>LitigaForge AI · 4 / 11</div>
+        <div style={{ fontSize: "1.2vw", color: "#7A7A7A" }}>LitigaForge AI · 4 / 10</div>
       </div>
     </div>
   );
