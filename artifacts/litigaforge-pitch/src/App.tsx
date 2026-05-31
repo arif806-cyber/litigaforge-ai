@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 import { slides } from "@/slideLoader";
+import PasswordGate from "@/components/PasswordGate";
 
 function getSlideIndex(pathname: string): number {
   const match = pathname.match(/^\/slide(\d+)$/);
@@ -245,7 +246,7 @@ export default function App() {
     return () => window.removeEventListener("message", onMessage);
   }, [navigate]);
 
-  if (location === "/") return <SlideViewer />;
   if (location === "/allslides") return <AllSlides />;
-  return <SlideEditor />;
+  if (location === "/") return <PasswordGate><SlideViewer /></PasswordGate>;
+  return <PasswordGate><SlideEditor /></PasswordGate>;
 }
