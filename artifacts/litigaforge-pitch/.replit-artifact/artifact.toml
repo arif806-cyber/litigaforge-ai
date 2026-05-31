@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/litigaforge-pitch/"
+title = "LitigaForge AI — Partner & Investor Deck"
+version = "1.0.0"
+id = "artifacts/litigaforge-pitch"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/litigaforge-pitch/" ]
+localPort = 24337
+
+[services.development]
+run = "pnpm --filter @workspace/litigaforge-pitch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/litigaforge-pitch", "run", "build" ]
+publicDir = "artifacts/litigaforge-pitch/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24337"
+BASE_PATH = "/litigaforge-pitch/"
