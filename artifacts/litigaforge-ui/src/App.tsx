@@ -42,6 +42,7 @@ const LandingPage         = lazy(() => import("@/pages/landing"));
 const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
 const TermsOfService      = lazy(() => import("@/pages/terms"));
+const AccountSettings     = lazy(() => import("@/pages/settings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,6 +97,7 @@ function Router() {
         <Route path="/demo" component={DemoPage} />
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsOfService} />
+        <Route path="/settings" component={() => <ProtectedRoute component={AccountSettings} />} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
         <Route>

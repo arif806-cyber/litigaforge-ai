@@ -115,14 +115,14 @@ function AdminNavItem({ location, onNav }: { location: string; onNav?: () => voi
 /* ─── User panel ─── */
 function UserPanel({ onNav }: { onNav?: () => void }) {
   const { user, logout } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   if (!user) return null;
 
   const handleLogout = () => { logout(); if (onNav) onNav(); setLocation("/login"); };
 
   return (
-    <div className="border-t border-sidebar-border/40 px-3.5 py-4 space-y-3">
-      <div className="flex items-center gap-3">
+    <div className="border-t border-sidebar-border/40 px-3.5 py-4 space-y-2">
+      <div className="flex items-center gap-3 mb-1">
         <div className="w-9 h-9 rounded-xl bg-sidebar-primary/20 flex items-center justify-center flex-shrink-0">
           <UserIcon className="w-4 h-4 text-sidebar-primary-foreground" />
         </div>
@@ -131,6 +131,15 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
           <p className="text-[11px] text-sidebar-foreground/50 truncate">{user.email}</p>
         </div>
       </div>
+      <Link href="/settings" onClick={onNav}>
+        <div className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-medium cursor-pointer ${
+          location === "/settings"
+            ? "bg-sidebar-accent text-sidebar-foreground"
+            : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        }`}>
+          <Shield className="w-4 h-4" /> Account &amp; Privacy
+        </div>
+      </Link>
       <button onClick={handleLogout}
         className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all text-xs font-medium">
         <LogOut className="w-4 h-4" /> Sign Out

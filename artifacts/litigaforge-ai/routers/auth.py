@@ -19,6 +19,7 @@ from database import (
     store_refresh_token, get_refresh_token,
     delete_refresh_token, delete_all_user_refresh_tokens,
     execute as db_execute, fetch as db_fetch,
+    fetchrow as db_fetchrow,
 )
 from rate_limit import limiter
 from sanitizer import sanitize_text
@@ -97,6 +98,52 @@ async def me(current_user: dict = Depends(require_user)):
     return current_user
 
 
+class UpdateProfileRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+
+
+@router.patch("/auth/profile")
+@limiter.limit("10/minute")
+async def update_profile(
+    req: UpdateProfileRequest,
+    request: Request,
+    current_user: dict = Depends(require_user),
+):
+    """Update display name and/or email. DPDP Act 2023 § 12(a) — Right to Correction."""
+    user_id = current_user["id"]
+    updates: dict = {}
+
+    if req.name is not None:
+        name = sanitize_text(req.name.strip(), max_length=100, field_name="name")
+        if len(name) < 2:
+            raise HTTPException(400, "Name must be at least 2 characters")
+        updates["name"] = name
+
+    if req.email is not None:
+        email = req.email.strip().lower()
+        if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            raise HTTPException(400, "Invalid email address")
+        existing = await get_user_by_email(email)
+        if existing and existing["id"] != user_id:
+            raise HTTPException(409, "Email already in use by another account")
+        updates["email"] = email
+
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+
+    set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(updates))
+    values = list(updates.values())
+    row = await db_fetchrow(
+        f"UPDATE users SET {set_clause} WHERE id = $1 RETURNING id, name, email, subscription_tier, is_superuser, created_at",
+        user_id, *values,
+    )
+    if not row:
+        raise HTTPException(404, "User not found")
+    logger.info("Profile updated: user_id=%s fields=%s", user_id, list(updates.keys()))
+    return row
+
+
 @router.post("/auth/refresh")
 @limiter.limit("30/minute")
 async def refresh_token(request: Request, response: Response):
@@ -138,6 +185,34 @@ async def logout(request: Request, response: Response):
     clear_auth_cookie(response)
     clear_refresh_cookie(response)
     return {"message": "Logged out successfully"}
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.patch("/auth/password")
+@limiter.limit("5/minute")
+async def change_password(
+    req: ChangePasswordRequest,
+    request: Request,
+    current_user: dict = Depends(require_user),
+):
+    """Change password after verifying the current one."""
+    from auth import verify_password, hash_password
+    user = await get_user_by_id(current_user["id"])
+    if not user or not verify_password(req.current_password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    if len(req.new_password) < 8:
+        raise HTTPException(400, "New password must be at least 8 characters")
+    new_hash = hash_password(req.new_password)
+    await db_execute(
+        "UPDATE users SET password_hash = $1 WHERE id = $2",
+        new_hash, current_user["id"],
+    )
+    logger.info("Password changed: user_id=%s", current_user["id"])
+    return {"message": "Password updated successfully"}
 
 
 @router.delete("/auth/account")
