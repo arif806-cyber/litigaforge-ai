@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Scale, Loader2, AlertTriangle, Eye, EyeOff, User, Briefcase, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { SEOHelmet } from "@/components/SEOHelmet";
@@ -24,6 +24,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const isSignIn = mode === "signin";
   const isClient = role === "client";
@@ -33,6 +34,7 @@ export default function Login() {
     if (!isSignIn && name.trim().length < 2) errs.name = "Name must be at least 2 characters";
     if (!email.includes("@") || !email.includes(".")) errs.email = "Enter a valid email address";
     if (password.length < 8) errs.password = "Password must be at least 8 characters";
+    if (!isSignIn && !consent) errs.consent = "You must agree to the Privacy Policy and Terms to create an account";
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -67,6 +69,7 @@ export default function Login() {
     setMode(m);
     setError("");
     setFieldErrors({});
+    setConsent(false);
   };
 
   return (
@@ -296,9 +299,43 @@ export default function Login() {
                 </div>
               )}
 
+              {!isSignIn && (
+                <motion.div
+                  key="consent-field"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(e) => { setConsent(e.target.checked); setFieldErrors((p) => ({ ...p, consent: "" })); }}
+                      className="mt-0.5 w-4 h-4 rounded border-border accent-primary flex-shrink-0"
+                      data-testid="consent-checkbox"
+                    />
+                    <span className="text-xs text-muted-foreground leading-relaxed">
+                      I have read and agree to the{" "}
+                      <Link href="/privacy">
+                        <span className="text-primary underline cursor-pointer">Privacy Policy</span>
+                      </Link>
+                      {" "}and{" "}
+                      <Link href="/terms">
+                        <span className="text-primary underline cursor-pointer">Terms of Service</span>
+                      </Link>
+                      . I consent to LitigaForge AI processing my personal data as described therein, in compliance with the DPDP Act 2023.
+                    </span>
+                  </label>
+                  {fieldErrors.consent && (
+                    <p className="text-xs text-red-500 mt-1.5">{fieldErrors.consent}</p>
+                  )}
+                </motion.div>
+              )}
+
               <button
                 type="submit"
-                disabled={loading || !email || !password || (!isSignIn && !name)}
+                disabled={loading || !email || !password || (!isSignIn && !name) || (!isSignIn && !consent)}
                 className="w-full h-12 rounded-xl font-semibold tracking-wide flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md bg-primary text-white"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
@@ -326,7 +363,10 @@ export default function Login() {
           </div>
 
           <p className="text-center text-[11px] text-muted-foreground mt-6 font-medium">
-            By continuing, you agree to our terms of service and privacy policy
+            <Link href="/privacy"><span className="underline cursor-pointer hover:text-primary transition-colors">Privacy Policy</span></Link>
+            {" · "}
+            <Link href="/terms"><span className="underline cursor-pointer hover:text-primary transition-colors">Terms of Service</span></Link>
+            {" · DPDP Act 2023 compliant"}
           </p>
         </motion.div>
       </div>

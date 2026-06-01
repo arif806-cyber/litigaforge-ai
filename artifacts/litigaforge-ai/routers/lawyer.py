@@ -20,6 +20,20 @@ from ai_safety import wrap_user_prompt, validate_ai_response
 logger = get_logger("litigaforge.lawyer")
 router = APIRouter(tags=["lawyer"])
 
+# ── Upload security constants ─────────────────────────────────────────────────
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".txt", ".odt"}
+ALLOWED_UPLOAD_MIMES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png",
+    "text/plain",
+    "application/vnd.oasis.opendocument.text",
+    "application/octet-stream",   # some browsers send this for .doc/.docx
+}
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
+
 
 # ── Models ───────────────────────────────────────────────────────────────────────
 
@@ -489,24 +503,43 @@ async def upload_client_document(
     if not file.filename:
         raise HTTPException(400, "No file provided")
 
-    # Save to local uploads directory (use script dir for consistency in dev+prod)
-    import shutil, pathlib, os
-    _script_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__))).parent
+    # ── Validate file extension ───────────────────────────────────────────────
+    safe_name = sanitize_text(file.filename, max_length=255, field_name="filename")
+    ext = ("." + safe_name.rsplit(".", 1)[-1].lower()) if "." in safe_name else ""
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            400,
+            f"File type '{ext or 'unknown'}' is not allowed. "
+            "Accepted formats: PDF, DOC, DOCX, JPG, PNG, TXT, ODT"
+        )
+
+    # ── Validate declared MIME type ───────────────────────────────────────────
+    declared_mime = (file.content_type or "").lower().split(";")[0].strip()
+    if declared_mime and declared_mime not in ALLOWED_UPLOAD_MIMES:
+        raise HTTPException(400, "File content type is not permitted")
+
+    # ── Read and enforce 25 MB size limit ─────────────────────────────────────
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "File too large. Maximum allowed size is 25 MB")
+    if len(content) == 0:
+        raise HTTPException(400, "Uploaded file is empty")
+
+    # ── Save to local uploads directory ──────────────────────────────────────
+    import pathlib as _pl
+    _script_dir = _pl.Path(os.path.dirname(os.path.abspath(__file__))).parent
     uploads_dir = _script_dir / "uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_name = sanitize_text(file.filename, max_length=255, field_name="filename")
-    # Include case_id in filename to avoid collisions
     unique_name = f"case_{case_id}_user_{current_user['id']}_{int(time.time())}_{safe_name}"
     file_path = uploads_dir / unique_name
 
-    content = await file.read()
     with open(file_path, "wb") as f:
         f.write(content)
 
     file_size = len(content)
-    file_type = safe_name.split(".")[-1].lower() if "." in safe_name else "unknown"
-    file_url = f"/uploads/{unique_name}"
+    file_type = ext.lstrip(".")
+    file_url = f"/secure-files/{unique_name}"
 
     row = await fetchrow(
         """INSERT INTO client_documents (case_id, client_id, filename, file_type, file_size, file_path, file_url)

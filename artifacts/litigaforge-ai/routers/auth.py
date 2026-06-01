@@ -18,10 +18,16 @@ from database import (
     create_user, get_user_by_email, get_user_by_id,
     store_refresh_token, get_refresh_token,
     delete_refresh_token, delete_all_user_refresh_tokens,
+    execute as db_execute, fetch as db_fetch,
 )
 from rate_limit import limiter
 from sanitizer import sanitize_text
+from logger import get_logger
 import re as _re
+import os as _os
+import pathlib as _pathlib
+
+logger = get_logger("litigaforge.auth")
 
 router = APIRouter(tags=["auth"])
 
@@ -132,3 +138,71 @@ async def logout(request: Request, response: Response):
     clear_auth_cookie(response)
     clear_refresh_cookie(response)
     return {"message": "Logged out successfully"}
+
+
+@router.delete("/auth/account")
+@limiter.limit("3/minute")
+async def delete_account(
+    request: Request,
+    response: Response,
+    current_user: dict = Depends(require_user),
+):
+    """
+    Permanently delete account and all personal data.
+    Right to Erasure — Digital Personal Data Protection Act 2023, Section 12(1)(b).
+    """
+    user_id = current_user["id"]
+
+    # 1. Revoke all active sessions first
+    await delete_all_user_refresh_tokens(user_id)
+
+    # 2. Delete physical files from disk
+    docs = await db_fetch(
+        "SELECT file_path FROM client_documents WHERE client_id = $1", user_id
+    )
+    for doc in docs:
+        fp = doc.get("file_path")
+        if fp:
+            try:
+                p = _pathlib.Path(fp)
+                if p.is_file():
+                    _os.remove(p)
+            except OSError:
+                pass
+
+    # 3. Delete DB records in FK-safe order
+    # Chat messages
+    await db_execute("DELETE FROM chat_messages WHERE sender_id = $1", user_id)
+    # Chat threads belonging to client's matches
+    match_ids = await db_fetch(
+        "SELECT id FROM matches WHERE client_id = $1", user_id
+    )
+    for m in match_ids:
+        await db_execute("DELETE FROM chat_threads WHERE match_id = $1", m["id"])
+    # Documents
+    await db_execute("DELETE FROM client_documents WHERE client_id = $1", user_id)
+    # Matches
+    await db_execute("DELETE FROM matches WHERE client_id = $1 OR lawyer_id IN "
+                     "(SELECT id FROM lawyers WHERE user_id = $1)", user_id)
+    # Case requirements
+    await db_execute("DELETE FROM case_requirements WHERE user_id = $1", user_id)
+    # Lawyer cases where client
+    await db_execute("DELETE FROM lawyer_cases WHERE client_id = $1", user_id)
+    # Nullify lawyer profile link (preserve public profile, remove personal link)
+    await db_execute("UPDATE lawyers SET user_id = NULL WHERE user_id = $1", user_id)
+    # Legal questions
+    await db_execute("DELETE FROM legal_questions WHERE user_id = $1", user_id)
+    # Subscriptions
+    await db_execute("DELETE FROM subscriptions WHERE user_id = $1", user_id)
+    # Finally delete the user
+    await db_execute("DELETE FROM users WHERE id = $1", user_id)
+
+    # 4. Clear browser cookies
+    clear_auth_cookie(response)
+    clear_refresh_cookie(response)
+
+    logger.info("DPDP erasure complete: user_id=%s", user_id)
+    return {
+        "message": "Your account and all personal data have been permanently deleted "
+                   "in compliance with the Digital Personal Data Protection Act 2023."
+    }

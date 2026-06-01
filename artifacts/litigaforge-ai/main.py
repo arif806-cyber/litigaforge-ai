@@ -13,10 +13,10 @@ if _script_dir not in sys.path:
     sys.path.insert(0, _script_dir)
 
 from pathlib import Path as _Path
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
@@ -24,7 +24,8 @@ load_dotenv()
 
 from logger import get_logger, forge_logger
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
-from database import get_pool, close_pool
+from database import get_pool, close_pool, fetchrow as db_fetchrow
+from auth import require_user as _require_user
 from watch_mode import WatchModeManager
 from alerts.whatsapp import send_whatsapp_alert
 
@@ -317,6 +318,28 @@ app.add_middleware(
     max_age=600,
 )
 
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Industry-standard security headers on every response."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "geolocation=(), microphone=(), camera=(), payment=(), usb=(), "
+        "accelerometer=(), gyroscope=(), magnetometer=()"
+    )
+    response.headers["Cache-Control"] = "no-store" if request.url.path.startswith(
+        f"{BASE_PATH}/auth"
+    ) else response.headers.get("Cache-Control", "no-cache")
+    if os.getenv("ENVIRONMENT", "development").lower() in ("production", "prod"):
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=63072000; includeSubDomains; preload"
+        )
+    return response
+
 # ─── Include Routers ──────────────────────────────────────────────────────────
 from routers import (
     auth_router, forge_router, subscription_router,
@@ -423,10 +446,62 @@ async def serve_sitemap():
 </urlset>"""
     return Response(content=content, media_type="application/xml")
 
-# Serve uploaded client documents (ensure dir exists before mounting)
+# ── Authenticated secure file serving ────────────────────────────────────────
+# Files are NOT served via a public StaticFiles mount.
+# Every download goes through this endpoint which verifies ownership first.
 _uploads_dir = os.path.join(_script_dir, "uploads")
 os.makedirs(_uploads_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
+
+
+@app.get(f"{BASE_PATH}/secure-files/{{filename}}")
+async def serve_secure_file(
+    filename: str,
+    current_user: dict = Depends(_require_user),
+):
+    """
+    Serve an uploaded case document only to the client who owns it or the
+    assigned lawyer — never publicly.  Prevents path traversal via basename check.
+    """
+    import pathlib as _pl
+
+    # Block path traversal — filename must be a plain basename
+    safe = os.path.basename(filename)
+    if safe != filename or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    # Ownership check via DB
+    file_url = f"/secure-files/{safe}"
+    doc = await db_fetchrow(
+        """SELECT d.client_id, c.lawyer_id
+           FROM client_documents d
+           LEFT JOIN lawyer_cases c ON d.case_id = c.id
+           WHERE d.file_url = $1""",
+        file_url,
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    uid = current_user["id"]
+    if doc["client_id"] != uid and (doc["lawyer_id"] is None or doc["lawyer_id"] != uid):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    fp = _pl.Path(_uploads_dir) / safe
+    # Secondary path traversal guard — resolved path must be inside uploads dir
+    try:
+        fp.resolve().relative_to(_pl.Path(_uploads_dir).resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    if not fp.is_file():
+        raise HTTPException(status_code=404, detail="File not found on disk")
+
+    return FileResponse(
+        str(fp),
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -42,6 +42,16 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
               Legal Guides
             </span>
           </Link>
+          <Link href="/privacy">
+            <span className="text-muted-foreground/70 hover:text-primary transition-colors cursor-pointer whitespace-nowrap text-xs">
+              Privacy Policy
+            </span>
+          </Link>
+          <Link href="/terms">
+            <span className="text-muted-foreground/70 hover:text-primary transition-colors cursor-pointer whitespace-nowrap text-xs">
+              Terms
+            </span>
+          </Link>
           <span className="text-muted-foreground/60 whitespace-nowrap">
             LitigaForge AI
           </span>
