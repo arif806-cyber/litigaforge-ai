@@ -6,3 +6,9 @@ id = "uxPDthndgMTBnn7dqNnmK"
 uri = "file://.local/outputs/LitigaForge-AI-Investor-Deck.pdf"
 type = "pdf"
 title = "LitigaForge AI — Investor Deck (PDF)"
+
+[[outputs]]
+id = "U_PtzD2vl_I83EcQmmIt0"
+uri = "file://.local/outputs/LitigaForge-Compliance-Report.zip"
+type = "unspecified"
+title = "LitigaForge AI — Data Privacy & Security Compliance Report"
