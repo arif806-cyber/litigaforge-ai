@@ -41,6 +41,7 @@ const CityPage            = lazy(() => import("@/pages/city"));
 const LandingPage         = lazy(() => import("@/pages/landing"));
 const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
+const TermsOfService      = lazy(() => import("@/pages/terms"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -94,6 +95,7 @@ function Router() {
         <Route path="/landing" component={LandingPage} />
         <Route path="/demo" component={DemoPage} />
         <Route path="/privacy" component={PrivacyPolicy} />
+        <Route path="/terms" component={TermsOfService} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
         <Route>
