@@ -318,6 +318,40 @@ export default function LegalAid() {
           </AnimatePresence>
         </div>
 
+        {/* Google Maps — TSLSA Headquarters */}
+        <div className="max-w-2xl mx-auto">
+          <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
+            <div className="px-5 pt-4 pb-3 bg-card">
+              <div className="flex items-center gap-2 mb-0.5">
+                <MapPin className="w-4 h-4 text-primary" />
+                <p className="text-sm font-bold text-foreground">TSLSA Headquarters on Google Maps</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Telangana State Legal Services Authority · High Court Buildings, Hyderabad</p>
+            </div>
+            <iframe
+              title="TSLSA Headquarters Location"
+              src="https://maps.google.com/maps?q=Telangana+State+Legal+Services+Authority+High+Court+Nayapul+Hyderabad&output=embed"
+              width="100%"
+              height="240"
+              style={{ border: 0 }}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              aria-label="TSLSA office location on Google Maps"
+            />
+            <div className="px-5 py-3 bg-card border-t border-border flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">📍 High Court Buildings, Hyderabad 500 001</span>
+              <a
+                href="https://maps.google.com/maps?q=Telangana+State+Legal+Services+Authority+High+Court+Hyderabad"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" /> Get Directions
+              </a>
+            </div>
+          </div>
+        </div>
+
         {/* NALSA eligibility list */}
         {step !== "result" && (
            <div className="bg-card rounded-2xl border border-border shadow-sm p-8 max-w-2xl mx-auto">

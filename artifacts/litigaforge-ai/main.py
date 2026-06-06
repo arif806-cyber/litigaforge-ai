@@ -368,8 +368,8 @@ async def security_headers_middleware(request: Request, call_next):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: https:; "
-        "connect-src 'self' https://api.razorpay.com https://indiankanoon.org; "
-        "frame-src https://api.razorpay.com; "
+        "connect-src 'self' https://api.razorpay.com https://indiankanoon.org https://accounts.google.com https://oauth2.googleapis.com; "
+        "frame-src https://api.razorpay.com https://maps.google.com https://www.google.com; "
         "object-src 'none'; "
         "base-uri 'self';"
     )

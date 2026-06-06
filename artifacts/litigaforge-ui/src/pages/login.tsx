@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Scale, Loader2, AlertTriangle, Eye, EyeOff, User, Briefcase, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
 import OnboardingModal from "@/components/OnboardingModal";
+import { loadGoogleIdentity, GOOGLE_CLIENT_ID, hasGoogleClientId } from "@/lib/google-auth";
+import { getRecaptchaToken } from "@/lib/recaptcha";
+import { trackEvent } from "@/lib/analytics";
 
 type Role = "client" | "lawyer";
 type Mode = "signin" | "signup";
 
 export default function Login() {
-  const { login, register } = useAuth();
+  const { login, register, googleLogin } = useAuth();
   const [, setLocation] = useLocation();
 
   const [role, setRole] = useState<Role>("client");
@@ -25,9 +28,40 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleContainerRef = useRef<HTMLDivElement>(null);
+  const roleRef = useRef(role);
 
   const isSignIn = mode === "signin";
   const isClient = role === "client";
+
+  useEffect(() => { roleRef.current = role; }, [role]);
+
+  useEffect(() => {
+    if (!hasGoogleClientId || !googleContainerRef.current) return;
+    const container = googleContainerRef.current;
+    container.innerHTML = "";
+    loadGoogleIdentity().then(() => {
+      if (!window.google?.accounts?.id || !container.isConnected) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID as string,
+        callback: (resp: { credential: string }) => {
+          setGoogleLoading(true);
+          setError("");
+          googleLogin(resp.credential, roleRef.current)
+            .catch((e: unknown) => setError(e instanceof Error ? e.message : "Google sign-in failed"))
+            .finally(() => setGoogleLoading(false));
+        },
+      });
+      window.google.accounts.id.renderButton(container, {
+        theme: "outline",
+        size: "large",
+        text: isSignIn ? "signin_with" : "signup_with",
+        width: Math.min(container.offsetWidth || 300, 380),
+        logo_alignment: "center",
+      });
+    });
+  }, [isSignIn, googleLogin]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -47,9 +81,11 @@ export default function Login() {
     try {
       if (isSignIn) {
         await login(email, password);
-        // login() in auth-context redirects; no extra handling needed
+        trackEvent("login_success", { role });
       } else {
-        await register(name, email, password, role);
+        const recaptchaToken = await getRecaptchaToken("register");
+        await register(name, email, password, role, recaptchaToken ?? undefined);
+        trackEvent("register_success", { role });
         // Show onboarding for first-time users
         const alreadyOnboarded = localStorage.getItem("lf_onboarded");
         if (!alreadyOnboarded) {
@@ -223,6 +259,29 @@ export default function Login() {
                 {isSignIn ? "Enter your credentials to continue" : "Start your legal journey today"}
               </p>
             </div>
+
+            {hasGoogleClientId && (
+              <div className="mb-5">
+                <div
+                  ref={googleContainerRef}
+                  className="w-full flex justify-center min-h-[44px]"
+                  aria-label="Sign in with Google"
+                />
+                {googleLoading && (
+                  <div className="flex items-center justify-center gap-2 mt-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Signing in with Google…
+                  </div>
+                )}
+                <div className="relative mt-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-card px-3 text-muted-foreground font-medium">or continue with email</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <AnimatePresence mode="wait">

@@ -6,6 +6,9 @@ import { Layout } from "@/components/layout";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { initGA, trackPageView } from "@/lib/analytics";
+import { initRecaptcha } from "@/lib/recaptcha";
+import { loadGoogleIdentity } from "@/lib/google-auth";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkipLink } from "@/components/SkipLink";
@@ -149,6 +152,17 @@ function Router() {
   );
 }
 
+function Analytics() {
+  const [location] = useLocation();
+  useEffect(() => {
+    initGA();
+    initRecaptcha();
+    loadGoogleIdentity().catch(() => {});
+  }, []);
+  useEffect(() => { trackPageView(location); }, [location]);
+  return null;
+}
+
 function FirstVisitDisclaimer() {
   const [show, setShow] = useState(false);
 
@@ -205,6 +219,7 @@ function App() {
               <SEOHelmet />
               <SkipLink />
               <KeyboardShortcuts />
+              <Analytics />
               {/* <FirstVisitDisclaimer /> */}
               <Router />
             </WouterRouter>

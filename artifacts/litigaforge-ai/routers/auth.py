@@ -38,6 +38,7 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     role: str = "client"
+    recaptcha_token: str | None = None
 
 
 class LoginRequest(BaseModel):
@@ -69,6 +70,23 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         raise HTTPException(status_code=422, detail=str(e))
     if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', req.email):
         raise HTTPException(status_code=422, detail="Invalid email format")
+    # reCAPTCHA v3 (non-blocking when RECAPTCHA_SECRET_KEY not configured)
+    _recaptcha_secret = _os.getenv("RECAPTCHA_SECRET_KEY")
+    if _recaptcha_secret and req.recaptcha_token:
+        try:
+            import httpx as _httpx_rc
+            async with _httpx_rc.AsyncClient(timeout=5.0) as _hc:
+                _rv = await _hc.post(
+                    "https://www.google.com/recaptcha/api/siteverify",
+                    data={"secret": _recaptcha_secret, "response": req.recaptcha_token},
+                )
+            _rd = _rv.json()
+            if not _rd.get("success") or float(_rd.get("score", 1.0)) < 0.5:
+                raise HTTPException(status_code=400, detail="Bot detection triggered. Please try again.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # non-blocking on network errors
     try:
         user = await create_user(
             email=req.email,
@@ -96,6 +114,73 @@ async def login(req: LoginRequest, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     user.pop("password_hash", None)
     token = await _issue_tokens(user["id"], response)
+    return {"user": user, "token": token}
+
+
+@router.post("/auth/google")
+@limiter.limit("10/minute")
+async def google_oauth(request: Request, response: Response):
+    """Sign in / register with a Google Identity Services credential token."""
+    import httpx as _httpx
+    import secrets as _secrets
+
+    body = await request.json()
+    credential = (body.get("credential") or "").strip()
+    role = body.get("role", "client")
+
+    if not credential:
+        raise HTTPException(status_code=400, detail="Missing Google credential")
+
+    google_client_id = _os.getenv("GOOGLE_CLIENT_ID")
+
+    # Verify ID token with Google's tokeninfo endpoint
+    try:
+        async with _httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
+            )
+        if r.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid Google token")
+        token_info = r.json()
+    except HTTPException:
+        raise
+    except _httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Could not reach Google to verify token")
+
+    # Verify audience when CLIENT_ID is configured
+    if google_client_id and token_info.get("aud") != google_client_id:
+        raise HTTPException(status_code=401, detail="Token audience mismatch")
+
+    email = token_info.get("email", "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google account has no email address")
+
+    raw_name = (token_info.get("name") or token_info.get("given_name") or email.split("@")[0])[:100]
+    try:
+        name = sanitize_text(raw_name, max_length=100, field_name="name")
+    except ValueError:
+        name = email.split("@")[0]
+
+    safe_role = role if role in ("client", "lawyer") else "client"
+
+    user = await get_user_by_email(email)
+    if not user:
+        try:
+            user = await create_user(
+                email=email,
+                name=name,
+                password_hash=hash_password(_secrets.token_hex(24)),
+                role=safe_role,
+            )
+        except ValueError:
+            user = await get_user_by_email(email)
+            if not user:
+                raise HTTPException(status_code=500, detail="Failed to create Google account")
+    else:
+        user.pop("password_hash", None)
+
+    token = await _issue_tokens(user["id"], response)
+    logger.info(f"Google OAuth: user {user['id']} ({email})")
     return {"user": user, "token": token}
 
 

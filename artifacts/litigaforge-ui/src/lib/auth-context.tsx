@@ -21,7 +21,8 @@ interface AuthCtx {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role?: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role?: string, recaptchaToken?: string) => Promise<void>;
+  googleLogin: (credential: string, role?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -79,16 +80,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
   };
 
-  const register = async (name: string, email: string, password: string, role: string = "client") => {
+  const register = async (name: string, email: string, password: string, role: string = "client", recaptchaToken?: string) => {
     const data = await authFetch("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password, role }),
+      body: JSON.stringify({ name, email, password, role, recaptcha_token: recaptchaToken ?? null }),
     });
     if (data.token) {
       localStorage.setItem("lf_token", data.token);
       setToken(data.token);
     }
     setUser(data.user);
+  };
+
+  const googleLogin = async (credential: string, role: string = "client") => {
+    const data = await authFetch("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential, role }),
+    });
+    if (data.token) {
+      localStorage.setItem("lf_token", data.token);
+      setToken(data.token);
+    }
+    setUser(data.user);
+    const userRole = data.user?.role ?? "client";
+    window.location.href = userRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
   };
 
   const logout = async () => {
@@ -118,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, googleLogin, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
