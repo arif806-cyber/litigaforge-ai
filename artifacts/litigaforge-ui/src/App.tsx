@@ -81,7 +81,7 @@ function RoleRedirect() {
       if (user) {
         setLocation(user.role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
       } else {
-        setLocation("/login");
+        setLocation("/landing");
       }
     }
   }, [user, loading, setLocation]);
