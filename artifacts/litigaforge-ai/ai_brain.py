@@ -451,16 +451,7 @@ CASE ANALYSIS REPORT
 - [Precedent] — [Ratio decidendi relevant to the facts]
 [If no directly applicable precedents can be identified, state: "No directly on-point precedents identified from current data."]
 
-5. GOVERNMENT DATA FINDINGS
----------------------------
-[Only if API chains returned verified data. Present as structured facts with exact source attribution.]
-| Source | Finding | Data Point |
-|--------|---------|------------|
-| [GSTIN — GSTN Portal] | Registration status | Active / Suspended / Cancelled |
-| [VAHAN — NIC] | RC status | [Vehicle details] |
-[If no data returned: "No government data available for this case. Verification recommended via official portals."]
-
-6. RECOMMENDED LEGAL STRATEGY
+5. RECOMMENDED LEGAL STRATEGY
 -----------------------------
 Immediate Actions (0-7 days):
 - Action 1: [Specific step] — [Legal basis: Act, Section] — [Responsible party]

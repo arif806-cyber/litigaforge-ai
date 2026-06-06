@@ -19,7 +19,7 @@ export default function NotFound() {
 
           <Button asChild size="lg" className="w-full">
             <Link href="/">
-              <ArrowLeft className="w-5 h-5 mr-2" /> Return to The Forge
+              <ArrowLeft className="w-5 h-5 mr-2" /> Return to Dashboard
             </Link>
           </Button>
         </CardContent>

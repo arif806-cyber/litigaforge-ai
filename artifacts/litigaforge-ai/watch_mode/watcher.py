@@ -1,6 +1,6 @@
 """
-Watch Mode — background scheduler that monitors active cases and triggers WhatsApp alerts.
-Uses APScheduler to run periodic eCourts checks on watched cases.
+Watch Mode — background scheduler that monitors active cases and triggers WhatsApp hearing alerts.
+Uses APScheduler to run periodic reminders for watched cases.
 """
 import os
 import uuid
@@ -88,34 +88,21 @@ class WatchModeManager:
         return self.memory.get_watch_list(active_only=True)
 
     def _check_all_watches(self):
-        from api_chains.ecourts import fetch_ecourts
         watches = self.memory.get_watch_list(active_only=True)
         logger.info(f"Watch cycle: checking {len(watches)} item(s)")
         for watch in watches:
             try:
-                result = fetch_ecourts(
-                    party_name=watch.get("party_name"),
-                    case_number=watch.get("case_number"),
-                )
-                current_status = str(result.get("cases", []))
-                if watch.get("last_status") and current_status != watch["last_status"]:
-                    self._fire_alert(watch, result)
+                self._fire_alert(watch)
                 watch["last_checked"] = datetime.utcnow().isoformat()
-                watch["last_status"] = current_status
             except Exception as e:
-                logger.error(f"Watch check failed for {watch.get('id')}: {e}")
+                logger.error(f"Watch alert failed for {watch.get('id')}: {e}")
 
-    def _fire_alert(self, watch: Dict, result: Dict):
+    def _fire_alert(self, watch: Dict):
         from alerts.whatsapp import send_watch_trigger
-        cases = result.get("cases", [])
-        details = "\n".join(
-            f"• {c['case_number']} — Next hearing: {c.get('next_hearing', 'TBD')} | {c.get('status', '')}"
-            for c in cases[:3]
-        )
         send_watch_trigger(
             watch_id=watch["id"],
-            trigger_reason="Case status update detected",
-            details=details or "No detail available",
+            trigger_reason="Scheduled hearing reminder",
+            details=f"Case: {watch.get('case_number') or watch.get('party_name', 'N/A')} — Please check the court website for the latest hearing date.",
             to=watch.get("alert_phone"),
         )
 

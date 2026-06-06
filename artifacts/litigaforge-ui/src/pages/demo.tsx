@@ -337,7 +337,7 @@ export default function Demo() {
           <button className="d-btn-o">▶&nbsp; Watch 60-sec Demo</button>
         </div>
         <div className="d-stats d-s1-item">
-          <div className="d-stat"><span className="n">16</span> Gov APIs</div>
+          <div className="d-stat"><span className="n">24/7</span> AI Access</div>
           <div className="d-stat"><span className="n">3</span> AI Models</div>
           <div className="d-stat"><span className="n">100+</span> Advocates</div>
         </div>

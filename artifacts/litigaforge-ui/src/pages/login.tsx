@@ -123,7 +123,7 @@ export default function Login() {
           {/* Stats row */}
           <div className="flex items-center gap-5">
             {[
-              { n: "16", label: "Gov APIs" },
+              { n: "24/7", label: "AI Access" },
               { n: "3", label: "AI Models" },
               { n: "100+", label: "Lawyers" },
             ].map(({ n, label }, i, arr) => (
