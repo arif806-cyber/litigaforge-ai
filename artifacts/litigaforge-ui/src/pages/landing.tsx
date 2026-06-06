@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 /* ── animation helpers ── */
-const fadeUp = { hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } } };
+const fadeUp = { hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } } };
 const fadeIn  = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.5 } } };
 const stagger = { visible: { transition: { staggerChildren: 0.09 } } };
 
@@ -20,8 +20,8 @@ function useSection() {
 }
 
 /* ── Glow orb ── */
-function GlowOrb({ className }: { className: string }) {
-  return <div className={`absolute rounded-full blur-3xl pointer-events-none ${className}`} />;
+function GlowOrb({ className, style }: { className: string; style?: React.CSSProperties }) {
+  return <div className={`absolute rounded-full blur-3xl pointer-events-none ${className}`} style={style} />;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -327,7 +327,7 @@ function Hero() {
               <div className="flex -space-x-2.5">
                 {["#3b82f6","#8b5cf6","#f59e0b","#10b981","#f472b6"].map((c, i) => (
                   <div key={i} className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ring-2 flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${c}cc, ${c})`, ringColor: "#060d1a" }}>
+                    style={{ background: `linear-gradient(135deg, ${c}cc, ${c})`, outline: "2px solid #060d1a" }}>
                     {["R","S","P","A","K"][i]}
                   </div>
                 ))}
@@ -686,7 +686,7 @@ function JudgmentPreview() {
         <span className="text-[11px] font-medium" style={{ color: "#c4b5fd" }}>fraud Hyderabad property 2021–2024</span>
         <div className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>TG &amp; AP</div>
       </div>
-      <div className="divide-y" style={{ divideColor: "rgba(255,255,255,0.04)" }}>
+      <div className="divide-y divide-white/[0.04]">
         {results.map(({ case: c, year, section, court }) => (
           <div key={c} className="px-3.5 py-2.5 flex items-start gap-2.5 group/row hover:bg-white/[0.02] transition-colors">
             <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(139,92,246,0.12)" }}>
@@ -794,7 +794,7 @@ function KnowledgePreview() {
         <span className="text-[11px] font-bold" style={{ color: "#f472b6" }}>TG &amp; AP Legal Knowledge Base</span>
         <div className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: "rgba(244,114,182,0.15)", color: "#f472b6" }}>Live</div>
       </div>
-      <div className="divide-y" style={{ divideColor: "rgba(255,255,255,0.04)" }}>
+      <div className="divide-y divide-white/[0.04]">
         {rows.map(({ topic, value }) => (
           <div key={topic} className="px-3.5 py-2 flex items-center justify-between gap-2 hover:bg-white/[0.02] transition-colors">
             <span className="text-[11px] font-medium" style={{ color: "#94a3b8" }}>{topic}</span>

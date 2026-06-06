@@ -60,6 +60,10 @@ def sanitize_text(
     # newline (\n), carriage return (\r), and tab (\t)
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
 
+    # Strip HTML/script tags — prevents stored XSS when content
+    # is ever rendered in non-React contexts or email templates
+    text = re.sub(r"<[^>]+>", "", text)
+
     # Enforce length
     if len(text) > max_length:
         raise ValueError(

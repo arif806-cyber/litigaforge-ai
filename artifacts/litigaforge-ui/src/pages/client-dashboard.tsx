@@ -813,7 +813,10 @@ export default function ClientDashboard() {
 
       {payingMatch && (
         <PaymentModal
-          match={payingMatch}
+          matchId={payingMatch.id}
+          lawyerName={payingMatch.lawyer_name}
+          caseTitle={`Case #${payingMatch.case_requirement_id}`}
+          budgetRange={payingMatch.hourly_rate ? `₹${payingMatch.hourly_rate}/hr` : undefined}
           onClose={() => setPayingMatch(null)}
           onSuccess={() => { setPayingMatch(null); qc.invalidateQueries({ queryKey: ["client-matches"] }); }}
         />

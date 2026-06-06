@@ -256,6 +256,18 @@ async def lifespan(app: FastAPI):
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS refresh_tokens_token_idx ON refresh_tokens (token)
         """)
+        # ── Performance indexes ────────────────────────────────────────────────
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_case_requirements_user ON case_requirements (user_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_case_requirements_status ON case_requirements (status)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_matches_client ON matches (client_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_matches_lawyer ON matches (lawyer_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_matches_case ON matches (case_requirement_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_legal_questions_category ON legal_questions (category)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_lawyer_cases_lawyer ON lawyer_cases (lawyer_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_lawyer_cases_client ON lawyer_cases (client_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_thread ON chat_messages (thread_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_client_documents_client ON client_documents (client_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions (user_id)")
         # ── Migrations ──
         try:
             await conn.execute("ALTER TABLE lawyer_documents ADD COLUMN IF NOT EXISTS notes TEXT")
