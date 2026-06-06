@@ -469,3 +469,98 @@ async def delete_account(
         "message": "Your account and all personal data have been permanently deleted "
                    "in compliance with the Digital Personal Data Protection Act 2023."
     }
+
+
+# ── Sign in with Apple ────────────────────────────────────────────────────────
+class AppleLoginRequest(BaseModel):
+    id_token: str
+    first_name: str | None = None
+    last_name: str | None = None
+    role: str = "client"
+
+
+@router.post("/auth/apple")
+@limiter.limit("10/minute")
+async def apple_login(req: AppleLoginRequest, request: Request, response: Response):
+    """Verify Apple ID token, find-or-create user, issue JWT."""
+    import httpx as _httpx_apple
+    from jose import jwt as _jose_jwt, JWTError as _JWTError
+
+    apple_client_id = _os.getenv("APPLE_CLIENT_ID", "")
+
+    # Fetch Apple public keys
+    try:
+        async with _httpx_apple.AsyncClient(timeout=8.0) as _hc:
+            _jwks_r = await _hc.get("https://appleid.apple.com/auth/keys")
+        _jwks = _jwks_r.json().get("keys", [])
+    except Exception as _e:
+        logger.warning("apple_login: JWKS fetch failed: %s", _e)
+        raise HTTPException(503, "Could not verify Apple credentials — try again")
+
+    # Find matching key
+    try:
+        _header = _jose_jwt.get_unverified_header(req.id_token)
+    except Exception:
+        raise HTTPException(400, "Invalid Apple ID token format")
+
+    _key = next((k for k in _jwks if k.get("kid") == _header.get("kid")), None)
+    if not _key:
+        raise HTTPException(400, "No matching Apple public key — token may be expired")
+
+    # Verify token
+    _decode_opts = {"verify_aud": bool(apple_client_id)}
+    try:
+        _claims = _jose_jwt.decode(
+            req.id_token,
+            _key,
+            algorithms=["RS256"],
+            audience=apple_client_id if apple_client_id else None,
+            options=_decode_opts,
+        )
+    except _JWTError as _je:
+        logger.warning("apple_login: JWT decode failed: %s", _je)
+        raise HTTPException(401, "Apple ID token verification failed")
+
+    if _claims.get("iss") != "https://appleid.apple.com":
+        raise HTTPException(401, "Apple token issuer mismatch")
+
+    apple_user_id = _claims.get("sub", "")
+    email = _claims.get("email") or f"apple_{apple_user_id[:12]}@privaterelay.appleid.com"
+    email_hidden = _claims.get("email_verified") is None  # relay email
+
+    # Build display name — Apple only sends name on first sign-in
+    display_name = " ".join(filter(None, [req.first_name, req.last_name])).strip()
+    if not display_name:
+        display_name = email.split("@")[0].replace(".", " ").title() or "Apple User"
+
+    # Find or create user
+    existing = await get_user_by_email(email)
+    if existing:
+        user = existing
+    else:
+        try:
+            user = await create_user(
+                email=email,
+                name=display_name,
+                password_hash=hash_password(_os.urandom(32).hex()),  # random, never used
+                role=req.role,
+            )
+        except ValueError:
+            user = await get_user_by_email(email)
+            if not user:
+                raise HTTPException(500, "Account creation failed")
+
+    token = await _issue_tokens(user["id"], response)
+    logger.info("apple_login: user_id=%s email_hidden=%s", user["id"], email_hidden)
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user["name"],
+            "subscription_tier": user.get("subscription_tier", "free"),
+            "cases_this_month": user.get("cases_this_month", 0),
+            "is_superuser": user.get("is_superuser", False),
+            "role": user.get("role", "client"),
+        },
+    }

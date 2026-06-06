@@ -3,3 +3,4 @@
 - [Dashboard design system](dashboard-design.md) — stat cards use 3px colored top strip + 3xl numbers; case/match cards use 3px colored left border by status; dark navy+amber upgrade banners
 - [Pre-existing TS error in landing.tsx](preexisting-ts-error.md) — ease:number[] Framer Motion type error in landing.tsx; unrelated to dashboard work
 - [Google free services integration](google-integrations.md) — 5 services wired with env-var guards; each degrades gracefully when keys not set.
+- [Apple free services integration](apple-integrations.md) — Sign in with Apple, Passkeys (WebAuthn), Web Push; py_webauthn lacks bytes_to_base64url — use base64 stdlib instead.

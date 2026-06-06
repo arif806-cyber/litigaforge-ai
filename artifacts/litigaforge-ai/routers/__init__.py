@@ -11,6 +11,8 @@ from routers.alerts       import router as alerts_router
 from routers.admin        import router as admin_router
 from routers.lawyer       import router as lawyer_router
 from routers.documents_free import router as documents_free_router
+from routers.passkeys     import router as passkeys_router
+from routers.push         import router as push_router
 
 __all__ = [
     "auth_router",
@@ -23,4 +25,6 @@ __all__ = [
     "admin_router",
     "lawyer_router",
     "documents_free_router",
+    "passkeys_router",
+    "push_router",
 ]

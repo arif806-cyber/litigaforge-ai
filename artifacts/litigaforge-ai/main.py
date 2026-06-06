@@ -303,6 +303,44 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("Migration email_verify: %s", me)
 
+        # ── Passkeys (WebAuthn / FIDO2) ───────────────────────────────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS passkey_credentials (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    credential_id TEXT UNIQUE NOT NULL,
+                    public_key BYTEA NOT NULL,
+                    sign_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_passkey_credentials_user ON passkey_credentials (user_id)"
+            )
+            logger.info("passkey_credentials table ready")
+        except Exception as me:
+            logger.warning("passkey_credentials init: %s", me)
+
+        # ── Web Push subscriptions ────────────────────────────────────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    endpoint TEXT UNIQUE NOT NULL,
+                    p256dh TEXT NOT NULL,
+                    auth TEXT NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions (user_id)"
+            )
+            logger.info("push_subscriptions table ready")
+        except Exception as me:
+            logger.warning("push_subscriptions init: %s", me)
+
         logger.info("Database tables initialized")
     except Exception as e:
         logger.warning("DB init check: %s", e)
@@ -388,6 +426,7 @@ from routers import (
     matching_router, chat_router, community_router,
     watch_router, alerts_router, admin_router,
     lawyer_router, documents_free_router,
+    passkeys_router, push_router,
 )
 
 @app.get(f"{BASE_PATH}/healthz", tags=["health"])
@@ -404,6 +443,8 @@ app.include_router(alerts_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
 app.include_router(lawyer_router,      prefix=BASE_PATH)
 app.include_router(documents_free_router, prefix=BASE_PATH)
+app.include_router(passkeys_router,    prefix=BASE_PATH)
+app.include_router(push_router,        prefix=BASE_PATH)
 
 @app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
 async def serve_sitemap():

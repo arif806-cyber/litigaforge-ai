@@ -23,6 +23,8 @@ interface AuthCtx {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role?: string, recaptchaToken?: string) => Promise<void>;
   googleLogin: (credential: string, role?: string) => Promise<void>;
+  appleLogin: (idToken: string, firstName?: string, lastName?: string, role?: string) => Promise<void>;
+  passkeyLogin: (token: string, user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -106,6 +108,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = userRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
   };
 
+  const appleLogin = async (idToken: string, firstName?: string, lastName?: string, role: string = "client") => {
+    const data = await authFetch("/auth/apple", {
+      method: "POST",
+      body: JSON.stringify({ id_token: idToken, first_name: firstName ?? null, last_name: lastName ?? null, role }),
+    });
+    if (data.token) {
+      localStorage.setItem("lf_token", data.token);
+      setToken(data.token);
+    }
+    setUser(data.user);
+    const userRole = data.user?.role ?? "client";
+    window.location.href = userRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+  };
+
+  const passkeyLogin = (jwtToken: string, userData: User) => {
+    localStorage.setItem("lf_token", jwtToken);
+    setToken(jwtToken);
+    setUser(userData);
+    const userRole = userData.role ?? "client";
+    window.location.href = userRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+  };
+
   const logout = async () => {
     try {
       await authFetch("/auth/logout", { method: "POST" });
@@ -133,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, googleLogin, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, googleLogin, appleLogin, passkeyLogin, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

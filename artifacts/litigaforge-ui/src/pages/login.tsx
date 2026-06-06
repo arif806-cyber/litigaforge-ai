@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
-import { Scale, Loader2, AlertTriangle, Eye, EyeOff, User, Briefcase, ArrowRight } from "lucide-react";
+import { Scale, Loader2, AlertTriangle, Eye, EyeOff, User, Briefcase, ArrowRight, Fingerprint } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
 import OnboardingModal from "@/components/OnboardingModal";
 import { loadGoogleIdentity, GOOGLE_CLIENT_ID, hasGoogleClientId } from "@/lib/google-auth";
+import { signInWithApple, hasAppleClientId, loadAppleSDK } from "@/lib/apple-auth";
+import { hasPasskeySupport, authenticatePasskey } from "@/lib/passkeys";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import { trackEvent } from "@/lib/analytics";
 
@@ -13,7 +15,7 @@ type Role = "client" | "lawyer";
 type Mode = "signin" | "signup";
 
 export default function Login() {
-  const { login, register, googleLogin } = useAuth();
+  const { login, register, googleLogin, appleLogin, passkeyLogin } = useAuth();
   const [, setLocation] = useLocation();
 
   const [role, setRole] = useState<Role>("client");
@@ -29,6 +31,8 @@ export default function Login() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [consent, setConsent] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
   const googleContainerRef = useRef<HTMLDivElement>(null);
   const roleRef = useRef(role);
 
@@ -36,6 +40,39 @@ export default function Login() {
   const isClient = role === "client";
 
   useEffect(() => { roleRef.current = role; }, [role]);
+
+  // Preload Apple SDK
+  useEffect(() => { if (hasAppleClientId) loadAppleSDK(); }, []);
+
+  const handleAppleSignIn = async () => {
+    setAppleLoading(true);
+    setError("");
+    try {
+      const { id_token, user } = await signInWithApple();
+      await appleLogin(id_token, user?.firstName, user?.lastName, roleRef.current);
+      trackEvent("login_success", { provider: "apple", role: roleRef.current });
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message !== "popup_closed_by_user") {
+        setError(e.message || "Apple sign-in failed");
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    setPasskeyLoading(true);
+    setError("");
+    try {
+      const data = await authenticatePasskey();
+      passkeyLogin(data.token, data.user as unknown as Parameters<typeof passkeyLogin>[1]);
+      trackEvent("login_success", { provider: "passkey" });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Passkey authentication failed");
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!hasGoogleClientId || !googleContainerRef.current) return;
@@ -260,19 +297,66 @@ export default function Login() {
               </p>
             </div>
 
-            {hasGoogleClientId && (
-              <div className="mb-5">
-                <div
-                  ref={googleContainerRef}
-                  className="w-full flex justify-center min-h-[44px]"
-                  aria-label="Sign in with Google"
-                />
-                {googleLoading && (
-                  <div className="flex items-center justify-center gap-2 mt-2 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Signing in with Google…
-                  </div>
+            {(hasGoogleClientId || hasAppleClientId || (isSignIn && hasPasskeySupport)) && (
+              <div className="mb-5 space-y-2.5">
+                {/* Google */}
+                {hasGoogleClientId && (
+                  <>
+                    <div
+                      ref={googleContainerRef}
+                      className="w-full flex justify-center min-h-[44px]"
+                      aria-label="Sign in with Google"
+                    />
+                    {googleLoading && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Signing in with Google…
+                      </div>
+                    )}
+                  </>
                 )}
-                <div className="relative mt-4">
+
+                {/* Sign in with Apple */}
+                {hasAppleClientId && (
+                  <button
+                    type="button"
+                    onClick={handleAppleSignIn}
+                    disabled={appleLoading}
+                    className="w-full h-11 rounded-xl border border-border bg-black text-white font-medium text-sm flex items-center justify-center gap-2.5 hover:bg-neutral-900 disabled:opacity-60 transition-all"
+                    aria-label="Sign in with Apple"
+                  >
+                    {appleLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white" aria-hidden="true">
+                        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09z"/>
+                        <path d="M15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
+                      </svg>
+                    )}
+                    {appleLoading ? "Signing in with Apple…" : (isSignIn ? "Sign in with Apple" : "Continue with Apple")}
+                  </button>
+                )}
+
+                {/* Passkey (sign-in only) */}
+                {isSignIn && hasPasskeySupport && (
+                  <button
+                    type="button"
+                    onClick={handlePasskeyLogin}
+                    disabled={passkeyLoading}
+                    className="w-full h-11 rounded-xl border border-border bg-card text-foreground font-medium text-sm flex items-center justify-center gap-2.5 hover:bg-muted disabled:opacity-60 transition-all"
+                    aria-label="Sign in with a Passkey"
+                    data-testid="passkey-btn"
+                  >
+                    {passkeyLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Fingerprint className="w-4 h-4 text-primary" />
+                    )}
+                    {passkeyLoading ? "Authenticating…" : "Sign in with Passkey"}
+                  </button>
+                )}
+
+                {/* Divider */}
+                <div className="relative pt-1">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-border" />
                   </div>
