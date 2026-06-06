@@ -71,7 +71,7 @@ export default function MyCases() {
     <PageShell title="My Legal Requirements" subtitle="Cases you have posted and proposals received from lawyers."
       action={<Link href="/post-case"><Button><Plus className="w-4 h-4 mr-2" /> Post New Case
           </Button></Link>}>
-      <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+      <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
         {/* Tabs + Search */}
         <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-center gap-2">
@@ -80,10 +80,10 @@ export default function MyCases() {
             <span className="text-[11px] text-gray-400">({allCases.length})</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-background rounded-lg p-0.5">
               {(["open","pending","closed"] as const).map((t) => (
                 <button key={t} onClick={() => setTab(t)}
-                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === t ? "bg-card text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
                   {t}
                 </button>
               ))}
@@ -91,7 +91,7 @@ export default function MyCases() {
           </div>
         </div>
         <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-2">
             <Search className="w-4 h-4 text-gray-400" />
             <input type="text" placeholder="Search by title, type, or location..." value={search} onChange={(e) => setSearch(e.target.value)}
               className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none" />
@@ -135,7 +135,7 @@ export default function MyCases() {
                         <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{c.status.toUpperCase()}</span>
-                        {c.is_anonymous && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200"><EyeOff className="w-2.5 h-2.5 inline mr-0.5" />Anon</span>}
+                        {c.is_anonymous && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-gray-500 border border-border"><EyeOff className="w-2.5 h-2.5 inline mr-0.5" />Anon</span>}
                       </div>
                       <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
                         {c.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.location}</span>}
@@ -183,7 +183,7 @@ export default function MyCases() {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
             onClick={() => setEditingCase(null)}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4"
+              className="bg-card rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4"
               style={{ border: "1px solid #F1F5F9" }} onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-lg">Edit Case Requirement</h3>

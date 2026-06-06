@@ -197,7 +197,7 @@ function FirstVisitDisclaimer() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>

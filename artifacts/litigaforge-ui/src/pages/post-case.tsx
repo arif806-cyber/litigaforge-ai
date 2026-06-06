@@ -101,14 +101,14 @@ export default function PostCase() {
     <PageShell title="Post a Legal Requirement" subtitle="Describe your legal need. Verified lawyers will review and reach out.">
       <SEOHelmet title="Post a Case" description="Post your legal case requirements." canonical="/post-case" />
 
-      <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6" style={{ border: "1px solid #F1F5F9" }}>
+      <div className="bg-card rounded-2xl shadow-sm p-6 space-y-6" style={{ border: "1px solid #F1F5F9" }}>
         {/* Title */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Case Title <span className="text-red-500">*</span></label>
           <input value={title} onChange={(e) => { setTitle(e.target.value); if (fieldErrors.title) setFieldErrors(p => ({ ...p, title: "" })); }}
             placeholder="e.g., Property dispute with neighbour in Banjara Hills"
             className={cn("w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2",
-              fieldErrors.title ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-blue-200")} />
+              fieldErrors.title ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-blue-200")} />
           {fieldErrors.title && <p className="text-xs text-red-500">{fieldErrors.title}</p>}
         </div>
 
@@ -119,7 +119,7 @@ export default function PostCase() {
             {CASE_TYPES.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => { setCaseType(id); if (fieldErrors.caseType) setFieldErrors(p => ({ ...p, caseType: "" })); }}
                 className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-all",
-                  caseType === id ? "border-blue-500 bg-blue-50 text-blue-700 font-medium" : "border-gray-200 hover:border-gray-300 text-gray-600")}>
+                  caseType === id ? "border-blue-500 bg-blue-50 text-blue-700 font-medium" : "border-border hover:border-gray-300 text-gray-600")}>
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{label}</span>
                 {caseType === id && <Check className="w-3.5 h-3.5 ml-auto text-blue-600" />}
@@ -135,7 +135,7 @@ export default function PostCase() {
           <textarea value={description} onChange={(e) => { setDescription(e.target.value); if (fieldErrors.description) setFieldErrors(p => ({ ...p, description: "" })); }}
             placeholder="Describe the situation in detail. Include relevant dates, parties involved, and what outcome you seek."
             rows={5} className={cn("w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 resize-none",
-              fieldErrors.description ? "border-red-300 focus:ring-red-200" : "border-gray-200 focus:ring-blue-200")} />
+              fieldErrors.description ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-blue-200")} />
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-400">Be specific. Lawyers need details to assess your case.</p>
             <p className={cn("text-xs tabular-nums", description.length > 2000 ? "text-red-500 font-semibold" : "text-gray-400")}>{description.length} / 2,000</p>
@@ -149,12 +149,12 @@ export default function PostCase() {
             <label className="text-sm font-medium flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Location</label>
             <input value={locationVal} onChange={(e) => setLocationVal(e.target.value)}
               placeholder="e.g., Hyderabad, Telangana"
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-1.5"><Coins className="w-3.5 h-3.5" /> Budget Range</label>
             <select value={budgetIdx} onChange={(e) => setBudgetIdx(e.target.value === "" ? "" : Number(e.target.value))}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 bg-card">
               <option value="">Select budget...</option>
               {BUDGET_RANGES.map((b, i) => <option key={b.label} value={i}>{b.label}</option>)}
             </select>

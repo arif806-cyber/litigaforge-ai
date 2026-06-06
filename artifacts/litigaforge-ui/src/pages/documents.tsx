@@ -54,7 +54,7 @@ export default function DocumentsPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+      <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
         {/* Header + Search */}
         <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-center gap-2">
@@ -96,7 +96,7 @@ export default function DocumentsPage() {
           </div>
         </div>
         <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-2">
             <Search className="w-4 h-4 text-gray-400" />
             <input type="text" placeholder="Search by filename or case name..." value={search} onChange={(e) => setSearch(e.target.value)}
               className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none" />

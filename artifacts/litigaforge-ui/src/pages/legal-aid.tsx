@@ -261,7 +261,7 @@ export default function LegalAid() {
                       <p className="text-sm font-bold uppercase tracking-widest opacity-80 mb-1">NALSA National Helpline</p>
                       <p className="font-bold text-3xl font-mono tracking-wider">15100</p>
                     </div>
-                    <a href="tel:15100" className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-destructive font-bold hover:bg-white/90 transition shadow-sm">
+                    <a href="tel:15100" className="flex items-center gap-2 px-6 py-3 rounded-xl bg-card text-destructive font-bold hover:bg-card/90 transition shadow-sm">
                       <Phone className="w-5 h-5" /> Call Now
                     </a>
                   </div>

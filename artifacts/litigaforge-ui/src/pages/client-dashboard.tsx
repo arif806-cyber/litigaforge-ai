@@ -101,9 +101,9 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }}
-        onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto border border-border"
+        onClick={(e) => e.stopPropagation()} className="bg-card rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto border border-border"
         >
-        <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b flex items-center justify-between">
+        <div className="sticky top-0 bg-card z-10 px-5 py-4 border-b flex items-center justify-between">
           <h3 className="font-bold text-foreground">{title}</h3>
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"><X className="w-4 h-4 text-muted-foreground" /></button>
         </div>
@@ -263,7 +263,7 @@ export default function ClientDashboard() {
                 ].map((s) => {
                   const Icon = s.icon;
                   return (
-                    <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-border overflow-hidden relative group hover:shadow-md transition-shadow">
+                    <div key={s.label} className="bg-card rounded-xl p-4 shadow-sm border border-border overflow-hidden relative group hover:shadow-md transition-shadow">
                       <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ background: s.accent }} />
                       <div className="flex items-start justify-between mb-2 pt-1">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
@@ -278,7 +278,7 @@ export default function ClientDashboard() {
               </div>
 
               {/* My Assigned Cases — Lawyer Dashboard Style */}
-              <div className="bg-white rounded-2xl shadow-sm border border-border" >
+              <div className="bg-card rounded-2xl shadow-sm border border-border" >
                 {/* Header with search + tabs */}
                 <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ export default function ClientDashboard() {
                     <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
                       {(["active","pending","closed"] as const).map((t) => (
                         <button key={t} onClick={() => setCaseTab(t)}
-                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${caseTab === t ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-muted-foreground"}`}>
+                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${caseTab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-muted-foreground"}`}>
                           {t}
                         </button>
                       ))}
@@ -336,7 +336,7 @@ export default function ClientDashboard() {
                     }
                     return filtered.map((c) => (
                       <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl p-4 hover:shadow-md transition-all bg-white border border-border"
+                        className="rounded-xl p-4 hover:shadow-md transition-all bg-card border border-border"
                         style={{ borderLeftColor: c.status === "active" ? "#10b981" : c.status === "pending" ? "#f59e0b" : "#94a3b8", borderLeftWidth: "3px" }}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -410,7 +410,7 @@ export default function ClientDashboard() {
               </div>
 
               {/* Match Proposals */}
-              <div className="bg-white rounded-2xl shadow-sm border border-border" >
+              <div className="bg-card rounded-2xl shadow-sm border border-border" >
                 <div className="px-5 py-4 border-b flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-50" ><Sparkles className="w-4 h-4 text-violet-600" /></div>
@@ -419,7 +419,7 @@ export default function ClientDashboard() {
                   <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
                     {(["pending","accepted","declined"] as const).map((t) => (
                       <button key={t} onClick={() => setMatchTab(t)}
-                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${matchTab === t ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-muted-foreground"}`}>
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${matchTab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-muted-foreground"}`}>
                         {t}
                       </button>
                     ))}
@@ -438,7 +438,7 @@ export default function ClientDashboard() {
                   )}
                   {filteredMatches.map((m) => (
                     <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl p-4 bg-white border border-border hover:shadow-md transition-all"
+                      className="rounded-xl p-4 bg-card border border-border hover:shadow-md transition-all"
                       style={{ borderLeftColor: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444", borderLeftWidth: "3px" }}>
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary" >
@@ -454,7 +454,7 @@ export default function ClientDashboard() {
                           <p className="text-[11px] text-muted-foreground mt-0.5">{m.district} · {m.experience_years} yrs · ₹{m.hourly_rate}/hr</p>
                           {/* Score bar */}
                           <div className="flex items-center gap-2 mt-2">
-                            <div className="flex-1 h-1.5 rounded-full bg-slate-100">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted">
                               <div className="h-full rounded-full transition-all" style={{ width: `${m.match_score}%`, background: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444" }} />
                             </div>
                             <span className="text-[11px] font-bold tabular-nums" style={{ color: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444" }}>{m.match_score}% match</span>
@@ -503,7 +503,7 @@ export default function ClientDashboard() {
             {/* Right sidebar */}
             <aside className="space-y-4">
               {/* Upcoming Hearings */}
-              <div className="bg-white rounded-2xl shadow-sm p-4 border border-border" >
+              <div className="bg-card rounded-2xl shadow-sm p-4 border border-border" >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50" ><Calendar className="w-4 h-4 text-amber-600" /></div>
                   <p className="text-sm font-bold text-foreground">Upcoming Hearings</p>
@@ -528,7 +528,7 @@ export default function ClientDashboard() {
               </div>
 
               {/* My Lawyers */}
-              <div className="bg-white rounded-2xl shadow-sm p-4 border border-border" >
+              <div className="bg-card rounded-2xl shadow-sm p-4 border border-border" >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50" ><User className="w-4 h-4 text-emerald-600" /></div>
                   <p className="text-sm font-bold text-foreground">My Lawyers</p>
@@ -557,7 +557,7 @@ export default function ClientDashboard() {
               </div>
 
               {/* Legal Tools */}
-              <div className="bg-white rounded-2xl shadow-sm p-4 border border-border" >
+              <div className="bg-card rounded-2xl shadow-sm p-4 border border-border" >
                 <p className="text-sm font-bold text-foreground mb-3">Legal Tools</p>
                 <div className="space-y-1">
                   {[

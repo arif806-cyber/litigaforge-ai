@@ -124,7 +124,7 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
 function StatCard({ label, value, sub, iconEl, iconBg, iconColor, borderColor }:
   { label: string; value: string | number; sub?: string; iconEl: React.ReactNode; iconBg: string; iconColor: string; borderColor: string }) {
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm overflow-hidden relative hover:shadow-md transition-shadow" style={{ border: `1px solid ${borderColor}` }}>
+    <div className="rounded-xl bg-card p-4 shadow-sm overflow-hidden relative hover:shadow-md transition-shadow" style={{ border: `1px solid ${borderColor}` }}>
       <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ background: iconColor }} />
       <div className="pt-1 flex items-start justify-between mb-2">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
@@ -145,11 +145,11 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto"
+        className="bg-card rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto"
         style={{ border: "1px solid #E2E8F0" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#F1F5F9" }}>
           <h3 className="font-bold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+          <button onClick={onClose} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center transition-colors">
             <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
@@ -302,7 +302,7 @@ export default function LawyerDashboard() {
           </div>
 
           {/* Card */}
-          <div className="rounded-2xl bg-white shadow-lg border border-gray-100 px-8 py-10">
+          <div className="rounded-2xl bg-card shadow-lg border border-border px-8 py-10">
             <motion.div
               animate={{ rotate: [0, -8, 8, -8, 8, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
@@ -434,13 +434,13 @@ export default function LawyerDashboard() {
               </div>
 
               {/* ── Case Tabs + Search ── */}
-              <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+              <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
                 <div className="px-4 pt-4 pb-0 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex items-center gap-1 bg-gray-100/70 rounded-xl p-1 flex-shrink-0">
+                  <div className="flex items-center gap-1 bg-muted/70 rounded-xl p-1 flex-shrink-0">
                     {(["active","pending","closed"] as const).map((tab) => (
                       <button key={tab} onClick={() => setCaseTab(tab)}
                         className={cn("px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize",
-                          caseTab === tab ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>
+                          caseTab === tab ? "bg-card shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>
                         {tab} <span className="ml-0.5 opacity-60">({cases.filter((c) => c.status === tab).length})</span>
                       </button>
                     ))}
@@ -470,7 +470,7 @@ export default function LawyerDashboard() {
                         return !q || c.title.toLowerCase().includes(q) || c.client_name?.toLowerCase().includes(q) || c.court_name?.toLowerCase().includes(q) || c.case_type.toLowerCase().includes(q);
                       }).map((c) => (
                         <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
+                          className="bg-card rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
                           style={{ border: "1px solid #F1F5F9", borderLeftColor: c.status === "active" ? "#10b981" : c.status === "pending" ? "#f59e0b" : "#94a3b8", borderLeftWidth: "3px" }}
                           onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}>
                           <div className="flex items-start gap-3">
@@ -492,17 +492,17 @@ export default function LawyerDashboard() {
                                     onClick={(e) => { e.stopPropagation(); setStatusMenuCaseId(statusMenuCaseId === c.id ? null : c.id); }}
                                     className={cn("flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors",
                                       c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100"
-                                        : c.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200"
+                                        : c.status === "closed" ? "bg-muted text-gray-500 border border-border hover:bg-gray-200"
                                         : "bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100")}>
                                     {c.status.toUpperCase()} <ChevronDown className="w-2.5 h-2.5" />
                                   </button>
                                   {statusMenuCaseId === c.id && (
-                                    <div className="absolute top-full left-0 mt-1 z-20 bg-white rounded-lg shadow-lg border p-1 min-w-[110px]" style={{ borderColor: "#E2E8F0" }}>
+                                    <div className="absolute top-full left-0 mt-1 z-20 bg-card rounded-lg shadow-lg border p-1 min-w-[110px]" style={{ borderColor: "#E2E8F0" }}>
                                       {(["active","pending","closed"] as const).map((s) => (
                                         <button key={s} onClick={(e) => { e.stopPropagation(); updateStatusMut.mutate({ caseId: c.id, status: s }); }}
                                           disabled={updateStatusMut.isPending}
                                           className={cn("w-full text-left text-[11px] font-semibold px-2.5 py-1.5 rounded-md capitalize transition-colors",
-                                            c.status === s ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50")}>
+                                            c.status === s ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-background")}>
                                           {s}
                                         </button>
                                       ))}
@@ -555,7 +555,7 @@ export default function LawyerDashboard() {
                       const linkedCase = cases.find((c) => c.id === d.case_id);
                       return (
                         <motion.div key={d.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-white rounded-xl p-4 shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+                          className="bg-card rounded-xl p-4 shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
                           <div className="flex items-start gap-3">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
                               <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
@@ -625,7 +625,7 @@ export default function LawyerDashboard() {
             <aside className="hidden xl:flex flex-col w-64 2xl:w-72 flex-shrink-0 overflow-auto px-4 py-5 space-y-4" style={{ borderLeft: "1px solid #F1F5F9", background: "#F8FAFC" }}>
 
               {/* Upcoming Deadlines */}
-              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
+              <div className="bg-card rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#FEF3C7" }}>
                     <Clock className="w-4 h-4" style={{ color: "#D97706" }} />
@@ -638,7 +638,7 @@ export default function LawyerDashboard() {
                 <div className="space-y-2">
                   {cases.filter((c) => c.status === "active").slice(0, 3).map((c) => (
                     <button key={c.id} onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}
-                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-background transition-colors text-left">
                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#D97706" }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] font-medium text-gray-800 truncate">{c.title}</p>
@@ -653,7 +653,7 @@ export default function LawyerDashboard() {
               </div>
 
               {/* Recent Activity */}
-              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
+              <div className="bg-card rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#ECFDF5" }}>
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -683,7 +683,7 @@ export default function LawyerDashboard() {
               </div>
 
               {/* Quick Research */}
-              <div className="bg-white rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
+              <div className="bg-card rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
                 <p className="text-sm font-bold text-gray-900 mb-3">Quick Research</p>
                 <div className="space-y-1">
                   {[{ label: "Search Judgments", icon: Gavel, href: "/judgments" },
@@ -794,7 +794,7 @@ function DocumentActions({
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-muted transition-colors"
       >
         <ChevronDown className="w-3.5 h-3.5" />
       </button>
@@ -805,7 +805,7 @@ function DocumentActions({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.96 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl z-30 py-1"
+            className="absolute right-0 top-full mt-1 w-40 bg-card rounded-xl shadow-xl z-30 py-1"
             style={{ border: "1px solid #E2E8F0" }}
           >
             <button onClick={() => { onDownload(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-gray-700 hover:bg-blue-50 transition-colors text-left">
@@ -874,11 +874,11 @@ function CaseFolderModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-auto"
+        className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-auto"
         style={{ border: "1px solid #E2E8F0" }}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
+        <div className="sticky top-0 bg-card z-10 px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
               <FolderOpen className="w-5 h-5 text-blue-600" />
@@ -889,7 +889,7 @@ function CaseFolderModal({
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{caseData.case_type}</span>
                 <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
                   caseData.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                    : caseData.status === "closed" ? "bg-gray-100 text-gray-500 border border-gray-200"
+                    : caseData.status === "closed" ? "bg-muted text-gray-500 border border-border"
                     : "bg-amber-50 text-amber-600 border border-amber-200")}>{caseData.status.toUpperCase()}</span>
                 {caseData.cnr_number && (
                   <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F0F9FF", color: "#0284C7", border: "1px solid #BAE6FD" }}>
@@ -908,7 +908,7 @@ function CaseFolderModal({
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}>
               <Plus className="w-3.5 h-3.5" /> Upload
             </button>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors">
               <X className="w-4 h-4 text-gray-400" />
             </button>
           </div>
@@ -931,7 +931,7 @@ function CaseFolderModal({
               {docs.map((d) => (
                 <motion.div key={d.id} layout className="rounded-xl border overflow-hidden" style={{ borderColor: "#F1F5F9" }}>
                   {/* Doc header */}
-                  <div className="flex items-start gap-3 p-3.5 bg-white">
+                  <div className="flex items-start gap-3 p-3.5 bg-card">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
                       <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
                     </div>
@@ -963,7 +963,7 @@ function CaseFolderModal({
                   <AnimatePresence>
                     {expandedDoc === d.id && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                        <div className="px-4 pb-4 pt-0 bg-white" style={{ borderTop: "1px solid #F8FAFC" }}>
+                        <div className="px-4 pb-4 pt-0 bg-card" style={{ borderTop: "1px solid #F8FAFC" }}>
                           {/* Content preview */}
                           <div className="mt-3 rounded-lg p-3 font-mono text-[12px] leading-relaxed text-gray-600" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9", maxHeight: "200px", overflow: "auto" }}>
                             {d.content_text || "No text content available."}
@@ -1065,7 +1065,7 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
             {caseType} <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
           </button>
           {showTypeDropdown && (
-            <div className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border py-1" style={{ borderColor: "#E2E8F0", maxHeight: "200px", overflow: "auto" }}>
+            <div className="absolute z-10 mt-1 w-full bg-card rounded-lg shadow-lg border py-1" style={{ borderColor: "#E2E8F0", maxHeight: "200px", overflow: "auto" }}>
               {CASE_TYPES.map((t) => (
                 <button key={t} type="button" onClick={() => { setCaseType(t); setShowTypeDropdown(false); }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">{t}</button>
@@ -1080,7 +1080,7 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
             {courtName} <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
           </button>
           {showCourtDropdown && (
-            <div className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border py-1" style={{ borderColor: "#E2E8F0", maxHeight: "200px", overflow: "auto" }}>
+            <div className="absolute z-10 mt-1 w-full bg-card rounded-lg shadow-lg border py-1" style={{ borderColor: "#E2E8F0", maxHeight: "200px", overflow: "auto" }}>
               {COURTS.map((c) => (
                 <button key={c} type="button" onClick={() => { setCourtName(c); setShowCourtDropdown(false); }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">{c}</button>
@@ -1113,9 +1113,9 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
               className={cn("text-[11px] font-bold px-2 py-2 rounded-lg capitalize transition-all",
                 status === s
                   ? s === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : s === "closed" ? "bg-gray-100 text-gray-700 border border-gray-200"
+                    : s === "closed" ? "bg-muted text-gray-700 border border-border"
                     : "bg-amber-50 text-amber-700 border border-amber-200"
-                  : "bg-gray-50 text-gray-400 border border-gray-100 hover:border-gray-200")}>
+                  : "bg-background text-gray-400 border border-border hover:border-border")}>
               {s}
             </button>
           ))}
@@ -1165,8 +1165,8 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Tabs */}
       <div className="flex gap-1 rounded-lg p-1" style={{ background: "#F1F5F9" }}>
-        <button type="button" onClick={() => setTab("paste")} className={cn("flex-1 text-xs font-medium py-1.5 rounded-md transition-colors", tab === "paste" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>Paste Text</button>
-        <button type="button" onClick={() => setTab("upload")} className={cn("flex-1 text-xs font-medium py-1.5 rounded-md transition-colors", tab === "upload" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>Upload File</button>
+        <button type="button" onClick={() => setTab("paste")} className={cn("flex-1 text-xs font-medium py-1.5 rounded-md transition-colors", tab === "paste" ? "bg-card shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>Paste Text</button>
+        <button type="button" onClick={() => setTab("upload")} className={cn("flex-1 text-xs font-medium py-1.5 rounded-md transition-colors", tab === "upload" ? "bg-card shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>Upload File</button>
       </div>
 
       {/* Case selector */}
@@ -1174,7 +1174,7 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">Link to Case (optional)</label>
           <select value={caseId} onChange={(e) => setCaseId(e.target.value)}
-            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors bg-white" style={{ borderColor: "#E2E8F0" }}>
+            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors bg-card" style={{ borderColor: "#E2E8F0" }}>
             <option value="">No case — general document</option>
             {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
           </select>

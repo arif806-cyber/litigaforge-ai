@@ -9,7 +9,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Legal Aid":       "bg-green-100 text-green-700 border-green-200",
   "Consumer Rights": "bg-amber-100 text-amber-700 border-amber-200",
   "Property Law":    "bg-violet-100 text-violet-700 border-violet-200",
-  "Court Procedures":"bg-slate-100 text-slate-700 border-slate-200",
+  "Court Procedures":"bg-muted text-slate-700 border-border",
 };
 
 export default function Blog() {

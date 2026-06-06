@@ -36,7 +36,7 @@ const CAT_COLORS: Record<string, string> = {
   Business: "bg-amber-100 text-amber-700 border-amber-200",
   Consumer: "bg-orange-100 text-orange-700 border-orange-200",
   Finance: "bg-violet-100 text-violet-700 border-violet-200",
-  General: "bg-slate-100 text-slate-700 border-slate-200",
+  General: "bg-muted text-slate-700 border-border",
 };
 
 interface TemplateMeta {

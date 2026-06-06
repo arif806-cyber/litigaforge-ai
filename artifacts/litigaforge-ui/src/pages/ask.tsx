@@ -29,7 +29,7 @@ const CAT_COLORS: Record<string, string> = {
   labour: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
   consumer: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
   "motor-accident": "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
-  civil: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800",
+  civil: "bg-muted text-slate-700 border-border dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800",
   general: "bg-muted text-muted-foreground border-border",
 };
 
