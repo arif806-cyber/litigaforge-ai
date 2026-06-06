@@ -350,13 +350,24 @@ async def security_headers_middleware(request: Request, call_next):
         "geolocation=(), microphone=(), camera=(), payment=(), usb=(), "
         "accelerometer=(), gyroscope=(), magnetometer=()"
     )
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.razorpay.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https://api.razorpay.com https://indiankanoon.org; "
+        "frame-src https://api.razorpay.com; "
+        "object-src 'none'; "
+        "base-uri 'self';"
+    )
     response.headers["Cache-Control"] = "no-store" if request.url.path.startswith(
         f"{BASE_PATH}/auth"
     ) else response.headers.get("Cache-Control", "no-cache")
-    if os.getenv("ENVIRONMENT", "development").lower() in ("production", "prod"):
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=63072000; includeSubDomains; preload"
-        )
+    # Replit always terminates TLS — HSTS is safe to send on all responses
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=63072000; includeSubDomains; preload"
+    )
     return response
 
 # ─── Include Routers ──────────────────────────────────────────────────────────
