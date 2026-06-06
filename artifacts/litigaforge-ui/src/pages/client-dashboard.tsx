@@ -9,8 +9,9 @@ import {
   Gavel, Plus, ChevronRight, X, Phone,
   Star, Loader2, Sparkles, Send, Bell, Shield, Award, ArrowRight,
   Scale, Calendar, FileCheck, Heart, FileSearch, Building2, Hash,
-  PenSquare, Download, Share2, Search, Upload, Trash2,
+  PenSquare, Download, Share2, Search, Upload, Trash2, Lock,
 } from "lucide-react";
+import { PaymentModal } from "@/components/PaymentModal";
 
 interface MyRequirement {
   id: number;
@@ -137,6 +138,7 @@ export default function ClientDashboard() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
+  const [payingMatch, setPayingMatch] = useState<MatchProposal | null>(null);
   const [showMatchDetail, setShowMatchDetail] = useState<MatchProposal | null>(null);
   const [showMessageModal, setShowMessageModal] = useState<{ matchId: number; lawyerName: string } | null>(null);
   const [showCaseDetail, setShowCaseDetail] = useState<ClientCase | null>(null);
@@ -186,10 +188,6 @@ export default function ClientDashboard() {
   });
   const threads: ChatThread[] = threadsData?.threads || [];
 
-  const acceptMut = useMutation({
-    mutationFn: (id: number) => apiFetch(`/matches/${id}/accept`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["client-matches"] }),
-  });
   const declineMut = useMutation({
     mutationFn: (id: number) => apiFetch(`/matches/${id}/decline`, { method: "POST" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["client-matches"] }),
@@ -456,11 +454,10 @@ export default function ClientDashboard() {
                           <div className="flex items-center gap-2 mt-3">
                             {m.status === "pending" && (
                               <>
-                                <button onClick={() => acceptMut.mutate(m.id)}
-                                  disabled={acceptMut.isPending}
-                                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 transition-colors bg-emerald-600"
+                                <button onClick={() => setPayingMatch(m)}
+                                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white transition-colors bg-emerald-600 flex items-center gap-1"
                                   >
-                                  {acceptMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Accept"}
+                                  <Lock className="w-3 h-3" /> Accept & Pay Fee
                                 </button>
                                 <button onClick={() => declineMut.mutate(m.id)}
                                   disabled={declineMut.isPending}
@@ -859,6 +856,21 @@ export default function ClientDashboard() {
           </button>
         </div>
       </Modal>
+
+      {payingMatch && (
+        <PaymentModal
+          matchId={payingMatch.id}
+          lawyerName={payingMatch.lawyer_name}
+          caseTitle={(payingMatch as any).case_title ?? "Your Case"}
+          budgetRange={(payingMatch as any).budget_range}
+          onClose={() => setPayingMatch(null)}
+          onSuccess={() => {
+            setPayingMatch(null);
+            setMatchTab("accepted");
+            qc.invalidateQueries({ queryKey: ["client-matches"] });
+          }}
+        />
+      )}
     </>
   );
 }

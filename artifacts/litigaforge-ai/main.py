@@ -151,6 +151,10 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT FALSE")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT")
+        # ── matches: payment tracking columns ────────────────────────────────
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending_payment'")
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_payment_id TEXT")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")

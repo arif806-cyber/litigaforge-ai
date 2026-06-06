@@ -442,8 +442,12 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
     rows = await fetch(
         """SELECT m.id, m.status, m.match_score, m.ai_explanation,
                   m.client_message, m.lawyer_message, m.created_at,
-                  c.title as case_title, c.case_type,
-                  l.id as lawyer_id, l.name as lawyer_name, l.district, l.phone, l.email, l.practice_areas, l.experience_years, l.rating
+                  m.payment_status, m.commission_amount,
+                  c.title as case_title, c.case_type, c.budget_range,
+                  l.id as lawyer_id, l.name as lawyer_name, l.district,
+                  l.practice_areas, l.experience_years, l.rating, l.hourly_rate,
+                  CASE WHEN m.payment_status = 'paid' THEN l.phone ELSE NULL END as lawyer_phone,
+                  CASE WHEN m.payment_status = 'paid' THEN l.email ELSE NULL END as lawyer_email
            FROM matches m
            JOIN case_requirements c ON m.case_requirement_id = c.id
            JOIN lawyers l ON m.lawyer_id = l.id
@@ -481,6 +485,161 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
         r["created_at"] = str(r["created_at"])
     return {"total": len(rows), "matches": rows}
 
+
+# ── Transaction fee endpoints ─────────────────────────────────────────────────
+
+from payments import calc_commission_paise, create_match_order, verify_payment, DEMO_TOKEN
+
+
+class VerifyMatchPaymentRequest(BaseModel):
+    razorpay_order_id: str = ""
+    razorpay_payment_id: str = ""
+    razorpay_signature: str = ""
+    demo_token: str = ""
+
+
+@router.post("/matches/{match_id}/create-payment")
+async def create_match_payment(
+    match_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    row = await fetchrow(
+        """SELECT m.*, cr.budget_range
+           FROM matches m
+           JOIN case_requirements cr ON m.case_requirement_id = cr.id
+           WHERE m.id = $1""",
+        match_id,
+    )
+    if not row:
+        raise HTTPException(404, "Match not found")
+    if row["client_id"] != current_user["id"]:
+        raise HTTPException(403, "Not your match")
+    if row["status"] != "pending":
+        raise HTTPException(400, f"Match is already {row['status']}")
+    if (row.get("payment_status") or "pending_payment") == "paid":
+        return {"already_paid": True}
+
+    amount_paise = calc_commission_paise(row.get("budget_range") or "")
+    await execute(
+        "UPDATE matches SET commission_amount = $1 WHERE id = $2",
+        amount_paise, match_id,
+    )
+    order = create_match_order(match_id, current_user["id"], amount_paise)
+    order["match_id"] = match_id
+    return order
+
+
+@router.post("/matches/{match_id}/verify-payment")
+async def verify_match_payment(
+    match_id: int,
+    req: VerifyMatchPaymentRequest,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    match = await fetchrow("SELECT * FROM matches WHERE id = $1", match_id)
+    if not match:
+        raise HTTPException(404, "Match not found")
+    if match["client_id"] != current_user["id"]:
+        raise HTTPException(403, "Not your match")
+
+    if req.demo_token == DEMO_TOKEN:
+        payment_id = "DEMO_PAID"
+    else:
+        ok = verify_payment(req.razorpay_order_id, req.razorpay_payment_id, req.razorpay_signature)
+        if not ok:
+            raise HTTPException(400, "Payment verification failed — signature mismatch")
+        payment_id = req.razorpay_payment_id
+
+    await execute(
+        """UPDATE matches
+           SET payment_status = 'paid',
+               commission_payment_id = $1,
+               status = 'accepted',
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $2""",
+        payment_id, match_id,
+    )
+
+    lawyer_row = await fetchrow(
+        """SELECT l.name, l.phone, u.email
+           FROM lawyers l
+           LEFT JOIN users u ON l.user_id = u.id
+           WHERE l.id = $1""",
+        match["lawyer_id"],
+    )
+    return {
+        "success": True,
+        "message": "Payment verified. Lawyer contact details revealed!",
+        "lawyer_contact": {
+            "name":  lawyer_row["name"]  if lawyer_row else None,
+            "phone": lawyer_row["phone"] if lawyer_row else None,
+            "email": lawyer_row["email"] if lawyer_row else None,
+        },
+    }
+
+
+@router.post("/matches/{match_id}/accept")
+async def accept_match(
+    match_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    match = await fetchrow("SELECT * FROM matches WHERE id = $1", match_id)
+    if not match:
+        raise HTTPException(404, "Match not found")
+
+    lawyer_row = await fetchrow("SELECT id FROM lawyers WHERE user_id = $1", current_user["id"])
+    is_lawyer = lawyer_row and lawyer_row["id"] == match["lawyer_id"]
+    is_client = match["client_id"] == current_user["id"]
+
+    if not is_lawyer and not is_client:
+        raise HTTPException(403, "Not authorized")
+
+    if is_client:
+        ps = (match.get("payment_status") or "pending_payment")
+        if ps != "paid":
+            raise HTTPException(
+                402,
+                "Platform connection fee required before accepting. Use /matches/{id}/create-payment",
+            )
+
+    await execute(
+        "UPDATE matches SET status='accepted', updated_at=CURRENT_TIMESTAMP WHERE id=$1",
+        match_id,
+    )
+    return {"message": "Match accepted"}
+
+
+@router.post("/matches/{match_id}/decline")
+async def decline_match(
+    match_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    match = await fetchrow("SELECT * FROM matches WHERE id = $1", match_id)
+    if not match:
+        raise HTTPException(404, "Match not found")
+
+    lawyer_row = await fetchrow("SELECT id FROM lawyers WHERE user_id = $1", current_user["id"])
+    is_lawyer = lawyer_row and lawyer_row["id"] == match["lawyer_id"]
+    is_client = match["client_id"] == current_user["id"]
+
+    if not is_lawyer and not is_client:
+        raise HTTPException(403, "Not authorized")
+
+    await execute(
+        "UPDATE matches SET status='declined', updated_at=CURRENT_TIMESTAMP WHERE id=$1",
+        match_id,
+    )
+    return {"message": "Match declined"}
+
+
+# ── Legacy PUT ────────────────────────────────────────────────────────────────
 
 class UpdateMatchRequest(BaseModel):
     status: str  # accepted, declined, completed
