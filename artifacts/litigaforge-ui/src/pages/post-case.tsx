@@ -26,8 +26,12 @@ const CASE_TYPES = [
 ];
 
 const BUDGET_RANGES = [
-  "Under Rs. 5,000", "Rs. 5,000 - 15,000", "Rs. 15,000 - 50,000",
-  "Rs. 50,000 - 1,00,000", "Above Rs. 1,00,000", "Flexible / Discuss",
+  { label: "Under Rs. 5,000",        budget_min: 0,      budget_max: 5000   },
+  { label: "Rs. 5,000 – 15,000",     budget_min: 5000,   budget_max: 15000  },
+  { label: "Rs. 15,000 – 50,000",    budget_min: 15000,  budget_max: 50000  },
+  { label: "Rs. 50,000 – 1,00,000",  budget_min: 50000,  budget_max: 100000 },
+  { label: "Above Rs. 1,00,000",     budget_min: 100000, budget_max: 0      },
+  { label: "Flexible / Discuss",     budget_min: 0,      budget_max: 0      },
 ];
 
 export default function PostCase() {
@@ -37,7 +41,7 @@ export default function PostCase() {
   const [caseType, setCaseType] = useState("");
   const [description, setDescription] = useState("");
   const [locationVal, setLocationVal] = useState("");
-  const [budget, setBudget] = useState("");
+  const [budgetIdx, setBudgetIdx] = useState<number | "">("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -58,9 +62,19 @@ export default function PostCase() {
     setSubmitting(true);
     setError("");
     try {
+      const budgetItem = budgetIdx !== "" ? BUDGET_RANGES[budgetIdx] : null;
       await apiFetch("/cases/requirements", {
         method: "POST",
-        body: JSON.stringify({ title: title.trim(), case_type: caseType, description, location: locationVal, budget_range: budget, is_anonymous: isAnonymous }),
+        body: JSON.stringify({
+          title: title.trim(),
+          case_type: caseType,
+          description,
+          location: locationVal,
+          budget_range: budgetItem?.label ?? "",
+          budget_min: budgetItem?.budget_min ?? 0,
+          budget_max: budgetItem?.budget_max ?? 0,
+          is_anonymous: isAnonymous,
+        }),
       });
       setLocation("/my-cases");
     } catch (e) {
@@ -139,10 +153,10 @@ export default function PostCase() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-1.5"><Coins className="w-3.5 h-3.5" /> Budget Range</label>
-            <select value={budget} onChange={(e) => setBudget(e.target.value)}
+            <select value={budgetIdx} onChange={(e) => setBudgetIdx(e.target.value === "" ? "" : Number(e.target.value))}
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
               <option value="">Select budget...</option>
-              {BUDGET_RANGES.map((b) => <option key={b} value={b}>{b}</option>)}
+              {BUDGET_RANGES.map((b, i) => <option key={b.label} value={i}>{b.label}</option>)}
             </select>
           </div>
         </div>

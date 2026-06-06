@@ -273,6 +273,30 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("Migration check: %s", me)
 
+        # ── Budget columns on case_requirements ──────────────────────────────
+        try:
+            await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS budget_min INTEGER DEFAULT 0")
+            await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS budget_max INTEGER DEFAULT 0")
+            logger.info("Migration: budget_min + budget_max added to case_requirements")
+        except Exception as me:
+            logger.warning("Migration budget: %s", me)
+
+        # ── Email verification on users ───────────────────────────────────────
+        try:
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE")
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS email_verification_tokens (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    token TEXT UNIQUE NOT NULL,
+                    expires_at TIMESTAMPTZ NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            logger.info("Migration: email_verified + email_verification_tokens added")
+        except Exception as me:
+            logger.warning("Migration email_verify: %s", me)
+
         logger.info("Database tables initialized")
     except Exception as e:
         logger.warning("DB init check: %s", e)
@@ -450,11 +474,16 @@ async def serve_sitemap():
 </urlset>"""
     return Response(content=content, media_type="application/xml")
 
-# ── Authenticated secure file serving ────────────────────────────────────────
-# Files are NOT served via a public StaticFiles mount.
+# ── Authenticated secure file serving (Replit Object Storage) ────────────────
+# Files are stored in Replit Object Storage (GCS-backed), not local disk.
 # Every download goes through this endpoint which verifies ownership first.
-_uploads_dir = os.path.join(_script_dir, "uploads")
-os.makedirs(_uploads_dir, exist_ok=True)
+
+def _get_storage():
+    try:
+        from replit.object_storage import Client as _OSClient
+        return _OSClient()
+    except Exception:
+        return None
 
 
 @app.get(f"{BASE_PATH}/secure-files/{{filename}}")
@@ -464,11 +493,9 @@ async def serve_secure_file(
 ):
     """
     Serve an uploaded case document only to the client who owns it or the
-    assigned lawyer — never publicly.  Prevents path traversal via basename check.
+    assigned lawyer — never publicly. Prevents path traversal via basename check.
     """
-    import pathlib as _pl
-
-    # Block path traversal — filename must be a plain basename
+    # Block path traversal
     safe = os.path.basename(filename)
     if safe != filename or ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid file path")
@@ -476,7 +503,7 @@ async def serve_secure_file(
     # Ownership check via DB
     file_url = f"/secure-files/{safe}"
     doc = await db_fetchrow(
-        """SELECT d.client_id, c.lawyer_id
+        """SELECT d.client_id, d.file_path, c.lawyer_id
            FROM client_documents d
            LEFT JOIN lawyer_cases c ON d.case_id = c.id
            WHERE d.file_url = $1""",
@@ -489,23 +516,50 @@ async def serve_secure_file(
     if doc["client_id"] != uid and (doc["lawyer_id"] is None or doc["lawyer_id"] != uid):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Try Object Storage first
+    storage = _get_storage()
+    obj_key = doc.get("file_path") or ""
+    if storage and obj_key and not obj_key.startswith("/"):
+        try:
+            content = storage.download_as_bytes(obj_key)
+            ext = safe.rsplit(".", 1)[-1].lower() if "." in safe else "bin"
+            mime_map = {
+                "pdf": "application/pdf", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                "png": "image/png", "doc": "application/msword",
+                "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "txt": "text/plain",
+            }
+            media_type = mime_map.get(ext, "application/octet-stream")
+            return Response(
+                content=content,
+                media_type=media_type,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{safe}"',
+                    "X-Content-Type-Options": "nosniff",
+                },
+            )
+        except Exception as e:
+            logger.warning("Object storage fetch failed for %s: %s", safe, e)
+
+    # Fallback: local disk (legacy uploads before migration)
+    import pathlib as _pl
+    _uploads_dir = os.path.join(_script_dir, "uploads")
     fp = _pl.Path(_uploads_dir) / safe
-    # Secondary path traversal guard — resolved path must be inside uploads dir
     try:
         fp.resolve().relative_to(_pl.Path(_uploads_dir).resolve())
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid file path")
 
-    if not fp.is_file():
-        raise HTTPException(status_code=404, detail="File not found on disk")
+    if fp.is_file():
+        return FileResponse(
+            str(fp),
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
-    return FileResponse(
-        str(fp),
-        headers={
-            "Content-Disposition": f'attachment; filename="{safe}"',
-            "X-Content-Type-Options": "nosniff",
-        },
-    )
+    raise HTTPException(status_code=404, detail="File not found")
 
 
 if __name__ == "__main__":

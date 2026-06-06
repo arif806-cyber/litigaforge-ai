@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 
-const DECK_PASSWORD = "LitigaForge@2026";
+const DECK_PASSWORD = import.meta.env.VITE_DECK_PASSWORD || "LitigaForge@2026";
 const SESSION_KEY = "lf_deck_auth";
 
 interface Props {

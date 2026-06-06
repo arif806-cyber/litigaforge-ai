@@ -525,27 +525,35 @@ async def upload_client_document(
     if len(content) == 0:
         raise HTTPException(400, "Uploaded file is empty")
 
-    # ── Save to local uploads directory ──────────────────────────────────────
-    import pathlib as _pl
-    _script_dir = _pl.Path(os.path.dirname(os.path.abspath(__file__))).parent
-    uploads_dir = _script_dir / "uploads"
-    uploads_dir.mkdir(parents=True, exist_ok=True)
-
-    unique_name = f"case_{case_id}_user_{current_user['id']}_{int(time.time())}_{safe_name}"
-    file_path = uploads_dir / unique_name
-
-    with open(file_path, "wb") as f:
-        f.write(content)
-
     file_size = len(content)
     file_type = ext.lstrip(".")
+    unique_name = f"case_{case_id}_user_{current_user['id']}_{int(time.time())}_{safe_name}"
     file_url = f"/secure-files/{unique_name}"
+
+    # ── Save to Replit Object Storage (persistent across restarts) ────────────
+    obj_key = f"uploads/{unique_name}"
+    stored_path = obj_key  # default: object storage key
+    try:
+        from replit.object_storage import Client as _OSClient
+        storage = _OSClient()
+        storage.upload_from_bytes(obj_key, content)
+        logger.info("client %s: file %s uploaded to object storage", current_user["id"], obj_key)
+    except Exception as ose:
+        logger.warning("Object storage unavailable (%s) — falling back to local disk", ose)
+        import pathlib as _pl
+        _script_dir = _pl.Path(os.path.dirname(os.path.abspath(__file__))).parent
+        uploads_dir = _script_dir / "uploads"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        file_path_local = uploads_dir / unique_name
+        with open(file_path_local, "wb") as f:
+            f.write(content)
+        stored_path = str(file_path_local)  # absolute path for local fallback
 
     row = await fetchrow(
         """INSERT INTO client_documents (case_id, client_id, filename, file_type, file_size, file_path, file_url)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            RETURNING id, case_id, client_id, filename, file_type, file_size, file_path, file_url, created_at""",
-        case_id, current_user["id"], safe_name, file_type, file_size, str(file_path), file_url,
+        case_id, current_user["id"], safe_name, file_type, file_size, stored_path, file_url,
     )
     row["created_at"] = str(row["created_at"])
     logger.info("client %s uploaded document %s for case %s", current_user["id"], row["id"], case_id)
@@ -629,11 +637,19 @@ async def delete_client_document(
     if not (is_owner or is_lawyer):
         raise HTTPException(403, "Not authorized to delete this document")
 
-    # Delete from filesystem
-    import os, pathlib
-    fp = doc.get("file_path")
-    if fp and pathlib.Path(fp).exists():
-        os.remove(fp)
+    # Delete from Object Storage or local filesystem
+    fp = doc.get("file_path") or ""
+    if fp and not fp.startswith("/"):
+        try:
+            from replit.object_storage import Client as _OSClient
+            _OSClient().delete(fp)
+        except Exception as e:
+            logger.warning("Object storage delete failed for %s: %s", fp, e)
+    elif fp:
+        import pathlib
+        local_fp = pathlib.Path(fp)
+        if local_fp.exists():
+            local_fp.unlink(missing_ok=True)
 
     await execute("DELETE FROM client_documents WHERE id = $1", doc_id)
     logger.info("user %s deleted document %s", current_user["id"], doc_id)

@@ -23,16 +23,36 @@ class WatchModeManager:
             return {"status": "already_running"}
         try:
             from apscheduler.schedulers.background import BackgroundScheduler
-            self._scheduler = BackgroundScheduler()
+            interval = int(os.getenv("WATCH_INTERVAL_MINUTES", "60"))
+
+            # Use PostgreSQL job store for persistence across restarts
+            job_store_kwargs: dict = {}
+            db_url = os.getenv("DATABASE_URL", "")
+            if db_url:
+                try:
+                    from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+                    # asyncpg DSN → psycopg2 DSN for SQLAlchemy sync driver
+                    pg_url = db_url.replace("postgresql+asyncpg://", "postgresql://") \
+                                   .replace("postgres://", "postgresql://")
+                    job_store_kwargs = {
+                        "jobstores": {"default": SQLAlchemyJobStore(url=pg_url)},
+                    }
+                    logger.info("APScheduler using PostgreSQL job store")
+                except Exception as jse:
+                    logger.warning("PostgreSQL job store unavailable (%s) — using in-memory", jse)
+
+            self._scheduler = BackgroundScheduler(**job_store_kwargs)
+            # replace_existing=True lets us survive restart without duplicate job
             self._scheduler.add_job(
                 self._check_all_watches,
                 trigger="interval",
-                minutes=int(os.getenv("WATCH_INTERVAL_MINUTES", "60")),
+                minutes=interval,
                 id="watch_mode_main",
+                replace_existing=True,
             )
             self._scheduler.start()
             self._running = True
-            return {"status": "started", "interval_minutes": int(os.getenv("WATCH_INTERVAL_MINUTES", "60"))}
+            return {"status": "started", "interval_minutes": interval}
         except ImportError:
             return {"status": "error", "detail": "apscheduler not installed — run: pip install apscheduler"}
         except Exception as e:

@@ -79,6 +79,12 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     token = await _issue_tokens(user["id"], response)
+    # Send verification email (no-op if SMTP not configured)
+    try:
+        vtoken = await _create_verification_token(user["id"])
+        await _send_verification_email(req.email, vtoken)
+    except Exception:
+        pass
     return {"user": user, "token": token}
 
 
@@ -177,6 +183,94 @@ async def refresh_token(request: Request, response: Response):
     return {"token": token}
 
 
+async def _send_verification_email(email: str, token: str) -> bool:
+    """Send verification email via SMTP. Returns True on success, False if SMTP not configured."""
+    import smtplib
+    from email.mime.text import MIMEText
+    smtp_host = _os.getenv("SMTP_HOST")
+    if not smtp_host:
+        return False
+    smtp_port = int(_os.getenv("SMTP_PORT", "587"))
+    smtp_user = _os.getenv("SMTP_USER", "")
+    smtp_pass = _os.getenv("SMTP_PASSWORD", "")
+    smtp_from = _os.getenv("SMTP_FROM", smtp_user)
+    verify_url = f"https://litiga-forge-ai.replit.app/litigaforge/auth/verify-email?token={token}"
+    body = (
+        f"Welcome to LitigaForge AI!\n\n"
+        f"Please verify your email address by clicking the link below:\n\n"
+        f"{verify_url}\n\n"
+        f"This link expires in 24 hours.\n\n"
+        f"— LitigaForge AI Team"
+    )
+    msg = MIMEText(body)
+    msg["Subject"] = "Verify your LitigaForge AI email"
+    msg["From"] = smtp_from
+    msg["To"] = email
+    try:
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+                if smtp_user:
+                    server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                if smtp_user:
+                    server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+        return True
+    except Exception as exc:
+        logger.warning("SMTP send failed for %s: %s", email, exc)
+        return False
+
+
+async def _create_verification_token(user_id: int) -> str:
+    """Create and store a 24-hour verification token."""
+    import secrets
+    token = secrets.token_urlsafe(32)
+    expires = datetime.utcnow() + timedelta(hours=24)
+    await db_execute(
+        "DELETE FROM email_verification_tokens WHERE user_id = $1",
+        user_id,
+    )
+    await db_execute(
+        "INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
+        user_id, token, expires,
+    )
+    return token
+
+
+@router.get("/auth/verify-email")
+async def verify_email(token: str):
+    """Verify email via token from link. Marks user as verified."""
+    row = await db_fetchrow(
+        "SELECT user_id, expires_at FROM email_verification_tokens WHERE token = $1",
+        token,
+    )
+    if not row:
+        raise HTTPException(400, "Invalid or expired verification link")
+    if row["expires_at"].replace(tzinfo=None) < datetime.utcnow():
+        await db_execute("DELETE FROM email_verification_tokens WHERE token = $1", token)
+        raise HTTPException(400, "Verification link has expired — please request a new one")
+    await db_execute("UPDATE users SET email_verified = TRUE WHERE id = $1", row["user_id"])
+    await db_execute("DELETE FROM email_verification_tokens WHERE token = $1", token)
+    logger.info("Email verified for user_id=%s", row["user_id"])
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/auth/resend-verification")
+@limiter.limit("3/minute")
+async def resend_verification(request: Request, current_user: dict = Depends(require_user)):
+    """Resend verification email. Rate-limited to 3/minute."""
+    if current_user.get("email_verified"):
+        return {"message": "Email already verified"}
+    token = await _create_verification_token(current_user["id"])
+    sent = await _send_verification_email(current_user["email"], token)
+    if sent:
+        return {"message": "Verification email sent"}
+    return {"message": "SMTP not configured — token created. Contact admin to verify manually."}
+
+
 @router.post("/auth/logout")
 async def logout(request: Request, response: Response):
     raw = request.cookies.get("lf_refresh")
@@ -231,13 +325,22 @@ async def delete_account(
     # 1. Revoke all active sessions first
     await delete_all_user_refresh_tokens(user_id)
 
-    # 2. Delete physical files from disk
+    # 2. Delete files from Object Storage (or legacy local disk)
     docs = await db_fetch(
         "SELECT file_path FROM client_documents WHERE client_id = $1", user_id
     )
     for doc in docs:
-        fp = doc.get("file_path")
-        if fp:
+        fp = doc.get("file_path") or ""
+        if not fp:
+            continue
+        if not fp.startswith("/"):
+            # Object storage key
+            try:
+                from replit.object_storage import Client as _OSClient
+                _OSClient().delete(fp)
+            except Exception:
+                pass
+        else:
             try:
                 p = _pathlib.Path(fp)
                 if p.is_file():

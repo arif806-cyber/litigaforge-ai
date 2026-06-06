@@ -118,6 +118,8 @@ class CaseRequirementRequest(BaseModel):
     description: str = ""
     location: str = ""
     budget_range: str = ""
+    budget_min: int = 0
+    budget_max: int = 0
     is_anonymous: bool = False
 
 
@@ -139,11 +141,11 @@ async def create_case_requirement(
 
     row = await fetchrow(
         """INSERT INTO case_requirements
-           (user_id, title, case_type, description, location, budget_range, is_anonymous, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')
-           RETURNING id, user_id, title, case_type, description, location, budget_range, is_anonymous, status, created_at""",
+           (user_id, title, case_type, description, location, budget_range, budget_min, budget_max, is_anonymous, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open')
+           RETURNING id, user_id, title, case_type, description, location, budget_range, budget_min, budget_max, is_anonymous, status, created_at""",
         current_user["id"], safe_title, safe_case_type, safe_desc,
-        safe_location, safe_budget, req.is_anonymous,
+        safe_location, safe_budget, req.budget_min, req.budget_max, req.is_anonymous,
     )
     row["created_at"] = str(row["created_at"])
     return {"message": "Case requirement posted successfully", "case": row}

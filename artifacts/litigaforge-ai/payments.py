@@ -23,15 +23,20 @@ COMMISSION_DEFAULT= 99900  # ₹999 when budget is unspecified
 DEMO_TOKEN = "DEMO_LF_PAYMENT_V1"  # used in sandbox / no-key mode
 
 
-def calc_commission_paise(budget_range: str) -> int:
-    """Return platform connection fee in paise based on the case budget."""
+def calc_commission_paise(budget_range: str, budget_min_rupees: int = 0) -> int:
+    """Return platform connection fee in paise.
+    Prefers numeric budget_min_rupees; falls back to parsing budget_range text."""
+    if budget_min_rupees and budget_min_rupees > 0:
+        commission_paise = int(budget_min_rupees * COMMISSION_RATE) * 100
+        return max(COMMISSION_MIN, min(COMMISSION_MAX, commission_paise))
+    # Legacy text parse
     nums = _re.findall(r"\d+", budget_range or "")
-    budget_min = int(nums[0]) if nums else 0
-    if budget_min < 1000:          # treat small numbers (e.g. 500) as ₹ not ₹k
-        budget_min *= 100 if budget_min else 0
-    if budget_min == 0:
+    bmin = int(nums[0]) if nums else 0
+    if bmin == 0:
         return COMMISSION_DEFAULT
-    commission_paise = int(budget_min * COMMISSION_RATE) * 100
+    if bmin < 1000:           # guard against very small text numbers
+        bmin = bmin * 100
+    commission_paise = int(bmin * COMMISSION_RATE) * 100
     return max(COMMISSION_MIN, min(COMMISSION_MAX, commission_paise))
 
 
