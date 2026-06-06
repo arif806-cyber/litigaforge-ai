@@ -222,11 +222,16 @@ export default function ClientDashboard() {
     <>
       <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
           {/* Page greeting */}
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Good day, {firstName} 👋</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected
-            </p>
+          <div className="rounded-2xl px-5 py-4 border border-amber-100 bg-gradient-to-r from-white to-amber-50/60 flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Good day, {firstName} 👋</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned · {acceptedMatches} lawyer{acceptedMatches !== 1 ? "s" : ""} connected
+              </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 bg-amber-50 text-amber-700 border border-amber-200">
+              <Shield className="w-3.5 h-3.5" /> LitigaForge AI
+            </div>
           </div>
 
           {/* Quick Actions */}
@@ -251,19 +256,22 @@ export default function ClientDashboard() {
               {/* Client Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: "Active Cases", value: activeCases, icon: Briefcase, color: "#2563EB", bg: "#EFF6FF" },
-                  { label: "Hearings", value: upcomingHearings, icon: Calendar, color: "#D97706", bg: "#FEF3C7" },
-                  { label: "My Lawyers", value: connectedLawyers, icon: User, color: "#059669", bg: "#ECFDF5" },
-                  { label: "Posted", value: activeReqs, icon: FileText, color: "#7C3AED", bg: "#F5F3FF" },
+                  { label: "Active Cases", value: activeCases, icon: Briefcase, color: "#2563EB", bg: "#EFF6FF", accent: "#2563EB" },
+                  { label: "Hearings", value: upcomingHearings, icon: Calendar, color: "#D97706", bg: "#FEF3C7", accent: "#D97706" },
+                  { label: "My Lawyers", value: connectedLawyers, icon: User, color: "#059669", bg: "#ECFDF5", accent: "#059669" },
+                  { label: "Posted", value: activeReqs, icon: FileText, color: "#7C3AED", bg: "#F5F3FF", accent: "#7C3AED" },
                 ].map((s) => {
                   const Icon = s.icon;
                   return (
-                    <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-border" >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: s.bg }}><Icon className="w-3.5 h-3.5" style={{ color: s.color }} /></div>
-                        <span className="text-[11px] font-medium text-muted-foreground">{s.label}</span>
+                    <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-border overflow-hidden relative group hover:shadow-md transition-shadow">
+                      <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ background: s.accent }} />
+                      <div className="flex items-start justify-between mb-2 pt-1">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
+                          <Icon className="w-4 h-4" style={{ color: s.color }} />
+                        </div>
                       </div>
-                      <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                      <p className="text-3xl font-bold text-foreground leading-none">{s.value}</p>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-1.5">{s.label}</p>
                     </div>
                   );
                 })}
@@ -328,7 +336,8 @@ export default function ClientDashboard() {
                     }
                     return filtered.map((c) => (
                       <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                        className="rounded-xl p-4 hover:shadow-sm transition-all bg-muted/40 border border-border" >
+                        className="rounded-xl p-4 hover:shadow-md transition-all bg-white border border-border"
+                        style={{ borderLeftColor: c.status === "active" ? "#10b981" : c.status === "pending" ? "#f59e0b" : "#94a3b8", borderLeftWidth: "3px" }}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-50" >
@@ -429,7 +438,8 @@ export default function ClientDashboard() {
                   )}
                   {filteredMatches.map((m) => (
                     <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl p-4 bg-muted/40 border border-border" >
+                      className="rounded-xl p-4 bg-white border border-border hover:shadow-md transition-all"
+                      style={{ borderLeftColor: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444", borderLeftWidth: "3px" }}>
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary" >
                           <User className="w-5 h-5 text-white" />
@@ -437,12 +447,18 @@ export default function ClientDashboard() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-foreground text-sm">{m.lawyer_name}</span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-primary-foreground" style={{ background: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444" }}>{m.match_score} Match</span>
                             {m.rating > 0 && (
                               <span className="text-[11px] flex items-center gap-0.5 text-amber-600"><Star className="w-3 h-3 fill-amber-400" />{m.rating}</span>
                             )}
                           </div>
                           <p className="text-[11px] text-muted-foreground mt-0.5">{m.district} · {m.experience_years} yrs · ₹{m.hourly_rate}/hr</p>
+                          {/* Score bar */}
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-slate-100">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${m.match_score}%`, background: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444" }} />
+                            </div>
+                            <span className="text-[11px] font-bold tabular-nums" style={{ color: m.match_score >= 80 ? "#059669" : m.match_score >= 60 ? "#D97706" : "#EF4444" }}>{m.match_score}% match</span>
+                          </div>
                           {m.ai_explanation && (
                             <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{m.ai_explanation}</p>
                           )}
@@ -562,21 +578,25 @@ export default function ClientDashboard() {
               </div>
 
               {/* NALSA */}
-              <div className="rounded-xl p-3 flex items-center gap-2.5 bg-muted" >
-                <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <div>
-                  <p className="text-[11px] font-semibold text-foreground">NALSA Free Legal Aid</p>
-                  <p className="text-[11px] text-muted-foreground">Toll-free: 15100</p>
+              <a href="tel:15100" className="rounded-xl p-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-4 h-4 text-emerald-700" />
                 </div>
-              </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-emerald-800">NALSA Free Legal Aid</p>
+                  <p className="text-[11px] text-emerald-600 font-medium">Toll-free: 15100 — Tap to call</p>
+                </div>
+              </a>
 
               {/* Upgrade banner */}
               {user?.subscription_tier === "free" && (
-                <div className="rounded-2xl p-4 text-sidebar-foreground bg-gradient-to-br from-sidebar to-sidebar-accent" >
-                  <Award className="w-6 h-6 mb-2 w-4 h-4 text-amber-400"  />
-                  <p className="font-bold text-sm mb-1">Upgrade to Professional</p>
-                  <p className="text-[11px] mb-3 leading-relaxed text-blue-200" >Priority lawyer matching, unlimited AI credits, WhatsApp alerts.</p>
-                  <button onClick={() => setLocation("/subscription")} className="w-full text-xs font-bold py-2 rounded-lg transition-colors bg-amber-400 text-primary" >Upgrade — ₹999/mo</button>
+                <div className="rounded-2xl p-4 text-white bg-gradient-to-br from-[#1a2744] to-[#0f1a35] border border-white/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Award className="w-5 h-5 text-amber-400" />
+                    <p className="font-bold text-sm">Upgrade to Professional</p>
+                  </div>
+                  <p className="text-[11px] mb-3 leading-relaxed text-blue-200">Priority lawyer matching, unlimited AI credits, WhatsApp alerts.</p>
+                  <button onClick={() => setLocation("/subscription")} className="w-full text-xs font-bold py-2.5 rounded-lg transition-colors bg-amber-400 hover:bg-amber-300 text-[#1a2744]">Upgrade — ₹999/mo</button>
                 </div>
               )}
             </aside>

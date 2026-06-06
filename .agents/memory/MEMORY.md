@@ -1,2 +1,4 @@
 - [Secure file serving pattern](secure-file-serving.md) — uploaded files must use authenticated /secure-files/ endpoint, not StaticFiles mount; file_url stored as /secure-files/{basename}
 - [DPDP Act 2023 erasure endpoint](dpdp-erasure-endpoint.md) — DELETE /auth/account cascades in FK-safe order: sessions → disk files → chat → docs → matches → case_reqs → lawyer_cases → questions → subs → user
+- [Dashboard design system](dashboard-design.md) — stat cards use 3px colored top strip + 3xl numbers; case/match cards use 3px colored left border by status; dark navy+amber upgrade banners
+- [Pre-existing TS error in landing.tsx](preexisting-ts-error.md) — ease:number[] Framer Motion type error in landing.tsx; unrelated to dashboard work

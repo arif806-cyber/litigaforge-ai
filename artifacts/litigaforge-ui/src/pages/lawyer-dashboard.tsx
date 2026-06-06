@@ -124,17 +124,16 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
 function StatCard({ label, value, sub, iconEl, iconBg, iconColor, borderColor }:
   { label: string; value: string | number; sub?: string; iconEl: React.ReactNode; iconBg: string; iconColor: string; borderColor: string }) {
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm" style={{ border: `1px solid ${borderColor}` }}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
-        </div>
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
+    <div className="rounded-xl bg-white p-4 shadow-sm overflow-hidden relative hover:shadow-md transition-shadow" style={{ border: `1px solid ${borderColor}` }}>
+      <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl" style={{ background: iconColor }} />
+      <div className="pt-1 flex items-start justify-between mb-2">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
           <span style={{ color: iconColor }}>{iconEl}</span>
         </div>
       </div>
+      <p className="text-3xl font-bold text-gray-900 leading-none">{value}</p>
+      <p className="text-[11px] font-medium text-gray-500 mt-1.5">{label}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -163,7 +162,6 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 // ── Main Page ─────────────────────────────────────────────────────────────────────────
 export default function LawyerDashboard() {
   const { user, refreshUser, logout } = useAuth();
-  const [location] = useLocation();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -396,16 +394,22 @@ export default function LawyerDashboard() {
       <main className="flex-1 min-w-0 px-4 md:px-6 py-5 space-y-5">
 
               {/* Welcome */}
-              <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="rounded-2xl px-5 py-4 border border-blue-100 bg-gradient-to-r from-white to-blue-50/60 flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Welcome back, Advocate {lawyerFirstName} 👋</h1>
                   <p className="text-sm text-gray-500 mt-0.5">Your AI-powered legal practice dashboard — Telangana &amp; AP courts</p>
                 </div>
-                {isAdvocatePro && (
-                  <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0" style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}>
-                    <Shield className="w-3.5 h-3.5" /> Bar Council Verified
-                  </span>
-                )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {isAdvocatePro ? (
+                    <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}>
+                      <Shield className="w-3.5 h-3.5" /> Bar Council Verified
+                    </span>
+                  ) : (
+                    <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      <Shield className="w-3.5 h-3.5" /> LitigaForge AI
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Stats */}
@@ -466,7 +470,8 @@ export default function LawyerDashboard() {
                         return !q || c.title.toLowerCase().includes(q) || c.client_name?.toLowerCase().includes(q) || c.court_name?.toLowerCase().includes(q) || c.case_type.toLowerCase().includes(q);
                       }).map((c) => (
                         <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" style={{ border: "1px solid #F1F5F9" }}
+                          className="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
+                          style={{ border: "1px solid #F1F5F9", borderLeftColor: c.status === "active" ? "#10b981" : c.status === "pending" ? "#f59e0b" : "#94a3b8", borderLeftWidth: "3px" }}
                           onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}>
                           <div className="flex items-start gap-3">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#EFF6FF" }}>
@@ -698,22 +703,26 @@ export default function LawyerDashboard() {
 
               {/* Upgrade */}
               {!isAdvocatePro && (
-                <div className="rounded-2xl p-4 text-sidebar-foreground bg-gradient-to-br from-sidebar to-sidebar-accent">
-                  <Award className="w-6 h-6 mb-2 text-sidebar-primary" />
-                  <p className="font-bold text-sm mb-1">Upgrade to Advocate Pro</p>
-                  <p className="text-[11px] mb-3 leading-relaxed text-sidebar-foreground/70">Unlimited AI credits, verified badge, priority client matches, WhatsApp alerts.</p>
-                  <button onClick={() => setLocation("/subscription")} className="w-full text-xs font-bold py-2 rounded-lg transition-colors bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">Upgrade — ₹2,499/mo</button>
+                <div className="rounded-2xl p-4 text-white bg-gradient-to-br from-[#1a2744] to-[#0f1a35] border border-white/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Award className="w-5 h-5 text-amber-400" />
+                    <p className="font-bold text-sm">Upgrade to Advocate Pro</p>
+                  </div>
+                  <p className="text-[11px] mb-3 leading-relaxed text-blue-200">Unlimited AI credits, verified badge, priority client matches, WhatsApp alerts.</p>
+                  <button onClick={() => setLocation("/subscription")} className="w-full text-xs font-bold py-2.5 rounded-lg transition-colors bg-amber-400 hover:bg-amber-300 text-[#1a2744]">Upgrade — ₹2,499/mo</button>
                 </div>
               )}
 
               {/* NALSA Helpline */}
-              <div className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: "#F1F5F9" }}>
-                <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-700">NALSA Free Legal Aid</p>
-                  <p className="text-[11px] text-gray-500">Toll-free: 15100</p>
+              <a href="tel:15100" className="rounded-xl p-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-4 h-4 text-emerald-700" />
                 </div>
-              </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-emerald-800">NALSA Free Legal Aid</p>
+                  <p className="text-[11px] text-emerald-600 font-medium">Toll-free: 15100</p>
+                </div>
+              </a>
 
       </aside>
 
