@@ -16,7 +16,7 @@ export default function Slide08Traction() {
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Full client dashboard — post case, view matches, upload documents, track hearings, contact lawyer</div>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Full lawyer dashboard — receive matched cases, manage documents, CNR lookups, case stage tracking</div>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>AI matching engine — scores up to 100+ advocate profiles, returns ranked proposals with explanations</div>
-              <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>16 government API chains — 4 live sandbox, 12 production-ready mocks</div>
+              <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Full AI tool suite — Legal Q&amp;A, Document Analyzer, Judgment Finder, AI Chat, 10 doc templates</div>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Subscription payments via Razorpay, JWT auth, WhatsApp hearing alerts via Twilio</div>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Admin panel — advocate verification, user management, approval workflow</div>
             </div>
@@ -27,15 +27,15 @@ export default function Slide08Traction() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1.2vh", marginBottom: "3vh" }}>
               <div style={{ display: "flex", gap: "1.5vw", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "1.85vw", color: "#C8933F", fontWeight: 700, minWidth: "1.5vw" }}>1.</div>
-                <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>eCourts production API key — enable live CNR lookup and order retrieval for all cases</div>
+                <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Beta launch with 50 verified TG &amp; AP advocates — onboard, verify, and activate in district courts</div>
               </div>
               <div style={{ display: "flex", gap: "1.5vw", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "1.85vw", color: "#C8933F", fontWeight: 700, minWidth: "1.5vw" }}>2.</div>
-                <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>API Setu production credentials — activate all 16 chains with live government data</div>
+                <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>First 500 active users — client case posts, AI match proposals, and accepted engagements</div>
               </div>
               <div style={{ display: "flex", gap: "1.5vw", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "1.85vw", color: "#C8933F", fontWeight: 700, minWidth: "1.5vw" }}>3.</div>
-                <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Beta launch with 50 verified TG &amp; AP advocates — onboard, verify, and activate in district courts</div>
+                <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.4 }}>Subscription revenue — convert beta users to Professional and Advocate Pro plans</div>
               </div>
               <div style={{ display: "flex", gap: "1.5vw", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "1.85vw", color: "#C8933F", fontWeight: 700, minWidth: "1.5vw" }}>4.</div>

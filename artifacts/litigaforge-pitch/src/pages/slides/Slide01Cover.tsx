@@ -20,9 +20,9 @@ export default function Slide01Cover() {
         <div style={{ width: "6vw", height: "2px", background: "#C8933F", marginBottom: "4vh", opacity: 0.6 }} />
 
         <div style={{ fontSize: "1.9vw", fontWeight: 400, color: "#B8B0A0", lineHeight: 1.6, maxWidth: "55vw", textWrap: "pretty" }}>
-          AI-powered client-lawyer matching, 16 government API chains,
-          and multi-AI legal strategy — India's first end-to-end
-          legal intelligence platform for South India's courts.
+          AI-powered client-lawyer matching, multi-AI legal strategy,
+          and a full suite of community legal tools — India's first
+          end-to-end legal intelligence platform for South India's courts.
         </div>
       </div>
 

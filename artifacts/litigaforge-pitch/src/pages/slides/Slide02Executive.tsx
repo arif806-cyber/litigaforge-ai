@@ -20,7 +20,7 @@ export default function Slide02Executive() {
           <div style={{ display: "flex", gap: "2vw", alignItems: "flex-start" }}>
             <div style={{ width: "2px", minWidth: "2px", height: "100%", background: "#C8933F", alignSelf: "stretch", marginTop: "0.3vh" }} />
             <div style={{ fontSize: "2vw", fontWeight: 400, color: "#F5F0E8", lineHeight: 1.45, textWrap: "pretty" }}>
-              LitigaForge AI solves this with <span style={{ fontWeight: 700 }}>AI-driven lawyer matching</span> (scored 0–100), <span style={{ fontWeight: 700 }}>16 live government API chains</span> (eCourts, Mee Seva, MCA, VAHAN, GSTIN), and a <span style={{ fontWeight: 700 }}>multi-AI legal strategy engine</span> (Claude + Gemini + GPT-5).
+              LitigaForge AI solves this with <span style={{ fontWeight: 700 }}>AI-driven lawyer matching</span> (scored 0–100), a <span style={{ fontWeight: 700 }}>multi-AI legal strategy engine</span> (Claude + Gemini + GPT-5), and a full suite of <span style={{ fontWeight: 700 }}>community legal tools</span> — Q&amp;A, Document Analyzer, Judgment Finder, Free Documents.
             </div>
           </div>
 
@@ -34,7 +34,7 @@ export default function Slide02Executive() {
           <div style={{ display: "flex", gap: "2vw", alignItems: "flex-start" }}>
             <div style={{ width: "2px", minWidth: "2px", height: "100%", background: "#C8933F", alignSelf: "stretch", marginTop: "0.3vh" }} />
             <div style={{ fontSize: "2vw", fontWeight: 400, color: "#F5F0E8", lineHeight: 1.45, textWrap: "pretty" }}>
-              We are raising a <span style={{ fontWeight: 700 }}>seed round</span> to secure production government API credentials, onboard verified TG &amp; AP advocates, and launch the beta.
+              We are raising a <span style={{ fontWeight: 700 }}>seed round</span> to onboard verified TG &amp; AP advocates, run a targeted beta launch, and expand the platform's AI legal tools.
             </div>
           </div>
 

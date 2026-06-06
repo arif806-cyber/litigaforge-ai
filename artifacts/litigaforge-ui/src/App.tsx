@@ -12,11 +12,6 @@ import { SkipLink } from "@/components/SkipLink";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SEOHelmet } from "@/components/SEOHelmet";
 
-const Forge               = lazy(() => import("@/pages/forge"));
-const Cases               = lazy(() => import("@/pages/cases"));
-const CaseDetail          = lazy(() => import("@/pages/case-detail"));
-const Chains              = lazy(() => import("@/pages/chains"));
-const UseCases            = lazy(() => import("@/pages/use-cases"));
 const Login               = lazy(() => import("@/pages/login"));
 const Subscription        = lazy(() => import("@/pages/subscription"));
 const Ask                 = lazy(() => import("@/pages/ask"));
@@ -77,6 +72,27 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+function RoleRedirect() {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        setLocation(user.role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
+      } else {
+        setLocation("/login");
+      }
+    }
+  }, [user, loading, setLocation]);
+
+  return (
+    <div className="h-full flex items-center justify-center">
+      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+    </div>
+  );
+}
+
 function Router() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -103,13 +119,9 @@ function Router() {
         <Route>
           <Layout>
             <Switch>
-              <Route path="/"             component={() => <ProtectedRoute component={Forge} />} />
+              <Route path="/"             component={RoleRedirect} />
               <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
               <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
-              <Route path="/cases"        component={() => <ErrorBoundary section="cases"><Cases /></ErrorBoundary>} />
-              <Route path="/cases/:id"    component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
-              <Route path="/chains"       component={() => <ErrorBoundary section="chains"><Chains /></ErrorBoundary>} />
-              <Route path="/use-cases"    component={() => <ErrorBoundary section="use-cases"><UseCases /></ErrorBoundary>} />
               <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
               <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
               <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />

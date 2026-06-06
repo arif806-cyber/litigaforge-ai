@@ -78,37 +78,6 @@ def _extract_json_array(text: str) -> list:
     return json.loads(m.group()) if m else []
 
 
-def _infer_state_code(location: str) -> str:
-    """Infer 2-letter state code from location text (Telangana/AP default)."""
-    if not location:
-        return "TS"
-    loc = location.lower()
-    if "andhra" in loc or "vijayawada" in loc or "visakhapatnam" in loc or "vizag" in loc or "guntur" in loc or "nellore" in loc:
-        return "AP"
-    if "hyderabad" in loc or "secunderabad" in loc or "warangal" in loc or "karimnagar" in loc or "nizamabad" in loc or "khammam" in loc or "mahbubnagar" in loc:
-        return "TS"
-    return "TS"
-
-
-def _clean_advocate_name(raw: str) -> str:
-    """Clean an advocate name from eCourts data (may contain extra text like bar numbers)."""
-    if not raw or not isinstance(raw, str):
-        return ""
-    name = raw.strip()
-    # Remove common noise: "Adv.", "Mr.", "Ms.", "Mrs.", trailing bar numbers
-    name = re.sub(r"(?i)^(Adv\.?\s+|Mr\.?\s+|Ms\.?\s+|Mrs\.?\s+)", "", name)
-    name = re.sub(r"\s*\(\d+\)\s*$", "", name)   # remove trailing (123)
-    name = re.sub(r"\s*,\s*Bar\s+No.*", "", name, flags=re.I)
-    name = re.sub(r"\s+\d+$", "", name)            # remove trailing numbers
-    name = name.strip()
-    # Reject if too short
-    if len(name) < 3:
-        return ""
-    # Convert ALL CAPS to Title Case for display
-    if name.isupper():
-        name = name.title()
-    return name
-
 
 # ── Case Requirements ────────────────────────────────────────────────────────
 
@@ -279,64 +248,8 @@ async def ai_match_lawyers(
            ORDER BY rating DESC, experience_years DESC""",
     )
 
-    # ── eCourts India lookup (supplementary to platform lawyers) ──
-    external_matches = []
-    ecourts_status = "skipped"
-    try:
-        from api_chains import fetch_ecourts
-        search_query = case.get("title", "") or case.get("case_type", "")
-        state_code = _infer_state_code(case.get("location", ""))
-        logger.info(f"[eCourts] Querying: party_name={search_query[:100]!r}, state={state_code}")
-        ecourts_result = fetch_ecourts(
-            party_name=search_query[:100],
-            state_code=state_code,
-        )
-        ecourts_status = ecourts_result.get("status", "unknown")
-        logger.info(f"[eCourts] Result status={ecourts_status}, total_hits={ecourts_result.get('total_hits', 0)}, cases={len(ecourts_result.get('cases', []))}")
-        if ecourts_status in ("live", "mock"):
-            cases = ecourts_result.get("cases", [])
-            advocate_names = set()
-            for c in cases:
-                # eCourts API uses camelCase field names
-                for adv in c.get("petitionerAdvocates", c.get("petitioner_advocates", [])):
-                    name = _clean_advocate_name(adv)
-                    if name:
-                        advocate_names.add(name)
-                for adv in c.get("respondentAdvocates", c.get("respondent_advocates", [])):
-                    name = _clean_advocate_name(adv)
-                    if name:
-                        advocate_names.add(name)
-                for adv in c.get("advocates", []):
-                    name = _clean_advocate_name(adv)
-                    if name:
-                        advocate_names.add(name)
-            logger.info(f"[eCourts] Advocate names found: {len(advocate_names)}")
-            for idx, name in enumerate(sorted(advocate_names)[:10], 1):
-                external_matches.append({
-                    "id": f"ecourts-{idx}",
-                    "name": name,
-                    "source": "eCourts India",
-                    "source_url": "https://webapi.ecourtsindia.com",
-                    "district": case.get("location", "Telangana"),
-                    "practice_areas": [case.get("case_type", "General")],
-                    "match_score": 60,
-                    "match_reasons": [f"Practising advocate appearing in {case.get('case_type', 'similar')} cases on eCourts India"],
-                    "ai_explanation": (
-                        f"Advocate {name} appears in {case.get('case_type', 'relevant')} cases "
-                        f"listed on the eCourts India public registry. "
-                        f"Verify their current bar membership and contact details independently."
-                    ),
-                    "is_external": True,
-                    "is_verified": False,
-                    "experience_years": None,
-                    "rating": None,
-                    "hourly_rate": None,
-                })
-    except Exception as e:
-        logger.warning(f"eCourts lookup failed for case {req.case_requirement_id}: {e}")
-
-    if not lawyers and not external_matches:
-        return {"case_id": req.case_requirement_id, "matches": [], "message": "No verified lawyers available at the moment. Searching public court records also returned no results."}
+    if not lawyers:
+        return {"case_id": req.case_requirement_id, "matches": [], "message": "No verified lawyers available at the moment. Please try again later."}
 
     # Compute match scores
     case_type = case.get("case_type", "").lower()
@@ -420,18 +333,11 @@ Write 2-3 sentences for EACH lawyer explaining why they are a good match, focusi
             match_inserts,
         )
 
-    # Note: external_matches are NOT stored in DB (they lack a lawyer_id FK)
-    # They are returned transiently for client awareness only.
-
-    all_matches = top + external_matches
     return {
         "case_id": req.case_requirement_id,
         "case_title": case.get("title", ""),
         "total_matches": len(top),
-        "total_external": len(external_matches),
-        "ecourts_status": ecourts_status,
         "matches": [{k: l[k] for k in l if k not in ("user_id",)} for l in top],
-        "external_matches": external_matches,
     }
 
 

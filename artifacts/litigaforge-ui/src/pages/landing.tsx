@@ -358,7 +358,7 @@ function Hero() {
             {/* "Built for real legal workflows" trust line */}
             <p className="text-xs font-medium flex items-center gap-2" style={{ color: "#334155" }}>
               <span className="w-5 h-px bg-slate-700 flex-shrink-0" />
-              Built for real legal workflows in Telangana &amp; AP · Backed by eCourts + Mee Seva APIs
+              Built for real legal workflows in Telangana &amp; AP
             </p>
           </motion.div>
         </div>
@@ -493,7 +493,7 @@ const howSteps = [
     glow: "rgba(139,92,246,0.18)",
     label: "AI Understands",
     title: "AI Maps Your Case\nto TG & AP Law",
-    desc: "Three AI models analyse your input against Telangana & AP statutes, court procedures, stamp duty tables, and Mee Seva workflows.",
+    desc: "Three AI models analyse your input against Telangana & AP statutes, court procedures, stamp duty tables, and regional legal workflows.",
     chips: ["Regional context", "Statute mapping", "Court-aware"],
   },
   {
@@ -856,7 +856,7 @@ const featureDefs: FeatureDef[] = [
     tag: "AI Strategy",
     title: "Smart Legal Strategy",
     desc: "Describe your case. AI synthesises a step-by-step legal roadmap — sections, arguments, and court procedures — tailored for TG & AP.",
-    href: "/",
+    href: "/ask",
     preview: <StrategyPreview />,
     badge: "Flagship",
   },
@@ -995,7 +995,7 @@ function Features() {
 const trustPoints = [
   { icon: BadgeCheck, color: "#34d399", title: "Verified Lawyers Only",    desc: "Every advocate is bar-verified, rated by clients, and screened by our team before appearing on the platform." },
   { icon: Brain,      color: "#60a5fa", title: "Triple AI Intelligence",   desc: "Claude Sonnet + Gemini 2.5 Flash + GPT-5 work in parallel and cascade to guarantee the best legal insights." },
-  { icon: Building2,  color: "#fbbf24", title: "Hyper-Local Expertise",    desc: "Built exclusively for Telangana & AP — with Mee Seva, eCourts, Transport TS, and 12 more live government APIs." },
+  { icon: Building2,  color: "#fbbf24", title: "Hyper-Local Expertise",    desc: "Built exclusively for Telangana & AP — deeply trained on TG & AP court procedures, stamp duty rules, RERA, NALSA, and district-level legal workflows." },
   { icon: Globe,      color: "#a78bfa", title: "Transparent & Explainable", desc: "Every AI match score comes with a written explanation. No black-box decisions — you always know why a lawyer was matched." },
 ];
 
@@ -1015,7 +1015,7 @@ function WhyLitigaForge() {
             <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#a78bfa" }}>Why LitigaForge</span>
             <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Built Different. <span style={{ color: "#3b82f6" }}>For India.</span></h2>
             <p className="mt-4 text-base leading-relaxed" style={{ color: "#64748b" }}>
-              We didn't just build another directory. We built a full legal intelligence platform — with real-time government data, multi-AI strategy synthesis, and genuine lawyer verification.
+              We didn't just build another directory. We built a full legal intelligence platform — with multi-AI strategy synthesis, regional legal knowledge, and genuine lawyer verification.
             </p>
             <Link href="/login"
               style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 0 24px rgba(37,99,235,0.35)" }}
@@ -1051,11 +1051,11 @@ function WhyLitigaForge() {
 ══════════════════════════════════════════════════════════ */
 const stats = [
   { value: "200+", label: "Verified Advocates" },
-  { value: "16",   label: "Live Govt. APIs" },
   { value: "3",    label: "AI Models" },
   { value: "9",    label: "Case Types" },
   { value: "10+",  label: "Free Doc Templates" },
   { value: "8",    label: "DLSA Districts" },
+  { value: "24/7", label: "AI Availability" },
 ];
 
 function StatsBanner() {
@@ -1159,7 +1159,7 @@ function Footer() {
               { label: "Lawyer Directory", href: "/lawyers" },
               { label: "Free Documents",  href: "/free-documents" },
               { label: "Free Legal Aid",  href: "/legal-aid" },
-              { label: "AI Forge",        href: "/" },
+              { label: "AI Legal Chat",   href: "/legal-chat" },
             ].map(l => (
               <Link key={l.label} href={l.href} style={{ color: "#64748b" }} className="text-xs hover:text-white transition-colors">
                 {l.label}

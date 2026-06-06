@@ -2,14 +2,12 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import {
-  Scale, FileText, Link2, Activity, Clock, Menu, X, Lightbulb,
+  Scale, FileText, Clock, Menu, X,
   Crown, LogOut, User as UserIcon, ChevronRight, MessageSquare, FileSearch,
-  BookOpen, Users, Heart, Sun, Moon, Plus, Gavel, MessageSquareText,
-  AlertTriangle, Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper
+  BookOpen, Users, Heart, Sun, Moon, Plus, MessageSquareText,
+  Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-provider";
@@ -25,9 +23,7 @@ const clientNav = [
 
 const lawyerNav = [
   { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star },
-  { href: "/",                 label: "AI Forge",          icon: Scale },
   { href: "/matches",          label: "Client Requests",  icon: Users },
-  { href: "/cases",            label: "Forged Cases",     icon: Gavel },
   { href: "/review",           label: "Doc Analyzer",     icon: FileSearch },
   { href: "/subscription",     label: "Profile & Plans",  icon: Crown },
 ];
@@ -37,10 +33,7 @@ const commonNav = [
   { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare },
   { href: "/review",         label: "Doc Analyzer",    icon: FileSearch },
   { href: "/judgments",      label: "Judgments",       icon: BookOpen },
-  { href: "/cases",          label: "Forged Cases",    icon: Gavel },
-  { href: "/use-cases",      label: "Use Cases",       icon: Lightbulb },
   { href: "/free-documents", label: "Free Documents",  icon: FileCheck },
-  { href: "/chains",         label: "API Chains",      icon: Link2 },
   { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart },
   { href: "/blog",           label: "Legal Guides",    icon: Newspaper },
 ];
@@ -150,17 +143,15 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
 
 /* ─── Sidebar content ─── */
 function SidebarContent({
-  location, health, stats, onNav, user,
+  location, onNav, user,
 }: {
   location: string;
-  health: { dummy_mode: boolean; ai_mode?: string; active_providers?: string[] } | undefined;
-  stats: { total_cases: number; total_patterns: number } | undefined;
   onNav?: () => void;
   user: User | null;
 }) {
   const isClient = user?.role !== "lawyer";
   const roleNav = isClient ? clientNav : lawyerNav;
-  const toolsNav = isClient ? commonNav.filter(i => i.href !== "/chains") : commonNav;
+  const toolsNav = commonNav;
   const roleLabel = isClient ? "Client" : "Advocate";
 
   return (
@@ -194,19 +185,6 @@ function SidebarContent({
         <AdminNavItem location={location} onNav={onNav} />
       </nav>
 
-      {/* Stats */}
-      {stats && (
-        <div className="px-5 py-3 border-t border-sidebar-border/40 flex-shrink-0">
-          <div className="flex items-center justify-between text-[11px] text-sidebar-foreground/40">
-            <span className="flex items-center gap-1">
-              <Activity className="w-3 h-3" />
-              {health?.dummy_mode ? "Fallback" : "Live"} AI
-            </span>
-            <span>{stats.total_cases} cases</span>
-          </div>
-        </div>
-      )}
-
       <UserPanel onNav={onNav} />
     </div>
   );
@@ -228,20 +206,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (drawerOpen) document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, [drawerOpen]);
-
-  const { data: health } = useQuery({
-    queryKey: ["health"],
-    queryFn: () => apiFetch("/healthz"),
-    refetchInterval: 30000,
-    staleTime: 15000,
-  });
-
-  const { data: stats } = useQuery({
-    queryKey: ["memory-stats"],
-    queryFn: () => apiFetch("/memory/stats"),
-    refetchInterval: 60000,
-    staleTime: 30000,
-  });
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
@@ -281,7 +245,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
         <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex-col relative z-10 shadow-xl">
-          <SidebarContent location={location} health={health} stats={stats} user={user} />
+          <SidebarContent location={location} user={user} />
         </aside>
 
         {/* Mobile drawer + backdrop — portal into document.body (no overflow ancestor).
@@ -324,7 +288,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <X className="w-4 h-4" />
                   </button>
                   <SidebarContent
-                    location={location} health={health} stats={stats}
+                    location={location}
                     onNav={() => setDrawerOpen(false)} user={user}
                   />
                 </motion.aside>
@@ -338,16 +302,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background">
           {/* Desktop sticky header */}
           <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card/80 backdrop-blur-md px-6 items-center justify-between sticky top-0 z-10">
-            <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
-              {health?.dummy_mode ? (
-                <span className="flex items-center gap-2 text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg text-xs border border-amber-200 dark:border-amber-900">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Fallback Mode
-                </span>
-              ) : (
-                <span className="flex items-center gap-2 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-900">
-                  <Activity className="w-3.5 h-3.5" /> Live AI Engine
-                </span>
-              )}
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Scale className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-foreground">LitigaForge AI</span>
             </div>
             <div className="flex items-center gap-3">
               <button

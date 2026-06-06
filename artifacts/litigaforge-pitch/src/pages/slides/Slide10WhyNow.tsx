@@ -14,7 +14,7 @@ export default function Slide10WhyNow() {
             <div style={{ fontSize: "1.4vw", fontWeight: 700, color: "#C8933F", marginBottom: "1.5vh", textTransform: "uppercase", letterSpacing: "0.1em" }}>Why Now</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "2vh" }}>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.5, textWrap: "pretty" }}>
-                <span style={{ fontWeight: 700, color: "#F5F0E8" }}>India's Digital Justice push is accelerating.</span> eCourts Phase 3, NALSA digitization, and the National Legal Services Authority's push for technology-enabled legal aid create direct infrastructure for LitigaForge's API chain to plug into.
+                <span style={{ fontWeight: 700, color: "#F5F0E8" }}>India's Digital Justice push is accelerating.</span> eCourts Phase 3, NALSA digitization, and the National Legal Services Authority's push for technology-enabled legal aid create a direct demand for platforms like LitigaForge.
               </div>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.5, textWrap: "pretty" }}>
                 <span style={{ fontWeight: 700, color: "#F5F0E8" }}>LLMs now handle complex legal reasoning.</span> Claude, Gemini, and GPT-5 have crossed the threshold required for substantive legal strategy synthesis — not just keyword search. The capability window is open.
@@ -29,7 +29,7 @@ export default function Slide10WhyNow() {
             <div style={{ fontSize: "1.4vw", fontWeight: 700, color: "#C8933F", marginBottom: "1.5vh", textTransform: "uppercase", letterSpacing: "0.1em" }}>Our Edge</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "2vh" }}>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.5, textWrap: "pretty" }}>
-                <span style={{ fontWeight: 700, color: "#F5F0E8" }}>Only platform combining all three layers:</span> government API chains + AI client-lawyer matching + community legal tools. No competitor operates all three.
+                <span style={{ fontWeight: 700, color: "#F5F0E8" }}>Only platform combining all three layers:</span> AI client-lawyer matching + multi-AI legal strategy + community legal tools. No competitor operates all three.
               </div>
               <div style={{ fontSize: "1.85vw", color: "#E0D8CC", lineHeight: 1.5, textWrap: "pretty" }}>
                 <span style={{ fontWeight: 700, color: "#F5F0E8" }}>Built for TG &amp; AP courts, languages, and legal workflows.</span> Not a generic national clone adapted for South India — purpose-built from day one for Hyderabad and Vijayawada district courts.

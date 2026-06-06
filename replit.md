@@ -1,6 +1,6 @@
 # LitigaForge AI
 
-Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case requirements, AI matches them with verified lawyers (scored 0-100), and they collaborate via chat. Also includes: entity extraction from case facts, 16 government API chains, multi-AI legal strategy synthesis, legal Q&A, document analyzer, judgment finder, and free legal aid finder.
+Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case requirements, AI matches them with verified lawyers (scored 0-100), and they collaborate via chat. Also includes: multi-AI legal strategy synthesis, legal Q&A, document analyzer, judgment finder, and free legal aid finder.
 
 ## Run & Operate
 
@@ -24,11 +24,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 
 ### Frontend pages (`artifacts/litigaforge-ui/src/pages/`)
 
-- `forge.tsx` — The Forge: case facts → entities → API chains → legal strategy
-- `cases.tsx` — Browse all previously forged cases
-- `chains.tsx` — View all 16 API chains with live/sandbox/mock status
-- `case-detail.tsx` — Full chain results, strategy, entities for a single case
-- `use-cases.tsx` — 7 interactive scenario cards with "Try in Forge" button
+- `use-cases.tsx` — Redirects to `/ask`
 - `login.tsx`, `register.tsx` — Authentication (JWT via localStorage). Role-based: Client vs Lawyer tabs
 - `client-dashboard.tsx` — **Client Dashboard**: assigned cases with stage timeline, match proposals, AI explanations, lawyer contact (call/email), case document upload, edit/share/download, NALSA helpline, upgrade banner. Navy sidebar + mobile hamburger drawer
 - `documents.tsx` — **Documents Dashboard**: all client documents across cases with search, download, share (Web Share API + WhatsApp fallback), delete, upload
@@ -49,12 +45,11 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 
 - `main.py` — FastAPI app: lifespan, CORS, rate limits, table init + includes 10 routers
 - `routers/auth.py` — Register, login, logout, me
-- `routers/forge.py` — The Forge, cases, memory, chains, healthz, sandbox ping
 - `routers/subscription.py` — Plans, Razorpay create-order, verify
 - `routers/matching.py` — Post case requirements, AI find-lawyers, match management
 - `routers/chat.py` — AI legal drafting chat, match-based messaging threads
 - `routers/community.py` — Legal Q&A, Document Analyzer, Judgment Finder, Lawyer Directory, Legal Aid
-- `routers/watch.py` — Watch mode start/stop/add/list/remove
+- `routers/watch.py` — Watch mode start/stop/add/list/remove (in-memory)
 - `routers/alerts.py` — WhatsApp alerts, hearing reminders
 - `routers/admin.py` — Pending lawyer verification, approve/reject, user management
 - `routers/lawyer.py` — Lawyer case/document CRUD + **Client case endpoints**: `GET /client/cases`, `PATCH /client/cases/{id}`, document upload/share/delete, CNR tracking, AI analysis, notes
@@ -62,18 +57,14 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - `auth.py` — bcrypt hashing, JWT create/decode, cookie-first auth with Bearer fallback
 - `payments.py` — Razorpay integration: create_order, verify_payment, PLAN_PRICES
 - `rate_limit.py` — slowapi limiter + custom 429 exception handler
-- `litigaforge_engine.py` — Forge orchestration
 - `ai_brain.py` — Multi-AI cascade (Claude → Gemini → GPT-5)
-- `api_chains/` — 16 government API chain modules
 - `alerts/whatsapp.py` — Twilio WhatsApp integration
-- `watch_mode/` — Background case watcher scheduler
-- `forge_memory/` — Case storage and pattern learning
 
 ### Components & utilities
 
 - `src/components/layout.tsx` — Sidebar: "Match & Connect" (Dashboard, Post Case, My Cases, Match Proposals, Documents) + "Legal Tools" (AI Chat, Q&A, Analyzer, etc). **Navy (#1a2744) sidebar for clients**, white sidebar for lawyers. Fixed bottom tab bar on mobile
 - `src/components/legal-disclaimer.tsx` — Footer disclaimer + FirstVisitDisclaimer modal
-- `src/components/graphics/` — ParticleCanvas, ScalesHero, ChainDiagram, EmptyStateArt
+- `src/components/graphics/` — ParticleCanvas, ScalesHero, EmptyStateArt
 - `src/lib/api.ts` — apiFetch (auto-attaches Bearer token); BASE = "/litigaforge"
 - `src/lib/auth-context.tsx` — AuthProvider, useAuth, TIER_LABELS, TIER_LIMITS
 
@@ -85,9 +76,6 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 | `PORT` | `5000` | Backend port — shared env var |
 | `DATABASE_URL` | (Replit auto-set) | PostgreSQL connection string |
 | `SESSION_SECRET` | (Replit Secret) | JWT signing |
-| `API_SETU_KEY` | `demokey123456ABCD789` | Public sandbox key for API Setu |
-| `API_SETU_CLIENT_ID` | `in.gov.sandbox` | Public sandbox client ID |
-| `MEESEVA_USE_PROD` | `false` | Set `true` + real key for production |
 
 ### Secrets to add for more features
 
@@ -102,31 +90,12 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 | `SMTP_USER` | Your email login | SMTP authentication |
 | `SMTP_PASSWORD` | App password / SMTP password | SMTP authentication |
 | `SMTP_FROM` | Display From address | Defaults to SMTP_USER if not set |
-| `MERIPEHCHAAN_CLIENT_ID` | meripehchaan.gov.in | Live DigiLocker OAuth |
-| `MERIPEHCHAAN_CLIENT_SECRET` | meripehchaan.gov.in | Live DigiLocker OAuth |
-| `ECOURTS_API_KEY` | webapi.ecourtsindia.com/dashboard/settings?activate=partner | Live eCourts case lookup (CNR, search, orders)
-
-## API Chain Status
-
-| Chain | Status | Data Source |
-|---|---|---|
-| Mee Seva TG | **Live sandbox** | `sandbox.api-setu.in` |
-| Transport TS | **Live sandbox** | `sandbox.api-setu.in` |
-| NSE India | **Live sandbox** | `sandbox.api-setu.in` |
-| FOREX | **Live sandbox** | `sandbox.api-setu.in` |
-| BPCL LPG | Sandbox-ready | Needs `API_SETU_KEY` |
-| MeriPehchaan | Mock | Needs OAuth client credentials |
-| eCourts | **Live** | `webapi.ecourtsindia.com` — CNR lookup, case search, orders |
-| GSTIN, PAN, VAHAN, SARATHI, DigiLocker, MCA Company, IFSC, Pincode | Mock | Realistic fake data |
-
-To go live on all API Setu chains: register at api.setu.in, get approved credentials, replace `API_SETU_KEY`, set `MEESEVA_USE_PROD=true`.
 
 ## Architecture decisions
 
 - `BASE_PATH=/litigaforge`: backend router mounts all routes at this prefix; proxy routes `/litigaforge/*` to port 5000
 - AI layer: `ai_brain.py` calls all 3 providers (Claude, Gemini, GPT-5) via Replit's proxy. No API keys needed from user
 - Fallback chain: Claude → Gemini → GPT-5 → smart regex + data-driven templates. Never generic output
-- Sandbox mode: Mee Seva TG, Transport TS, NSE India, FOREX call `sandbox.api-setu.in` with the demo key
 - Tailwind v4, light/white UI — no `@apply dark`
 - Mobile layout: sidebar hidden on mobile, replaced by hamburger drawer + fixed bottom tab bar (h-16); main content has `pb-16 md:pb-0`
 - Code splitting: vite.config.ts splits react-vendor, motion, query, ui into separate chunks
@@ -202,11 +171,8 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 
 - **Login** (`/login`): email + password sign-in
 - **Register** (`/register`): name + email + password, starts on Free tier
-- **The Forge** (`/`): case facts → entities → chains → legal strategy
-- **Cases** (`/cases`): browse all previously forged cases
-- **Chains** (`/chains`): 16 API chains with live/sandbox/mock status
-- **Case Detail** (`/cases/:id`): full chain results, strategy, entities
-- **Use Cases** (`/use-cases`): 7 interactive scenario cards
+- **Client Dashboard** (`/client-dashboard`): default landing for clients
+- **Lawyer Dashboard** (`/lawyer-dashboard`): default landing for lawyers
 - **Post a Case** (`/post-case`): client case posting with anonymous option, 9 case types, budget range
 - **My Cases** (`/my-cases`): client tracks posted cases and match proposals
 - **Matches** (`/matches`): AI match scores, accept/decline lawyer proposals
@@ -235,6 +201,6 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 
 ## Pointers
 
-- See `README.md` (root) for full project documentation including all env vars, chain status table, API reference, forge tips
+- See `README.md` (root) for full project documentation including all env vars, API reference
 - See `deployable/README.md` for Docker deployment and mobile store submission guide
 - See the `pnpm-workspace` skill for workspace structure details

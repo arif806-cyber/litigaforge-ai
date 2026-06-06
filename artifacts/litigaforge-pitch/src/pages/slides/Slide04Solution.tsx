@@ -18,10 +18,10 @@ export default function Slide04Solution() {
           </div>
 
           <div style={{ background: "#131E2A", padding: "2.2vh 1.8vw", border: "1px solid #2A3540" }}>
-            <div style={{ fontSize: "1.4vw", fontWeight: 700, color: "#C8933F", marginBottom: "1.5vh", textTransform: "uppercase", letterSpacing: "0.08em" }}>Pillar 2 — The Forge</div>
-            <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.5, marginBottom: "1.2vh" }}>Case facts are parsed for entities — parties, dates, locations, case types — and routed through 16 government API chains in sequence.</div>
-            <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.5, marginBottom: "1.2vh" }}>Claude Sonnet, Gemini 2.5 Flash, and GPT-5 synthesize a multi-source legal strategy — with fallback cascade so output is never generic.</div>
-            <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.5 }}>Results are stored in case memory and surfaced in the Case Detail dashboard.</div>
+            <div style={{ fontSize: "1.4vw", fontWeight: 700, color: "#C8933F", marginBottom: "1.5vh", textTransform: "uppercase", letterSpacing: "0.08em" }}>Pillar 2 — AI Legal Intelligence</div>
+            <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.5, marginBottom: "1.2vh" }}>AI Legal Chat: interactive drafting assistant powered by Claude + Gemini + GPT-5 with a never-generic fallback cascade.</div>
+            <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.5, marginBottom: "1.2vh" }}>Document Analyzer produces a risk score, missing-clause audit, and recommendations in seconds.</div>
+            <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.5 }}>Judgment Finder surfaces TG &amp; AP High Court precedents with direct IndianKanoon links.</div>
           </div>
 
           <div style={{ background: "#131E2A", padding: "2.2vh 1.8vw", border: "1px solid #2A3540" }}>

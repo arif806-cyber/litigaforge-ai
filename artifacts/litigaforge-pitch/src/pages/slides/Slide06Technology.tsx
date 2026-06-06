@@ -5,7 +5,7 @@ export default function Slide06Technology() {
 
       <div style={{ position: "absolute", top: "7vh", left: "7vw", right: "7vw" }}>
         <div style={{ fontSize: "2.5vw", fontWeight: 700, color: "#F5F0E8", marginBottom: "0.6vh", lineHeight: 1.2 }}>
-          Production-grade stack with 16 live government API integrations and a three-AI cascade
+          Production-grade stack with a three-AI cascade and full legal intelligence suite
         </div>
         <div style={{ width: "4vw", height: "2px", background: "#C8933F", marginBottom: "3.5vh" }} />
 
@@ -22,12 +22,12 @@ export default function Slide06Technology() {
           </div>
 
           <div>
-            <div style={{ fontSize: "1.4vw", fontWeight: 700, color: "#C8933F", marginBottom: "1.5vh", textTransform: "uppercase", letterSpacing: "0.1em" }}>AI &amp; Government APIs</div>
+            <div style={{ fontSize: "1.4vw", fontWeight: 700, color: "#C8933F", marginBottom: "1.5vh", textTransform: "uppercase", letterSpacing: "0.1em" }}>AI &amp; Legal Tools</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "1.2vh" }}>
               <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>AI Cascade:</span> Claude Sonnet 4.6 → Gemini 2.5 Flash → GPT-5 — fallback chain, never generic output</div>
-              <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>Live APIs:</span> eCourts (CNR, case search, orders), Mee Seva TG, Transport TS, NSE, FOREX — via API Setu sandbox</div>
-              <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>Ready APIs:</span> DigiLocker, MCA, GSTIN, PAN, VAHAN, SARATHI, IFSC, Pincode — data-driven mock, production-ready</div>
-              <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>Alerts:</span> Twilio WhatsApp hearing reminders + watch-mode case scheduler</div>
+              <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>AI Chat:</span> Interactive legal drafting assistant with 4 templates — notices, agreements, petitions, bail</div>
+              <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>Doc Analyzer:</span> Risk score, missing-clause audit, and recommendations — any contract or FIR</div>
+              <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>Alerts:</span> Twilio WhatsApp hearing reminders + case stage tracker</div>
               <div style={{ fontSize: "1.8vw", color: "#E0D8CC", lineHeight: 1.4 }}><span style={{ fontWeight: 700, color: "#F5F0E8" }}>Mobile:</span> Expo (React Native) with NativeWind — in active development</div>
             </div>
           </div>

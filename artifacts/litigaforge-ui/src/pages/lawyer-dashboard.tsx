@@ -18,7 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
 const lawyerNav = [
-  { id: "forge",    label: "AI Forge",           icon: Star,      href: "/",            highlight: true },
+  { id: "chat",     label: "AI Legal Chat",       icon: Star,      href: "/legal-chat",  highlight: true },
   { id: "cases",    label: "My Cases",            icon: Briefcase, href: "/cases" },
   { id: "leads",    label: "Client Requests",     icon: Users,     href: "/matches" },
   { id: "docs",     label: "Documents & Files",   icon: FileText,  href: "/review" },
@@ -96,7 +96,7 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
         <div className="mt-4 space-y-0.5">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Quick Access</p>
           <Link href="/ask" onClick={onNav} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"><MessageSquare className="w-3.5 h-3.5" /> Legal Q&amp;A</Link>
-          <Link href="/chains" onClick={onNav} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"><ExternalLink className="w-3.5 h-3.5" /> eCourts &amp; API Chains</Link>
+          <Link href="/free-documents" onClick={onNav} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"><ExternalLink className="w-3.5 h-3.5" /> Free Documents</Link>
         </div>
       </nav>
 
@@ -603,8 +603,8 @@ export default function LawyerDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-blue-900">AI trained on Indian law</p>
                   <p className="text-[12px] text-blue-700 mt-0.5 leading-relaxed">
-                    AI Forge references IPC, CrPC, CPC, Evidence Act, RERA, GST Act, Motor Vehicles Act,
-                    Consumer Protection Act, and live eCourts India case data. Always verify AI output before filing in Telangana / AP courts.
+                    AI references IPC, CrPC, CPC, Evidence Act, RERA, GST Act, Motor Vehicles Act,
+                    and Consumer Protection Act. Always verify AI output before filing in Telangana / AP courts.
                   </p>
                 </div>
               </div>

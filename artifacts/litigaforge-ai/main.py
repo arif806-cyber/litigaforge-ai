@@ -22,12 +22,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from logger import get_logger, forge_logger
+from logger import get_logger
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
 from database import get_pool, close_pool, fetchrow as db_fetchrow
 from auth import require_user as _require_user
-from watch_mode import WatchModeManager
-from alerts.whatsapp import send_whatsapp_alert
 
 logger = get_logger("litigaforge.main")
 
@@ -79,10 +77,6 @@ else:
     logger.info("SENTRY_DSN not set — error tracking disabled")
 
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
-watcher = WatchModeManager(
-    memory=__import__("litigaforge_engine").memory,
-    alert_fn=send_whatsapp_alert,
-)
 
 
 @asynccontextmanager
@@ -309,16 +303,13 @@ async def lifespan(app: FastAPI):
         "DATABASE_URL is required"
     logger.info("✓ Startup checks passed")
 
-    if os.getenv("WATCH_MODE_AUTO_START", "false").lower() == "true":
-        watcher.start()
     yield
-    watcher.stop()
     await close_pool()
 
 
 app = FastAPI(
     title="LitigaForge AI",
-    description="Self-Evolving Legal API Forge for Hyderabad/Telangana Advocates",
+    description="AI-powered client-lawyer matching platform for Telangana & AP",
     version="3.0.0",
     lifespan=lifespan,
     root_path=BASE_PATH,
@@ -370,15 +361,18 @@ async def security_headers_middleware(request: Request, call_next):
 
 # ─── Include Routers ──────────────────────────────────────────────────────────
 from routers import (
-    auth_router, forge_router, subscription_router,
+    auth_router, subscription_router,
     matching_router, chat_router, community_router,
     watch_router, alerts_router, admin_router,
     lawyer_router, documents_free_router,
 )
 
+@app.get(f"{BASE_PATH}/healthz", tags=["health"])
+async def healthz():
+    return {"status": "ok", "service": "litigaforge-ai"}
+
 app.include_router(auth_router,         prefix=BASE_PATH)
-app.include_router(matching_router,     prefix=BASE_PATH)  # before forge to win /cases/requirements
-app.include_router(forge_router,        prefix=BASE_PATH)
+app.include_router(matching_router,     prefix=BASE_PATH)
 app.include_router(subscription_router, prefix=BASE_PATH)
 app.include_router(chat_router,        prefix=BASE_PATH)
 app.include_router(community_router,   prefix=BASE_PATH)

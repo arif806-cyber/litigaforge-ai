@@ -20,9 +20,9 @@ const CLIENT_STEPS = [
     iconBg: "bg-amber-50",
   },
   {
-    title: "The Forge",
+    title: "AI Legal Chat",
     subtitle: "AI Legal Strategy Engine",
-    description: "Describe your case in plain language. Our AI extracts entities, runs 16 government API chains, and synthesizes a multi-AI legal strategy tailored to your situation.",
+    description: "Describe your situation in plain language. Our AI synthesises a step-by-step legal roadmap — statutes, arguments, and court procedures — tailored for Telangana & AP.",
     icon: Hammer,
     color: "bg-blue-100 text-blue-700",
     iconBg: "bg-blue-50",
