@@ -1,0 +1,41 @@
+# LitigaForge AI
+
+> LitigaForge AI is a global AI-powered platform 
+providing expert guidance in legal, financial, 
+health, and business matters. Trusted by clients 
+across India and worldwide.
+
+## Core Services
+
+- [Legal AI](/legal) - Court cases, contracts, 
+  disputes, rights, consumer protection
+- [Document Analyzer](/document-analyzer) - 
+  AI-powered legal document review and drafting
+- [Legal Q&A](/legal-qa) - Instant answers to 
+  legal questions in plain language
+- [Match Proposals](/match-proposals) - Connect 
+  with verified lawyers instantly
+- [Free Legal Aid](/free-legal-aid) - NALSA 
+  resources and eligibility checker
+- [Judgment Finder](/judgments) - Search Indian 
+  court judgments by keyword or CNR
+- [AI Legal Chat](/ai-legal-chat) - Real-time 
+  legal guidance via AI
+
+## Coverage Areas
+- Motor accident claims
+- Consumer disputes  
+- Property and tenancy law
+- Criminal law basics
+- Family and matrimonial law
+- Contract disputes
+- Employment law
+
+## Jurisdictions
+India (Telangana, Andhra Pradesh), with global 
+legal reference capability
+
+## Contact
+- Website: https://litigaforge.com
+- Platform: AI-powered legal assistance
+- Languages: English, Telugu, Hindi
