@@ -1,20 +1,56 @@
+# LitigaForge AI - Allow all AI crawlers
+
+# OpenAI / ChatGPT
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic / Claude
+User-agent: ClaudeBot
+Allow: /
+User-agent: Claude-User
+Allow: /
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: anthropic-ai
+Allow: /
+
+# Google / Gemini
+User-agent: Googlebot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+User-agent: Perplexity-User
+Allow: /
+
+# Apple Intelligence
+User-agent: Applebot
+Allow: /
+User-agent: Applebot-Extended
+Allow: /
+
+# Meta AI
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# Amazon AI
+User-agent: Amazonbot
+Allow: /
+
+# Microsoft Copilot
+User-agent: Bingbot
+Allow: /
+
+# Block nothing
 User-agent: *
 Allow: /
-Allow: /ask
-Allow: /review
-Allow: /judgments
-Allow: /lawyers
-Allow: /legal-aid
-Allow: /use-cases
-Allow: /cases
-Allow: /free-documents
-Disallow: /client-dashboard
-Disallow: /lawyer-dashboard
-Disallow: /admin
-Disallow: /post-case
-Disallow: /my-cases
-Disallow: /matches
-Disallow: /legal-chat
-Disallow: /subscription
 
-Sitemap: https://litiga-forge-ai.replit.app/sitemap.xml
+Sitemap: https://litigaforge.com/sitemap.xml
+Sitemap: https://litigaforge.com/llms.txt
