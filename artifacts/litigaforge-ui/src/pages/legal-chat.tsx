@@ -152,7 +152,12 @@ export default function LegalChat() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    // On mobile the layout chain (min-h-full + footer) never gives this page a
+    // definite height, so a plain `h-full` collapses and the bottom input bar
+    // (with the "Add details" dropdown) gets pushed under the fixed bottom tab
+    // bar. Bound the height explicitly: 100dvh minus the 56px mobile header and
+    // the 72px bottom tab bar. Desktop keeps the flexbox `h-full`.
+    <div className="flex flex-col h-[calc(100dvh-3.5rem-72px)] md:h-full bg-background">
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((msg) => (
