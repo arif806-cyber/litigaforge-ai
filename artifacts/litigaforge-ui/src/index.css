@@ -39,7 +39,7 @@
   --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
   --color-sidebar-accent: hsl(var(--sidebar-accent));
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: 'Space Grotesk', 'Noto Sans Telugu', 'Noto Sans Devanagari', 'Noto Sans Arabic', 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
