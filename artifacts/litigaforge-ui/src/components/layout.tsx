@@ -13,43 +13,59 @@ import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import CountrySwitcher from "@/components/CountrySwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/hooks/useLanguage";
+import type { Translation } from "@/i18n";
 
-const clientNav = [
-  { href: "/client-dashboard", label: "Dashboard",       icon: Briefcase },
-  { href: "/post-case",        label: "Post a Case",     icon: Plus },
+interface NavEntry {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  tKey?: keyof Translation;
+}
+
+const clientNav: NavEntry[] = [
+  { href: "/client-dashboard", label: "Dashboard",       icon: Briefcase, tKey: "dashboard" },
+  { href: "/post-case",        label: "Post a Case",     icon: Plus,      tKey: "post_case" },
   { href: "/my-cases",         label: "My Cases",        icon: FileText },
   { href: "/matches",          label: "Match Proposals", icon: Sparkles },
-  { href: "/documents",        label: "Documents",       icon: FileCheck },
+  { href: "/documents",        label: "Documents",       icon: FileCheck, tKey: "documents" },
 ];
 
-const lawyerNav = [
-  { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star },
+const lawyerNav: NavEntry[] = [
+  { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star, tKey: "dashboard" },
   { href: "/matches",          label: "Client Requests",  icon: Users },
-  { href: "/review",           label: "Doc Analyzer",     icon: FileSearch },
+  { href: "/review",           label: "Doc Analyzer",     icon: FileSearch, tKey: "doc_analyzer" },
   { href: "/subscription",     label: "Profile & Plans",  icon: Crown },
 ];
 
-const commonNav = [
-  { href: "/legal-chat",     label: "AI Legal Chat",   icon: MessageSquareText },
-  { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare },
-  { href: "/review",         label: "Doc Analyzer",    icon: FileSearch },
-  { href: "/judgments",      label: "Judgments",       icon: BookOpen },
+const commonNav: NavEntry[] = [
+  { href: "/legal-chat",     label: "AI Legal Chat",   icon: MessageSquareText, tKey: "legal_chat" },
+  { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare,     tKey: "legal_qa" },
+  { href: "/review",         label: "Doc Analyzer",    icon: FileSearch,        tKey: "doc_analyzer" },
+  { href: "/judgments",      label: "Judgments",       icon: BookOpen,          tKey: "judgments" },
   { href: "/free-documents", label: "Free Documents",  icon: FileCheck },
-  { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart },
+  { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart,             tKey: "free_aid" },
   { href: "/blog",           label: "Legal Guides",    icon: Newspaper },
 ];
 
+// Translate a nav entry's display label while keeping the English label for
+// stable data-testid generation.
+function navLabel(item: NavEntry, t: Translation): string {
+  return item.tKey && t[item.tKey] ? t[item.tKey] : item.label;
+}
+
 /* ─── Nav Item ─── */
 function NavItem({
-  href, label, icon: Icon, location, onClick,
+  href, label, icon: Icon, location, onClick, testId,
 }: {
-  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void;
+  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string;
 }) {
   const active = href === "/" ? location === "/" : location.startsWith(href);
   return (
     <Link
       href={href}
-      data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      data-testid={testId ?? `nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
       onPointerDown={onClick}
       onClick={onClick}
       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
@@ -126,6 +142,7 @@ function SidebarContent({
   onNav?: () => void;
   user: User | null;
 }) {
+  const { t } = useLanguage();
   const isClient = user?.role !== "lawyer";
   const roleNav = isClient ? clientNav : lawyerNav;
   const roleLabel = isClient ? "Client" : "Advocate";
@@ -154,10 +171,28 @@ function SidebarContent({
         <div className="px-3 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">
           {isClient ? "Match & Connect" : "Lawyer Portal"}
         </div>
-        {roleNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} />)}
+        {roleNav.map(item => (
+          <NavItem
+            key={item.href}
+            {...item}
+            label={navLabel(item, t)}
+            testId={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+            location={location}
+            onClick={onNav}
+          />
+        ))}
 
         <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>
-        {commonNav.map(item => <NavItem key={item.href} {...item} location={location} onClick={onNav} />)}
+        {commonNav.map(item => (
+          <NavItem
+            key={item.href}
+            {...item}
+            label={navLabel(item, t)}
+            testId={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+            location={location}
+            onClick={onNav}
+          />
+        ))}
         <AdminNavItem location={location} onNav={onNav} />
       </nav>
 
@@ -172,6 +207,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const openDrawer  = useCallback(() => setDrawerOpen(true),  []);
@@ -212,6 +248,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="w-10 h-10 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors active:scale-95"
@@ -297,6 +334,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-semibold text-foreground">LitigaForge AI</span>
             </div>
             <div className="flex items-center gap-3">
+              <LanguageSwitcher />
               <CountrySwitcher />
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -325,7 +363,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
-        {(user?.role === "lawyer" ? lawyerNav : clientNav).map(({ href, label, icon: Icon }) => {
+        {(user?.role === "lawyer" ? lawyerNav : clientNav).map((item) => {
+          const { href, icon: Icon } = item;
           const active = href === "/" ? location === "/" : location.startsWith(href);
           return (
             <Link key={href} href={href}
@@ -341,7 +380,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Icon className={cn("w-[22px] h-[22px] transition-colors", active ? "text-primary" : "text-muted-foreground")} />
               </div>
               <span className={cn("text-[11px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>
-                {label}
+                {navLabel(item, t)}
               </span>
             </Link>
           );

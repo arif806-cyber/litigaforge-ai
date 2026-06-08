@@ -1,0 +1,398 @@
+Build a complete translation system for 
+LitigaForge AI. The app currently has NO 
+i18n system. Build it from scratch.
+
+1. Create src/i18n/index.js as the 
+   central translation store:
+
+const translations = {
+  IN: {
+    en: {
+      hero_title: "AI Legal Help for India",
+      hero_sub: "Know your rights. Find lawyers.",
+      services: "Legal Services",
+      pain_prompt: "What is your legal problem?",
+      cta: "Get Free Legal Help",
+      emergency_label: "Free Legal Aid",
+      emergency_number: "NALSA: 15100",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Lawyer",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyzer",
+      judgments: "Judgment Finder",
+      free_aid: "Free Legal Aid",
+      legal_qa: "Legal Q&A"
+    },
+    te: {
+      hero_title: "భారత్ కోసం AI న్యాయ సహాయం",
+      hero_sub: "మీ హక్కులు తెలుసుకోండి.",
+      services: "న్యాయ సేవలు",
+      pain_prompt: "మీ న్యాయ సమస్య ఏమిటి?",
+      cta: "ఉచిత న్యాయ సహాయం పొందండి",
+      emergency_label: "ఉచిత న్యాయ సహాయం",
+      emergency_number: "NALSA: 15100",
+      post_case: "కేసు నమోదు చేయండి",
+      find_lawyer: "న్యాయవాది కనుగొనండి",
+      documents: "పత్రాలు",
+      dashboard: "డాష్‌బోర్డ్",
+      legal_chat: "AI న్యాయ చాట్",
+      doc_analyzer: "పత్ర విశ్లేషకుడు",
+      judgments: "తీర్పుల శోధన",
+      free_aid: "ఉచిత న్యాయ సహాయం",
+      legal_qa: "న్యాయ ప్రశ్నలు"
+    },
+    hi: {
+      hero_title: "भारत के लिए AI कानूनी मदद",
+      hero_sub: "अपने अधिकार जानें।",
+      services: "कानूनी सेवाएं",
+      pain_prompt: "आपकी कानूनी समस्या क्या है?",
+      cta: "मुफ्त कानूनी सहायता पाएं",
+      emergency_label: "मुफ्त कानूनी सहायता",
+      emergency_number: "NALSA: 15100",
+      post_case: "केस दर्ज करें",
+      find_lawyer: "वकील खोजें",
+      documents: "दस्तावेज़",
+      dashboard: "डैशबोर्ड",
+      legal_chat: "AI कानूनी चैट",
+      doc_analyzer: "दस्तावेज़ विश्लेषक",
+      judgments: "निर्णय खोजें",
+      free_aid: "मुफ्त कानूनी सहायता",
+      legal_qa: "कानूनी प्रश्न"
+    }
+  },
+  US: {
+    en: {
+      hero_title: "AI Legal Help for Americans",
+      hero_sub: "Know your rights. Fight back. Win.",
+      services: "Legal Services",
+      pain_prompt: "What legal issue do you face?",
+      cta: "Get Free Legal Guidance",
+      emergency_label: "Legal Aid",
+      emergency_number: "1-800-398-4529",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Lawyer",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyzer",
+      judgments: "Case Finder",
+      free_aid: "Free Legal Aid",
+      legal_qa: "Legal Q&A"
+    },
+    es: {
+      hero_title: "Ayuda Legal IA para América",
+      hero_sub: "Conoce tus derechos. Lucha.",
+      services: "Servicios Legales",
+      pain_prompt: "¿Qué problema legal tienes?",
+      cta: "Obtén Ayuda Legal Gratuita",
+      emergency_label: "Ayuda Legal",
+      emergency_number: "1-800-398-4529",
+      post_case: "Publicar un Caso",
+      find_lawyer: "Encontrar Abogado",
+      documents: "Documentos",
+      dashboard: "Panel",
+      legal_chat: "Chat Legal IA",
+      doc_analyzer: "Analizador de Documentos",
+      judgments: "Buscador de Casos",
+      free_aid: "Ayuda Legal Gratuita",
+      legal_qa: "Preguntas Legales"
+    }
+  },
+  GB: {
+    en: {
+      hero_title: "AI Legal Help for the UK",
+      hero_sub: "Your rights. Plain English. No huge bills.",
+      services: "Legal Services",
+      pain_prompt: "What is your legal issue?",
+      cta: "Get Free Legal Advice",
+      emergency_label: "Legal Aid",
+      emergency_number: "0345 345 4 345",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Solicitor",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyser",
+      judgments: "Case Finder",
+      free_aid: "Free Legal Aid",
+      legal_qa: "Legal Q&A"
+    }
+  },
+  AE: {
+    en: {
+      hero_title: "AI Legal Help in the UAE",
+      hero_sub: "Know UAE law. Protect yourself.",
+      services: "Legal Services",
+      pain_prompt: "What is your legal concern?",
+      cta: "Get Legal Guidance",
+      emergency_label: "Ministry of Justice",
+      emergency_number: "800-ADGM",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Lawyer",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyzer",
+      judgments: "Case Finder",
+      free_aid: "Legal Aid",
+      legal_qa: "Legal Q&A"
+    },
+    ar: {
+      hero_title: "مساعدة قانونية بالذكاء الاصطناعي",
+      hero_sub: "اعرف القانون الإماراتي. احمِ نفسك.",
+      services: "الخدمات القانونية",
+      pain_prompt: "ما هي مشكلتك القانونية؟",
+      cta: "احصل على توجيه قانوني",
+      emergency_label: "وزارة العدل",
+      emergency_number: "800-ADGM",
+      post_case: "نشر قضية",
+      find_lawyer: "ابحث عن محامٍ",
+      documents: "المستندات",
+      dashboard: "لوحة التحكم",
+      legal_chat: "دردشة قانونية AI",
+      doc_analyzer: "محلل المستندات",
+      judgments: "البحث في الأحكام",
+      free_aid: "المساعدة القانونية",
+      legal_qa: "أسئلة قانونية"
+    }
+  },
+  DE: {
+    de: {
+      hero_title: "KI-Rechtshilfe in Deutschland",
+      hero_sub: "Ihr Recht — einfach erklärt.",
+      services: "Rechtsdienstleistungen",
+      pain_prompt: "Was ist Ihr rechtliches Problem?",
+      cta: "Kostenlose Rechtsberatung",
+      emergency_label: "Rechtsantragstelle",
+      emergency_number: "Beim Amtsgericht",
+      post_case: "Fall einreichen",
+      find_lawyer: "Anwalt finden",
+      documents: "Dokumente",
+      dashboard: "Dashboard",
+      legal_chat: "KI-Rechtschat",
+      doc_analyzer: "Dokumentenanalyse",
+      judgments: "Urteilssuche",
+      free_aid: "Kostenlose Rechtsberatung",
+      legal_qa: "Rechtsfragen"
+    },
+    en: {
+      hero_title: "AI Legal Help in Germany",
+      hero_sub: "Your rights in Germany — clearly explained.",
+      services: "Legal Services",
+      pain_prompt: "What is your legal issue?",
+      cta: "Get Free Legal Advice",
+      emergency_label: "Local Court Office",
+      emergency_number: "Rechtsantragstelle",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Lawyer",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyzer",
+      judgments: "Judgment Finder",
+      free_aid: "Free Legal Aid",
+      legal_qa: "Legal Q&A"
+    }
+  },
+  AU: {
+    en: {
+      hero_title: "AI Legal Help for Australians",
+      hero_sub: "Fair go — with AI on your side.",
+      services: "Legal Services",
+      pain_prompt: "What legal issue do you have?",
+      cta: "Get Free Legal Guidance",
+      emergency_label: "LawAccess NSW",
+      emergency_number: "1300 888 529",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Lawyer",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyzer",
+      judgments: "Case Finder",
+      free_aid: "Free Legal Aid",
+      legal_qa: "Legal Q&A"
+    }
+  },
+  CA: {
+    en: {
+      hero_title: "AI Legal Help for Canadians",
+      hero_sub: "Navigate Canada's legal system confidently.",
+      services: "Legal Services",
+      pain_prompt: "What legal issue do you face?",
+      cta: "Get Free Legal Help",
+      emergency_label: "Legal Aid Ontario",
+      emergency_number: "1-800-668-8258",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Lawyer",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyzer",
+      judgments: "Case Finder",
+      free_aid: "Free Legal Aid",
+      legal_qa: "Legal Q&A"
+    },
+    fr: {
+      hero_title: "Aide Juridique IA pour le Canada",
+      hero_sub: "Naviguez le système juridique canadien.",
+      services: "Services Juridiques",
+      pain_prompt: "Quel est votre problème juridique?",
+      cta: "Obtenir une Aide Juridique Gratuite",
+      emergency_label: "Aide Juridique Ontario",
+      emergency_number: "1-800-668-8258",
+      post_case: "Publier un Cas",
+      find_lawyer: "Trouver un Avocat",
+      documents: "Documents",
+      dashboard: "Tableau de Bord",
+      legal_chat: "Chat Juridique IA",
+      doc_analyzer: "Analyseur de Documents",
+      judgments: "Recherche de Jugements",
+      free_aid: "Aide Juridique Gratuite",
+      legal_qa: "Questions Juridiques"
+    }
+  },
+  SG: {
+    en: {
+      hero_title: "AI Legal Help for Singapore",
+      hero_sub: "Smart legal help for fast movers.",
+      services: "Legal Services",
+      pain_prompt: "What legal concern do you have?",
+      cta: "Get Legal Guidance",
+      emergency_label: "Community Legal Clinics",
+      emergency_number: "1800-CALL-LAW",
+      post_case: "Post a Case",
+      find_lawyer: "Find a Lawyer",
+      documents: "Documents",
+      dashboard: "Dashboard",
+      legal_chat: "AI Legal Chat",
+      doc_analyzer: "Document Analyzer",
+      judgments: "Case Finder",
+      free_aid: "Free Legal Aid",
+      legal_qa: "Legal Q&A"
+    }
+  }
+};
+
+export default translations;
+
+2. Create src/hooks/useLanguage.js:
+
+import { useState, useEffect } from "react";
+import translations from "../i18n/index";
+
+const COUNTRY_DEFAULT_LANG = {
+  IN: "en", US: "en", GB: "en",
+  AE: "en", AU: "en", CA: "en",
+  SG: "en", DE: "de"
+};
+
+export function useLanguage(countryCode) {
+  const storageKey = `lang_${countryCode}`;
+  
+  const [lang, setLang] = useState(() => {
+    return localStorage.getItem(storageKey) ||
+      COUNTRY_DEFAULT_LANG[countryCode] || "en";
+  });
+
+  useEffect(() => {
+    // Set HTML lang attribute for 
+    // accessibility and AI crawlers
+    document.documentElement.lang = lang;
+    // Set RTL for Arabic
+    document.documentElement.dir =
+      lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
+
+  const switchLang = (newLang) => {
+    localStorage.setItem(storageKey, newLang);
+    setLang(newLang);
+  };
+
+  const countryTranslations = 
+    translations[countryCode] || 
+    translations["IN"];
+    
+  const t = countryTranslations[lang] ||
+    countryTranslations["en"] || {};
+
+  const availableLangs = Object.keys(
+    countryTranslations
+  );
+
+  return { lang, switchLang, t, availableLangs };
+}
+
+3. Create src/components/LanguageSwitcher.jsx:
+
+import { useLanguage } from "../hooks/useLanguage";
+
+const LANG_LABELS = {
+  en: "English",
+  hi: "हिंदी",
+  te: "తెలుగు",
+  ar: "العربية",
+  de: "Deutsch",
+  fr: "Français",
+  es: "Español"
+};
+
+const LANG_FLAGS = {
+  en: "🇬🇧", hi: "🇮🇳", te: "🇮🇳",
+  ar: "🇦🇪", de: "🇩🇪", fr: "🇫🇷",
+  es: "🇪🇸"
+};
+
+export default function LanguageSwitcher({ 
+  countryCode 
+}) {
+  const { lang, switchLang, availableLangs } =
+    useLanguage(countryCode);
+
+  if (availableLangs.length <= 1) return null;
+
+  return (
+    <div className="flex items-center gap-1">
+      {availableLangs.map(l => (
+        <button
+          key={l}
+          onClick={() => switchLang(l)}
+          className={`flex items-center gap-1 
+          px-3 py-1.5 rounded-full text-xs 
+          font-medium transition-all
+          ${l === lang
+            ? "bg-yellow-500 text-black shadow-lg"
+            : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+          }`}
+        >
+          <span>{LANG_FLAGS[l]}</span>
+          <span>{LANG_LABELS[l]}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+4. Wire LanguageSwitcher into the app navbar.
+   Place it in the top header bar next to the 
+   CountrySwitcher component.
+   Pass the current countryCode as prop:
+   <LanguageSwitcher countryCode={activeCountry} />
+
+5. Wire useLanguage into the client dashboard:
+   const { t } = useLanguage(countryCode);
+   
+   Replace ALL hardcoded English strings with 
+   t.key — for example:
+   "Dashboard" → {t.dashboard}
+   "Post a Case" → {t.post_case}
+   "Document Analyzer" → {t.doc_analyzer}
+   "Legal Q&A" → {t.legal_qa}
+   "Free Legal Aid" → {t.free_aid}
+
+6. For UAE Arabic — wrap the main content div:
+   <div dir={lang === "ar" ? "rtl" : "ltr"}>
+     {/* all content */}
+   </div>

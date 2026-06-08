@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Scale, Gavel, Building2, Phone, ArrowRight, Sparkles } from "lucide-react";
 import CountrySwitcher from "@/components/CountrySwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { CountryConfig } from "@/hooks/useCountry";
 
 const COUNTRY_API_BASE = "/litigaforge";
@@ -11,6 +13,7 @@ interface CountryDashboardProps {
 }
 
 export default function CountryDashboard({ countryCode = "IN" }: CountryDashboardProps) {
+  const { t } = useLanguage(countryCode);
   const [config, setConfig] = useState<CountryConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,6 +52,7 @@ export default function CountryDashboard({ countryCode = "IN" }: CountryDashboar
             <span>LitigaForge AI</span>
           </Link>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher countryCode={countryCode} />
             <CountrySwitcher />
             <Link
               href="/login"
@@ -65,11 +69,10 @@ export default function CountryDashboard({ countryCode = "IN" }: CountryDashboar
       <section className="max-w-6xl mx-auto px-4 md:px-6 pt-12 pb-8 text-center">
         <div className="text-6xl mb-4">{config.flag}</div>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Legal Help in {config.name}
+          {t.hero_title}
         </h1>
         <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
-          AI-powered legal guidance, lawyer matching, and document tools tailored to{" "}
-          {config.legal_system} · {config.currency} {config.currency_symbol}
+          {t.hero_sub} · {config.legal_system} · {config.currency} {config.currency_symbol}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
           <Link
@@ -77,7 +80,7 @@ export default function CountryDashboard({ countryCode = "IN" }: CountryDashboar
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
             data-testid="button-get-started"
           >
-            Get Started <ArrowRight className="w-4 h-4" />
+            {t.cta} <ArrowRight className="w-4 h-4" />
           </Link>
           <Link
             href="/ask"
@@ -92,7 +95,7 @@ export default function CountryDashboard({ countryCode = "IN" }: CountryDashboar
       <div className="max-w-6xl mx-auto px-4 md:px-6 pb-16 space-y-8">
         {/* Top services */}
         <section>
-          <h2 className="text-lg font-bold mb-4">Top Legal Services in {config.name}</h2>
+          <h2 className="text-lg font-bold mb-4">{t.services} · {config.name}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {config.top_services?.map((s) => (
               <div
@@ -132,7 +135,7 @@ export default function CountryDashboard({ countryCode = "IN" }: CountryDashboar
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              Emergency Legal Aid
+              {t.emergency_label}
             </p>
             <p className="text-base font-bold">{config.emergency_legal}</p>
           </div>

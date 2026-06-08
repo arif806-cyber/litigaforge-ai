@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import CountrySwitcher from "@/components/CountrySwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Link } from "wouter";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
@@ -62,6 +63,7 @@ function Navbar() {
 
         {/* CTA buttons */}
         <div className="hidden md:flex items-center gap-3">
+          <LanguageSwitcher />
           <CountrySwitcher />
           <Link href="/login" style={{ color: "#94a3b8" }} className="text-sm font-medium hover:text-white transition-colors px-4 py-2">Login</Link>
           <Link href="/login"

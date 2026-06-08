@@ -1,1 +1,2 @@
 - [Frontend serving & rebuild cycle](frontend-serving.md) — SPA served by api-server from built dist; after a frontend build restart `artifacts/api-server: API Server`, not the vite dev workflow.
+- [i18n language sync](i18n-language-sync.md) — per-country language switching propagates via `lf-lang-change` window event (not context); keep nav data-testid English-derived when localizing labels.
