@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useCountry } from "../hooks/useCountry";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
@@ -180,6 +181,7 @@ export default function ClientDashboard() {
   const connectedLawyers = [...new Set(clientCases.map((c) => c.lawyer_id))].length;
 
   const firstName = user?.name?.split(" ")[0] ?? "Client";
+  const { activeConfig, activeCode, loading: countryLoading } = useCountry();
 
   const quickActions = [
     { label: "Post a Case", icon: Plus, iconClass: "text-blue-400", bgClass: "bg-blue-500/10", action: () => setLocation("/post-case") },
@@ -205,6 +207,48 @@ export default function ClientDashboard() {
             <Shield className="w-3.5 h-3.5" /> LitigaForge AI
           </div>
         </div>
+
+        {/* ── Country-specific Banner ───────────────────────────── */}
+        {!countryLoading && activeConfig && (
+          <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 mb-6 border border-gray-700">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-4xl">{activeConfig.flag}</span>
+              <div>
+                <h2 className="text-white font-bold text-lg">Legal Help in {activeConfig.name}</h2>
+                <p className="text-gray-400 text-sm">
+                  {activeConfig.legal_system} · {activeConfig.currency} {activeConfig.currency_symbol}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">Top Legal Services</p>
+              <div className="flex flex-wrap gap-2">
+                {activeConfig.top_services?.map((s: string) => (
+                  <span key={s} className="px-3 py-1 bg-yellow-500/10 text-yellow-400 rounded-full text-xs font-medium">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">Courts &amp; Tribunals</p>
+              <div className="flex flex-wrap gap-2">
+                {activeConfig.courts?.slice(0, 3).map((c: string) => (
+                  <span key={c} className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-3 bg-green-500/10 rounded-xl border border-green-500/20">
+              <p className="text-green-400 text-sm font-medium">📞 Emergency Legal Aid</p>
+              <p className="text-gray-300 text-sm">{activeConfig.emergency_legal}</p>
+            </div>
+          </div>
+        )}
 
         {/* ── Quick Actions ────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
