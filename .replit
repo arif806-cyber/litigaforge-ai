@@ -76,7 +76,6 @@ API_SETU_CLIENT_ID = "in.gov.sandbox"
 MEESEVA_USE_PROD = "false"
 BASE_PATH = "/litigaforge"
 PORT = "5000"
-ECOURTS_API_KEY = "eci_live_7v153fk43vv5hf3bhlh6xst9x82e5lgy"
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = "587"
 
