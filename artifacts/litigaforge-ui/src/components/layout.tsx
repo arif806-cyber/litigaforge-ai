@@ -66,14 +66,13 @@ function NavItem({
     <Link
       href={href}
       data-testid={testId ?? `nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
-      onPointerDown={onClick}
       onClick={onClick}
       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       className={cn(
         "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
         active
-          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm active:opacity-80"
+          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
       )}>
       <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "group-hover:text-sidebar-foreground")} />
       <span className="tracking-wide">{label}</span>
@@ -88,13 +87,13 @@ function AdminNavItem({ location, onNav }: { location: string; onNav?: () => voi
   const href = "/admin";
   const active = location.startsWith(href);
   return (
-    <Link href={href} data-testid="nav-admin" onPointerDown={onNav} onClick={onNav}
+    <Link href={href} data-testid="nav-admin" onClick={onNav}
       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       className={cn(
         "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
         active
-          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm active:opacity-80"
+          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
       )}>
       <Shield className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "group-hover:text-sidebar-foreground")} />
       <span className="tracking-wide relative z-10">Admin</span>
@@ -121,13 +120,15 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
           <p className="text-[11px] text-sidebar-foreground/50 truncate">{user.email}</p>
         </div>
       </div>
-      <Link href="/settings" onPointerDown={onNav} onClick={onNav}>
-        <div className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-medium cursor-pointer text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent">
+      <Link href="/settings" onClick={onNav}
+        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}>
+        <div className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-medium cursor-pointer text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground">
           <Shield className="w-4 h-4" /> Account &amp; Privacy
         </div>
       </Link>
       <button onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all text-xs font-medium">
+        style={{ touchAction: "manipulation" }}
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground transition-all text-xs font-medium">
         <LogOut className="w-4 h-4" /> Sign Out
       </button>
     </div>
@@ -368,6 +369,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           const active = href === "/" ? location === "/" : location.startsWith(href);
           return (
             <Link key={href} href={href}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl transition-all duration-200 active:scale-95",
                 active ? "text-primary" : "text-muted-foreground"
