@@ -14,6 +14,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkipLink } from "@/components/SkipLink";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import {
+  getAppBase,
+  getCountryFromPath,
+  getPathWithoutCountry,
+  buildCountryUrl,
+  isValidCountry,
+} from "@/lib/country";
 
 const Login               = lazy(() => import("@/pages/login"));
 const Subscription        = lazy(() => import("@/pages/subscription"));
@@ -41,6 +48,7 @@ const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
 const TermsOfService      = lazy(() => import("@/pages/terms"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
+const CountryDashboard    = lazy(() => import("@/pages/CountryDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,39 +83,79 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
-function RoleRedirect() {
-  const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!loading) {
-      if (user) {
-        setLocation(user.role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
-      } else {
-        setLocation("/landing");
-      }
-    }
-  }, [user, loading, setLocation]);
-
-  return (
-    <div className="h-full flex items-center justify-center">
-      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-    </div>
-  );
-}
-
-function Router() {
+// Country root (e.g. /in, /us): logged-in users go straight to their dashboard;
+// everyone else sees the country-specific public dashboard.
+function CountryRoot() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!loading && user) {
-      const path = window.location.pathname;
-      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-      const rel = path.replace(base, "") || "/";
-      if (rel === "/login" || rel === "/register") setLocation("/");
+      setLocation(user.role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
     }
   }, [user, loading, setLocation]);
+
+  if (loading || user) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+  return <CountryDashboard countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
+}
+
+// Ensures a valid country code is always present as the first URL segment.
+// If missing/invalid, detects the country (stored pref → IP → India) and
+// rewrites the URL before the router mounts.
+function CountryGate({ children }: { children: (code: string) => React.ReactNode }) {
+  const [country, setCountry] = useState<string | null>(() => getCountryFromPath());
+
+  useEffect(() => {
+    if (getCountryFromPath()) return;
+    const rel = getPathWithoutCountry();
+    const finish = (code: string) => {
+      const valid = isValidCountry(code) ? code.toLowerCase() : "in";
+      window.history.replaceState(
+        null,
+        "",
+        buildCountryUrl(valid, rel) + window.location.search + window.location.hash,
+      );
+      localStorage.setItem("lf_country", valid.toUpperCase());
+      setCountry(valid);
+    };
+
+    const stored = (localStorage.getItem("lf_country") || "").toLowerCase();
+    if (isValidCountry(stored)) {
+      finish(stored);
+      return;
+    }
+    fetch("/litigaforge/api/country-detect")
+      .then((r) => r.json())
+      .then((d) => finish((d.country_code || "in").toLowerCase()))
+      .catch(() => finish("in"));
+  }, []);
+
+  if (!country) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-white text-lg">Detecting your location… 🌍</div>
+      </div>
+    );
+  }
+  return <>{children(country.toLowerCase())}</>;
+}
+
+function Router() {
+  const { user, loading } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    // wouter location is relative to the country base (e.g. "/login" under /in)
+    if (!loading && user && (location === "/login" || location === "/register")) {
+      setLocation("/");
+    }
+  }, [user, loading, location, setLocation]);
 
   return (
     <Suspense fallback={<PageLoader />}>
@@ -122,7 +170,7 @@ function Router() {
         <Route>
           <Layout>
             <Switch>
-              <Route path="/"             component={RoleRedirect} />
+              <Route path="/"             component={CountryRoot} />
               <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
               <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
               <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
@@ -215,14 +263,18 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <SEOHelmet />
-              <SkipLink />
-              <KeyboardShortcuts />
-              <Analytics />
-              {/* <FirstVisitDisclaimer /> */}
-              <Router />
-            </WouterRouter>
+            <CountryGate>
+              {(country) => (
+                <WouterRouter base={`${getAppBase()}/${country}`}>
+                  <SEOHelmet />
+                  <SkipLink />
+                  <KeyboardShortcuts />
+                  <Analytics />
+                  {/* <FirstVisitDisclaimer /> */}
+                  <Router />
+                </WouterRouter>
+              )}
+            </CountryGate>
           </AuthProvider>
           <Toaster />
         </TooltipProvider>
