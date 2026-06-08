@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { useCountry } from "@/hooks/useCountry";
 import {
   Search, Home, Mail, FileKey, FileCheck, Shield, Scroll,
   MessageCircleWarning, UserMinus, Receipt, Building2, Clock,
@@ -91,12 +92,13 @@ function TemplateCard({ t }: { t: TemplateMeta }) {
 }
 
 export default function FreeDocuments() {
+  const { activeCode } = useCountry();
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("all");
 
   const { data, isLoading } = useQuery<{ total: number; templates: TemplateMeta[] }>({
-    queryKey: ["free-document-templates"],
-    queryFn: () => apiFetch("/documents/free/templates"),
+    queryKey: ["free-document-templates", activeCode],
+    queryFn: () => apiFetch(`/documents/free/templates?country=${activeCode}`),
   });
 
   const templates = data?.templates || [];
@@ -112,7 +114,7 @@ export default function FreeDocuments() {
     <>
       <SEOHelmet
         title="Free Legal Documents"
-        description="Generate free, AI-powered legal documents for India. Rent agreements, legal notices, wills, NDAs, and more."
+        description="Generate free, AI-powered legal documents tailored to your country. Rent agreements, legal notices, wills, NDAs, and more."
         canonical="/free-documents"
       />
       <PageShell title="Free Legal Documents" subtitle="Generate legally sound documents in minutes. Fill the form, let AI draft it, download instantly. No lawyer fees for standard templates.">

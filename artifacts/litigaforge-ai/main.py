@@ -117,10 +117,12 @@ async def lifespan(app: FastAPI):
                 question TEXT NOT NULL,
                 category TEXT,
                 ai_answer TEXT,
+                country TEXT DEFAULT 'IN',
                 upvotes INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IN'")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS lawyers (
                 id SERIAL PRIMARY KEY,

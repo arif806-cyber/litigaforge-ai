@@ -17,6 +17,10 @@ from rate_limit import limiter
 from database import fetchrow, fetch
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
+from jurisdiction import (
+    get_config, advisor_descriptor, jurisdiction_block,
+    caselaw_provider, caselaw_link, normalize_code,
+)
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
@@ -88,6 +92,7 @@ def _extract_json_array(text: str) -> list:
 class QuestionRequest(BaseModel):
     question: str
     category: str = "general"
+    country: str = "IN"
 
 
 @router.post("/ask")
@@ -100,20 +105,23 @@ async def ask_legal_question(req: QuestionRequest,
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    prompt = f"""You are a senior Indian legal advisor with deep expertise in Telangana and Andhra Pradesh law.
+    cfg = get_config(req.country)
+    prompt = f"""You are {advisor_descriptor(req.country)}.
+
+{jurisdiction_block(req.country)}
 
 QUESTION: {safe_question}
 
 Provide a thorough, practical answer in this format:
 
 **SUMMARY**
-(One-paragraph overview of the legal position)
+(One-paragraph overview of the legal position under {cfg['name']} law)
 
 **APPLICABLE LAW**
-(Relevant Indian acts, sections, and rules — e.g. Transfer of Property Act 1882 s.54, CrPC s.156, GST Act s.73)
+(Relevant {cfg['name']} acts, sections, and rules — cite specific statutes and provisions)
 
-**TELANGANA / AP PROCEDURE**
-(State-specific steps, offices, or timelines if relevant)
+**PROCEDURE**
+(Jurisdiction-specific steps, offices, courts/forums, or timelines if relevant)
 
 **PRACTICAL NEXT STEPS**
 1. …
@@ -123,7 +131,7 @@ Provide a thorough, practical answer in this format:
 **WHEN TO HIRE A LAWYER**
 (Specific situations in this matter that require in-person legal counsel)
 
-Be specific, cite real law, and avoid unhelpful generic disclaimers."""
+Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimers."""
 
     answer = _ai(wrap_user_prompt(prompt), 1800)
     answer = validate_ai_response(answer)
@@ -132,38 +140,41 @@ Be specific, cite real law, and avoid unhelpful generic disclaimers."""
         answer = "Our AI advisors are temporarily busy. Please try again in a moment, or consult a local advocate directly."
 
     uid = current_user["id"] if current_user else None
+    country = normalize_code(req.country)
     row = await fetchrow(
-        "INSERT INTO legal_questions (user_id, question, category, ai_answer) "
-        "VALUES ($1, $2, $3, $4) RETURNING id, created_at",
-        uid, safe_question, req.category, answer,
+        "INSERT INTO legal_questions (user_id, question, category, ai_answer, country) "
+        "VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at",
+        uid, safe_question, req.category, answer, country,
     )
     return {
         "id": row["id"],
         "question": safe_question,
         "category": req.category,
+        "country": country,
         "answer": answer,
         "created_at": str(row["created_at"]),
     }
 
 
 @router.get("/ask")
-async def list_questions(response: Response, limit: int = 20, category: Optional[str] = None):
+async def list_questions(response: Response, limit: int = 20, category: Optional[str] = None, country: str = "IN"):
     response.headers["Cache-Control"] = "public, max-age=3600"
+    cc = normalize_code(country)
     if category and category != "all":
         rows = await fetch(
-            "SELECT id, question, category, ai_answer, upvotes, created_at "
-            "FROM legal_questions WHERE category=$1 ORDER BY created_at DESC LIMIT $2",
-            category, limit,
+            "SELECT id, question, category, ai_answer, country, upvotes, created_at "
+            "FROM legal_questions WHERE category=$1 AND country=$2 ORDER BY created_at DESC LIMIT $3",
+            category, cc, limit,
         )
     else:
         rows = await fetch(
-            "SELECT id, question, category, ai_answer, upvotes, created_at "
-            "FROM legal_questions ORDER BY created_at DESC LIMIT $1",
-            limit,
+            "SELECT id, question, category, ai_answer, country, upvotes, created_at "
+            "FROM legal_questions WHERE country=$1 ORDER BY created_at DESC LIMIT $2",
+            cc, limit,
         )
     for r in rows:
         r["created_at"] = str(r["created_at"])
-    return {"total": len(rows), "questions": rows}
+    return {"total": len(rows), "country": cc, "questions": rows}
 
 
 # ── Document Analyzer ────────────────────────────────────────────────────────────────────
@@ -171,6 +182,7 @@ async def list_questions(response: Response, limit: int = 20, category: Optional
 class DocumentRequest(BaseModel):
     document_text: str
     document_type: str = "contract"
+    country: str = "IN"
 
 
 @router.post("/document/analyze")
@@ -184,14 +196,19 @@ async def analyze_document(req: DocumentRequest, request: Request):
     if len(safe_text.strip()) < 50:
         raise HTTPException(400, "Document too short — paste at least 50 characters")
 
-    prompt = f"""You are a senior Indian contract lawyer. Analyze the following {req.document_type} and return ONLY a valid JSON object with this exact structure:
+    cfg = get_config(req.country)
+    prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {req.document_type}.
+
+{jurisdiction_block(req.country)}
+
+Analyze the following {req.document_type} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
 
 {{
   "risk_score": 0-100,
   "missing_clauses": ["list"],
   "red_flags": ["list"],
   "recommendations": ["list"],
-  "compliance_notes": "string",
+  "compliance_notes": "string — note compliance specifically under {cfg['name']} law",
   "summary": "string"
 }}
 
@@ -221,6 +238,7 @@ Document text:
 class JudgmentSearchRequest(BaseModel):
     query: str
     court: str = ""
+    country: str = "IN"
 
 
 @router.post("/judgments/search")
@@ -234,27 +252,30 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
     if len(safe_query.strip()) < 5:
         raise HTTPException(400, "Search query too short")
 
+    cfg = get_config(req.country)
+    prov_name, _ = caselaw_provider(req.country)
+    courts = ", ".join(cfg.get("courts", [])) or "the relevant courts"
     court_note = f" Prioritise {req.court} judgments." if req.court else \
-        " Include Supreme Court, Telangana/AP High Court, and landmark District Court judgments."
+        f" Include the apex and appellate courts of {cfg['name']} ({courts}) and landmark judgments."
 
-    prompt = f"""You are an expert in Indian case law and legal research.
+    prompt = f"""You are an expert in {cfg['name']} case law and legal research.
 
 SEARCH QUERY: {safe_query}{court_note}
 
-Return ONLY a valid JSON array of 5 highly relevant Indian court judgments:
+Return ONLY a valid JSON array of 5 highly relevant {cfg['name']} court judgments:
 [
   {{
     "case_name": "Full case title — Party A v Party B",
-    "citation": "AIR YYYY SC XXXX or (YYYY) X SCC XXX or YYYY SCC OnLine Tel XXXX",
-    "court": "Supreme Court of India / Telangana High Court / AP High Court / etc.",
+    "citation": "a real citation in the standard {cfg['name']} format",
+    "court": "a real {cfg['name']} court",
     "year": YYYY,
     "holding": "The core legal principle settled by this case — 3 to 4 specific sentences",
     "relevance": "Why this judgment directly applies to the query — 1 to 2 sentences",
-    "ik_query": "2–4 word search for IndianKanoon"
+    "search_query": "2–4 word search term"
   }}
 ]
 
-Use real, verifiable citations where known. Prefer landmark judgments that advocates actually cite."""
+Use real, verifiable {cfg['name']} citations where known. Prefer landmark judgments that lawyers actually cite."""
 
     raw = _ai(wrap_user_prompt(prompt), 3000)
     raw = validate_ai_response(raw)
@@ -264,10 +285,11 @@ Use real, verifiable citations where known. Prefer landmark judgments that advoc
         judgments = []
 
     for j in judgments:
-        q = j.get("ik_query", j.get("case_name", safe_query)).replace(" ", "+")
-        j["ik_link"] = f"https://indiankanoon.org/search/?formInput={q}&type=judgments"
+        q = j.get("search_query") or j.get("ik_query") or j.get("case_name") or safe_query
+        j["ik_link"] = caselaw_link(req.country, q)
+        j["source_name"] = prov_name
 
-    return {"query": safe_query, "total": len(judgments), "judgments": judgments}
+    return {"query": safe_query, "total": len(judgments), "source_name": prov_name, "judgments": judgments}
 
 
 # ── Lawyer Directory ────────────────────────────────────────────────────────────────────

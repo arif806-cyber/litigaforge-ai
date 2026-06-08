@@ -7,6 +7,7 @@ import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useCountry } from "@/hooks/useCountry";
 
 const DOC_TYPES = [
   { id: "contract", label: "Contract / Agreement" },
@@ -53,6 +54,7 @@ function RiskScoreBadge({ score }: { score: number }) {
 }
 
 export default function Review() {
+  const { activeCode, activeConfig } = useCountry();
   const [docText, setDocText] = useState("");
   const [docType, setDocType] = useState("contract");
   const [docTypeOpen, setDocTypeOpen] = useState(false);
@@ -61,7 +63,7 @@ export default function Review() {
   const analyze = useMutation({
     mutationFn: () => apiFetch("/document/analyze", {
       method: "POST",
-      body: JSON.stringify({ document_text: docText, document_type: docType }),
+      body: JSON.stringify({ document_text: docText, document_type: docType, country: activeCode }),
     }),
     onSuccess: (data) => setResult(data),
   });
@@ -69,12 +71,12 @@ export default function Review() {
   const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
 
   return (
-    <PageShell title="Document Analyzer" subtitle="Paste any legal document — AI identifies risks, missing clauses, and jurisdiction issues under Indian law." icon={<FileSearch className="w-6 h-6 text-primary" />}>
+    <PageShell title="Document Analyzer" subtitle={`Paste any legal document — AI identifies risks, missing clauses, and jurisdiction issues under the law of ${activeConfig?.name ?? "your country"}.`} icon={<FileSearch className="w-6 h-6 text-primary" />}>
       <SEOHelmet
         title="Free Legal Document Analyzer | LitigaForge AI"
-        description="Paste any contract, FIR, rental agreement, or legal document and get an instant AI risk score, missing clause detection, and recommendations. Free online legal document analyzer for India."
+        description="Paste any contract, agreement, notice, or legal document and get an instant AI risk score, missing clause detection, and recommendations. Free online legal document analyzer."
         canonical="/review"
-        keywords="legal document analyzer India, contract review online free, FIR analysis, rental agreement check, missing clause detector India"
+        keywords="legal document analyzer, contract review online free, document analysis, rental agreement check, missing clause detector"
       />
 
       <div className="space-y-8">

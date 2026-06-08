@@ -6,6 +6,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai_brain import _call_claude, _call_openai, _call_gemini, get_active_providers
 from ai_safety import safe_ai_output
+from jurisdiction import get_config, localize_currency, normalize_code
 
 router = APIRouter(prefix="/documents/free", tags=["Free Documents"])
 
@@ -35,7 +36,7 @@ TEMPLATES: List[DocumentTemplate] = [
     DocumentTemplate(
         slug="rent-agreement",
         title="Residential Rent Agreement",
-        description="Standard 11-month rent agreement for Telangana & AP. Includes security deposit, maintenance, and lock-in clauses.",
+        description="Standard residential rent / lease agreement with security deposit, maintenance, and lock-in clauses.",
         category="Property",
         icon="Home",
         estimated_time="5 min",
@@ -86,7 +87,7 @@ Make it sound official and enforceable under the Telangana Building (Lease, Rent
     DocumentTemplate(
         slug="legal-notice",
         title="Legal Notice / Demand Letter",
-        description="Formal legal notice for recovery of money, breach of contract, or other civil disputes. Suitable for filing in Telangana/AP courts.",
+        description="Formal legal notice for recovery of money, breach of contract, or other civil disputes. Ready to send before initiating court proceedings.",
         category="Civil",
         icon="Mail",
         estimated_time="4 min",
@@ -132,7 +133,7 @@ Make it sound authoritative but not threatening. Use formal legal Indian English
     DocumentTemplate(
         slug="power-of-attorney",
         title="General Power of Attorney",
-        description="Authorize someone to act on your behalf for property, bank, or legal matters. Valid across India with notarization note.",
+        description="Authorize someone to act on your behalf for property, bank, or legal matters. Includes a notarization note.",
         category="Property",
         icon="FileKey",
         estimated_time="4 min",
@@ -215,7 +216,7 @@ Use standard Indian affidavit format. Output plain text."""
     DocumentTemplate(
         slug="nda",
         title="Non-Disclosure Agreement (NDA)",
-        description="Protect confidential business information when sharing with employees, vendors, or partners. Indian law compliant.",
+        description="Protect confidential business information when sharing with employees, vendors, or partners. Jurisdiction-aware and legally compliant.",
         category="Business",
         icon="Shield",
         estimated_time="5 min",
@@ -256,7 +257,7 @@ Professional tone. Output plain text."""
     DocumentTemplate(
         slug="will",
         title="Simple Will / Testament",
-        description="Basic will for distribution of assets. Includes executor appointment and witness requirements under Indian Succession Act.",
+        description="Basic will for distribution of assets. Includes executor appointment and witness requirements.",
         category="Family",
         icon="Scroll",
         estimated_time="6 min",
@@ -302,7 +303,7 @@ Warm but legally precise tone. Output plain text."""
     DocumentTemplate(
         slug="consumer-complaint",
         title="Consumer Complaint Letter",
-        description="Formal complaint to company/shop for defective product, poor service, or refund. Ready to send or attach to District Forum complaint.",
+        description="Formal complaint to a company/shop for a defective product, poor service, or refund. Ready to send or attach to a consumer forum/court complaint.",
         category="Consumer",
         icon="MessageCircleWarning",
         estimated_time="4 min",
@@ -501,7 +502,7 @@ Formal commercial tone. Output plain text."""
 TEMPLATES[6] = DocumentTemplate(
     slug="consumer-complaint",
     title="Consumer Complaint Letter",
-    description="Formal complaint to company/shop for defective product, poor service, or refund. Ready to send or attach to District Forum complaint.",
+    description="Formal complaint to a company/shop for a defective product, poor service, or refund. Ready to send or attach to a consumer forum/court complaint.",
     category="Consumer",
     icon="MessageCircleWarning",
     estimated_time="4 min",
@@ -551,16 +552,18 @@ Assertive but professional tone. Output plain text."""
 class GenerateRequest(BaseModel):
     slug: str = Field(..., description="Template slug")
     fields: Dict[str, Any] = Field(..., description="Filled field values")
+    country: str = Field("IN", description="Country code for jurisdiction")
 
 
 @router.get("/templates")
-async def list_templates() -> Dict[str, Any]:
+async def list_templates(country: str = "IN") -> Dict[str, Any]:
     return {
         "total": len(TEMPLATES),
+        "country": normalize_code(country),
         "templates": [{
             "slug": t.slug,
             "title": t.title,
-            "description": t.description,
+            "description": localize_currency(t.description, country),
             "category": t.category,
             "icon": t.icon,
             "estimated_time": t.estimated_time,
@@ -570,17 +573,24 @@ async def list_templates() -> Dict[str, Any]:
 
 
 @router.get("/templates/{slug}")
-async def get_template(slug: str) -> Dict[str, Any]:
+async def get_template(slug: str, country: str = "IN") -> Dict[str, Any]:
     for t in TEMPLATES:
         if t.slug == slug:
+            fields = []
+            for f in t.fields:
+                fd = f.model_dump()
+                fd["label"] = localize_currency(fd.get("label", ""), country)
+                fd["placeholder"] = localize_currency(fd.get("placeholder", ""), country)
+                fd["help_text"] = localize_currency(fd.get("help_text", ""), country)
+                fields.append(fd)
             return {
                 "slug": t.slug,
                 "title": t.title,
-                "description": t.description,
+                "description": localize_currency(t.description, country),
                 "category": t.category,
                 "icon": t.icon,
                 "estimated_time": t.estimated_time,
-                "fields": [f.model_dump() for f in t.fields],
+                "fields": fields,
                 "ai_prompt_template": t.ai_prompt_template,
             }
     return {"error": "Template not found"}
@@ -602,11 +612,28 @@ async def generate_document(req: GenerateRequest, request: Request) -> Dict[str,
         placeholder = "{" + key + "}"
         prompt = prompt.replace(placeholder, str(val) if val is not None else "")
 
+    # Tailor the prompt to the selected jurisdiction
+    cfg = get_config(req.country)
+    prompt = localize_currency(prompt, req.country)
+    directive = (
+        f"You are drafting a legal document valid under the law of {cfg['name']} "
+        f"({cfg['legal_system']} legal system). Draft strictly for {cfg['name']}: use {cfg['currency']} "
+        f"for all monetary amounts, follow {cfg['name']} drafting conventions, and replace any statute, "
+        f"court, stamp-duty, or registration reference with the correct {cfg['name']} equivalent. Treat the "
+        f"structural instructions below as a guide only — adapt every legal reference to {cfg['name']}.\n\n"
+    )
+    prompt = directive + prompt
+    sys_msg = (
+        f"You are an expert legal document drafter for {cfg['name']}. Generate complete, legally sound "
+        f"documents valid under {cfg['name']} law in plain text. Replace any non-{cfg['name']} legal "
+        f"references with the correct {cfg['name']} equivalents. No markdown formatting."
+    )
+
     # Cascade: Claude → GPT-5 → Gemini → template fallback
     document_text = None
     try:
         document_text = _call_claude(
-            system="You are an expert Indian legal document drafter. Generate complete, legally sound documents in plain text. Use formal Indian legal English. No markdown formatting.",
+            system=sys_msg,
             user=prompt,
             temperature=0.3,
             max_tokens=8000,
@@ -616,7 +643,7 @@ async def generate_document(req: GenerateRequest, request: Request) -> Dict[str,
     if not document_text:
         try:
             document_text = _call_openai(
-                system="You are an expert Indian legal document drafter. Generate complete, legally sound documents in plain text.",
+                system=sys_msg,
                 user=prompt,
                 temperature=0.3,
                 max_tokens=8000,
@@ -626,7 +653,7 @@ async def generate_document(req: GenerateRequest, request: Request) -> Dict[str,
     if not document_text:
         try:
             document_text = _call_gemini(
-                system="You are an expert Indian legal document drafter. Generate complete, legally sound documents in plain text.",
+                system=sys_msg,
                 user=prompt,
                 temperature=0.3,
                 max_tokens=8192,

@@ -7,6 +7,7 @@ import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useCountry } from "@/hooks/useCountry";
 
 const CATEGORIES = [
   { id: "all", label: "All" },
@@ -98,14 +99,15 @@ function QACard({ item }: { item: QAItem }) {
 }
 
 export default function Ask() {
+  const { activeCode, activeConfig } = useCountry();
   const [question, setQuestion] = useState("");
   const [category, setCategory] = useState("general");
   const [browseCategory, setBrowseCategory] = useState("all");
   const [answer, setAnswer] = useState<{ question: string; answer: string; category: string } | null>(null);
 
   const { data: qaList, refetch, isLoading: qaLoading, isError: qaError, error: qaErrorData } = useQuery<{ questions: QAItem[]; total: number }>({
-    queryKey: ["questions", browseCategory],
-    queryFn: () => apiFetch(`/ask?limit=20${browseCategory !== "all" ? `&category=${browseCategory}` : ""}`),
+    queryKey: ["questions", browseCategory, activeCode],
+    queryFn: () => apiFetch(`/ask?limit=20&country=${activeCode}${browseCategory !== "all" ? `&category=${browseCategory}` : ""}`),
     staleTime: 30000,
   });
 
@@ -125,7 +127,7 @@ export default function Ask() {
     : undefined;
 
   const askMutation = useMutation({
-    mutationFn: (data: { question: string; category: string }) =>
+    mutationFn: (data: { question: string; category: string; country: string }) =>
       apiFetch("/ask", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: (data) => {
       setAnswer({ question: data.question, answer: data.answer, category: data.category });
@@ -138,16 +140,16 @@ export default function Ask() {
     e.preventDefault();
     if (!question.trim() || askMutation.isPending) return;
     setAnswer(null);
-    askMutation.mutate({ question: question.trim(), category });
+    askMutation.mutate({ question: question.trim(), category, country: activeCode });
   };
 
   return (
-    <PageShell title="Legal Q&A" subtitle="Ask any legal question — get instant answers grounded in Indian law and local procedures." icon={<MessageSquare className="w-6 h-6 text-primary" />}>
+    <PageShell title="Legal Q&A" subtitle={`Ask any legal question — get instant answers grounded in the law of ${activeConfig?.name ?? "your country"} and local procedures.`} icon={<MessageSquare className="w-6 h-6 text-primary" />}>
       <SEOHelmet
         title="Free Legal Q&A | Ask a Lawyer Online – LitigaForge"
-        description="Ask any legal question and get an instant AI-powered answer based on Indian law — IPC, CrPC, consumer rights, property, family law. Free. No login required."
+        description="Ask any legal question and get an instant AI-powered answer based on your country's law — criminal, consumer, property, and family law. Free. No login required."
         canonical="/ask"
-        keywords="ask lawyer online free India, legal question answer Hindi, IPC section help, consumer court query, free legal advice Hyderabad"
+        keywords="ask lawyer online free, legal question answer, statute help, consumer dispute query, free legal advice"
         structuredData={qaSchema}
       />
 
@@ -177,7 +179,7 @@ export default function Ask() {
             <textarea
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              placeholder="e.g. My neighbour has encroached on my property in Hyderabad. What steps can I take under TSRPA 1987 to get it back?"
+              placeholder="e.g. My neighbour has encroached on my property. What legal steps can I take to get it back?"
               rows={4}
               className="w-full px-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none shadow-sm"
             />

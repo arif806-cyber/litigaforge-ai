@@ -7,14 +7,7 @@ import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-
-const COURTS = [
-  { id: "", label: "All Courts" },
-  { id: "Supreme Court of India", label: "Supreme Court" },
-  { id: "Telangana High Court", label: "Telangana High Court" },
-  { id: "AP High Court", label: "AP High Court" },
-  { id: "District Courts", label: "District Courts" },
-];
+import { useCountry } from "@/hooks/useCountry";
 
 interface Judgment {
   case_name: string;
@@ -24,25 +17,32 @@ interface Judgment {
   holding: string;
   relevance: string;
   ik_link: string;
+  source_name?: string;
 }
 
 const SAMPLE_QUERIES = [
-  "Property encroachment injunction Telangana",
-  "Motor accident compensation MACT",
-  "GST ITC input tax credit fraud",
-  "Cheque bounce Section 138 NI Act",
+  "Property encroachment injunction",
+  "Motor accident compensation claim",
+  "Breach of contract damages",
+  "Wrongful termination of employment",
   "Domestic violence protection order",
-  "Builder flat delivery delay RERA",
+  "Defective product consumer refund",
 ];
 
 export default function Judgments() {
+  const { activeCode, activeConfig } = useCountry();
   const [query, setQuery] = useState("");
   const [court, setCourt] = useState("");
   const [courtOpen, setCourtOpen] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
 
+  const courtOptions = [
+    { id: "", label: "All Courts" },
+    ...((activeConfig?.courts ?? []).map(c => ({ id: c, label: c }))),
+  ];
+
   const search = useMutation({
-    mutationFn: (data: { query: string; court: string }) =>
+    mutationFn: (data: { query: string; court: string; country: string }) =>
       apiFetch("/judgments/search", { method: "POST", body: JSON.stringify(data) }),
   });
 
@@ -51,19 +51,20 @@ export default function Judgments() {
     if (!finalQuery.trim() || search.isPending) return;
     if (q) setQuery(q);
     setExpanded(null);
-    search.mutate({ query: finalQuery.trim(), court });
+    search.mutate({ query: finalQuery.trim(), court, country: activeCode });
   };
 
-  const selectedCourt = COURTS.find(c => c.id === court) ?? COURTS[0];
+  const selectedCourt = courtOptions.find(c => c.id === court) ?? courtOptions[0];
+  const sourceName = (search.data as { source_name?: string } | undefined)?.source_name ?? "the source database";
 
   return (<>
       <SEOHelmet
-      title="Search Court Judgments India | LitigaForge"
-      description="Search High Court and Supreme Court judgments from Telangana, Andhra Pradesh, and all India courts. AI-curated case law precedents with IndianKanoon links."
+      title="Search Court Judgments | LitigaForge"
+      description="Search court judgments and case law precedents across multiple jurisdictions. AI-curated precedents with links to the relevant case-law database."
       canonical="/judgments"
-      keywords="search court judgments India, Supreme Court precedents, Telangana High Court orders, IndianKanoon search, case law finder Andhra Pradesh"
+      keywords="search court judgments, supreme court precedents, case law finder, legal research, court orders"
     />
-    <PageShell title="Judgment Finder" subtitle="Search Indian case law — AI finds relevant precedents with citations and plain-language summaries." icon={<BookOpen className="w-6 h-6 text-primary" />}>
+    <PageShell title="Judgment Finder" subtitle={`Search ${activeConfig?.name ?? "case"} law — AI finds relevant precedents with citations and plain-language summaries.`} icon={<BookOpen className="w-6 h-6 text-primary" />}>
 
       <div className="space-y-8">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
@@ -75,7 +76,7 @@ export default function Judgments() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()}
-                placeholder="e.g. property encroachment injunction Telangana High Court"
+                placeholder="e.g. breach of contract damages appeal"
                 className="w-full pl-12 pr-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
               />
             </div>
@@ -96,7 +97,7 @@ export default function Judgments() {
                     exit={{ opacity: 0, y: -4 }}
                     className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-20 overflow-hidden"
                   >
-                    {COURTS.map(c => (
+                    {courtOptions.map(c => (
                       <button
                         key={c.id}
                         onClick={() => { setCourt(c.id); setCourtOpen(false); }}
@@ -233,7 +234,7 @@ export default function Judgments() {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-2 text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-lg transition-colors"
                             >
-                              View Full Text on IndianKanoon
+                              View Full Text on {j.source_name ?? sourceName}
                               <ExternalLink className="w-4 h-4" />
                             </a>
                           </div>
@@ -246,7 +247,7 @@ export default function Judgments() {
             </div>
 
             <p className="text-xs text-center text-muted-foreground font-mono pt-4">
-              Citations are AI-generated. Verify on IndianKanoon before citing in court.
+              Citations are AI-generated. Verify on {sourceName} before citing in court.
             </p>
           </motion.div>
         )}

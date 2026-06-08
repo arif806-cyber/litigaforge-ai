@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageShell } from "@/components/PageShell";
+import { useCountry } from "@/hooks/useCountry";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Home, Mail, FileKey, FileCheck, Shield, Scroll,
@@ -41,20 +42,21 @@ interface TemplateDetail {
 
 export default function DocumentTemplatePage() {
   const { slug } = useParams();
+  const { activeCode } = useCountry();
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [generated, setGenerated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const { data: template, isLoading } = useQuery<TemplateDetail>({
-    queryKey: ["document-template", slug],
-    queryFn: () => apiFetch(`/documents/free/templates/${slug}`),
+    queryKey: ["document-template", slug, activeCode],
+    queryFn: () => apiFetch(`/documents/free/templates/${slug}?country=${activeCode}`),
     enabled: !!slug,
   });
 
   const generateMutation = useMutation({
     mutationFn: () => apiFetch("/documents/free/generate", {
       method: "POST",
-      body: JSON.stringify({ slug, fields: fieldValues }),
+      body: JSON.stringify({ slug, fields: fieldValues, country: activeCode }),
     }),
     onSuccess: (data) => setGenerated(data.document_text),
   });
