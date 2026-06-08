@@ -48,7 +48,7 @@ const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
 const TermsOfService      = lazy(() => import("@/pages/terms"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
-const CountryDashboard    = lazy(() => import("@/pages/CountryDashboard"));
+const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,7 +102,7 @@ function CountryRoot() {
       </div>
     );
   }
-  return <CountryDashboard countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
+  return <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
 }
 
 // Ensures a valid country code is always present as the first URL segment.
@@ -182,10 +182,10 @@ function Router() {
         <Route path="/settings" component={() => <ProtectedRoute component={AccountSettings} />} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
+        <Route path="/" component={CountryRoot} />
         <Route>
           <Layout>
             <Switch>
-              <Route path="/"             component={CountryRoot} />
               <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
               <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
               <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />

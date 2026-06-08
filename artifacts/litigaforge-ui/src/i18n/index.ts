@@ -15,6 +15,13 @@ export interface Translation {
   judgments: string;
   free_aid: string;
   legal_qa: string;
+  pain_heading: string;
+  docs_heading: string;
+  explore: string;
+  join_title: string;
+  join_sub: string;
+  sign_up: string;
+  login: string;
 }
 
 export type CountryTranslations = Record<string, Translation>;
@@ -38,6 +45,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Judgment Finder",
       free_aid: "Free Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
     te: {
       hero_title: "భారత్ కోసం AI న్యాయ సహాయం",
@@ -56,6 +70,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "తీర్పుల శోధన",
       free_aid: "ఉచిత న్యాయ సహాయం",
       legal_qa: "న్యాయ ప్రశ్నలు",
+      pain_heading: "సాధారణ న్యాయ సమస్యలు",
+      docs_heading: "ఎక్కువగా అడిగే పత్రాలు",
+      explore: "సహాయం పొందండి",
+      join_title: "AI న్యాయ సహాయం పొందుతున్న వేలాది మందిలో చేరండి",
+      join_sub: "ఉచితంగా ప్రారంభించండి. క్రెడిట్ కార్డ్ అవసరం లేదు.",
+      sign_up: "ఉచితంగా నమోదు చేయండి",
+      login: "లాగిన్",
     },
     hi: {
       hero_title: "भारत के लिए AI कानूनी मदद",
@@ -74,6 +95,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "निर्णय खोजें",
       free_aid: "मुफ्त कानूनी सहायता",
       legal_qa: "कानूनी प्रश्न",
+      pain_heading: "सामान्य कानूनी समस्याएं",
+      docs_heading: "सबसे ज़्यादा मांगे जाने वाले दस्तावेज़",
+      explore: "मदद पाएं",
+      join_title: "AI कानूनी मदद पाने वाले हज़ारों लोगों से जुड़ें",
+      join_sub: "मुफ्त में शुरू करें। क्रेडिट कार्ड की ज़रूरत नहीं।",
+      sign_up: "मुफ्त साइन अप करें",
+      login: "लॉगिन",
     },
   },
   US: {
@@ -94,6 +122,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Case Finder",
       free_aid: "Free Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
     es: {
       hero_title: "Ayuda Legal IA para América",
@@ -112,6 +147,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Buscador de Casos",
       free_aid: "Ayuda Legal Gratuita",
       legal_qa: "Preguntas Legales",
+      pain_heading: "Problemas Legales Comunes",
+      docs_heading: "Documentos Más Solicitados",
+      explore: "Obtener ayuda",
+      join_title: "Únete a miles que reciben ayuda legal con IA",
+      join_sub: "Gratis para empezar. Sin tarjeta de crédito.",
+      sign_up: "Regístrate Gratis",
+      login: "Iniciar Sesión",
     },
   },
   GB: {
@@ -132,6 +174,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Case Finder",
       free_aid: "Free Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
   },
   AE: {
@@ -152,6 +201,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Case Finder",
       free_aid: "Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
     ar: {
       hero_title: "مساعدة قانونية بالذكاء الاصطناعي",
@@ -170,6 +226,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "البحث في الأحكام",
       free_aid: "المساعدة القانونية",
       legal_qa: "أسئلة قانونية",
+      pain_heading: "المشاكل القانونية الشائعة",
+      docs_heading: "المستندات الأكثر طلبًا",
+      explore: "احصل على المساعدة",
+      join_title: "انضم إلى آلاف الأشخاص الذين يحصلون على مساعدة قانونية بالذكاء الاصطناعي",
+      join_sub: "ابدأ مجانًا. لا حاجة لبطاقة ائتمان.",
+      sign_up: "سجّل مجانًا",
+      login: "تسجيل الدخول",
     },
   },
   DE: {
@@ -190,6 +253,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Urteilssuche",
       free_aid: "Kostenlose Rechtsberatung",
       legal_qa: "Rechtsfragen",
+      pain_heading: "Häufige Rechtsprobleme",
+      docs_heading: "Meist angefragte Dokumente",
+      explore: "Hilfe erhalten",
+      join_title: "Schließen Sie sich Tausenden an, die KI-Rechtshilfe erhalten",
+      join_sub: "Kostenlos starten. Keine Kreditkarte nötig.",
+      sign_up: "Kostenlos registrieren",
+      login: "Anmelden",
     },
     en: {
       hero_title: "AI Legal Help in Germany",
@@ -208,6 +278,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Judgment Finder",
       free_aid: "Free Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
   },
   AU: {
@@ -228,6 +305,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Case Finder",
       free_aid: "Free Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
   },
   CA: {
@@ -248,6 +332,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Case Finder",
       free_aid: "Free Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
     fr: {
       hero_title: "Aide Juridique IA pour le Canada",
@@ -266,6 +357,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Recherche de Jugements",
       free_aid: "Aide Juridique Gratuite",
       legal_qa: "Questions Juridiques",
+      pain_heading: "Problèmes Juridiques Courants",
+      docs_heading: "Documents les Plus Demandés",
+      explore: "Obtenir de l'aide",
+      join_title: "Rejoignez des milliers de personnes aidées par l'IA juridique",
+      join_sub: "Gratuit pour commencer. Sans carte de crédit.",
+      sign_up: "Inscription Gratuite",
+      login: "Connexion",
     },
   },
   SG: {
@@ -286,6 +384,13 @@ const translations: Record<string, CountryTranslations> = {
       judgments: "Case Finder",
       free_aid: "Free Legal Aid",
       legal_qa: "Legal Q&A",
+      pain_heading: "Common Legal Problems",
+      docs_heading: "Most Requested Documents",
+      explore: "Get help",
+      join_title: "Join thousands getting AI legal help",
+      join_sub: "Free to start. No credit card needed.",
+      sign_up: "Sign Up Free",
+      login: "Login",
     },
   },
 };
