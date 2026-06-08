@@ -378,11 +378,13 @@ class LawyerRegisterRequest(BaseModel):
     bio: str = ""
     bar_number: Optional[str] = None
     hourly_rate: Optional[int] = None
+    country: str = "in"
 
 
 @router.get("/lawyers")
 async def list_lawyers(
     response: Response,
+    country: Optional[str] = None,
     district: Optional[str] = None,
     practice_area: Optional[str] = None,
     language: Optional[str] = None,
@@ -390,22 +392,25 @@ async def list_lawyers(
 ):
     response.headers["Cache-Control"] = "public, max-age=3600"
     conds, params = ["verified = TRUE"], []
+    if country:
+        conds.append("LOWER(country) = $" + str(len(params) + 1))
+        params.append(country.lower())
     if district:
-        conds.append("district ILIKE $" + str(len(params) + 2))
+        conds.append("district ILIKE $" + str(len(params) + 1))
         params.append(f"%{district}%")
     if practice_area:
-        conds.append("$" + str(len(params) + 2) + " = ANY(practice_areas)")
+        conds.append("$" + str(len(params) + 1) + " = ANY(practice_areas)")
         params.append(practice_area)
     if language:
-        conds.append("$" + str(len(params) + 2) + " = ANY(languages)")
+        conds.append("$" + str(len(params) + 1) + " = ANY(languages)")
         params.append(language)
     if search:
-        conds.append("(name ILIKE $" + str(len(params) + 2) + " OR bio ILIKE $" + str(len(params) + 3) + ")")
+        conds.append("(name ILIKE $" + str(len(params) + 1) + " OR bio ILIKE $" + str(len(params) + 2) + ")")
         params.extend([f"%{search}%", f"%{search}%"])
 
     where = "WHERE " + " AND ".join(conds)
     rows = await fetch(
-        f"SELECT id, name, email, phone, bar_number, district, practice_areas, "
+        f"SELECT id, name, email, phone, bar_number, district, country, practice_areas, "
         f"languages, experience_years, rating, bio, hourly_rate, availability, "
         f"verification_status, verified, created_at "
         f"FROM lawyers {where} ORDER BY verified DESC, rating DESC, experience_years DESC LIMIT 50",
@@ -425,11 +430,12 @@ async def register_lawyer(
         raise HTTPException(401, "Login required to register as an advocate")
     row = await fetchrow(
         """INSERT INTO lawyers
-           (user_id, name, email, phone, bar_number, district, practice_areas, languages, experience_years, bio, hourly_rate)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           (user_id, name, email, phone, bar_number, district, practice_areas, languages, experience_years, bio, hourly_rate, country)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
            RETURNING id, name, district, verified""",
         current_user["id"], req.name, req.email, req.phone, req.bar_number, req.district,
         req.practice_areas, req.languages, req.experience_years, req.bio, req.hourly_rate,
+        (req.country or "in").lower(),
     )
     return {
         "message": "Advocate profile submitted. It will appear once verified by our team.",
@@ -439,10 +445,12 @@ async def register_lawyer(
 
 # ── Legal Aid contacts (static + eligibility) ─────────────────────────────────────────────
 
-@router.get("/legal-aid/contacts")
-async def legal_aid_contacts(response: Response):
-    response.headers["Cache-Control"] = "public, max-age=3600"
-    return {
+# Real, publicly-published legal-aid bodies per country. Phone numbers are the
+# official national helplines where one exists; otherwise we rely on the official
+# website as the authoritative link rather than inventing local office numbers.
+LEGAL_AID: dict = {
+    "IN": {
+        "country_name": "India", "flag": "🇮🇳", "currency_symbol": "₹",
         "national": {
             "name": "NALSA — National Legal Services Authority",
             "helpline": "15100",
@@ -457,34 +465,208 @@ async def legal_aid_contacts(response: Response):
                 "Persons in custody",
             ],
         },
-        "telangana": {
-            "name": "Telangana State Legal Services Authority (TSLSA)",
-            "website": "https://tslsa.telangana.gov.in",
-            "address": "High Court of Telangana Campus, Hyderabad – 500004",
-            "phone": "+91-40-23450027",
-        },
-        "districts": [
-            {"district": "Hyderabad", "dlsa": "DLSA Hyderabad", "phone": "+91-40-23219999",
+        "regional": [
+            {"name": "Telangana State Legal Services Authority (TSLSA)", "region": "Telangana",
+             "website": "https://tslsa.telangana.gov.in", "phone": "+91-40-23450027",
+             "address": "High Court of Telangana Campus, Hyderabad – 500004"},
+            {"name": "DLSA Hyderabad", "region": "Hyderabad", "phone": "+91-40-23219999",
              "address": "City Civil Court Campus, Nampally, Hyderabad"},
-            {"district": "Rangareddy", "dlsa": "DLSA Rangareddy", "phone": "+91-40-24010073",
+            {"name": "DLSA Rangareddy", "region": "Rangareddy", "phone": "+91-40-24010073",
              "address": "District Courts Complex, Jubilee Hills, Hyderabad"},
-            {"district": "Warangal", "dlsa": "DLSA Warangal", "phone": "+91-870-2578901",
+            {"name": "DLSA Warangal", "region": "Warangal", "phone": "+91-870-2578901",
              "address": "District Court Campus, Warangal"},
-            {"district": "Karimnagar", "dlsa": "DLSA Karimnagar", "phone": "+91-878-2234567",
-             "address": "District Courts, Karimnagar"},
-            {"district": "Khammam", "dlsa": "DLSA Khammam", "phone": "+91-8742-234890",
-             "address": "District Court Complex, Khammam"},
-            {"district": "Nizamabad", "dlsa": "DLSA Nizamabad", "phone": "+91-8462-220345",
-             "address": "District Court Campus, Nizamabad"},
-            {"district": "Nalgonda", "dlsa": "DLSA Nalgonda", "phone": "+91-8682-234567",
-             "address": "District Courts, Nalgonda"},
-            {"district": "Medak", "dlsa": "DLSA Medak", "phone": "+91-8452-224567",
-             "address": "District Court Complex, Sangareddy"},
         ],
         "other_resources": [
-            {"name": "Telangana Women Helpline", "phone": "181"},
+            {"name": "Women Helpline", "phone": "181"},
             {"name": "Child Helpline", "phone": "1098"},
             {"name": "Police Control Room", "phone": "100"},
             {"name": "Senior Citizens Helpline", "phone": "14567"},
         ],
-    }
+    },
+    "US": {
+        "country_name": "United States", "flag": "🇺🇸", "currency_symbol": "$",
+        "national": {
+            "name": "Legal Services Corporation (LSC) — find your local legal aid",
+            "helpline": "211",
+            "website": "https://www.lsc.gov/about-lsc/what-legal-aid/get-legal-help",
+            "eligibility": [
+                "Household income at or below 125% of the Federal Poverty Guidelines",
+                "Seniors, veterans, and people with disabilities",
+                "Survivors of domestic violence",
+                "Tenants facing eviction",
+                "Limited civil matters (not most criminal cases)",
+            ],
+        },
+        "regional": [
+            {"name": "LawHelp.org — directory of local legal aid programs", "region": "All states",
+             "website": "https://www.lawhelp.org"},
+            {"name": "American Bar Association — Free Legal Answers", "region": "Nationwide",
+             "website": "https://www.freelegalanswers.org"},
+        ],
+        "other_resources": [
+            {"name": "National Domestic Violence Hotline", "phone": "1-800-799-7233"},
+            {"name": "Emergency", "phone": "911"},
+            {"name": "Community services & referrals", "phone": "211"},
+        ],
+    },
+    "GB": {
+        "country_name": "United Kingdom", "flag": "🇬🇧", "currency_symbol": "£",
+        "national": {
+            "name": "Civil Legal Advice (CLA) — government legal aid service",
+            "helpline": "0345 345 4 345",
+            "website": "https://www.gov.uk/check-legal-aid",
+            "eligibility": [
+                "Pass the means test (low income / on certain benefits)",
+                "Case passes the merits test",
+                "Debt, housing, domestic abuse and family matters",
+                "Discrimination and some immigration/asylum cases",
+            ],
+        },
+        "regional": [
+            {"name": "Citizens Advice", "region": "England & Wales", "phone": "0800 144 8848",
+             "website": "https://www.citizensadvice.org.uk"},
+            {"name": "Law Centres Network", "region": "UK-wide",
+             "website": "https://www.lawcentres.org.uk"},
+        ],
+        "other_resources": [
+            {"name": "National Domestic Abuse Helpline", "phone": "0808 2000 247"},
+            {"name": "Emergency", "phone": "999"},
+            {"name": "Shelter (housing)", "phone": "0808 800 4444"},
+        ],
+    },
+    "AE": {
+        "country_name": "United Arab Emirates", "flag": "🇦🇪", "currency_symbol": "د.إ",
+        "national": {
+            "name": "UAE Ministry of Justice — Legal Aid Department",
+            "helpline": "800 33",
+            "website": "https://www.moj.gov.ae",
+            "eligibility": [
+                "Insolvent or low-income applicants who cannot afford a lawyer",
+                "Mandatory legal aid for serious criminal cases",
+                "Cases referred by the courts",
+                "Minors and persons of determination (people of disability)",
+            ],
+        },
+        "regional": [
+            {"name": "Dubai Courts — Legal Aid", "region": "Dubai", "phone": "800 33",
+             "website": "https://www.dc.gov.ae"},
+            {"name": "Abu Dhabi Judicial Department", "region": "Abu Dhabi", "phone": "800 23823",
+             "website": "https://www.adjd.gov.ae"},
+            {"name": "Community Development Authority", "region": "Dubai",
+             "website": "https://www.cda.gov.ae"},
+        ],
+        "other_resources": [
+            {"name": "Police / Emergency", "phone": "999"},
+            {"name": "Dubai Foundation for Women & Children", "phone": "800 111"},
+            {"name": "Ministry of Human Resources (labour disputes)", "phone": "600 590000"},
+        ],
+    },
+    "AU": {
+        "country_name": "Australia", "flag": "🇦🇺", "currency_symbol": "A$",
+        "national": {
+            "name": "National Legal Aid — find your state Legal Aid Commission",
+            "helpline": "1300 888 529",
+            "website": "https://www.nationallegalaid.org",
+            "eligibility": [
+                "Pass the income and assets means test",
+                "Case passes the merits test",
+                "Family, criminal and some civil law matters",
+                "Priority for children, First Nations people and those facing family violence",
+            ],
+        },
+        "regional": [
+            {"name": "LawAccess NSW", "region": "New South Wales", "phone": "1300 888 529",
+             "website": "https://www.legalaid.nsw.gov.au"},
+            {"name": "Victoria Legal Aid", "region": "Victoria", "phone": "1300 792 387",
+             "website": "https://www.legalaid.vic.gov.au"},
+            {"name": "Legal Aid Queensland", "region": "Queensland", "phone": "1300 651 188",
+             "website": "https://www.legalaid.qld.gov.au"},
+        ],
+        "other_resources": [
+            {"name": "1800RESPECT (family & sexual violence)", "phone": "1800 737 732"},
+            {"name": "Emergency", "phone": "000"},
+        ],
+    },
+    "CA": {
+        "country_name": "Canada", "flag": "🇨🇦", "currency_symbol": "CA$",
+        "national": {
+            "name": "Legal Aid — provincial programs (find yours)",
+            "helpline": "1-800-668-8258",
+            "website": "https://www.justice.gc.ca/eng/fund-fina/gov-gouv/aid-aide.html",
+            "eligibility": [
+                "Meet the provincial financial eligibility (low income)",
+                "Serious criminal charges and family law matters",
+                "Immigration and refugee cases",
+                "Domestic violence and child protection matters",
+            ],
+        },
+        "regional": [
+            {"name": "Legal Aid Ontario", "region": "Ontario", "phone": "1-800-668-8258",
+             "website": "https://www.legalaid.on.ca"},
+            {"name": "Legal Aid BC", "region": "British Columbia", "phone": "1-866-577-2525",
+             "website": "https://legalaid.bc.ca"},
+            {"name": "Commission des services juridiques", "region": "Québec", "phone": "1-800-842-2213",
+             "website": "https://www.csj.qc.ca"},
+        ],
+        "other_resources": [
+            {"name": "Emergency", "phone": "911"},
+            {"name": "Kids Help Phone", "phone": "1-800-668-6868"},
+        ],
+    },
+    "SG": {
+        "country_name": "Singapore", "flag": "🇸🇬", "currency_symbol": "S$",
+        "national": {
+            "name": "Legal Aid Bureau (LAB), Ministry of Law",
+            "helpline": "1800 2255 529",
+            "website": "https://www.mlaw.gov.sg/lab",
+            "eligibility": [
+                "Pass the Means Test (disposable income & capital limits)",
+                "Pass the Merits Test",
+                "Singapore citizens and permanent residents",
+                "Civil matters; criminal aid via CLAS",
+            ],
+        },
+        "regional": [
+            {"name": "Pro Bono SG (Community Legal Clinics)", "region": "Singapore", "phone": "1800 225 5529",
+             "website": "https://www.probono.sg"},
+            {"name": "Criminal Legal Aid Scheme (CLAS)", "region": "Singapore",
+             "website": "https://www.probono.sg/get-help/clas"},
+        ],
+        "other_resources": [
+            {"name": "Police", "phone": "999"},
+            {"name": "AWARE Women's Helpline", "phone": "1800 777 5555"},
+        ],
+    },
+    "DE": {
+        "country_name": "Germany", "flag": "🇩🇪", "currency_symbol": "€",
+        "national": {
+            "name": "Beratungshilfe & Prozesskostenhilfe — apply at your local Amtsgericht",
+            "helpline": "",
+            "website": "https://www.bmj.de/DE/themen/gerichtsverfahren/beratungs_prozesskostenhilfe/beratungs_prozesskostenhilfe_node.html",
+            "eligibility": [
+                "Geringes Einkommen / niedrige Einkünfte (low income)",
+                "Beratungshilfe für außergerichtliche Rechtsberatung",
+                "Prozesskostenhilfe (PKH) für Gerichtsverfahren",
+                "Hinreichende Erfolgsaussicht der Sache",
+            ],
+        },
+        "regional": [
+            {"name": "Deutscher Anwaltverein — Anwaltssuche", "region": "Bundesweit",
+             "website": "https://anwaltauskunft.de"},
+            {"name": "Rechtsantragstelle (am örtlichen Amtsgericht)", "region": "Lokal",
+             "website": "https://www.justiz.de"},
+        ],
+        "other_resources": [
+            {"name": "Polizei / Notruf", "phone": "110"},
+            {"name": "Hilfetelefon Gewalt gegen Frauen", "phone": "116 016"},
+        ],
+    },
+}
+
+
+@router.get("/legal-aid/contacts")
+async def legal_aid_contacts(response: Response, country: str = "IN"):
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    code = country.upper() if country.upper() in LEGAL_AID else "IN"
+    data = LEGAL_AID[code]
+    return {"country": code, **data}

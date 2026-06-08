@@ -1,27 +1,76 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { getCountryFromPath } from "@/lib/country";
 import { useAuth } from "@/lib/auth-context";
-import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle } from "lucide-react";
+import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle, Globe2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 
-const DISTRICTS = [
-  "All Districts", "Hyderabad", "Rangareddy", "Warangal", "Karimnagar",
-  "Khammam", "Nizamabad", "Nalgonda", "Medak", "Adilabad", "Mahbubnagar",
+interface CountryDir {
+  name: string;
+  currency: string;
+  barLabel: string;
+  barPlaceholder: string;
+  regions: string[];
+  practiceAreas: string[];
+  languages: string[];
+}
+
+const GENERIC_AREAS = [
+  "Employment Law", "Family Law", "Immigration", "Property & Real Estate",
+  "Criminal Defense", "Civil Litigation", "Corporate & Business", "Consumer Protection",
+  "Personal Injury", "Contract Disputes", "Tax", "Intellectual Property",
 ];
 
-const PRACTICE_AREAS = [
-  "All Areas", "Property & Real Estate", "Criminal Defense", "Family Law",
-  "GST & Tax", "Banking & Finance", "Labour Law", "Civil Matters",
-  "Corporate Law", "Motor Accident Claims", "Consumer Forum",
-  "Revenue Law", "RERA", "Insolvency", "Intellectual Property", "NDPS",
-];
-
-const LANGUAGES = ["All Languages", "Telugu", "English", "Hindi", "Urdu", "Tamil", "Bengali"];
+const COUNTRY_DIR: Record<string, CountryDir> = {
+  IN: {
+    name: "India", currency: "₹", barLabel: "BCI", barPlaceholder: "TS/XXXX/YYYY",
+    regions: ["Hyderabad", "Rangareddy", "Warangal", "Karimnagar", "Khammam", "Nizamabad", "Nalgonda", "Medak", "Adilabad", "Mahbubnagar"],
+    practiceAreas: ["Property & Real Estate", "Criminal Defense", "Family Law", "GST & Tax", "Banking & Finance", "Labour Law", "Civil Matters", "Corporate Law", "Motor Accident Claims", "Consumer Forum", "Revenue Law", "RERA", "Insolvency", "Intellectual Property", "NDPS"],
+    languages: ["Telugu", "English", "Hindi", "Urdu", "Tamil", "Bengali"],
+  },
+  US: {
+    name: "United States", currency: "$", barLabel: "State Bar No.", barPlaceholder: "Bar No.",
+    regions: ["California", "New York", "Texas", "Florida", "Illinois", "Washington", "Massachusetts", "Georgia"],
+    practiceAreas: GENERIC_AREAS, languages: ["English", "Spanish"],
+  },
+  GB: {
+    name: "United Kingdom", currency: "£", barLabel: "SRA No.", barPlaceholder: "SRA No.",
+    regions: ["London", "Manchester", "Birmingham", "Leeds", "Glasgow", "Bristol", "Edinburgh"],
+    practiceAreas: GENERIC_AREAS, languages: ["English"],
+  },
+  AE: {
+    name: "United Arab Emirates", currency: "د.إ", barLabel: "MOJ Licence", barPlaceholder: "MOJ Licence No.",
+    regions: ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah"],
+    practiceAreas: ["Labour & Employment", "Tenancy & Real Estate", "Business Setup", "Visa & Immigration", "Cheque & Debt", "Traffic & Accidents", "Family Law", "Criminal Defense", "Commercial Disputes"],
+    languages: ["Arabic", "English", "Hindi", "Urdu"],
+  },
+  AU: {
+    name: "Australia", currency: "A$", barLabel: "Practising Cert.", barPlaceholder: "Cert. No.",
+    regions: ["New South Wales", "Victoria", "Queensland", "Western Australia", "South Australia", "Tasmania", "ACT"],
+    practiceAreas: GENERIC_AREAS, languages: ["English"],
+  },
+  CA: {
+    name: "Canada", currency: "CA$", barLabel: "Law Society No.", barPlaceholder: "LSO No.",
+    regions: ["Ontario", "Quebec", "British Columbia", "Alberta", "Manitoba", "Nova Scotia"],
+    practiceAreas: GENERIC_AREAS, languages: ["English", "French"],
+  },
+  SG: {
+    name: "Singapore", currency: "S$", barLabel: "Practising Cert.", barPlaceholder: "Cert. No.",
+    regions: ["Central", "East", "West", "North", "North-East"],
+    practiceAreas: GENERIC_AREAS, languages: ["English", "Mandarin", "Malay", "Tamil"],
+  },
+  DE: {
+    name: "Germany", currency: "€", barLabel: "RAK No.", barPlaceholder: "RAK No.",
+    regions: ["Berlin", "Bayern", "Hamburg", "Nordrhein-Westfalen", "Hessen", "Baden-Württemberg"],
+    practiceAreas: GENERIC_AREAS, languages: ["German", "English"],
+  },
+};
 
 interface Lawyer {
   id: number;
@@ -30,6 +79,7 @@ interface Lawyer {
   phone: string | null;
   bar_number: string | null;
   district: string;
+  country?: string;
   practice_areas: string[];
   languages: string[];
   experience_years: number;
@@ -40,7 +90,7 @@ interface Lawyer {
   verified: boolean;
 }
 
-function LawyerCard({ lawyer }: { lawyer: Lawyer }) {
+function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
   const [showContact, setShowContact] = useState(false);
 
   return (
@@ -61,7 +111,7 @@ function LawyerCard({ lawyer }: { lawyer: Lawyer }) {
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{lawyer.district}</span>
             <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{lawyer.experience_years}y exp</span>
             {lawyer.bar_number && (
-              <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">BCI: {lawyer.bar_number}</span>
+              <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{dir.barLabel}: {lawyer.bar_number}</span>
             )}
           </div>
         </div>
@@ -138,13 +188,14 @@ function LawyerCard({ lawyer }: { lawyer: Lawyer }) {
   );
 }
 
-function RegisterModal({ onClose }: { onClose: () => void }) {
+function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir: CountryDir; countryCode: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    name: user?.name ?? "", phone: "", email: "", district: "Hyderabad",
+    name: user?.name ?? "", phone: "", email: "", district: dir.regions[0],
     bar_number: "", experience_years: 0, bio: "",
-    practice_areas: [] as string[], languages: ["Telugu", "English"],
+    practice_areas: [] as string[], languages: dir.languages.slice(0, 2),
+    country: countryCode.toLowerCase(),
   });
   const [success, setSuccess] = useState(false);
 
@@ -173,7 +224,7 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-8 py-6 border-b border-border">
           <div>
             <h3 className="text-xl font-bold text-foreground tracking-tight">Register as Advocate</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-medium">Join the LitigaForge directory</p>
+            <p className="text-sm text-muted-foreground mt-1 font-medium">Join the LitigaForge directory — {dir.name}</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
@@ -197,9 +248,9 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[
                   { label: "Full Name", key: "name", placeholder: "Adv. Full Name", type: "text", required: true },
-                  { label: "Phone Number", key: "phone", placeholder: "+91-XXXXXXXXXX", type: "text", required: true },
+                  { label: "Phone Number", key: "phone", placeholder: "Phone number", type: "text", required: true },
                   { label: "Email Address (optional)", key: "email", placeholder: "advocate@example.com", type: "email", required: false },
-                  { label: "Bar Council No. (optional)", key: "bar_number", placeholder: "TS/XXXX/YYYY", type: "text", required: false },
+                  { label: `${dir.barLabel} (optional)`, key: "bar_number", placeholder: dir.barPlaceholder, type: "text", required: false },
                 ].map(({ label, key, placeholder, type, required }) => (
                   <div key={key}>
                     <label className="block text-sm font-semibold text-foreground mb-2">
@@ -219,14 +270,14 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">District *</label>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Region *</label>
                   <div className="relative">
                     <select
                       value={form.district}
                       onChange={e => setForm(f => ({ ...f, district: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm appearance-none"
                     >
-                      {DISTRICTS.slice(1).map(d => <option key={d}>{d}</option>)}
+                      {dir.regions.map(d => <option key={d}>{d}</option>)}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                   </div>
@@ -246,7 +297,7 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
               <div className="bg-muted/30 p-6 rounded-2xl border border-border">
                 <label className="block text-sm font-semibold text-foreground mb-3">Practice Areas *</label>
                 <div className="flex flex-wrap gap-2">
-                  {PRACTICE_AREAS.slice(1).map(area => (
+                  {dir.practiceAreas.map(area => (
                     <button
                       key={area} type="button"
                       onClick={() => toggleArea(area)}
@@ -301,17 +352,22 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
 
 export default function LawyersPage() {
   const { user } = useAuth();
-  const [district, setDistrict] = useState("All Districts");
-  const [practiceArea, setPracticeArea] = useState("All Areas");
+  const cc = (getCountryFromPath() || "in").toUpperCase();
+  const dir = COUNTRY_DIR[cc] ?? COUNTRY_DIR.IN;
+  const allRegions = `All Regions`;
+  const allAreas = `All Areas`;
+  const [district, setDistrict] = useState(allRegions);
+  const [practiceArea, setPracticeArea] = useState(allAreas);
   const [searchText, setSearchText] = useState("");
   const [showRegister, setShowRegister] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["lawyers", district, practiceArea, searchText],
+    queryKey: ["lawyers", cc, district, practiceArea, searchText],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (district !== "All Districts") params.set("district", district);
-      if (practiceArea !== "All Areas") params.set("practice_area", practiceArea);
+      params.set("country", cc.toLowerCase());
+      if (district !== allRegions) params.set("district", district);
+      if (practiceArea !== allAreas) params.set("practice_area", practiceArea);
       if (searchText) params.set("search", searchText);
       return apiFetch(`/lawyers?${params}`);
     },
@@ -322,8 +378,8 @@ export default function LawyersPage() {
     ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        "name": "Verified Lawyers — Telangana & Andhra Pradesh",
-        "description": "AI-matched verified advocates listed by district and practice area on LitigaForge AI",
+        "name": `Verified Lawyers — ${dir.name}`,
+        "description": `AI-matched verified advocates listed by region and practice area on LitigaForge AI`,
         "itemListElement": (data.lawyers as Lawyer[]).slice(0, 20).map((l, i) => ({
           "@type": "ListItem",
           "position": i + 1,
@@ -332,7 +388,7 @@ export default function LawyersPage() {
             "name": l.name,
             "description": l.bio || l.practice_areas.join(", ") || "Verified advocate",
             "areaServed": l.district,
-            ...(l.hourly_rate ? { "priceRange": `₹${l.hourly_rate}/hr` } : {}),
+            ...(l.hourly_rate ? { "priceRange": `${dir.currency}${l.hourly_rate}/hr` } : {}),
             ...(l.rating > 0 && (l.review_count ?? 0) > 0
               ? {
                   "aggregateRating": {
@@ -350,7 +406,7 @@ export default function LawyersPage() {
     : undefined;
 
   return (
-    <PageShell title="Advocate Directory" subtitle="Verified Telangana & AP advocates — filter by district, practice area, and language." icon={<Users className="w-6 h-6 text-primary" />}
+    <PageShell title="Advocate Directory" subtitle={`Verified advocates in ${dir.name} — filter by region, practice area, and language.`} icon={<Users className="w-6 h-6 text-primary" />}
       action={user?.role === "lawyer" ? (
         <Button onClick={() => setShowRegister(true)} size="lg" className="shadow-md flex-shrink-0">
           <Plus className="w-5 h-5 mr-2" /> List Your Profile
@@ -358,10 +414,10 @@ export default function LawyersPage() {
       ) : undefined}>
       <div className="space-y-8">
         <SEOHelmet
-          title="Find Verified Lawyers in Hyderabad | LitigaForge"
-          description="Search verified advocates in Hyderabad, Telangana, and Andhra Pradesh. Filter by district, practice area, language, and ratings. View bar registration, hourly rates, and contact directly."
+          title={`Find Verified Lawyers in ${dir.name} | LitigaForge`}
+          description={`Search verified advocates across ${dir.name}. Filter by region, practice area, language, and ratings. View credentials and contact directly.`}
           canonical="/lawyers"
-          keywords="find lawyer Hyderabad, verified advocate Telangana, advocate directory Andhra Pradesh, best criminal lawyer Hyderabad, family lawyer Telangana, property lawyer AP"
+          keywords={`find lawyer ${dir.name}, verified advocate ${dir.name}, advocate directory, legal help ${dir.name}`}
           structuredData={lawyersStructuredData}
         />
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col md:flex-row gap-4">
@@ -380,7 +436,7 @@ export default function LawyersPage() {
               onChange={e => setDistrict(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-input bg-background text-base font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm appearance-none"
             >
-              {DISTRICTS.map(d => <option key={d}>{d}</option>)}
+              {[allRegions, ...dir.regions].map(d => <option key={d}>{d}</option>)}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
@@ -390,7 +446,7 @@ export default function LawyersPage() {
               onChange={e => setPracticeArea(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-input bg-background text-base font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm appearance-none"
             >
-              {PRACTICE_AREAS.map(a => <option key={a}>{a}</option>)}
+              {[allAreas, ...dir.practiceAreas].map(a => <option key={a}>{a}</option>)}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
@@ -414,21 +470,25 @@ export default function LawyersPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {(data?.lawyers ?? []).map((lawyer: Lawyer) => (
-              <LawyerCard key={lawyer.id} lawyer={lawyer} />
+              <LawyerCard key={lawyer.id} lawyer={lawyer} dir={dir} />
             ))}
             {(data?.lawyers ?? []).length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-24 bg-card border border-border rounded-2xl border-dashed">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
-                  <Search className="w-8 h-8 text-muted-foreground" />
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                  <Globe2 className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-2">No advocates found</h3>
+                <h3 className="text-xl font-bold text-foreground mb-2">Our verified directory is expanding to {dir.name}</h3>
                 <p className="text-muted-foreground font-medium max-w-md text-center mb-8">
-                  Try adjusting your filters or search query to find relevant advocates.
+                  We're onboarding verified advocates in {dir.name} now. In the meantime, you can still post your case and our AI will help match you, or be the first advocate listed here.
                 </p>
-                {user?.role === "lawyer" && (
+                {user?.role === "lawyer" ? (
                   <Button onClick={() => setShowRegister(true)} size="lg">
-                    <Plus className="w-5 h-5 mr-2" /> List Your Profile
+                    <Plus className="w-5 h-5 mr-2" /> Be the first to list your profile
                   </Button>
+                ) : (
+                  <Link href="/post-case">
+                    <Button size="lg"><Plus className="w-5 h-5 mr-2" /> Post your case</Button>
+                  </Link>
                 )}
               </div>
             )}
@@ -437,7 +497,7 @@ export default function LawyersPage() {
       </div>
 
       <AnimatePresence>
-        {showRegister && <RegisterModal onClose={() => setShowRegister(false)} />}
+        {showRegister && <RegisterModal onClose={() => setShowRegister(false)} dir={dir} countryCode={cc} />}
       </AnimatePresence>
     </PageShell>
   );

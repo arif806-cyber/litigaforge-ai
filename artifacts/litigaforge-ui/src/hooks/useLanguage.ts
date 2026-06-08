@@ -6,7 +6,7 @@ const COUNTRY_DEFAULT_LANG: Record<string, string> = {
   IN: "en",
   US: "en",
   GB: "en",
-  AE: "en",
+  AE: "ar",
   AU: "en",
   CA: "en",
   SG: "en",

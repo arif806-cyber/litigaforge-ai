@@ -155,6 +155,8 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending'")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'in'")
+        await conn.execute("UPDATE lawyers SET country = 'in' WHERE country IS NULL")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS case_requirements (
                 id SERIAL PRIMARY KEY,

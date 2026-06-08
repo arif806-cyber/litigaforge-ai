@@ -1,2 +1,1 @@
-- [Frontend public endpoints](frontend-public-endpoints.md) — any backend path called from a no-login page must be added to PUBLIC_PATH in api.ts or 401s bounce users to /login.
-- [Frontend serving model](frontend-serving.md) — live UI is the built dist served by api-server, not the vite dev server; rebuild + restart api-server to see source edits.
+- [LitigaForge country localization](litigaforge-country-localization.md) — per-country pages key off URL path prefix; live UI is built dist served by Node api-server (rebuild+restart to see changes); i18n covers nav/landing only by design.
