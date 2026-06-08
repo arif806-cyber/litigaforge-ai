@@ -133,7 +133,7 @@ Provide a thorough, practical answer in this format:
 
 Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimers."""
 
-    answer = _ai(wrap_user_prompt(prompt), 1800)
+    answer = _ai(wrap_user_prompt(prompt, req.country), 1800)
     answer = validate_ai_response(answer)
     answer = add_disclaimer(answer)
     if not answer.strip():
@@ -217,7 +217,7 @@ Document text:
 {safe_text[:8000]}
 ---"""
 
-    raw = _ai(wrap_user_prompt(prompt), 2500)
+    raw = _ai(wrap_user_prompt(prompt, req.country), 2500)
     raw = validate_ai_response(raw)
     try:
         result = _extract_json_object(raw)
@@ -277,7 +277,7 @@ Return ONLY a valid JSON array of 5 highly relevant {cfg['name']} court judgment
 
 Use real, verifiable {cfg['name']} citations where known. Prefer landmark judgments that lawyers actually cite."""
 
-    raw = _ai(wrap_user_prompt(prompt), 3000)
+    raw = _ai(wrap_user_prompt(prompt, req.country), 3000)
     raw = validate_ai_response(raw)
     try:
         judgments = _extract_json_array(raw)

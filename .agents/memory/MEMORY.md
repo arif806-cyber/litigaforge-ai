@@ -1,2 +1,3 @@
 - [Frontend serving & rebuild cycle](frontend-serving.md) — SPA served by api-server from built dist; after a frontend build restart `artifacts/api-server: API Server`, not the vite dev workflow.
 - [i18n language sync](i18n-language-sync.md) — per-country language switching propagates via `lf-lang-change` window event (not context); keep nav data-testid English-derived when localizing labels.
+- [Jurisdiction system prompt](jurisdiction-system-prompt.md) — country must go in the app-trusted system prompt via `wrap_user_prompt(prompt, country)`, not the user-input block, or the injection guard refuses non-India answers.

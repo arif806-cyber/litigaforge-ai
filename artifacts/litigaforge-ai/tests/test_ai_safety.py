@@ -27,6 +27,31 @@ def test_wrap_user_prompt_preserves_content():
     assert text in wrapped
 
 
+def test_wrap_user_prompt_us_jurisdiction_in_system_section():
+    wrapped = wrap_user_prompt("I hit a car in Dallas", country="US")
+    system_section = wrapped.split("---USER INPUT---")[0]
+    # The system (app-trusted) section must name the US jurisdiction...
+    assert "United States" in system_section
+    # ...and must not pin the assistant to India/Telangana by default.
+    assert "Telangana" not in system_section
+    assert "specialising in Indian law" not in system_section
+
+
+def test_wrap_user_prompt_country_does_not_default_to_india():
+    for code, name in [("GB", "United Kingdom"), ("AU", "Australia"), ("DE", "Germany")]:
+        wrapped = wrap_user_prompt("a question", country=code)
+        system_section = wrapped.split("---USER INPUT---")[0]
+        assert name in system_section
+        assert "Telangana" not in system_section
+
+
+def test_wrap_user_prompt_unknown_country_falls_back_safely():
+    # Unknown / malformed codes still produce a valid wrapped prompt.
+    wrapped = wrap_user_prompt("a question", country="ZZ")
+    assert "---USER INPUT---" in wrapped
+    assert "a question" in wrapped
+
+
 # ── add_disclaimer ──────────────────────────────────────────────────────────
 
 def test_add_disclaimer_appends():
