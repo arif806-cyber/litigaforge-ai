@@ -267,7 +267,7 @@ export default function ClientDashboard() {
         </div>
 
         {/* ── Stat Cards ───────────────────────────────────────── */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard label="Active Cases"  value={activeCases}        icon={Briefcase} colorClass="bg-blue-500/10 text-blue-400"    accentColor="#3b82f6" />
           <StatCard label="Hearings"      value={upcomingHearings}   icon={Calendar}  colorClass="bg-amber-500/10 text-amber-400"  accentColor="#f59e0b" />
           <StatCard label="My Lawyers"    value={connectedLawyers}   icon={User}      colorClass="bg-emerald-500/10 text-emerald-400" accentColor="#10b981" />

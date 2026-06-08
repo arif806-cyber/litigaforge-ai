@@ -271,8 +271,8 @@ function UsersTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClie
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+        <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-muted/60">
             <tr>
               <th className="text-left px-4 py-3 font-medium">Name</th>
