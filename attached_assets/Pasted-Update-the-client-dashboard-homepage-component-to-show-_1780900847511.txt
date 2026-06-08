@@ -1,0 +1,75 @@
+Update the client dashboard homepage component 
+to show country-specific content.
+
+Import useCountry hook at top:
+import { useCountry } from "../hooks/useCountry";
+
+Add inside the component:
+const { activeConfig, activeCode, loading } = 
+  useCountry();
+
+Replace the static welcome banner with:
+
+{!loading && activeConfig && (
+  <div className="bg-gradient-to-r from-gray-800 
+  to-gray-900 rounded-2xl p-6 mb-6 border 
+  border-gray-700">
+    
+    <div className="flex items-center gap-3 mb-4">
+      <span className="text-4xl">
+        {activeConfig.flag}
+      </span>
+      <div>
+        <h2 className="text-white font-bold text-lg">
+          Legal Help in {activeConfig.name}
+        </h2>
+        <p className="text-gray-400 text-sm">
+          {activeConfig.legal_system} • 
+          {activeConfig.currency} {activeConfig.currency_symbol}
+        </p>
+      </div>
+    </div>
+
+    <div className="mb-4">
+      <p className="text-gray-400 text-xs 
+      uppercase tracking-wider mb-2">
+        Top Legal Services
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {activeConfig.top_services.map(s => (
+          <span key={s} className="px-3 py-1 
+          bg-yellow-500/10 text-yellow-400 
+          rounded-full text-xs font-medium">
+            {s}
+          </span>
+        ))}
+      </div>
+    </div>
+
+    <div className="mb-4">
+      <p className="text-gray-400 text-xs 
+      uppercase tracking-wider mb-2">
+        Courts & Tribunals
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {activeConfig.courts.slice(0,3).map(c => (
+          <span key={c} className="px-3 py-1 
+          bg-blue-500/10 text-blue-400 
+          rounded-full text-xs">
+            {c}
+          </span>
+        ))}
+      </div>
+    </div>
+
+    <div className="p-3 bg-green-500/10 
+    rounded-xl border border-green-500/20">
+      <p className="text-green-400 text-sm font-medium">
+        📞 Emergency Legal Aid
+      </p>
+      <p className="text-gray-300 text-sm">
+        {activeConfig.emergency_legal}
+      </p>
+    </div>
+  </div>
+)}

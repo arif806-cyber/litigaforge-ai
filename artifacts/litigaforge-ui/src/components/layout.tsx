@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
+import CountrySwitcher from "@/components/CountrySwitcher";
 
 const clientNav = [
   { href: "/client-dashboard", label: "Dashboard",       icon: Briefcase },
@@ -296,6 +297,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-semibold text-foreground">LitigaForge AI</span>
             </div>
             <div className="flex items-center gap-3">
+              <CountrySwitcher />
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
