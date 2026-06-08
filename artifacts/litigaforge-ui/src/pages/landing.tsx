@@ -269,7 +269,7 @@ function Hero() {
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
             <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: "#93c5fd" }}>
-              India's Legal AI Platform · TG &amp; AP
+              Global AI Legal Platform · Worldwide
             </span>
           </motion.div>
 
@@ -283,7 +283,7 @@ function Hero() {
               background: "linear-gradient(120deg, #60a5fa 0%, #818cf8 45%, #c084fc 75%, #f59e0b 100%)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
             }}>
-              Built for Telangana &amp; AP
+              Built for Everyone, Worldwide
             </span>
           </motion.h1>
 
@@ -337,7 +337,7 @@ function Hero() {
                   {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5" style={{ fill: "#f59e0b", color: "#f59e0b" }} />)}
                   <span className="text-sm font-bold text-white">4.9</span>
                 </div>
-                <p className="text-xs" style={{ color: "#475569" }}>Trusted by 200+ clients across TG &amp; AP</p>
+                <p className="text-xs" style={{ color: "#475569" }}>Trusted by 2,000+ clients worldwide</p>
               </div>
             </div>
 
@@ -358,7 +358,7 @@ function Hero() {
             {/* "Built for real legal workflows" trust line */}
             <p className="text-xs font-medium flex items-center gap-2" style={{ color: "#334155" }}>
               <span className="w-5 h-px bg-slate-700 flex-shrink-0" />
-              Built for real legal workflows in Telangana &amp; AP
+              Built for real legal workflows worldwide
             </p>
           </motion.div>
         </div>
@@ -425,7 +425,7 @@ const problems = [
     icon: AlertCircle,
     color: "#ef4444",
     title: "No Transparency",
-    desc: "Finding a lawyer in Telangana & AP is completely opaque. No ratings, no verification, no way to compare — just word-of-mouth and luck.",
+    desc: "Finding a lawyer anywhere is completely opaque. No ratings, no verification, no way to compare — just word-of-mouth and luck.",
   },
   {
     icon: Shield,
@@ -450,7 +450,7 @@ function ProblemSection() {
       <div className="max-w-5xl mx-auto">
         <motion.div variants={fadeUp} className="text-center mb-14">
           <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#ef4444" }}>The Problem</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Legal Help in Telangana &amp; AP<br className="hidden md:block" /> is Fundamentally Broken</h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Legal Help Worldwide<br className="hidden md:block" /> is Fundamentally Broken</h2>
           <p className="mt-4 text-base max-w-xl mx-auto leading-relaxed" style={{ color: "#64748b" }}>Millions face legal challenges every year with no efficient, transparent, or affordable path to justice.</p>
         </motion.div>
 
@@ -492,8 +492,8 @@ const howSteps = [
     color: "#8b5cf6",
     glow: "rgba(139,92,246,0.18)",
     label: "AI Understands",
-    title: "AI Maps Your Case\nto TG & AP Law",
-    desc: "Three AI models analyse your input against Telangana & AP statutes, court procedures, stamp duty tables, and regional legal workflows.",
+    title: "AI Maps Your Case\nto Local & Global Law",
+    desc: "Three AI models analyse your input against local statutes, court procedures, stamp duty tables, and regional legal workflows.",
     chips: ["Regional context", "Statute mapping", "Court-aware"],
   },
   {
@@ -503,7 +503,7 @@ const howSteps = [
     glow: "rgba(245,158,11,0.18)",
     label: "Get Answers + Strategy",
     title: "Clear Answer with\na Legal Roadmap",
-    desc: "Get a plain-language answer, TG & AP High Court precedents, risk flags, and a step-by-step legal strategy — in seconds.",
+    desc: "Get a plain-language answer, High Court precedents, risk flags, and a step-by-step legal strategy — in seconds.",
     chips: ["Risk score", "Precedents", "Next steps"],
   },
   {
@@ -684,7 +684,7 @@ function JudgmentPreview() {
       <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(139,92,246,0.08)", borderBottom: "1px solid rgba(139,92,246,0.12)" }}>
         <Search className="w-3 h-3 flex-shrink-0" style={{ color: "#a78bfa" }} />
         <span className="text-[11px] font-medium" style={{ color: "#c4b5fd" }}>fraud Hyderabad property 2021–2024</span>
-        <div className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>TG &amp; AP</div>
+        <div className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>Global</div>
       </div>
       <div className="divide-y divide-white/[0.04]">
         {results.map(({ case: c, year, section, court }) => (
@@ -791,7 +791,7 @@ function KnowledgePreview() {
     <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(244,114,182,0.15)" }}>
       <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(244,114,182,0.06)", borderBottom: "1px solid rgba(244,114,182,0.1)" }}>
         <Globe className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#f472b6" }} />
-        <span className="text-[11px] font-bold" style={{ color: "#f472b6" }}>TG &amp; AP Legal Knowledge Base</span>
+        <span className="text-[11px] font-bold" style={{ color: "#f472b6" }}>Global Legal Knowledge Base</span>
         <div className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: "rgba(244,114,182,0.15)", color: "#f472b6" }}>Live</div>
       </div>
       <div className="divide-y divide-white/[0.04]">
@@ -804,7 +804,7 @@ function KnowledgePreview() {
       </div>
       <div className="px-3.5 py-2.5 flex items-center gap-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
         <MessageCircle className="w-3 h-3 flex-shrink-0" style={{ color: "#f472b6" }} />
-        <span className="text-[10px] italic" style={{ color: "#475569" }}>Ask anything about TG &amp; AP law in Telugu or English…</span>
+        <span className="text-[10px] italic" style={{ color: "#475569" }}>Ask anything about law in Telugu, Hindi or English…</span>
       </div>
     </div>
   );
@@ -844,7 +844,7 @@ const featureDefs: FeatureDef[] = [
     icon: Gavel,
     tag: "Case Law",
     title: "Regional Judgment Search",
-    desc: "Search 30+ years of Telangana & AP High Court rulings. AI surfaces the exact precedents that strengthen your argument.",
+    desc: "Search decades of High Court rulings from India, UAE, UK and beyond. AI surfaces the exact precedents that strengthen your argument.",
     href: "/judgments",
     preview: <JudgmentPreview />,
   },
@@ -855,7 +855,7 @@ const featureDefs: FeatureDef[] = [
     icon: Brain,
     tag: "AI Strategy",
     title: "Smart Legal Strategy",
-    desc: "Describe your case. AI synthesises a step-by-step legal roadmap — sections, arguments, and court procedures — tailored for TG & AP.",
+    desc: "Describe your case. AI synthesises a step-by-step legal roadmap — sections, arguments, and court procedures — tailored to your jurisdiction.",
     href: "/ask",
     preview: <StrategyPreview />,
     badge: "Flagship",
@@ -877,8 +877,8 @@ const featureDefs: FeatureDef[] = [
     glowColor: "rgba(244,114,182,0.1)",
     icon: Globe,
     tag: "Local Knowledge",
-    title: "TG & AP Legal Intelligence",
-    desc: "Instant answers on stamp duty, Mee Seva fees, RERA procedures, Motor Vehicles Act claims — specific to Telangana & AP.",
+    title: "Global Legal Intelligence",
+    desc: "Instant answers on stamp duty, RERA procedures, Motor Vehicles Act, consumer rights — across India, UAE, UK and USA.",
     href: "/ask",
     preview: <KnowledgePreview />,
   },
@@ -967,7 +967,7 @@ function Features() {
             </span>
           </h2>
           <p className="mt-4 text-base max-w-lg mx-auto" style={{ color: "#64748b" }}>
-            Five purpose-built tools, each trained on Telangana &amp; AP legal workflows, court procedures, and regional regulations.
+            Five purpose-built tools trained on global legal workflows, court procedures, and regional regulations across India, UAE, UK and USA.
           </p>
         </motion.div>
 
@@ -995,7 +995,7 @@ function Features() {
 const trustPoints = [
   { icon: BadgeCheck, color: "#34d399", title: "Verified Lawyers Only",    desc: "Every advocate is bar-verified, rated by clients, and screened by our team before appearing on the platform." },
   { icon: Brain,      color: "#60a5fa", title: "Triple AI Intelligence",   desc: "Claude Sonnet + Gemini 2.5 Flash + GPT-5 work in parallel and cascade to guarantee the best legal insights." },
-  { icon: Building2,  color: "#fbbf24", title: "Hyper-Local Expertise",    desc: "Built exclusively for Telangana & AP — deeply trained on TG & AP court procedures, stamp duty rules, RERA, NALSA, and district-level legal workflows." },
+  { icon: Building2,  color: "#fbbf24", title: "Global + Local Expertise",    desc: "Built for global users — trained on court procedures, stamp duty rules, RERA, NALSA, consumer law, and cross-jurisdiction legal workflows." },
   { icon: Globe,      color: "#a78bfa", title: "Transparent & Explainable", desc: "Every AI match score comes with a written explanation. No black-box decisions — you always know why a lawyer was matched." },
 ];
 
@@ -1103,7 +1103,7 @@ function CTASection() {
         </motion.h2>
 
         <motion.p variants={fadeUp} className="mt-5 text-base md:text-lg leading-relaxed" style={{ color: "#94a3b8" }}>
-          Join thousands of clients and advocates across Telangana &amp; AP using AI-powered legal intelligence. Post your case anonymously. Get matched in minutes.
+          Join thousands of clients and advocates worldwide using AI-powered legal intelligence. Post your case anonymously. Get matched in minutes.
         </motion.p>
 
         <motion.div variants={fadeUp} className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -1169,7 +1169,7 @@ function Footer() {
         </div>
 
         <div className="mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <p className="text-xs" style={{ color: "#334155" }}>© 2025 LitigaForge AI · Telangana & Andhra Pradesh</p>
+          <p className="text-xs" style={{ color: "#334155" }}>© 2026 LitigaForge AI · Global Legal Platform</p>
           <p className="text-xs text-center md:text-right" style={{ color: "#334155" }}>
             Not legal advice. AI outputs must be verified by a qualified advocate. Platform connects clients to lawyers only.
           </p>
