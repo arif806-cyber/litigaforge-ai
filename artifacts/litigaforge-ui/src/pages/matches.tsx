@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
+import { useLanguage } from "../hooks/useLanguage";
 import { motion } from "framer-motion";
 import {
   UserCheck, MapPin, Star, Briefcase, Check, X,
@@ -115,6 +116,7 @@ function MatchCard({ match, onAccept, onDecline }: {
 export default function Matches() {
   const { user } = useAuth();
   const [_, setLocation] = useLocation();
+  const { t } = useLanguage();
   const [tab, setTab] = useState<"pending" | "accepted" | "declined">("pending");
   const [search, setSearch] = useState("");
   const [isFinding, setIsFinding] = useState(false);
@@ -156,8 +158,8 @@ export default function Matches() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
           <UserCheck className="w-12 h-12 text-gray-300 mx-auto" />
-          <h2 className="text-xl font-semibold">Sign In Required</h2>
-          <Button onClick={() => setLocation("/login")}>Sign In</Button>
+          <h2 className="text-xl font-semibold">{t.sign_in_required}</h2>
+          <Button onClick={() => setLocation("/login")}>{t.sign_in}</Button>
         </div>
       </div>
     );
@@ -171,7 +173,7 @@ export default function Matches() {
     ));
 
   return (
-    <PageShell title="Your Lawyer Matches" subtitle="AI-scored lawyer proposals for your cases.">
+    <PageShell title={t.match_proposals} subtitle="AI-scored lawyer proposals for your cases.">
       <SEOHelmet title="Match Proposals — LitigaForge AI" description="Review AI-matched lawyer proposals." />
 
       <div className="flex items-center gap-3 mb-4">
@@ -195,14 +197,14 @@ export default function Matches() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}>
               <Sparkles className="w-4 h-4 text-violet-600" />
             </div>
-            <h2 className="font-bold text-gray-900 text-sm">Match Proposals</h2>
+            <h2 className="font-bold text-gray-900 text-sm">{t.match_proposals}</h2>
             <span className="text-[11px] text-gray-400">({matches.length})</span>
           </div>
           <div className="flex items-center gap-1 bg-background rounded-lg p-0.5">
-            {(["pending", "accepted", "declined"] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)}
-                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === t ? "bg-card text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
-                {t}
+            {(["pending", "accepted", "declined"] as const).map((tabKey) => (
+              <button key={tabKey} onClick={() => setTab(tabKey)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === tabKey ? "bg-card text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                {tabKey}
               </button>
             ))}
           </div>
@@ -211,7 +213,7 @@ export default function Matches() {
         <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-2">
             <Search className="w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Search by lawyer name, district, or case…"
+            <input type="text" placeholder={t.search_cases}
               value={search} onChange={(e) => setSearch(e.target.value)}
               className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none" />
             {search && (

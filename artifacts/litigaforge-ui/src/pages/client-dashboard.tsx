@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useCountry } from "../hooks/useCountry";
+import { useLanguage } from "../hooks/useLanguage";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
@@ -182,12 +183,13 @@ export default function ClientDashboard() {
 
   const firstName = user?.name?.split(" ")[0] ?? "Client";
   const { activeConfig, activeCode, loading: countryLoading } = useCountry();
+  const { t, lang } = useLanguage();
 
   const quickActions = [
-    { label: "Post a Case", icon: Plus, iconClass: "text-blue-400", bgClass: "bg-blue-500/10", action: () => setLocation("/post-case") },
-    { label: "Doc Analyzer", icon: FileSearch, iconClass: "text-violet-400", bgClass: "bg-violet-500/10", action: () => setLocation("/review") },
-    { label: "Legal Q&A", icon: Gavel, iconClass: "text-amber-400", bgClass: "bg-amber-500/10", action: () => setLocation("/ask") },
-    { label: "Legal Aid", icon: Heart, iconClass: "text-rose-400", bgClass: "bg-rose-500/10", action: () => setLocation("/legal-aid") },
+    { label: t.post_case,    icon: Plus,       iconClass: "text-blue-400",   bgClass: "bg-blue-500/10",   action: () => setLocation("/post-case") },
+    { label: t.doc_analyzer, icon: FileSearch, iconClass: "text-violet-400", bgClass: "bg-violet-500/10", action: () => setLocation("/review") },
+    { label: t.legal_qa,     icon: Gavel,      iconClass: "text-amber-400",  bgClass: "bg-amber-500/10",  action: () => setLocation("/ask") },
+    { label: t.free_aid,     icon: Heart,      iconClass: "text-rose-400",   bgClass: "bg-rose-500/10",   action: () => setLocation("/legal-aid") },
   ];
 
   return (
@@ -197,10 +199,10 @@ export default function ClientDashboard() {
         {/* ── Greeting Banner ─────────────────────────────────── */}
         <div className="rounded-2xl px-5 py-5 border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Good day, {firstName} 👋</h1>
+            <h1 className="text-xl font-bold text-foreground">{t.good_day}, {firstName} 👋</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {clientCases.length} case{clientCases.length !== 1 ? "s" : ""} assigned
-              {acceptedMatches > 0 && ` · ${acceptedMatches} lawyer${acceptedMatches !== 1 ? "s" : ""} connected`}
+              {clientCases.length} {t.cases_assigned}
+              {acceptedMatches > 0 && ` · ${acceptedMatches} ${t.my_lawyers.toLowerCase()}`}
             </p>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -268,10 +270,10 @@ export default function ClientDashboard() {
 
         {/* ── Stat Cards ───────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard label="Active Cases"  value={activeCases}        icon={Briefcase} colorClass="bg-blue-500/10 text-blue-400"    accentColor="#3b82f6" />
-          <StatCard label="Hearings"      value={upcomingHearings}   icon={Calendar}  colorClass="bg-amber-500/10 text-amber-400"  accentColor="#f59e0b" />
-          <StatCard label="My Lawyers"    value={connectedLawyers}   icon={User}      colorClass="bg-emerald-500/10 text-emerald-400" accentColor="#10b981" />
-          <StatCard label="Posted"        value={activeReqs}         icon={FileText}  colorClass="bg-violet-500/10 text-violet-400" accentColor="#8b5cf6" />
+          <StatCard label={t.active_cases}  value={activeCases}        icon={Briefcase} colorClass="bg-blue-500/10 text-blue-400"    accentColor="#3b82f6" />
+          <StatCard label={t.hearings}      value={upcomingHearings}   icon={Calendar}  colorClass="bg-amber-500/10 text-amber-400"  accentColor="#f59e0b" />
+          <StatCard label={t.my_lawyers}    value={connectedLawyers}   icon={User}      colorClass="bg-emerald-500/10 text-emerald-400" accentColor="#10b981" />
+          <StatCard label={t.posted}        value={activeReqs}         icon={FileText}  colorClass="bg-violet-500/10 text-violet-400" accentColor="#8b5cf6" />
         </div>
 
         {/* ── Main content grid ─────────────────────────────────── */}
@@ -288,15 +290,15 @@ export default function ClientDashboard() {
                     <FileCheck className="w-4 h-4 text-blue-400" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-foreground text-[15px]">My Assigned Cases</h2>
+                    <h2 className="font-semibold text-foreground text-[15px]">{t.my_assigned_cases}</h2>
                     <p className="text-[11px] text-muted-foreground">{clientCases.length} total</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
-                  {(["active", "pending", "closed"] as const).map((t) => (
-                    <button key={t} onClick={() => setCaseTab(t)}
-                      className={`text-[11px] font-semibold px-3 py-1.5 rounded-md capitalize transition-all ${caseTab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-                      {t}
+                  {(["active", "pending", "closed"] as const).map((tab) => (
+                    <button key={tab} onClick={() => setCaseTab(tab)}
+                      className={`text-[11px] font-semibold px-3 py-1.5 rounded-md capitalize transition-all ${caseTab === tab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                      {tab}
                     </button>
                   ))}
                 </div>
@@ -305,7 +307,7 @@ export default function ClientDashboard() {
               <div className="px-5 py-3 border-b border-border">
                 <div className="flex items-center gap-2 bg-muted rounded-xl px-3 py-2.5">
                   <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <input type="text" placeholder="Search by title, court or CNR…"
+                  <input type="text" placeholder={t.search_cases}
                     value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                     className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none" />
                   {searchQuery && (
@@ -319,9 +321,9 @@ export default function ClientDashboard() {
                 {!casesLoading && clientCases.length === 0 && (
                   <div className="rounded-xl p-8 text-center bg-muted/30 border border-dashed border-border">
                     <Briefcase className="w-9 h-9 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-muted-foreground">No cases assigned yet</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t.no_cases_yet}</p>
                     <button onClick={() => setLocation("/post-case")} className="mt-3 text-xs font-semibold text-primary hover:underline">
-                      Post a case to get matched →
+                      {t.post_case_prompt} →
                     </button>
                   </div>
                 )}
@@ -356,7 +358,7 @@ export default function ClientDashboard() {
                             <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[11px] text-muted-foreground">
                               {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
                               {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{c.cnr_number}</span>}
-                              {c.hearing_date && <span className="flex items-center gap-1 text-amber-400 font-medium"><Calendar className="w-3 h-3" />{new Date(c.hearing_date).toLocaleDateString("en-IN")}</span>}
+                              {c.hearing_date && <span className="flex items-center gap-1 text-amber-400 font-medium"><Calendar className="w-3 h-3" />{new Date(c.hearing_date).toLocaleDateString(lang === "ar" ? "ar-AE" : lang === "hi" ? "hi-IN" : lang === "te" ? "te-IN" : lang === "de" ? "de-DE" : lang === "fr" ? "fr-CA" : lang === "es" ? "es-US" : "en-IN")}</span>}
                               <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.lawyer_name || "Advocate"}</span>
                             </div>
                           </div>
@@ -402,15 +404,15 @@ export default function ClientDashboard() {
                     <Sparkles className="w-4 h-4 text-violet-400" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-foreground text-[15px]">Match Proposals</h2>
+                    <h2 className="font-semibold text-foreground text-[15px]">{t.match_proposals}</h2>
                     <p className="text-[11px] text-muted-foreground">{allMatches.length} total proposals</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
-                  {(["pending", "accepted", "declined"] as const).map((t) => (
-                    <button key={t} onClick={() => setMatchTab(t)}
-                      className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-md capitalize transition-all ${matchTab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-                      {t}
+                  {(["pending", "accepted", "declined"] as const).map((tab) => (
+                    <button key={tab} onClick={() => setMatchTab(tab)}
+                      className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-md capitalize transition-all ${matchTab === tab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                      {tab}
                     </button>
                   ))}
                 </div>

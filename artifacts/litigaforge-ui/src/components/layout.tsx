@@ -27,16 +27,16 @@ interface NavEntry {
 const clientNav: NavEntry[] = [
   { href: "/client-dashboard", label: "Dashboard",       icon: Briefcase, tKey: "dashboard" },
   { href: "/post-case",        label: "Post a Case",     icon: Plus,      tKey: "post_case" },
-  { href: "/my-cases",         label: "My Cases",        icon: FileText },
-  { href: "/matches",          label: "Match Proposals", icon: Sparkles },
+  { href: "/my-cases",         label: "My Cases",        icon: FileText,  tKey: "my_cases" },
+  { href: "/matches",          label: "Match Proposals", icon: Sparkles,  tKey: "match_proposals" },
   { href: "/documents",        label: "Documents",       icon: FileCheck, tKey: "documents" },
 ];
 
 const lawyerNav: NavEntry[] = [
-  { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star, tKey: "dashboard" },
-  { href: "/matches",          label: "Client Requests",  icon: Users },
+  { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star,      tKey: "dashboard" },
+  { href: "/matches",          label: "Client Requests",  icon: Users,     tKey: "client_requests" },
   { href: "/review",           label: "Doc Analyzer",     icon: FileSearch, tKey: "doc_analyzer" },
-  { href: "/subscription",     label: "Profile & Plans",  icon: Crown },
+  { href: "/subscription",     label: "Profile & Plans",  icon: Crown,     tKey: "profile_plans" },
 ];
 
 const commonNav: NavEntry[] = [
@@ -44,9 +44,9 @@ const commonNav: NavEntry[] = [
   { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare,     tKey: "legal_qa" },
   { href: "/review",         label: "Doc Analyzer",    icon: FileSearch,        tKey: "doc_analyzer" },
   { href: "/judgments",      label: "Judgments",       icon: BookOpen,          tKey: "judgments" },
-  { href: "/free-documents", label: "Free Documents",  icon: FileCheck },
+  { href: "/free-documents", label: "Free Documents",  icon: FileCheck,         tKey: "free_documents" },
   { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart,             tKey: "free_aid" },
-  { href: "/blog",           label: "Legal Guides",    icon: Newspaper },
+  { href: "/blog",           label: "Legal Guides",    icon: Newspaper,         tKey: "legal_guides" },
 ];
 
 // Translate a nav entry's display label while keeping the English label for

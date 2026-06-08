@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
+import { useLanguage } from "../hooks/useLanguage";
 import {
   FileText, MapPin, Clock, EyeOff, ArrowRight, Plus,
   Search, Loader2, AlertTriangle, PenSquare, X, Check,
@@ -28,6 +29,7 @@ const CASE_TYPES = [
 export default function MyCases() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
   const [tab, setTab] = useState<"open" | "pending" | "closed">("open");
   const [search, setSearch] = useState("");
   const [editingCase, setEditingCase] = useState<any>(null);
@@ -55,8 +57,8 @@ export default function MyCases() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
           <FileText className="w-12 h-12 text-gray-300 mx-auto" />
-          <h2 className="text-xl font-semibold">Sign In Required</h2>
-          <Button onClick={() => window.location.href = "/login"}>Sign In</Button>
+          <h2 className="text-xl font-semibold">{t.sign_in_required}</h2>
+          <Button onClick={() => window.location.href = "/login"}>{t.sign_in}</Button>
         </div>
       </div>
     </>);
@@ -68,23 +70,23 @@ export default function MyCases() {
     .filter((c: any) => !search || [c.title, c.case_type, c.location, c.description].some((f) => f?.toLowerCase().includes(search.toLowerCase())));
 
   return (
-    <PageShell title="My Legal Requirements" subtitle="Cases you have posted and proposals received from lawyers."
-      action={<Link href="/post-case"><Button><Plus className="w-4 h-4 mr-2" /> Post New Case
+    <PageShell title={t.my_cases} subtitle="Cases you have posted and proposals received from lawyers."
+      action={<Link href="/post-case"><Button><Plus className="w-4 h-4 mr-2" /> {t.post_case}
           </Button></Link>}>
       <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
         {/* Tabs + Search */}
         <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#EFF6FF" }}><FileText className="w-4 h-4 text-blue-600" /></div>
-            <h2 className="font-bold text-gray-900 text-sm">Posted Cases</h2>
+            <h2 className="font-bold text-gray-900 text-sm">{t.my_cases}</h2>
             <span className="text-[11px] text-gray-400">({allCases.length})</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-background rounded-lg p-0.5">
-              {(["open","pending","closed"] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === t ? "bg-card text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
-                  {t}
+              {(["open","pending","closed"] as const).map((tabKey) => (
+                <button key={tabKey} onClick={() => setTab(tabKey)}
+                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === tabKey ? "bg-card text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                  {tabKey}
                 </button>
               ))}
             </div>
@@ -93,7 +95,7 @@ export default function MyCases() {
         <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-2">
             <Search className="w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Search by title, type, or location..." value={search} onChange={(e) => setSearch(e.target.value)}
+            <input type="text" placeholder={t.search_cases} value={search} onChange={(e) => setSearch(e.target.value)}
               className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none" />
             {search && <button onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
           </div>
@@ -113,8 +115,8 @@ export default function MyCases() {
           {!isLoading && allCases.length === 0 && (
             <div className="rounded-xl p-8 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
               <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No cases posted yet.</p>
-              <Link href="/post-case"><Button size="sm" className="mt-3"><Plus className="w-4 h-4 mr-1" /> Post a Case</Button></Link>
+              <p className="text-sm text-gray-500">{t.no_cases_yet}</p>
+              <Link href="/post-case"><Button size="sm" className="mt-3"><Plus className="w-4 h-4 mr-1" /> {t.post_case}</Button></Link>
             </div>
           )}
           {!isLoading && allCases.length > 0 && filtered.length === 0 && (
