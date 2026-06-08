@@ -428,6 +428,7 @@ from routers import (
     lawyer_router, documents_free_router,
     passkeys_router, push_router,
 )
+from country_router import router as country_router
 
 @app.get(f"{BASE_PATH}/healthz", tags=["health"])
 async def healthz():
@@ -445,6 +446,7 @@ app.include_router(lawyer_router,      prefix=BASE_PATH)
 app.include_router(documents_free_router, prefix=BASE_PATH)
 app.include_router(passkeys_router,    prefix=BASE_PATH)
 app.include_router(push_router,        prefix=BASE_PATH)
+app.include_router(country_router,     prefix=BASE_PATH)
 
 @app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
 async def serve_sitemap():
