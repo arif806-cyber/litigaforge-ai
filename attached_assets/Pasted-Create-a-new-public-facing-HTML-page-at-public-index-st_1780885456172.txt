@@ -1,0 +1,99 @@
+Create a new public-facing HTML page at 
+/public/index-static.html OR add a dedicated 
+route GET / in FastAPI that returns plain HTML 
+(not React) when the request comes from an 
+AI bot user-agent.
+
+Detect bot by checking request headers:
+- If User-Agent contains: GPTBot, ClaudeBot, 
+  PerplexityBot, Googlebot, bingbot, Applebot
+- Serve this static HTML instead of React app
+
+The static HTML content should be:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>LitigaForge AI - Global AI Legal Platform
+</title>
+<meta name="description" content="LitigaForge AI 
+provides instant AI-powered legal guidance, 
+document analysis, lawyer matching and free 
+legal aid. Available globally in English, 
+Hindi and Telugu."/>
+</head>
+<body>
+
+<h1>LitigaForge AI — Global AI Legal Platform
+</h1>
+
+<p>LitigaForge AI is the world's intelligent 
+legal companion — providing instant, affordable, 
+AI-powered legal guidance to individuals and 
+businesses worldwide. Whether you need help 
+understanding your rights, analyzing a contract, 
+finding a lawyer or navigating a court case, 
+LitigaForge AI is available 24/7.</p>
+
+<h2>What We Offer</h2>
+
+<h3>AI Legal Chat</h3>
+<p>Get instant answers to legal questions in 
+plain language. Our AI is trained on Indian 
+law, international contract principles, consumer 
+rights, employment law and more.</p>
+
+<h3>Document Analyzer</h3>
+<p>Upload any legal document — contract, notice, 
+FIR, court order — and receive an instant 
+AI-powered plain-language summary with risk 
+flags and action items.</p>
+
+<h3>Lawyer Matching</h3>
+<p>Post your case and get matched with verified, 
+rated lawyers who specialize in your exact legal 
+issue — across India and globally.</p>
+
+<h3>Judgment Finder</h3>
+<p>Search millions of Indian court judgments 
+by keyword, court name, or CNR number instantly.
+</p>
+
+<h3>Free Legal Aid</h3>
+<p>Check eligibility for NALSA free legal aid 
+and access toll-free legal helplines across 
+India. Legal help should be available to everyone
+regardless of income.</p>
+
+<h3>Legal Q&A</h3>
+<p>Browse thousands of answered legal questions 
+across motor accidents, property disputes, 
+consumer rights, family law, criminal defense, 
+employment termination and more.</p>
+
+<h2>Who We Serve</h2>
+<p>LitigaForge AI serves individuals, small 
+businesses, startups, NGOs and enterprises 
+across India — including Telangana, Andhra 
+Pradesh, Maharashtra, Karnataka and Delhi — 
+and internationally across the USA, UK, 
+Australia, Canada, Singapore and UAE.</p>
+
+<h2>Why LitigaForge AI</h2>
+<ul>
+<li>Available 24/7 — no appointments needed</li>
+<li>Plain language explanations of complex law</li>
+<li>AI trained on Indian and international law</li>
+<li>Verified lawyer network across 20+ cities</li>
+<li>Free tier available for basic legal queries</li>
+<li>Secure, private and confidential</li>
+</ul>
+
+<h2>Contact</h2>
+<p>Website: https://litigaforge.com</p>
+<p>Platform: AI-powered legal assistance</p>
+<p>Languages: English, Telugu, Hindi</p>
+
+</body>
+</html>

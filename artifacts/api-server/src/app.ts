@@ -63,8 +63,27 @@ if (true) { // serve frontend in both dev and production when dist exists
       _indexHtml = "";
     }
 
+    // Read bot-friendly static HTML once at startup
+    let _staticBotHtml = "";
+    try {
+      _staticBotHtml = readFileSync(resolve(_frontendDist, "index-static.html"), "utf-8");
+      logger.info("Bot-friendly index-static.html loaded");
+    } catch {
+      logger.warn("index-static.html not found — bots will receive the React app");
+    }
+
+    // Bot user-agents that should receive plain HTML instead of the React SPA
+    const _botPattern = /GPTBot|ClaudeBot|PerplexityBot|Googlebot|bingbot|Applebot/i;
+
     if (_indexHtml) {
-      const _sendIndex = (_req: express.Request, res: express.Response): void => {
+      const _sendIndex = (req: express.Request, res: express.Response): void => {
+        const ua = req.headers["user-agent"] ?? "";
+        if (_staticBotHtml && _botPattern.test(ua)) {
+          res.setHeader("Cache-Control", "public, max-age=3600");
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.send(_staticBotHtml);
+          return;
+        }
         res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.send(_indexHtml);
