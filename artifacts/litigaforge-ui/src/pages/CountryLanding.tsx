@@ -1,7 +1,9 @@
 import { Link } from "wouter";
-import { Scale, Phone, ArrowRight, Sparkles, FileText, ChevronRight } from "lucide-react";
+import { Scale, Phone, ArrowRight, Sparkles, FileText } from "lucide-react";
 import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import PainPointsGrid from "@/components/PainPointsGrid";
+import PricingSection from "@/components/PricingSection";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getLandingContent } from "@/lib/countryLandingData";
 
@@ -74,32 +76,7 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 pb-20 space-y-14">
         {/* 2. PAIN POINTS GRID */}
-        <section data-testid="section-pain-points">
-          <h2 className="text-xl md:text-2xl font-bold mb-6">{t.pain_heading}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {content.painPoints.map((p) => {
-              const Icon = p.icon;
-              return (
-                <Link
-                  key={p.title}
-                  href={p.link}
-                  className="group flex flex-col gap-3 p-5 rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-lg transition"
-                  data-testid={`pain-${p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                >
-                  <div className="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-amber-500" />
-                  </div>
-                  <h3 className="font-semibold leading-snug">{p.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed flex-1">{p.desc}</p>
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
-                    {t.explore}
-                    <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isRtl ? "rotate-180 group-hover:-translate-x-0.5" : ""}`} />
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <PainPointsGrid countryCode={cc} />
 
         {/* 3. TOP DOCUMENTS */}
         <section data-testid="section-top-documents">
@@ -146,7 +123,10 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
           </div>
         </section>
 
-        {/* 5. CTA SECTION */}
+        {/* 5. PRICING */}
+        <PricingSection countryCode={cc} />
+
+        {/* 6. CTA SECTION */}
         <section
           className="rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-card to-card p-8 md:p-12 text-center"
           data-testid="section-cta"
