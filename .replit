@@ -71,8 +71,6 @@ externalPort = 3002
 [userenv]
 
 [userenv.shared]
-API_SETU_KEY = "demokey123456ABCD789"
-API_SETU_CLIENT_ID = "in.gov.sandbox"
 MEESEVA_USE_PROD = "false"
 BASE_PATH = "/litigaforge"
 PORT = "5000"
