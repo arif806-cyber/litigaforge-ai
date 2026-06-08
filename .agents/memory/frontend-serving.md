@@ -1,23 +1,24 @@
 ---
-name: Frontend serving & rebuild cycle
-description: How the litigaforge-ui SPA is actually served and which workflow to restart after a frontend build.
+name: Frontend serving model (litigaforge)
+description: Which server actually serves the live UI, and what to do to make source edits visible
 ---
 
-# Frontend is served by the api-server, not the vite dev server
+# The live UI is the built dist, served by api-server — not the vite dev server
 
-The litigaforge-ui SPA at `/` (and all country routes like `/in`, `/us/ask`) is served
-as a **static built bundle from `artifacts/litigaforge-ui/dist/public`**, served by the
-**`artifacts/api-server: API Server`** workflow — NOT by the `artifacts/litigaforge-ui: web`
-vite dev workflow. The served `index.html` references hashed `/assets/index-*.js|css`
-(production build output), confirming it is not vite dev (which would reference `/src/main.tsx`).
+`api-server` serves the prebuilt `litigaforge-ui/dist/public` at `/` (and shadows
+the vite dev server, which also claims `/`). It reads `index.html` once at startup.
 
-**How to apply:** after editing frontend code you must:
-1. `pnpm --filter @workspace/litigaforge-ui run build` (with `PORT=23790 BASE_PATH=/`)
-2. restart **`artifacts/api-server: API Server`** to pick up the new dist.
+**Rule:** editing `litigaforge-ui` source is NOT enough to see changes in the
+preview or on the dev domain. You must rebuild the frontend and restart api-server:
+1. build litigaforge-ui (its artifact build env uses `BASE_PATH=/`, `PORT=23790`),
+2. restart the api-server workflow so it re-reads `index.html`/assets.
 
-Restarting `artifacts/litigaforge-ui: web` does nothing for what the user sees.
+There is also a PWA service worker (`registerType: autoUpdate`); a hard reload may
+be needed after a rebuild.
 
-**Why:** symptom of forgetting step 2 is a blank page with a CSS MIME error
-("Refused to apply style ... MIME type 'text/html'") because the served stale
-`index.html` references asset hashes that no longer exist on disk → SPA fallback
-returns `index.html` (text/html) for the missing asset.
+**Why:** source-only edits + a litigaforge-ui dev restart appear to do nothing,
+because the served bundle is the stale dist, not the dev modules.
+
+**Path map:** `/` = frontend (api-server, port 8080), `/litigaforge/*` = Python
+FastAPI backend (port 5000), `/api/*` = api-server's own API. Country routing lives
+at the root, e.g. `/ae`, `/uk` — NOT under `/litigaforge`.

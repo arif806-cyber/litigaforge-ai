@@ -1,1 +1,2 @@
 - [Frontend public endpoints](frontend-public-endpoints.md) — any backend path called from a no-login page must be added to PUBLIC_PATH in api.ts or 401s bounce users to /login.
+- [Frontend serving model](frontend-serving.md) — live UI is the built dist served by api-server, not the vite dev server; rebuild + restart api-server to see source edits.

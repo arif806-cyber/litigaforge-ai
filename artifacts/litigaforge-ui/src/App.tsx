@@ -17,6 +17,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import {
   getAppBase,
   getCountryFromPath,
+  getCountryAliasFromPath,
   getPathWithoutCountry,
   buildCountryUrl,
   isValidCountry,
@@ -124,6 +125,13 @@ function CountryGate({ children }: { children: (code: string) => React.ReactNode
       localStorage.setItem("country_override", valid.toUpperCase());
       setCountry(valid);
     };
+
+    // A friendly alias like /uae or /usa — redirect to the canonical code.
+    const alias = getCountryAliasFromPath();
+    if (alias) {
+      finish(alias);
+      return;
+    }
 
     const stored = (localStorage.getItem("country_override") || "").toLowerCase();
     if (isValidCountry(stored)) {
