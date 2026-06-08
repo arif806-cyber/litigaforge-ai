@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useCountry } from "@/hooks/useCountry";
+import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 const CASE_TYPES = [
   { id: "Property Dispute", label: "Property & Real Estate", icon: Home },
@@ -36,6 +38,7 @@ const BUDGET_RANGES = [
 
 export default function PostCase() {
   const { user } = useAuth();
+  const { activeCode } = useCountry();
   const [, setLocation] = useLocation();
   const [title, setTitle] = useState("");
   const [caseType, setCaseType] = useState("");
@@ -46,6 +49,7 @@ export default function PostCase() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [clarifyOpen, setClarifyOpen] = useState(false);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -57,18 +61,26 @@ export default function PostCase() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!validate()) return;
+    setClarifyOpen(true);
+  };
+
+  const runSubmit = async (extraDetails: string) => {
+    setClarifyOpen(false);
     setSubmitting(true);
     setError("");
     try {
       const budgetItem = budgetIdx !== "" ? BUDGET_RANGES[budgetIdx] : null;
+      const finalDescription = extraDetails
+        ? `${description}\n\n${extraDetails}`.trim()
+        : description;
       await apiFetch("/cases/requirements", {
         method: "POST",
         body: JSON.stringify({
           title: title.trim(),
           case_type: caseType,
-          description,
+          description: finalDescription,
           location: locationVal,
           budget_range: budgetItem?.label ?? "",
           budget_min: budgetItem?.budget_min ?? 0,
@@ -181,6 +193,17 @@ export default function PostCase() {
           {submitting ? "Posting..." : "Post Requirement"}
         </Button>
       </div>
+
+      <ClarifyDialog
+        open={clarifyOpen}
+        surface="case"
+        baseText={description || title}
+        country={activeCode}
+        onProceed={runSubmit}
+        onClose={() => setClarifyOpen(false)}
+        proceedLabel="Post Requirement"
+        title="Help lawyers understand your case"
+      />
     </PageShell>
   );
 }

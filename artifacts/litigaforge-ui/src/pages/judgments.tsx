@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
+import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 interface Judgment {
   case_name: string;
@@ -35,6 +36,8 @@ export default function Judgments() {
   const [court, setCourt] = useState("");
   const [courtOpen, setCourtOpen] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [clarifyOpen, setClarifyOpen] = useState(false);
+  const [pendingQuery, setPendingQuery] = useState("");
 
   const courtOptions = [
     { id: "", label: "All Courts" },
@@ -50,8 +53,18 @@ export default function Judgments() {
     const finalQuery = q ?? query;
     if (!finalQuery.trim() || search.isPending) return;
     if (q) setQuery(q);
+    setPendingQuery(finalQuery.trim());
+    setClarifyOpen(true);
+  };
+
+  const runSearch = (extraDetails: string) => {
+    setClarifyOpen(false);
+    if (!pendingQuery.trim()) return;
     setExpanded(null);
-    search.mutate({ query: finalQuery.trim(), court, country: activeCode });
+    const finalQuery = extraDetails
+      ? `${pendingQuery.trim()}\n\n${extraDetails}`
+      : pendingQuery.trim();
+    search.mutate({ query: finalQuery, court, country: activeCode });
   };
 
   const selectedCourt = courtOptions.find(c => c.id === court) ?? courtOptions[0];
@@ -252,6 +265,17 @@ export default function Judgments() {
           </motion.div>
         )}
       </div>
+
+      <ClarifyDialog
+        open={clarifyOpen}
+        surface="judgments"
+        baseText={pendingQuery}
+        country={activeCode}
+        onProceed={runSearch}
+        onClose={() => setClarifyOpen(false)}
+        proceedLabel="Search Judgments"
+        title="Refine your search"
+      />
     </PageShell>
   </>);
 }

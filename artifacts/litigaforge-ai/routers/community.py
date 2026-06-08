@@ -87,6 +87,72 @@ def _extract_json_array(text: str) -> list:
     return json.loads(m.group()) if m else []
 
 
+# ── Clarifying questions (shared) ─────────────────────────────────────────────────
+
+_SURFACE_LABELS = {
+    "ask": "asking a legal question",
+    "document": "having a legal document analysed",
+    "judgments": "searching for relevant court judgments / precedents",
+    "chat": "chatting with the legal drafting assistant",
+    "case": "posting a case to be matched with a lawyer",
+    "general": "getting legal guidance",
+}
+
+
+class ClarifyRequest(BaseModel):
+    text: str = ""
+    surface: str = "general"
+    country: str = "IN"
+
+
+@router.post("/clarify")
+@limiter.limit("30/minute")
+async def clarify_input(req: ClarifyRequest, request: Request,
+                        current_user: Optional[dict] = Depends(get_current_user)):
+    """Given the user's draft input, return up to 3 short, jurisdiction-aware
+    clarifying questions that would materially improve the answer. Returns an
+    empty list when the input is already detailed enough."""
+    try:
+        safe_text = sanitize_text(req.text or "", max_length=4000, field_name="text")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    cfg = get_config(req.country)
+    label = _SURFACE_LABELS.get(req.surface, _SURFACE_LABELS["general"])
+
+    if len(safe_text.strip()) < 2:
+        return {"needs_clarification": False, "questions": []}
+
+    prompt = f"""You are {advisor_descriptor(req.country)} helping a user get a more accurate answer.
+The user is {label}. Their current input is shown below.
+
+Decide whether 1 to 3 SHORT clarifying questions would materially improve the quality of the answer.
+Rules:
+- If the input is already specific and detailed enough, return an EMPTY array.
+- Each question must be specific, answerable in one short sentence, and relevant to {cfg['name']} law.
+- Never ask for personally identifying information (full name, exact address, ID numbers).
+- Do not repeat information the user already provided.
+- Maximum 3 questions.
+
+Return ONLY a valid JSON array of strings, e.g. ["Which state or city is this in?", "Was anyone injured?"]
+Return [] if no clarification is needed.
+
+USER INPUT:
+---
+{safe_text[:4000]}
+---"""
+
+    raw = _ai(wrap_user_prompt(prompt, req.country), 400)
+    raw = validate_ai_response(raw)
+    try:
+        questions = _extract_json_array(raw)
+    except Exception:
+        questions = []
+    # Keep only non-empty strings, cap at 3
+    questions = [str(q).strip() for q in questions if isinstance(q, str) and str(q).strip()][:3]
+    return {"needs_clarification": bool(questions), "questions": questions}
+
+
 # ── Legal Q&A ─────────────────────────────────────────────────────────────────────
 
 class QuestionRequest(BaseModel):
@@ -183,6 +249,7 @@ class DocumentRequest(BaseModel):
     document_text: str
     document_type: str = "contract"
     country: str = "IN"
+    context: str = ""
 
 
 @router.post("/document/analyze")
@@ -196,11 +263,17 @@ async def analyze_document(req: DocumentRequest, request: Request):
     if len(safe_text.strip()) < 50:
         raise HTTPException(400, "Document too short — paste at least 50 characters")
 
+    try:
+        safe_context = sanitize_text(req.context or "", max_length=1500, field_name="context") if req.context else ""
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
     cfg = get_config(req.country)
+    context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
     prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {req.document_type}.
 
 {jurisdiction_block(req.country)}
-
+{context_block}
 Analyze the following {req.document_type} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
 
 {{

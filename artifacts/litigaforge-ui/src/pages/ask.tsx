@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
+import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 const CATEGORIES = [
   { id: "all", label: "All" },
@@ -104,6 +105,7 @@ export default function Ask() {
   const [category, setCategory] = useState("general");
   const [browseCategory, setBrowseCategory] = useState("all");
   const [answer, setAnswer] = useState<{ question: string; answer: string; category: string } | null>(null);
+  const [clarifyOpen, setClarifyOpen] = useState(false);
 
   const { data: qaList, refetch, isLoading: qaLoading, isError: qaError, error: qaErrorData } = useQuery<{ questions: QAItem[]; total: number }>({
     queryKey: ["questions", browseCategory, activeCode],
@@ -139,8 +141,16 @@ export default function Ask() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || askMutation.isPending) return;
+    setClarifyOpen(true);
+  };
+
+  const runAsk = (extraDetails: string) => {
+    setClarifyOpen(false);
     setAnswer(null);
-    askMutation.mutate({ question: question.trim(), category, country: activeCode });
+    const finalQuestion = extraDetails
+      ? `${question.trim()}\n\n${extraDetails}`
+      : question.trim();
+    askMutation.mutate({ question: finalQuestion, category, country: activeCode });
   };
 
   return (
@@ -283,6 +293,16 @@ export default function Ask() {
           </div>
         </div>
       </div>
+
+      <ClarifyDialog
+        open={clarifyOpen}
+        surface="ask"
+        baseText={question}
+        country={activeCode}
+        onProceed={runAsk}
+        onClose={() => setClarifyOpen(false)}
+        proceedLabel="Get Legal Advice"
+      />
     </PageShell>
   );
 }

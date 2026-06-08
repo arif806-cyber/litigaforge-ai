@@ -3,13 +3,21 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, Loader2, Bot, User, FileText, MessageSquare,
-  Scale, BookOpen, Gavel, ArrowRight, Plus
+  Scale, BookOpen, Gavel, ChevronDown, Sparkles
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useCountry } from "@/hooks/useCountry";
 import { cn } from "@/lib/utils";
+
+const DETAIL_FIELDS = [
+  { id: "location", label: "Location / jurisdiction", placeholder: "e.g. city, state or region" },
+  { id: "parties", label: "People or parties involved", placeholder: "e.g. employer, landlord, spouse" },
+  { id: "dates", label: "Key dates", placeholder: "e.g. when it happened, deadlines" },
+  { id: "amount", label: "Amount / value involved", placeholder: "e.g. ₹50,000, $2,000" },
+] as const;
 
 const TEMPLATES = [
   { id: "legal_notice", label: "Legal Notice", icon: FileText, prompt: "Draft a formal legal notice for [describe issue]. Include all necessary sections under Indian law." },
@@ -26,7 +34,11 @@ interface Message {
 
 export default function LegalChat() {
   const { user } = useAuth();
+  const { activeCode, activeConfig } = useCountry();
   const [input, setInput] = useState("");
+  const [pendingQ, setPendingQ] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [details, setDetails] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
@@ -41,17 +53,21 @@ export default function LegalChat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isTyping) return;
-    const userMsg: Message = { id: Date.now(), role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsTyping(true);
+  const composeDetails = (): string => {
+    const parts: string[] = [];
+    for (const f of DETAIL_FIELDS) {
+      const v = (details[f.id] ?? "").trim();
+      if (v) parts.push(`${f.label}: ${v}`);
+    }
+    return parts.length ? "Additional details provided by the user:\n- " + parts.join("\n- ") : "";
+  };
 
+  const callAI = async (message: string, context: string) => {
+    setIsTyping(true);
     try {
       const data = await apiFetch("/ai-legal-chat", {
         method: "POST",
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message, context }),
       });
       const aiMsg: Message = { id: Date.now() + 1, role: "ai", content: data.reply || "Sorry, I could not generate a response." };
       setMessages((prev) => [...prev, aiMsg]);
@@ -62,6 +78,55 @@ export default function LegalChat() {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isTyping) return;
+    const userMsg: Message = { id: Date.now(), role: "user", content: text };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+
+    const formDetails = composeDetails();
+
+    // If we are awaiting answers to clarifying questions, treat this turn as the answers.
+    if (pendingQ !== null) {
+      const original = pendingQ;
+      setPendingQ(null);
+      if (text.trim().toLowerCase() === "skip") {
+        await callAI(original, formDetails);
+      } else {
+        const ctx = [formDetails, `User's answers to the clarifying questions: ${text.trim()}`]
+          .filter(Boolean).join("\n\n");
+        await callAI(original, ctx);
+      }
+      return;
+    }
+
+    // Fresh message — see if clarifying questions would help first.
+    setIsTyping(true);
+    try {
+      const clarify = await apiFetch("/clarify", {
+        method: "POST",
+        body: JSON.stringify({ text, surface: "chat", country: activeCode }),
+      });
+      const questions: string[] = Array.isArray(clarify?.questions) ? clarify.questions : [];
+      if (questions.length > 0) {
+        const list = questions.map((q, i) => `${i + 1}. ${q}`).join("\n");
+        const ask: Message = {
+          id: Date.now() + 1,
+          role: "ai",
+          content: `To give you the most accurate answer under ${activeConfig?.name ?? "your country"}'s law, could you help with a few details?\n\n${list}\n\nReply with the answers, or type **skip** for a general answer.`,
+        };
+        setMessages((prev) => [...prev, ask]);
+        setPendingQ(text);
+        setIsTyping(false);
+        return;
+      }
+    } catch {
+      // If clarify fails, fall through to a direct answer.
+    }
+    setIsTyping(false);
+    await callAI(text, formDetails);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -155,6 +220,42 @@ export default function LegalChat() {
       </div>
 
       <div className="flex-shrink-0 border-t border-border bg-card p-3 md:p-4">
+        <div className="max-w-3xl mx-auto mb-2">
+          <button
+            type="button"
+            onClick={() => setDetailsOpen(o => !o)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="chat-details-toggle"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            Add details (optional)
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", detailsOpen && "rotate-180")} />
+          </button>
+          <AnimatePresence>
+            {detailsOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                  {DETAIL_FIELDS.map(f => (
+                    <input
+                      key={f.id}
+                      value={details[f.id] ?? ""}
+                      onChange={e => setDetails(p => ({ ...p, [f.id]: e.target.value }))}
+                      placeholder={f.placeholder}
+                      className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      data-testid={`chat-detail-${f.id}`}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea

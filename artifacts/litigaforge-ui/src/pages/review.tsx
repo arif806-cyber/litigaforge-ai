@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
+import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 const DOC_TYPES = [
   { id: "contract", label: "Contract / Agreement" },
@@ -59,14 +60,21 @@ export default function Review() {
   const [docType, setDocType] = useState("contract");
   const [docTypeOpen, setDocTypeOpen] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [clarifyOpen, setClarifyOpen] = useState(false);
 
   const analyze = useMutation({
-    mutationFn: () => apiFetch("/document/analyze", {
+    mutationFn: (context: string) => apiFetch("/document/analyze", {
       method: "POST",
-      body: JSON.stringify({ document_text: docText, document_type: docType, country: activeCode }),
+      body: JSON.stringify({ document_text: docText, document_type: docType, country: activeCode, context }),
     }),
     onSuccess: (data) => setResult(data),
   });
+
+  const runAnalyze = (extraDetails: string) => {
+    setClarifyOpen(false);
+    setResult(null);
+    analyze.mutate(extraDetails);
+  };
 
   const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
 
@@ -133,7 +141,7 @@ export default function Review() {
 
           <div className="flex justify-end">
             <Button
-              onClick={() => { setResult(null); analyze.mutate(); }}
+              onClick={() => setClarifyOpen(true)}
               disabled={docText.trim().length < 50 || analyze.isPending}
               size="lg"
               className="px-8 shadow-md"
@@ -249,6 +257,16 @@ export default function Review() {
           )}
         </AnimatePresence>
       </div>
+
+      <ClarifyDialog
+        open={clarifyOpen}
+        surface="document"
+        baseText={docText}
+        country={activeCode}
+        onProceed={runAnalyze}
+        onClose={() => setClarifyOpen(false)}
+        proceedLabel="Analyse Document"
+      />
     </PageShell>
   );
 }
