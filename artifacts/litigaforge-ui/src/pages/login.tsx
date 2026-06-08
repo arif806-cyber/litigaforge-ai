@@ -10,6 +10,18 @@ import { signInWithApple, hasAppleClientId, loadAppleSDK } from "@/lib/apple-aut
 import { hasPasskeySupport, authenticatePasskey } from "@/lib/passkeys";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import { trackEvent } from "@/lib/analytics";
+import { useCountry } from "@/hooks/useCountry";
+
+const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
+  IN: { badge: "Telangana & AP Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates, analyze documents, search TG & AP judgments, and get AI legal strategy — all in one platform.", trust: "Trusted by advocates across Telangana & Andhra Pradesh" },
+  DE: { badge: "Deutschland Legal AI", heading: "Rechtsintelligenz\nfür Ihre Gerichte.", sub: "Verbinden Sie sich mit verifizierten Anwälten, analysieren Sie Dokumente und entwickeln Sie KI-gestützte Rechtsstrategien.", trust: "Trusted by legal professionals across Germany" },
+  AE: { badge: "UAE Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates across the UAE, analyze contracts, and get AI-powered legal strategy — Arabic & English.", trust: "Trusted by legal professionals across the UAE" },
+  US: { badge: "US Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified attorneys, analyze contracts, research case law, and get AI legal strategy — all in one platform.", trust: "Trusted by legal professionals across the United States" },
+  GB: { badge: "UK Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified solicitors and barristers, analyze documents, and get AI-powered legal strategy for England, Wales & Scotland.", trust: "Trusted by legal professionals across the United Kingdom" },
+  AU: { badge: "Australia Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified solicitors, analyze contracts, research Australian case law, and get AI legal strategy.", trust: "Trusted by legal professionals across Australia" },
+  CA: { badge: "Canada Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified lawyers, analyze contracts, and get AI-powered legal strategy — bilingual English & French support.", trust: "Trusted by legal professionals across Canada" },
+  SG: { badge: "Singapore Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates, analyze contracts, and get AI-powered legal strategy for Singapore courts.", trust: "Trusted by legal professionals across Singapore" },
+};
 
 type Role = "client" | "lawyer";
 type Mode = "signin" | "signup";
@@ -17,6 +29,9 @@ type Mode = "signin" | "signup";
 export default function Login() {
   const { login, register, googleLogin, appleLogin, passkeyLogin } = useAuth();
   const [, setLocation] = useLocation();
+  const { activeCode } = useCountry();
+  const copy = COUNTRY_COPY[activeCode.toUpperCase()] ?? COUNTRY_COPY.IN;
+  const headingLines = copy.heading.split("\n");
 
   const [role, setRole] = useState<Role>("client");
   const [mode, setMode] = useState<Mode>("signin");
@@ -180,16 +195,16 @@ export default function Login() {
             <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full"
               style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
-              Telangana &amp; AP Legal AI
+              {copy.badge}
             </div>
             <h2 className="text-3xl font-extrabold text-white leading-tight">
-              Legal intelligence<br />
+              {headingLines[0]}<br />
               <span style={{ background: "linear-gradient(90deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                built for your courts.
+                {headingLines[1] ?? ""}
               </span>
             </h2>
             <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
-              Connect with verified advocates, analyze documents, search TG &amp; AP judgments, and get AI legal strategy — all in one platform.
+              {copy.sub}
             </p>
           </div>
 
@@ -227,7 +242,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="relative text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>
-          Trusted by advocates across Telangana &amp; Andhra Pradesh
+          {copy.trust}
         </p>
       </div>
 

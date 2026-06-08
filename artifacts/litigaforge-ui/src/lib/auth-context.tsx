@@ -1,5 +1,15 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { getCountryFromPath, buildCountryUrl } from "./country";
+
+function dashboardUrl(role: string): string {
+  const country =
+    getCountryFromPath() ??
+    localStorage.getItem("country_override")?.toLowerCase() ??
+    "in";
+  const page = role === "lawyer" ? "lawyer-dashboard" : "client-dashboard";
+  return buildCountryUrl(country, page);
+}
 
 const BASE = "/litigaforge";
 
@@ -77,9 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
     }
     setUser(data.user);
-    // Redirect based on role
+    // Redirect based on role — preserve country prefix
     const role = data.user?.role ?? "client";
-    window.location.href = role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+    window.location.href = dashboardUrl(role);
   };
 
   const register = async (name: string, email: string, password: string, role: string = "client", recaptchaToken?: string) => {
@@ -105,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(data.user);
     const userRole = data.user?.role ?? "client";
-    window.location.href = userRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+    window.location.href = dashboardUrl(userRole);
   };
 
   const appleLogin = async (idToken: string, firstName?: string, lastName?: string, role: string = "client") => {
@@ -119,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(data.user);
     const userRole = data.user?.role ?? "client";
-    window.location.href = userRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+    window.location.href = dashboardUrl(userRole);
   };
 
   const passkeyLogin = (jwtToken: string, userData: User) => {
@@ -127,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(jwtToken);
     setUser(userData);
     const userRole = userData.role ?? "client";
-    window.location.href = userRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+    window.location.href = dashboardUrl(userRole);
   };
 
   const logout = async () => {
