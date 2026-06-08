@@ -1,0 +1,209 @@
+The app uses wouter for routing, NOT react-router-dom.
+Do NOT install or import react-router-dom anywhere.
+Use wouter throughout for all routing.
+
+=== PART 1: APP ROUTES (using wouter) ===
+
+In src/App.jsx, update routing using wouter:
+
+import { Switch, Route, useLocation } 
+  from "wouter";
+import CountryLanding from 
+  "./pages/CountryLanding";
+import AutoRedirect from 
+  "./components/AutoRedirect";
+
+const VALID_COUNTRIES = [
+  "in","us","gb","ae","au","ca","sg","de"
+];
+
+// Inside your app JSX, replace current 
+// router with:
+
+<Switch>
+  {/* Root → auto detect and redirect */}
+  <Route path="/" component={AutoRedirect} />
+
+  {/* Country pages */}
+  <Route path="/:countryCode">
+    {(params) => {
+      const code = params.countryCode
+        ?.toLowerCase();
+      if (!VALID_COUNTRIES.includes(code)) {
+        return <AutoRedirect />;
+      }
+      return (
+        <CountryLanding 
+          countryCode={code.toUpperCase()} 
+        />
+      );
+    }}
+  </Route>
+
+  {/* Country sub-routes e.g. /de/legal */}
+  <Route path="/:countryCode/:section">
+    {(params) => {
+      const code = params.countryCode
+        ?.toLowerCase();
+      if (!VALID_COUNTRIES.includes(code)) {
+        return <AutoRedirect />;
+      }
+      return (
+        <CountryLanding
+          countryCode={code.toUpperCase()}
+          section={params.section}
+        />
+      );
+    }}
+  </Route>
+</Switch>
+
+=== PART 2: AUTO REDIRECT COMPONENT ===
+
+Create src/components/AutoRedirect.jsx:
+
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
+
+const VALID_COUNTRIES = [
+  "in","us","gb","ae","au","ca","sg","de"
+];
+
+export default function AutoRedirect() {
+  const [, setLocation] = useLocation();
+  const [detecting, setDetecting] = 
+    useState(true);
+
+  useEffect(() => {
+    // Check manual override first
+    const override = localStorage.getItem(
+      "country_override"
+    );
+    if (override && VALID_COUNTRIES
+      .includes(override.toLowerCase())) {
+      setLocation(`/${override.toLowerCase()}`);
+      return;
+    }
+
+    // Auto detect via IP
+    fetch("/api/country-detect")
+      .then(r => r.json())
+      .then(data => {
+        const code = data.country_code
+          ?.toLowerCase() || "in";
+        const valid = VALID_COUNTRIES
+          .includes(code) ? code : "in";
+        setLocation(`/${valid}`);
+      })
+      .catch(() => setLocation("/in"))
+      .finally(() => setDetecting(false));
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-950 
+    flex flex-col items-center 
+    justify-center gap-4">
+      <div className="text-4xl animate-pulse">
+        🌍
+      </div>
+      <p className="text-white text-lg 
+      font-medium">
+        Detecting your location...
+      </p>
+      <p className="text-gray-500 text-sm">
+        You'll be redirected to your 
+        country's legal platform
+      </p>
+    </div>
+  );
+}
+
+=== PART 3: COUNTRY SWITCHER (wouter) ===
+
+Update src/components/CountrySwitcher.jsx
+to use wouter navigation:
+
+import { useLocation } from "wouter";
+
+// Inside component:
+const [, setLocation] = useLocation();
+
+// On country click:
+const handleSwitch = (code) => {
+  localStorage.setItem(
+    "country_override", 
+    code.toLowerCase()
+  );
+  setLocation(`/${code.toLowerCase()}`);
+  setOpen(false);
+};
+
+// Replace window.location.href with:
+// setLocation(`/${code.toLowerCase()}`)
+// This keeps SPA behavior — no page reload
+
+=== PART 4: LANGUAGE SWITCHER (wouter) ===
+
+In src/components/LanguageSwitcher.jsx,
+navigation stays the same (no route change
+needed for language — it's state only).
+
+But add this for language-aware page titles:
+
+import { useEffect } from "react";
+
+useEffect(() => {
+  document.title = 
+    `LitigaForge AI — ${t.hero_title || 
+    "Global Legal Platform"}`;
+  
+  // Update html lang attribute for 
+  // screen readers and AI crawlers
+  document.documentElement.lang = lang;
+  
+  // Update dir for Arabic RTL
+  document.documentElement.dir = 
+    lang === "ar" ? "rtl" : "ltr";
+    
+}, [lang, t]);
+
+=== PART 5: INTERNAL LINKS ===
+
+For ALL internal navigation links in the app,
+use wouter's Link component:
+
+import { Link } from "wouter";
+
+// Example:
+<Link href="/in/legal">
+  Legal Services India
+</Link>
+
+<Link href="/de/documents">
+  Rechtsdokumente
+</Link>
+
+// For programmatic navigation:
+const [, setLocation] = useLocation();
+setLocation("/us/legal-qa");
+
+// NEVER use:
+// <a href="..."> for internal links
+// window.location.href for navigation
+// react-router-dom Link or useNavigate
+
+=== PART 6: ACTIVE ROUTE HIGHLIGHT 
+    IN SIDEBAR ===
+
+To highlight active country in sidebar/nav,
+use wouter's useLocation hook:
+
+import { useLocation } from "wouter";
+
+const [location] = useLocation();
+const activeCountry = location.split("/")[1];
+
+// Then in nav items:
+className={activeCountry === "de" 
+  ? "text-yellow-400 font-bold" 
+  : "text-gray-400"}

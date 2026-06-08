@@ -121,11 +121,11 @@ function CountryGate({ children }: { children: (code: string) => React.ReactNode
         "",
         buildCountryUrl(valid, rel) + window.location.search + window.location.hash,
       );
-      localStorage.setItem("lf_country", valid.toUpperCase());
+      localStorage.setItem("country_override", valid.toUpperCase());
       setCountry(valid);
     };
 
-    const stored = (localStorage.getItem("lf_country") || "").toLowerCase();
+    const stored = (localStorage.getItem("country_override") || "").toLowerCase();
     if (isValidCountry(stored)) {
       finish(stored);
       return;
@@ -134,6 +134,21 @@ function CountryGate({ children }: { children: (code: string) => React.ReactNode
       .then((r) => r.json())
       .then((d) => finish((d.country_code || "in").toLowerCase()))
       .catch(() => finish("in"));
+  }, []);
+
+  // Keep the router base in sync with the URL country segment so switching
+  // country (or browser back/forward) re-renders without a full page reload.
+  useEffect(() => {
+    const sync = () => {
+      const c = getCountryFromPath();
+      if (c) setCountry(c.toLowerCase());
+    };
+    window.addEventListener("popstate", sync);
+    window.addEventListener("lf-country-change", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("lf-country-change", sync);
+    };
   }, []);
 
   if (!country) {

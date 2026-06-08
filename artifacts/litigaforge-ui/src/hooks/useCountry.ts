@@ -43,7 +43,7 @@ export function useCountry() {
   // URL is the source of truth for the active country; fall back to a stored
   // preference, then India.
   const urlCode = getCountryFromPath();
-  const stored = (localStorage.getItem("lf_country") || "").toUpperCase();
+  const stored = (localStorage.getItem("country_override") || "").toUpperCase();
   const activeCode = urlCode ? urlCode.toUpperCase() : (COUNTRY_META[stored] ? stored : "IN");
 
   const [activeConfig, setActiveConfig] = useState<CountryConfig | null>(null);
@@ -66,11 +66,19 @@ export function useCountry() {
     };
   }, [activeCode]);
 
-  // Switch country: persist preference and navigate to the same page under the
-  // new country prefix (full reload keeps every page in sync with the URL).
+  // Switch country: persist preference and SPA-navigate to the same page under
+  // the new country prefix. pushState + the country-change event update the URL
+  // and the router base together (no full page reload).
   const switchCountry = (code: string) => {
-    localStorage.setItem("lf_country", code.toUpperCase());
-    window.location.href = buildCountryUrl(code, getPathWithoutCountry());
+    const target = code.toLowerCase();
+    if (target === activeCode.toLowerCase()) return;
+    localStorage.setItem("country_override", code.toUpperCase());
+    const url =
+      buildCountryUrl(target, getPathWithoutCountry()) +
+      window.location.search +
+      window.location.hash;
+    window.history.pushState(null, "", url);
+    window.dispatchEvent(new Event("lf-country-change"));
   };
 
   return {
