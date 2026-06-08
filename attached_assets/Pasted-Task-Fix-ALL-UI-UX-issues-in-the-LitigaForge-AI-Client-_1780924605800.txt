@@ -1,0 +1,46 @@
+Task: Fix ALL UI/UX issues in the LitigaForge AI Client Dashboard (mobile + responsive view)
+Project Context: This is the client-facing dashboard for LitigaForge AI (legal SaaS for India/Telangana/AP). Current page is /in/client (Telugu + English bilingual support). Use Tailwind CSS + React (or whatever stack you're using). Make it modern, clean, professional, trustworthy (legal SaaS vibe — dark/light mode friendly, blues/greens + Indian flag accents).
+Reference Screenshot: [Attach or describe the current screenshot you showed me]
+Specific Issues to Fix (from current screenshot + best practices):
+Mobile Responsiveness & Layout
+Make it fully mobile-first. Current layout feels cramped on phone.
+Proper spacing/padding (use consistent p-4, gap-4, etc.).
+Cards should stack vertically cleanly. Fix any overflow or weird alignment.
+Country/language selector dropdown should not overlap content awkwardly.
+Top bar (logo, language, country) should be clean and fixed or sticky.
+Typography & Bilingual Support
+Ensure Telugu script renders perfectly (font-family fallback, proper line-height for Indic scripts).
+Consistent font weights/sizes across English + Telugu.
+Greeting "శుభోదయం, Client" + stats should look premium.
+All buttons/labels must support full localization without breaking layout.
+Visual Hierarchy & Clutter
+Reduce visual noise. Current page has too many 0-count cards close together.
+Group related sections better (Services → Courts → Stats → Cases).
+Use better card shadows, borders, hover effects (subtle lift + color change).
+Make "0" numbers large and prominent with proper labels below.
+Color Scheme & Branding
+Use professional legal colors: deep navy/blue, saffron/green accents from Indian flag, clean whites/grays.
+Ensure high contrast for accessibility (WCAG AA).
+Consistent button styles (primary for "New Case", secondary for others).
+Components to Polish:
+Top Legal Services pills/buttons: Make them more touch-friendly, better wrapping on mobile.
+Emergency Legal Aid banner: Make it stand out more (prominent CTA).
+Stats cards (Cases, Documents, etc.): Improve icons + layout. Add subtle progress or empty states.
+Search bar at bottom: Make it prominent and functional.
+Tabs (Active/Pending/Closed): Style them as modern tabs.
+Overall Polish & UX:
+Add smooth transitions/animations (Tailwind).
+Empty states look welcoming (e.g., "No cases yet — File your first case!").
+Accessibility: Proper ARIA labels, focus states, readable fonts.
+Performance: Lazy load sections if needed.
+Test on real mobile viewport (iPhone + Android).
+Desired Final Look:
+Clean, trustworthy legal SaaS dashboard (think Clio/LexisNexis + Indian touch).
+Excellent on mobile (most users in India will use phones).
+Fast, intuitive, scalable for future features (lawyer dashboard, document AI, etc.).
+Output:
+Provide the full updated component code (or key files).
+Explain changes made.
+Suggest any new reusable components (e.g., StatCard, ServicePill).
+If using Shadcn/UI or similar, leverage those.
+Fix everything in one go — make it production-ready and beautiful. Prioritize mobile experience.
