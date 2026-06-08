@@ -62,11 +62,11 @@ if (true) { // serve frontend in both dev and production when dist exists
       _indexHtml = _raw
         .replace(
           /<title>.*?<\/title>/,
-          "<title>LitigaForge AI \u2013 Find Lawyers & Legal Help in Telangana & Andhra Pradesh</title>",
+          "<title>LitigaForge AI \u2014 Global AI Legal Platform | Legal Help Worldwide</title>",
         )
         .replace(
           /<meta name="description"[^>]*>/,
-          '<meta name="description" content="AI-powered legal platform connecting clients with verified advocates in Telangana and Andhra Pradesh." />',
+          '<meta name="description" content="LitigaForge AI provides instant AI-powered legal guidance, document analysis, lawyer matching and free legal aid \u2014 available globally in English, Hindi and Telugu. Trusted across India, USA, UK, UAE and worldwide." />',
         );
       logger.info({ path: _frontendDist }, "Frontend dist found — serving with meta injection");
     } catch (err) {
