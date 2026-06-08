@@ -10,6 +10,18 @@
     <meta name="keywords" content="legal AI India, AI lawyer, court case help, legal document analyzer, free legal aid, vakil AI, LitigaForge" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://litigaforge.com" />
+
+    <!-- Global Language Targeting -->
+    <link rel="alternate" hreflang="en" href="https://litigaforge.com/" />
+    <link rel="alternate" hreflang="en-IN" href="https://litigaforge.com/" />
+    <link rel="alternate" hreflang="en-US" href="https://litigaforge.com/" />
+    <link rel="alternate" hreflang="en-GB" href="https://litigaforge.com/" />
+    <link rel="alternate" hreflang="en-AU" href="https://litigaforge.com/" />
+    <link rel="alternate" hreflang="en-CA" href="https://litigaforge.com/" />
+    <link rel="alternate" hreflang="hi" href="https://litigaforge.com/hi/" />
+    <link rel="alternate" hreflang="te" href="https://litigaforge.com/te/" />
+    <link rel="alternate" hreflang="x-default" href="https://litigaforge.com/" />
+
     <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
 
@@ -71,20 +83,67 @@
       "@context": "https://schema.org",
       "@type": "LegalService",
       "name": "LitigaForge AI",
+      "alternateName": ["LitigaForge", "Litiga AI"],
       "url": "https://litigaforge.com",
-      "description": "AI-powered legal platform providing case management, document analysis, lawyer matching and legal Q&A globally",
-      "areaServed": ["India", "Worldwide"],
-      "availableLanguage": ["English", "Telugu", "Hindi"],
+      "logo": "https://litigaforge.com/logo.png",
+      "description": "LitigaForge AI is a global AI-powered legal platform offering instant legal guidance, document analysis, lawyer matching, court case management and free legal aid — accessible worldwide in multiple languages.",
+      "areaServed": [
+        {"@type": "Country", "name": "India"},
+        {"@type": "Country", "name": "United States"},
+        {"@type": "Country", "name": "United Kingdom"},
+        {"@type": "Country", "name": "Australia"},
+        {"@type": "Country", "name": "Canada"},
+        {"@type": "Country", "name": "Singapore"},
+        {"@type": "Country", "name": "United Arab Emirates"}
+      ],
+      "availableLanguage": ["English", "Hindi", "Telugu"],
       "serviceType": [
         "Legal Consultation",
-        "Document Analysis",
-        "Lawyer Matching",
-        "Legal Aid"
+        "AI Legal Document Analysis",
+        "Lawyer Matching Platform",
+        "Court Case Management",
+        "Legal Aid Services",
+        "Legal Q&A",
+        "Judgment Research"
       ],
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "LitigaForge AI Services",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "AI Legal Chat",
+              "description": "Real-time AI legal guidance in plain language"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Document Analyzer",
+              "description": "AI-powered legal document review and summarization"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Lawyer Matching",
+              "description": "Connect with verified lawyers globally"
+            }
+          }
+        ]
+      },
       "provider": {
         "@type": "Organization",
         "name": "LitigaForge AI",
-        "url": "https://litigaforge.com"
+        "url": "https://litigaforge.com",
+        "sameAs": [
+          "https://github.com/arif806-cyber",
+          "https://litigaforge.replit.app"
+        ]
       },
       "priceRange": "Free – ₹2,499/month",
       "address": {
