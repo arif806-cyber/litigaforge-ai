@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth, TIER_LABELS } from "@/lib/auth-context";
+import { getCountryFromPath, buildCountryUrl } from "@/lib/country";
 import { CheckCircle2, Zap, Crown, Star, Loader2, AlertTriangle } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
@@ -16,6 +17,13 @@ interface Plan {
   cases_per_month: number;
   ai_label: string;
   features: string[];
+}
+
+interface StripePlan {
+  tier: string;
+  priceId: string;
+  currency: string;
+  unitAmount: number;
 }
 
 const TIER_ICONS: Record<string, React.ElementType> = {
@@ -38,11 +46,60 @@ export default function Subscription() {
   const [error, setError] = useState<string | null>(null);
   const [razorpayError, setRazorpayError] = useState<string | null>(null);
 
+  const country = getCountryFromPath();
+  const isIndia = !country || country === "in";
+
   const { data: plans, isLoading } = useQuery<Plan[]>({
     queryKey: ["subscription-plans"],
     queryFn: () => apiFetch("/subscription/plans"),
     staleTime: 300000,
   });
+
+  // International (non-India) pricing via Stripe.
+  const { data: stripeData } = useQuery<{ currency: string; plans: StripePlan[] }>({
+    queryKey: ["stripe-plans", country],
+    enabled: !isIndia,
+    staleTime: 300000,
+    queryFn: async () => {
+      const res = await fetch(`/api/stripe/plans?country=${country}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load plans");
+      return res.json();
+    },
+  });
+
+  // After returning from a Stripe Checkout, confirm the subscription + tier.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get("stripe");
+    if (flag === "success") {
+      (async () => {
+        try {
+          const res = await fetch(`/api/stripe/reconcile`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data?.tier) {
+            await refreshUser();
+            queryClient.invalidateQueries({ queryKey: ["health"] });
+            setSuccess(TIER_LABELS[data.tier] ?? data.tier);
+          } else {
+            setError("We couldn't confirm your subscription yet. Please refresh in a moment.");
+          }
+        } catch {
+          setError("We couldn't confirm your subscription. Please contact support.");
+        } finally {
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+      })();
+    } else if (flag === "cancel") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadRazorpayScript = () => new Promise<void>((resolve, reject) => {
     if (document.getElementById("razorpay-script")) { resolve(); return; }
@@ -70,7 +127,7 @@ export default function Subscription() {
       }),
   });
 
-  const handleUpgrade = async (tier: string) => {
+  const handleRazorpayUpgrade = async (tier: string) => {
     setUpgrading(tier);
     setSuccess(null);
     setError(null);
@@ -127,6 +184,78 @@ export default function Subscription() {
       setError(e.message || "Failed to start payment. Please try again.");
       setUpgrading(null);
     }
+  };
+
+  const handleStripeUpgrade = async (tier: string) => {
+    setUpgrading(tier);
+    setSuccess(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/stripe/checkout`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier, country }),
+      });
+      if (res.status === 401) {
+        window.location.href = buildCountryUrl(country ?? "in", "login");
+        return;
+      }
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Failed to start checkout.");
+      }
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("Checkout session could not be created.");
+      }
+    } catch (e: any) {
+      setError(e.message || "Failed to start checkout. Please try again.");
+      setUpgrading(null);
+    }
+  };
+
+  const handleUpgrade = (tier: string) => {
+    if (tier !== "professional" && tier !== "advocate_pro") return;
+    if (isIndia) {
+      void handleRazorpayUpgrade(tier);
+    } else {
+      void handleStripeUpgrade(tier);
+    }
+  };
+
+  const stripePlanFor = (tier: string): StripePlan | undefined =>
+    stripeData?.plans.find((p) => p.tier === tier);
+
+  const renderPrice = (plan: Plan) => {
+    if (plan.price_inr === 0) {
+      return <span className="text-4xl font-bold text-foreground">Free</span>;
+    }
+    if (isIndia) {
+      return (
+        <>
+          <span className="text-4xl font-bold text-foreground tracking-tight">₹{plan.price_inr.toLocaleString("en-IN")}</span>
+          <span className="text-base text-muted-foreground font-medium mb-1.5">/mo</span>
+        </>
+      );
+    }
+    const sp = stripePlanFor(plan.id);
+    if (!sp) {
+      return <span className="text-2xl font-bold text-muted-foreground">—</span>;
+    }
+    const formatted = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: sp.currency.toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(sp.unitAmount / 100);
+    return (
+      <>
+        <span className="text-4xl font-bold text-foreground tracking-tight">{formatted}</span>
+        <span className="text-base text-muted-foreground font-medium mb-1.5">/mo</span>
+      </>
+    );
   };
 
   const currentTier = user?.subscription_tier ?? "free";
@@ -262,14 +391,7 @@ export default function Subscription() {
                     </div>
                     
                     <div className="mb-2 flex items-end gap-1.5">
-                      {plan.price_inr === 0 ? (
-                        <span className="text-4xl font-bold text-foreground">Free</span>
-                      ) : (
-                        <>
-                          <span className="text-4xl font-bold text-foreground tracking-tight">₹{plan.price_inr.toLocaleString("en-IN")}</span>
-                          <span className="text-base text-muted-foreground font-medium mb-1.5">/mo</span>
-                        </>
-                      )}
+                      {renderPrice(plan)}
                     </div>
                     <p className="text-sm font-medium text-foreground/70 bg-background/50 inline-block px-3 py-1 rounded-lg border border-border/50">
                       {plan.cases_per_month === -1 ? "Unlimited cases" : `${plan.cases_per_month} cases included`}
@@ -308,7 +430,9 @@ export default function Subscription() {
 
                   {plan.price_inr > 0 && (
                     <p className="text-xs text-muted-foreground text-center mt-3 font-medium">
-                      Powered by Razorpay. Your payment is secure and encrypted.
+                      {isIndia
+                        ? "Powered by Razorpay. Your payment is secure and encrypted."
+                        : "Powered by Stripe. Your payment is secure and encrypted."}
                     </p>
                   )}
                 </motion.div>

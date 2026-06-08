@@ -1,1 +1,2 @@
 - [LitigaForge country localization](litigaforge-country-localization.md) — per-country pages key off URL path prefix; live UI is built dist served by Node api-server (rebuild+restart to see changes); i18n covers nav/landing only by design.
+- [Stripe + stripe-replit-sync on Replit](stripe-replit-integration.md) — esbuild must externalize the lib (migrations silently skip), connector secret field is `secret` not `secret_key`, seed via code_execution.
