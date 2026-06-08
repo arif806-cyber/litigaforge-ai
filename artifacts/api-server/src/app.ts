@@ -33,6 +33,17 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// ── Explicit verification / well-known files ──────────────────────────────
+// These must be served before any bot-detection or SPA fallback logic so
+// that crawlers requesting them never receive HTML by mistake.
+app.get("/BingSiteAuth.xml", (_req, res) => {
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send(
+    '<?xml version="1.0"?>\n<users>\n  <user>1CB9D2C4A5C0F3AA292F4831C19291EE</user>\n</users>\n'
+  );
+});
+
 // ── Frontend serving (production only) ───────────────────────────────────
 // Node.js injects the correct meta tags so the CDN/static layer cannot
 // override them. Only active when NODE_ENV=production and dist exists.
@@ -98,10 +109,13 @@ if (true) { // serve frontend in both dev and production when dist exists
 
       // SPA fallback: any path not under /api or /litigaforge returns the
       // React app so client-side routing works (/ask, /login, /forge, etc.)
+      // Paths with a file extension (e.g. .xml, .txt, .json) are skipped —
+      // they are static assets and should 404 rather than receive bot HTML.
       app.get("/{*splat}", (req, res, next) => {
         if (
           req.path.startsWith("/api") ||
-          req.path.startsWith("/litigaforge")
+          req.path.startsWith("/litigaforge") ||
+          /\.[a-zA-Z0-9]+$/.test(req.path)
         ) {
           return next();
         }
