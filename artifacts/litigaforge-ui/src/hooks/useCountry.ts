@@ -78,7 +78,13 @@ export function useCountry() {
       window.location.search +
       window.location.hash;
     window.history.pushState(null, "", url);
+    // lf-country-change: CountryGate updates its `country` state → WouterRouter
+    // base changes so the correct country prefix is stripped.
     window.dispatchEvent(new Event("lf-country-change"));
+    // popstate: wouter's browser-location hook subscribes to this event and
+    // re-reads window.location.pathname. pushState alone doesn't fire popstate,
+    // so without this dispatch wouter retains the stale path and renders a 404.
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   return {
