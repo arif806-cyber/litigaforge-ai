@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 
-const SITE_URL = "https://litiga-forge-ai.replit.app";
-const DEFAULT_OG_IMAGE = `${SITE_URL}/opengraph.jpg`;
+const SITE_URL = "https://litigaforge.com";
+const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
 
 const DEFAULT_KEYWORDS =
   "lawyer in Hyderabad, advocate Telangana, legal help Andhra Pradesh, find lawyer online India, legal AI, case filing help, free legal advice India, eCourts India, NALSA free legal aid, document analyzer";

@@ -1,0 +1,88 @@
+ I need to fix the SEO and Google indexing issues 
+for LitigaForge (litigaforge.com). The site is 
+built with React 19 + Vite + FastAPI backend. 
+
+Currently Google cannot index the site because 
+it's a client-side rendered SPA. Fix the 
+following completely:
+
+1. VITE SSR / PRERENDERING
+- Configure vite-plugin-prerender or 
+  vite-ssg to pre-render these routes to 
+  static HTML:
+  / (homepage)
+  /about
+  /services
+  /contact
+  /pricing
+  /blog
+
+2. SITEMAP.XML
+- Auto-generate /sitemap.xml using 
+  vite-plugin-sitemap
+- Include all above routes
+- Set base URL as https://litigaforge.com
+- Set changefreq: weekly, priority: 1.0 
+  for homepage, 0.8 for others
+- Update sitemap automatically on build
+
+3. ROBOTS.TXT
+- Create public/robots.txt with:
+  User-agent: *
+  Allow: /
+  Sitemap: https://litigaforge.com/sitemap.xml
+  
+  Also allow these AI crawlers:
+  User-agent: GPTBot
+  Allow: /
+  User-agent: Claude-Web
+  Allow: /
+  User-agent: PerplexityBot
+  Allow: /
+
+4. LLMs.TXT
+- Create public/llms.txt for AI crawler 
+  indexing with:
+  - Platform name: LitigaForge AI
+  - Description of what we do
+  - Key pages and their purpose
+  - Target countries: India, USA, UK, UAE, 
+    Germany, Australia, Canada, Singapore
+
+5. GOOGLE SEARCH CONSOLE META TAG
+- Add this to index.html <head>:
+  <meta name="google-site-verification" 
+  content="PLACEHOLDER_REPLACE_LATER" />
+  (I will replace the content value after 
+  verifying in Google Search Console)
+
+6. STRUCTURED DATA (Schema.org)
+- Add JSON-LD schema to homepage for:
+  - Organization schema with name, url, 
+    logo, description
+  - SoftwareApplication schema for the 
+    AI legal platform
+  - FAQPage schema with 5 common legal 
+    questions
+
+7. OPEN GRAPH & TWITTER CARDS
+- Ensure all pages have og:title, 
+  og:description, og:image, og:url
+- Add twitter:card, twitter:title, 
+  twitter:description tags
+- Use https://litigaforge.com/og-image.png 
+  as default OG image
+
+8. CANONICAL TAGS
+- Ensure every page has a canonical tag 
+  pointing to its own URL
+- No duplicate content between http and 
+  https versions
+
+After making all changes:
+- Show me the updated vite.config.js
+- Show me the final robots.txt
+- Show me the final sitemap.xml output
+- Show me the llms.txt
+- Confirm pre-rendering is working with 
+  a build test

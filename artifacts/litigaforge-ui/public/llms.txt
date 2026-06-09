@@ -1,19 +1,66 @@
 # LitigaForge AI
 
-> LitigaForge AI is a global AI-powered platform providing expert legal guidance, document analysis, lawyer matching and free legal aid worldwide — available in English, Hindi, Telugu.
+> LitigaForge AI is a global AI-powered legal platform that connects clients with verified lawyers, delivers instant legal guidance, analyzes legal documents, and provides free legal aid — available 24/7 in English, Hindi, and Telugu.
 
-## Core Services
-- [Legal AI Chat](/ai-legal-chat)
-- [Document Analyzer](/document-analyzer)
-- [Legal Q&A](/legal-qa)
-- [Lawyer Matching](/match-proposals)
-- [Judgment Finder](/judgments)
-- [Free Legal Aid](/free-legal-aid)
-- [Post a Case](/post-case)
+## Platform Overview
 
-## Coverage
-India (Telangana, AP, Maharashtra, Delhi),
-USA, UK, UAE, Australia, Canada, Singapore
+LitigaForge AI makes legal help accessible to everyone. Using a multi-AI engine (Claude Sonnet, Gemini 2.5 Flash, GPT-5), the platform provides immediate, accurate legal answers, intelligently matches clients with the right verified advocate, and handles the full lifecycle of a legal case — from initial question to resolved matter.
+
+## Core Features
+
+- [Legal Q&A with AI](/ask): Ask any legal question and receive an instant, AI-generated plain-language answer. Questions and answers are stored in a community knowledge base.
+- [Document Analyzer](/review): Paste or upload any legal document — contract, FIR, court notice, employment letter — to get an AI risk score, missing-clause detection, and actionable recommendations.
+- [AI Lawyer Matching](/lawyers): Post case requirements and receive AI-matched verified advocates scored 0–100 with detailed explanations of why each lawyer fits.
+- [Judgment Finder](/judgments): Search Indian court judgments by keyword, court name, or CNR number. Returns up to 5 relevant precedents with IndianKanoon links.
+- [AI Legal Chat](/legal-chat): Interactive legal drafting assistant with templates for contracts, notices, affidavits, and petitions. Powered by Claude Sonnet.
+- [Free Legal Documents](/free-documents): 10+ downloadable AI-powered document templates — rental agreements, legal notices, affidavits, employment letters — generated free of charge.
+- [Free Legal Aid Finder](/legal-aid): NALSA eligibility wizard + contact details for all TSLSA and DLSA offices across Telangana and Andhra Pradesh. Toll-free helplines included.
+- [Subscription Plans](/subscription): Free tier (5 AI queries/month), Professional ₹999/month (unlimited queries), Advocate Pro ₹2,499/month (full practice management).
+
+## Target Users
+
+- Individuals seeking legal guidance in India and globally
+- Small businesses needing contract review and legal consultation
+- Verified advocates managing client cases, documents, and hearings
+- NGOs and legal aid organizations
+- International users with India-related legal matters (NRIs, foreign companies)
+
+## Geographic Coverage
+
+Primary: India — Telangana, Andhra Pradesh, Maharashtra, Delhi, Karnataka, Tamil Nadu  
+International: United States, United Kingdom, United Arab Emirates, Australia, Canada, Singapore, Germany
 
 ## Languages
+
 English, Telugu, Hindi
+
+## Key Pages
+
+- Homepage: https://litigaforge.com/
+- Legal Q&A: https://litigaforge.com/ask
+- Document Analyzer: https://litigaforge.com/review
+- Lawyer Directory: https://litigaforge.com/lawyers
+- Judgment Finder: https://litigaforge.com/judgments
+- Free Legal Aid: https://litigaforge.com/legal-aid
+- Free Documents: https://litigaforge.com/free-documents
+- Pricing: https://litigaforge.com/subscription
+- Blog: https://litigaforge.com/blog
+- Privacy Policy: https://litigaforge.com/privacy
+- Terms of Service: https://litigaforge.com/terms
+
+## Technology
+
+- AI Models: Anthropic Claude Sonnet, Google Gemini 2.5 Flash, OpenAI GPT-5 (cascading fallback)
+- Backend: Python 3.12 / FastAPI
+- Frontend: React 19 / Vite / Tailwind CSS
+- Database: PostgreSQL
+- Auth: JWT (30-day tokens), bcrypt password hashing
+
+## Legal Disclaimer
+
+LitigaForge AI provides legal information for educational purposes. It is not a substitute for advice from a qualified advocate. For serious legal matters, users are encouraged to consult a verified lawyer via the platform's matching service.
+
+## Contact
+
+Website: https://litigaforge.com  
+Platform type: AI-powered legal technology (LegalTech / LawTech)

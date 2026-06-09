@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { SEOHelmet } from "@/components/SEOHelmet";
 import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Link } from "wouter";
@@ -1189,6 +1190,23 @@ function Footer() {
 export default function LandingPage() {
   return (
     <div className="dark" style={{ minHeight: "100vh", background: "#060d1a", color: "#e2e8f0", fontFamily: "Inter, sans-serif" }}>
+      <SEOHelmet
+        title="LitigaForge AI — AI Legal Platform for India & Global"
+        description="AI-powered legal platform. Find verified lawyers, analyze documents, search judgments, get instant legal Q&A and free legal aid — in English, Hindi & Telugu. Free to start."
+        canonical="/"
+        keywords="legal AI India, find lawyer Hyderabad, AI lawyer matching, legal document analyzer, free legal aid India, judgment finder, vakil AI, LitigaForge"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "LitigaForge AI",
+          "url": "https://litigaforge.com",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://litigaforge.com/ask?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }}
+      />
       <Navbar />
       <Hero />
       <ProblemSection />
