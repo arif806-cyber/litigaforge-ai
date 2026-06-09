@@ -1,4 +1,28 @@
-# LitigaForge AI - Allow all AI crawlers
+# LitigaForge AI — robots.txt
+# https://litigaforge.com
+
+# Allow all bots by default
+User-agent: *
+Allow: /
+Disallow: /client-dashboard
+Disallow: /lawyer-dashboard
+Disallow: /admin
+Disallow: /my-cases
+Disallow: /matches
+Disallow: /documents
+Disallow: /post-case
+Disallow: /settings
+Disallow: /legal-chat
+
+# Google
+User-agent: Googlebot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+
+# Bing
+User-agent: Bingbot
+Allow: /
 
 # OpenAI / ChatGPT
 User-agent: GPTBot
@@ -11,17 +35,11 @@ Allow: /
 # Anthropic / Claude
 User-agent: ClaudeBot
 Allow: /
+User-agent: Claude-Web
+Allow: /
 User-agent: Claude-User
 Allow: /
-User-agent: Claude-SearchBot
-Allow: /
 User-agent: anthropic-ai
-Allow: /
-
-# Google / Gemini
-User-agent: Googlebot
-Allow: /
-User-agent: Google-Extended
 Allow: /
 
 # Perplexity
@@ -45,12 +63,7 @@ User-agent: Amazonbot
 Allow: /
 
 # Microsoft Copilot
-User-agent: Bingbot
-Allow: /
-
-# Block nothing
-User-agent: *
+User-agent: msnbot
 Allow: /
 
 Sitemap: https://litigaforge.com/sitemap.xml
-Sitemap: https://litigaforge.com/llms.txt
