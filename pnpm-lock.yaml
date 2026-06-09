@@ -240,9 +240,21 @@ importers:
 
   artifacts/litigaforge-pitch:
     dependencies:
+      clsx:
+        specifier: 'catalog:'
+        version: 2.1.1
+      framer-motion:
+        specifier: 'catalog:'
+        version: 12.35.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.545.0(react@19.1.0)
       recharts:
         specifier: ^3.8.1
         version: 3.8.1(@types/react@19.2.14)(react-dom@19.1.0(react@19.1.0))(react-is@18.3.1)(react@19.1.0)(redux@5.0.1)
+      tailwind-merge:
+        specifier: 'catalog:'
+        version: 3.5.0
     devDependencies:
       '@replit/vite-plugin-cartographer':
         specifier: 'catalog:'

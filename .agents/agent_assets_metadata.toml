@@ -1,5 +1,16 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "7un_BSfk-CI4WYroIb8t2"
+uri = "file://artifacts/litigaforge-pitch/public/images/doc-analysis.png"
+type = "image"
+title = "AI Legal Analysis UI"
+
+[[generated]]
+id = "oW_siSjPXjJhwbc36cuNW"
+uri = "file://artifacts/litigaforge-pitch/public/images/ai-network.png"
+type = "image"
+title = "AI Matching Network"
 
 [[outputs]]
 id = "uxPDthndgMTBnn7dqNnmK"

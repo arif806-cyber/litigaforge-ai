@@ -1,48 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;600;700&display=swap');
 @import "tailwindcss";
 
-@theme inline {
-  --color-primary: var(--slide-primary);
-  --color-accent: var(--slide-accent);
-  --color-bg: var(--slide-bg);
-  --color-text: var(--slide-text);
-  --color-muted: var(--slide-muted);
-  --font-display: var(--font-display-family);
-  --font-body: var(--font-body-family);
+@theme {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --color-navy: #1a2744;
+  --color-navy-dark: #0f172a;
+  --color-amber: #f59e0b;
+  --color-gold: #fbbf24;
+  
+  --color-brand-primary: var(--color-navy);
+  --color-brand-accent: var(--color-amber);
 }
 
 :root {
-  --slide-primary: #C8933F;
-  --slide-accent: #C8933F;
-  --slide-bg: #0F1923;
-  --slide-text: #F5F0E8;
-  --slide-muted: #7A7A7A;
-  --font-display-family: "IBM Plex Sans", system-ui, sans-serif;
-  --font-body-family: "IBM Plex Sans", system-ui, sans-serif;
-  color-scheme: dark;
-}
-
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
+  font-family: var(--font-display);
+  background-color: var(--color-navy-dark);
+  color: white;
 }
 
 body {
-  background: var(--slide-bg);
-  color: var(--slide-text);
-  font-family: var(--font-body-family);
-}
-
-.slide {
-  width: 100vw;
-  height: 100vh;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
-}
-
-.slide-viewer {
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
 }

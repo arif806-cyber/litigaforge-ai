@@ -28,6 +28,10 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "framer-motion": "catalog:",
+    "lucide-react": "catalog:",
+    "clsx": "catalog:",
+    "tailwind-merge": "catalog:"
   }
 }
