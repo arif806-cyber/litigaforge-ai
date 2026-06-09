@@ -19,6 +19,14 @@ export default function VideoTemplate() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#0f172a] text-white">
+      {/* Background Music */}
+      <audio
+        src={`${import.meta.env.BASE_URL}music.mp3`}
+        autoPlay
+        loop
+        style={{ display: 'none' }}
+      />
+
       {/* Background Video */}
       <video
         src={`${import.meta.env.BASE_URL}videos/hero-bg.mp4`}

@@ -23,3 +23,9 @@ id = "U_PtzD2vl_I83EcQmmIt0"
 uri = "file://.local/outputs/LitigaForge-Compliance-Report.zip"
 type = "unspecified"
 title = "LitigaForge AI — Data Privacy & Security Compliance Report"
+
+[[outputs]]
+id = "euQMo-OHawKm6TgR6-8qY"
+uri = "file://attached_assets/generated_audio/music_litigaforge_bg_music.mp3"
+type = "audio"
+title = "litigaforge_bg_music"
