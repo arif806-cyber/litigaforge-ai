@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVideoPlayer } from '@/lib/video/hooks';
 import { Scene1 } from './video_scenes/Scene1';
@@ -18,42 +18,23 @@ const SCENE_DURATIONS = {
 export default function VideoTemplate() {
   const { currentScene } = useVideoPlayer({ durations: SCENE_DURATIONS });
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [muted, setMuted] = useState(true);
-  const [started, setStarted] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
 
-  useEffect(() => {
+  const toggleSound = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (!started) {
-      audio.play().then(() => {
-        setStarted(true);
-      }).catch(() => {});
-    }
-  }, [started]);
-
-  const toggleMute = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (!started) {
-      audio.play().then(() => {
-        audio.muted = false;
-        setMuted(false);
-        setStarted(true);
-      }).catch(() => {});
+    if (!soundOn) {
+      audio.volume = 0.7;
+      audio.play().then(() => setSoundOn(true)).catch(() => {});
     } else {
-      audio.muted = !audio.muted;
-      setMuted(audio.muted);
+      audio.pause();
+      setSoundOn(false);
     }
   };
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#0f172a] text-white">
-      <audio
-        ref={audioRef}
-        src={`${import.meta.env.BASE_URL}music.mp3`}
-        loop
-        muted
-      />
+      <audio ref={audioRef} src={`${import.meta.env.BASE_URL}music.mp3`} loop />
 
       {/* Background Video */}
       <video
@@ -94,27 +75,19 @@ export default function VideoTemplate() {
         {currentScene === 4 && <Scene5 key="outro" />}
       </AnimatePresence>
 
-      {/* Mute/Unmute button */}
+      {/* Sound toggle button */}
       <button
-        onClick={toggleMute}
-        className="absolute bottom-5 right-5 z-50 flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold transition-all"
+        onClick={toggleSound}
+        className="absolute bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold"
         style={{
-          background: muted ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.9)',
-          border: '1px solid rgba(245,158,11,0.5)',
-          color: muted ? '#f59e0b' : '#0f172a',
-          backdropFilter: 'blur(8px)',
+          background: soundOn ? 'rgba(245,158,11,0.9)' : 'rgba(15,23,42,0.8)',
+          border: '1.5px solid rgba(245,158,11,0.6)',
+          color: soundOn ? '#0f172a' : '#f59e0b',
+          backdropFilter: 'blur(10px)',
+          cursor: 'pointer',
         }}
       >
-        {muted ? (
-          <>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
-            Tap for sound
-          </>
-        ) : (
+        {soundOn ? (
           <>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -122,6 +95,15 @@ export default function VideoTemplate() {
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
             </svg>
             Sound on
+          </>
+        ) : (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+            Tap for sound
           </>
         )}
       </button>
