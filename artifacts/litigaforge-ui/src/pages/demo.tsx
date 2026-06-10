@@ -329,8 +329,8 @@ export default function Demo() {
 
       {/* ── Scene 1: Hero ── */}
       <section className={`d-scene${scene === 0 ? " d-active" : ""}`}>
-        <div className="d-s1-item"><div className="d-badge"><span className="d-badge-dot" />Legal AI · Telangana &amp; AP</div></div>
-        <h1 className="d-h1 d-s1-item"><span className="l1">Legal Intelligence</span><span className="l2">Built for Telangana &amp; AP</span></h1>
+        <div className="d-s1-item"><div className="d-badge"><span className="d-badge-dot" />Legal AI · Worldwide</div></div>
+        <h1 className="d-h1 d-s1-item"><span className="l1">Legal Intelligence</span><span className="l2">Built for Your Courts</span></h1>
         <p className="d-sub d-s1-item">Post your case. Get <strong>AI-matched</strong> with a verified advocate in minutes.<br />Local expertise. Faster legal help. Built for your courts.</p>
         <div className="d-btns d-s1-item">
           <button className="d-btn-p">Get Started Free</button>
@@ -438,7 +438,7 @@ export default function Demo() {
       {/* ── Scene 5: Final CTA ── */}
       <section className={`d-scene${scene === 4 ? " d-active" : ""}`}>
         <div className="d-f5-item"><div className="d-final-badge">✦ &nbsp;Start free today</div></div>
-        <h2 className="d-final-h d-f5-item"><span className="l1">Your advocate is waiting.</span><span className="l2">Built for Telangana &amp; AP Courts</span></h2>
+        <h2 className="d-final-h d-f5-item"><span className="l1">Your advocate is waiting.</span><span className="l2">Built for Your Courts</span></h2>
         <p className="d-sub d-f5-item" style={{ maxWidth: 480 }}>Post your case. Get AI-matched in minutes.<br /><strong style={{ color: "#10b981" }}>First match consultation is free — no credit card required.</strong></p>
         <div className="d-btns d-f5-item">
           <button className="d-btn-p" onClick={() => window.location.href = "/register"}>Get Started Free →</button>

@@ -11,10 +11,10 @@ LitigaForge AI makes legal help accessible to everyone. Using a multi-AI engine 
 - [Legal Q&A with AI](/ask): Ask any legal question and receive an instant, AI-generated plain-language answer. Questions and answers are stored in a community knowledge base.
 - [Document Analyzer](/review): Paste or upload any legal document — contract, FIR, court notice, employment letter — to get an AI risk score, missing-clause detection, and actionable recommendations.
 - [AI Lawyer Matching](/lawyers): Post case requirements and receive AI-matched verified advocates scored 0–100 with detailed explanations of why each lawyer fits.
-- [Judgment Finder](/judgments): Search Indian court judgments by keyword, court name, or CNR number. Returns up to 5 relevant precedents with IndianKanoon links.
+- [Judgment Finder](/judgments): Search court judgments and case law by keyword, court name, or case number. Returns up to 5 relevant precedents with citation links for the user's jurisdiction.
 - [AI Legal Chat](/legal-chat): Interactive legal drafting assistant with templates for contracts, notices, affidavits, and petitions. Powered by Claude Sonnet.
 - [Free Legal Documents](/free-documents): 10+ downloadable AI-powered document templates — rental agreements, legal notices, affidavits, employment letters — generated free of charge.
-- [Free Legal Aid Finder](/legal-aid): NALSA eligibility wizard + contact details for all TSLSA and DLSA offices across Telangana and Andhra Pradesh. Toll-free helplines included.
+- [Free Legal Aid Finder](/legal-aid): Eligibility wizard + contact details and toll-free helplines for free legal aid services in the user's country.
 - [Subscription Plans](/subscription): Free tier (5 AI queries/month), Professional ₹999/month (unlimited queries), Advocate Pro ₹2,499/month (full practice management).
 
 ## Target Users
@@ -27,8 +27,7 @@ LitigaForge AI makes legal help accessible to everyone. Using a multi-AI engine 
 
 ## Geographic Coverage
 
-Primary: India — Telangana, Andhra Pradesh, Maharashtra, Delhi, Karnataka, Tamil Nadu  
-International: United States, United Kingdom, United Arab Emirates, Australia, Canada, Singapore, Germany
+Worldwide. Country-specific legal content for: India, United States, United Kingdom, United Arab Emirates, Australia, Canada, Singapore, and Germany.
 
 ## Languages
 

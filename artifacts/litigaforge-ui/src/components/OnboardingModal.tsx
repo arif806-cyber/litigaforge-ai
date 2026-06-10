@@ -22,7 +22,7 @@ const CLIENT_STEPS = [
   {
     title: "AI Legal Chat",
     subtitle: "AI Legal Strategy Engine",
-    description: "Describe your situation in plain language. Our AI synthesises a step-by-step legal roadmap — statutes, arguments, and court procedures — tailored for Telangana & AP.",
+    description: "Describe your situation in plain language. Our AI synthesises a step-by-step legal roadmap — statutes, arguments, and court procedures — tailored to your jurisdiction.",
     icon: Hammer,
     color: "bg-blue-100 text-blue-700",
     iconBg: "bg-blue-50",

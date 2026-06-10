@@ -51,3 +51,12 @@ description: How per-country content/localization works for post-login pages, an
 # asyncpg placeholder numbering
 
 - When building dynamic WHERE clauses with asyncpg, the first positional param must be `$1` (`len(params)+1`), not `$2`. A latent off-by-one only surfaces once a filter is always applied.
+
+# Globalization scope: what to strip vs. KEEP
+
+- The product is global (IN, US, GB, AE, AU, CA, SG, DE). On **global-facing/default surfaces** (`index.html`, `public/index-static.html`, `src/pages/landing.tsx` `/landing`, SEOHelmet defaults) strip India-only branding: "Telangana & Andhra Pradesh", Hyderabad, IPC/FIR/RERA/MeeSeva/MACT, ₹, State-of-TG examples, `en_IN` as default `og:locale` (use `en_US`).
+- **Deliberately KEEP — do NOT "globalize" these:** (1) India deep-SEO assets — `src/pages/city.tsx`, `src/data/articles.ts`, the "Find Lawyers by City" nav + city links, and city URLs in `sitemap.xml`/`index-static.html`; (2) INR/Razorpay pricing in `subscription.tsx`/`PaymentModal.tsx` + ₹ in JSON-LD offers (pricing change is deferred — changing currency in structured data before the pricing page creates a worse mismatch); (3) the multi-region `hreflang` block in `index.html` including `en-IN` (legit multi-region targeting); (4) `en-IN` `toLocaleDateString` in blog (date format only); (5) "English, Hindi & Telugu" language mentions (factual supported langs).
+- **Legit, not a leak:** enumerations like "India, the US, UK, UAE and beyond" are genuine multi-country claims — leave them.
+- **Verification gotcha:** a leak sweep must include `\bIndia\b`, not just Telangana/Andhra/Hyderabad/₹/IPC — a headline "Built Different. For India." survived a narrow sweep once. After editing, rebuild dist + restart `artifacts/api-server: API Server`, then `curl localhost:80/` and grep for `telangana|andhra|en_IN|For India\.` (expect 0) and validate JSON-LD blocks parse.
+
+**Why:** the goal is targeted leak-fixing on global surfaces while preserving India geo-SEO value and deferred pricing — over-globalizing destroys SEO assets or desyncs structured data from the live pricing page.

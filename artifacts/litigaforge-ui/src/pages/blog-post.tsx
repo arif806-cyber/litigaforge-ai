@@ -50,7 +50,7 @@ export default function BlogPost() {
             "url": siteUrl,
           },
           "keywords": article.keywords.join(", "),
-          "inLanguage": "en-IN",
+          "inLanguage": "en",
           "about": {
             "@type": "Thing",
             "name": "Indian Law",
@@ -149,7 +149,7 @@ export default function BlogPost() {
           <div className="mt-10 bg-gradient-to-br from-primary/8 to-primary/3 border border-primary/20 rounded-2xl p-6">
             <h3 className="font-bold text-foreground mb-2">Need Legal Help?</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Post your case on LitigaForge AI and get matched with verified advocates in Telangana &amp; Andhra Pradesh. Free to post, no commitment.
+              Post your case on LitigaForge AI and get matched with verified lawyers in your area. Free to post, no commitment.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link href="/post-case">

@@ -80,14 +80,14 @@ export default defineConfig({
         name: "LitigaForge AI",
         short_name: "LitigaForge",
         description:
-          "AI Legal Platform for Telangana & AP — find verified lawyers, analyze documents, search judgments, get free legal aid.",
+          "Global AI legal platform — find verified lawyers, analyze documents, search case law, and get free legal aid worldwide.",
         theme_color: "#1a2744",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait-primary",
         start_url: "/",
         scope: "/",
-        lang: "en-IN",
+        lang: "en",
         categories: ["legal", "productivity", "utilities"],
         icons: [
           {
@@ -119,7 +119,7 @@ export default defineConfig({
             name: "Find a Lawyer",
             short_name: "Lawyers",
             url: "/lawyers",
-            description: "Browse verified advocates in Telangana & AP",
+            description: "Browse verified lawyers worldwide",
           },
         ],
       },

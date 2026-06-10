@@ -13,7 +13,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useCountry } from "@/hooks/useCountry";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
-  IN: { badge: "Telangana & AP Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates, analyze documents, search TG & AP judgments, and get AI legal strategy — all in one platform.", trust: "Trusted by advocates across Telangana & Andhra Pradesh" },
+  IN: { badge: "India Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates, analyze documents, search Indian judgments, and get AI legal strategy — all in one platform.", trust: "Trusted by advocates across India" },
   DE: { badge: "Deutschland Legal AI", heading: "Rechtsintelligenz\nfür Ihre Gerichte.", sub: "Verbinden Sie sich mit verifizierten Anwälten, analysieren Sie Dokumente und entwickeln Sie KI-gestützte Rechtsstrategien.", trust: "Trusted by legal professionals across Germany" },
   AE: { badge: "UAE Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates across the UAE, analyze contracts, and get AI-powered legal strategy — Arabic & English.", trust: "Trusted by legal professionals across the UAE" },
   US: { badge: "US Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified attorneys, analyze contracts, research case law, and get AI legal strategy — all in one platform.", trust: "Trusted by legal professionals across the United States" },

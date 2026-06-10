@@ -119,7 +119,7 @@ export default function Blog() {
           <div className="bg-gradient-to-br from-primary/8 to-primary/3 border border-primary/20 rounded-2xl p-8 text-center">
             <h2 className="text-xl font-bold text-foreground mb-2">Need a Lawyer for Your Case?</h2>
             <p className="text-muted-foreground text-sm mb-5">
-              LitigaForge AI matches you with verified advocates in Telangana &amp; AP — free to post, no commitment.
+              LitigaForge AI matches you with verified lawyers in your area — free to post, no commitment.
             </p>
             <Link href="/post-case">
               <button className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors">

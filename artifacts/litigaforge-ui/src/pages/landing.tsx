@@ -185,9 +185,9 @@ function MatchCard() {
               <span className="font-bold text-white text-[15px]">Adv. Priya Sharma</span>
               <BadgeCheck className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#34d399" }} />
             </div>
-            <p className="text-xs mb-2" style={{ color: "#64748b" }}>Criminal Law · Hyderabad · 12 yrs</p>
+            <p className="text-xs mb-2" style={{ color: "#64748b" }}>Criminal Defense · 12 yrs exp</p>
             <div className="flex flex-wrap gap-1.5">
-              {["IPC Cases", "Telugu", "Hindi", "English"].map(t => (
+              {["Criminal Defense", "Litigation", "English", "Verified"].map(t => (
                 <span key={t} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
                   style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
                   {t}
@@ -200,7 +200,7 @@ function MatchCard() {
         {/* AI explanation */}
         <div className="rounded-xl p-3.5 mb-4" style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(59,130,246,0.14)" }}>
           <p className="text-xs leading-relaxed" style={{ color: "#93c5fd" }}>
-            <span className="font-semibold">Why matched:</span> Specialises in IPC §420 fraud cases with 94% success rate in Hyderabad district. High client satisfaction in Telugu-speaking cases. Available this week.
+            <span className="font-semibold">Why matched:</span> Specialises in fraud and white-collar cases with a 94% success rate. Consistently high client satisfaction and a strong courtroom record. Available this week.
           </p>
         </div>
 
@@ -217,7 +217,7 @@ function MatchCard() {
               ))}
             </div>
           </div>
-          <span className="text-xs font-semibold" style={{ color: "#60a5fa" }}>₹1,500/hr</span>
+          <span className="text-xs font-semibold" style={{ color: "#60a5fa" }}>$180/hr</span>
         </div>
       </div>
 
@@ -405,7 +405,7 @@ function Hero() {
               </div>
               <div>
                 <p className="text-[10px] font-bold text-white leading-none">Bar Verified</p>
-                <p className="text-[10px]" style={{ color: "#64748b" }}>AP State Bar Council</p>
+                <p className="text-[10px]" style={{ color: "#64748b" }}>Licensed Attorney</p>
               </div>
             </motion.div>
           </div>
@@ -488,7 +488,7 @@ const howSteps = [
     glow: "rgba(59,130,246,0.18)",
     label: "Ask or Upload",
     title: "Ask in Plain Language\nor Upload a Document",
-    desc: "Type your legal question in Telugu or English, paste case facts, or upload a sale deed, FIR, or agreement — no jargon needed.",
+    desc: "Type your legal question in plain language, paste case facts, or upload a contract, notice, or agreement — no jargon needed.",
     chips: ["Text question", "Upload PDF", "Case facts"],
   },
   {
@@ -642,9 +642,9 @@ function HowItWorks() {
 /* ── Card 1 preview: Document risk scan ── */
 function DocIntelPreview() {
   const flags = [
-    { dot: "#ef4444", label: "Encumbrance certificate missing" },
-    { dot: "#f59e0b", label: "POA clause — ambiguous language" },
-    { dot: "#34d399", label: "Registration stamp verified ✓" },
+    { dot: "#ef4444", label: "Termination clause missing" },
+    { dot: "#f59e0b", label: "Liability clause — ambiguous language" },
+    { dot: "#34d399", label: "Signatures & dates verified ✓" },
   ];
   return (
     <div className="rounded-xl p-4 space-y-2.5" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(59,130,246,0.12)" }}>
@@ -653,7 +653,7 @@ function DocIntelPreview() {
           <FileSearch className="w-4 h-4" style={{ color: "#60a5fa" }} />
         </div>
         <div>
-          <p className="text-[12px] font-semibold text-white leading-none">Sale_Deed_Hyderabad.pdf</p>
+          <p className="text-[12px] font-semibold text-white leading-none">Property_Sale_Agreement.pdf</p>
           <p className="text-[10px] mt-0.5" style={{ color: "#475569" }}>14 clauses · AI analysing…</p>
         </div>
         <div className="ml-auto w-2 h-2 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
@@ -680,15 +680,15 @@ function DocIntelPreview() {
 /* ── Card 2 preview: Judgment search results ── */
 function JudgmentPreview() {
   const results = [
-    { case: "Raju v. State of TG", year: "2023", section: "IPC §420", court: "Hyderabad HC" },
-    { case: "Devi v. Rajeshwar", year: "2021", section: "Reg. Act §17", court: "AP HC" },
-    { case: "K. Rao v. APIIC", year: "2019", section: "Land Acq. §24", court: "AP HC" },
+    { case: "Smith v. Harmon", year: "2023", section: "Fraud Act", court: "High Court" },
+    { case: "Doe v. Rivera", year: "2021", section: "Contract §17", court: "Court of Appeal" },
+    { case: "Chen v. CityCorp", year: "2019", section: "Property §24", court: "Supreme Court" },
   ];
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(139,92,246,0.15)" }}>
       <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(139,92,246,0.08)", borderBottom: "1px solid rgba(139,92,246,0.12)" }}>
         <Search className="w-3 h-3 flex-shrink-0" style={{ color: "#a78bfa" }} />
-        <span className="text-[11px] font-medium" style={{ color: "#c4b5fd" }}>fraud Hyderabad property 2021–2024</span>
+        <span className="text-[11px] font-medium" style={{ color: "#c4b5fd" }}>contract fraud · property · 2021–2024</span>
         <div className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>Global</div>
       </div>
       <div className="divide-y divide-white/[0.04]">
@@ -712,16 +712,16 @@ function JudgmentPreview() {
 /* ── Card 3 preview: AI strategy steps ── */
 function StrategyPreview() {
   const steps = [
-    { n: "01", text: "File FIR under IPC §420 & §406", done: true },
-    { n: "02", text: "Seek anticipatory bail order", done: true },
-    { n: "03", text: "File civil suit for ₹18L recovery", done: false },
-    { n: "04", text: "Attach movable property (Order 38)", done: false },
+    { n: "01", text: "File police complaint for fraud", done: true },
+    { n: "02", text: "Request injunction / protective order", done: true },
+    { n: "03", text: "File civil suit for $25K recovery", done: false },
+    { n: "04", text: "Attach assets pending judgment", done: false },
   ];
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(245,158,11,0.15)" }}>
       <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(245,158,11,0.06)", borderBottom: "1px solid rgba(245,158,11,0.1)" }}>
         <Zap className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#fbbf24" }} />
-        <span className="text-[11px] font-bold" style={{ color: "#fbbf24" }}>AI Strategy · Cheating Case · Hyderabad</span>
+        <span className="text-[11px] font-bold" style={{ color: "#fbbf24" }}>AI Strategy · Fraud Recovery Case</span>
         <div className="ml-auto flex items-center gap-1">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[10px]" style={{ color: "#34d399" }}>Live</span>
@@ -759,9 +759,9 @@ function NoticePreview() {
       </div>
       <div className="p-3.5 space-y-2" style={{ fontFamily: "Georgia, serif" }}>
         {[
-          { label: "TO", value: "Mr. Ramesh Kumar, Hyderabad" },
+          { label: "TO", value: "Mr. Daniel Reed" },
           { label: "DATE", value: "29th May 2025" },
-          { label: "RE", value: "Recovery of ₹2,50,000/-" },
+          { label: "RE", value: "Recovery of $25,000" },
         ].map(({ label, value }) => (
           <div key={label} className="flex gap-2">
             <span className="text-[10px] font-bold w-10 flex-shrink-0" style={{ color: "#475569" }}>{label}</span>
@@ -769,12 +769,12 @@ function NoticePreview() {
           </div>
         ))}
         <div className="mt-2 text-[10px] leading-relaxed" style={{ color: "#64748b" }}>
-          Take notice that my client hereby demands repayment of the aforesaid sum within <span style={{ color: "#34d399" }}>15 days</span> from receipt hereof, failing which legal proceedings under the Negotiable Instruments Act…
+          Take notice that my client hereby demands repayment of the aforesaid sum within <span style={{ color: "#34d399" }}>15 days</span> from receipt hereof, failing which we will initiate legal proceedings to recover the amount with costs…
         </div>
       </div>
       <div className="px-3.5 pb-3 flex gap-2">
         <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg" style={{ background: "rgba(52,211,153,0.15)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}>
-          Telugu Version ↓
+          Translate ↓
         </div>
         <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
           Download PDF
@@ -787,10 +787,10 @@ function NoticePreview() {
 /* ── Card 5 preview: Local knowledge base Q&A ── */
 function KnowledgePreview() {
   const rows = [
-    { topic: "Stamp Duty (TG)", value: "6% on property > ₹30L", color: "#f472b6" },
-    { topic: "EC from MeeSeva", value: "₹25 · Ready in 2 hrs", color: "#f472b6" },
-    { topic: "RERA Complaint", value: "AP RERA · Form G", color: "#f472b6" },
-    { topic: "Motor Accident", value: "MACT · 8% annual int.", color: "#f472b6" },
+    { topic: "Tenant Rights", value: "Notice & deposit rules", color: "#f472b6" },
+    { topic: "Contract Law", value: "Breach & remedies", color: "#f472b6" },
+    { topic: "Consumer Disputes", value: "Refunds & warranties", color: "#f472b6" },
+    { topic: "Employment", value: "Wrongful dismissal", color: "#f472b6" },
   ];
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(244,114,182,0.15)" }}>
@@ -809,7 +809,7 @@ function KnowledgePreview() {
       </div>
       <div className="px-3.5 py-2.5 flex items-center gap-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
         <MessageCircle className="w-3 h-3 flex-shrink-0" style={{ color: "#f472b6" }} />
-        <span className="text-[10px] italic" style={{ color: "#475569" }}>Ask anything about law in Telugu, Hindi or English…</span>
+        <span className="text-[10px] italic" style={{ color: "#475569" }}>Ask anything about law in English, Hindi or Telugu…</span>
       </div>
     </div>
   );
@@ -872,7 +872,7 @@ const featureDefs: FeatureDef[] = [
     icon: FileText,
     tag: "Drafting",
     title: "Instant Legal Notice Drafting",
-    desc: "Generate court-ready notices in 60 seconds. Demand letters, vakalatnamas, FIR complaints — bilingual Telugu & English.",
+    desc: "Generate court-ready notices in 60 seconds. Demand letters, legal notices, affidavits — available in multiple languages.",
     href: "/free-documents",
     preview: <NoticePreview />,
   },
@@ -883,7 +883,7 @@ const featureDefs: FeatureDef[] = [
     icon: Globe,
     tag: "Local Knowledge",
     title: "Global Legal Intelligence",
-    desc: "Instant answers on stamp duty, RERA procedures, Motor Vehicles Act, consumer rights — across India, UAE, UK and USA.",
+    desc: "Instant answers on tenancy, contracts, consumer rights, employment and more — across India, the US, UK, UAE and beyond.",
     href: "/ask",
     preview: <KnowledgePreview />,
   },
@@ -1000,7 +1000,7 @@ function Features() {
 const trustPoints = [
   { icon: BadgeCheck, color: "#34d399", title: "Verified Lawyers Only",    desc: "Every advocate is bar-verified, rated by clients, and screened by our team before appearing on the platform." },
   { icon: Brain,      color: "#60a5fa", title: "Triple AI Intelligence",   desc: "Claude Sonnet + Gemini 2.5 Flash + GPT-5 work in parallel and cascade to guarantee the best legal insights." },
-  { icon: Building2,  color: "#fbbf24", title: "Global + Local Expertise",    desc: "Built for global users — trained on court procedures, stamp duty rules, RERA, NALSA, consumer law, and cross-jurisdiction legal workflows." },
+  { icon: Building2,  color: "#fbbf24", title: "Global + Local Expertise",    desc: "Built for global users — trained on court procedures, contract law, property and tenancy rules, consumer protection, and cross-jurisdiction legal workflows." },
   { icon: Globe,      color: "#a78bfa", title: "Transparent & Explainable", desc: "Every AI match score comes with a written explanation. No black-box decisions — you always know why a lawyer was matched." },
 ];
 
@@ -1018,7 +1018,7 @@ function WhyLitigaForge() {
           {/* Left */}
           <motion.div variants={fadeUp} className="lg:w-[38%] flex-shrink-0">
             <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#a78bfa" }}>Why LitigaForge</span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Built Different. <span style={{ color: "#3b82f6" }}>For India.</span></h2>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Built Different. <span style={{ color: "#3b82f6" }}>For Everyone.</span></h2>
             <p className="mt-4 text-base leading-relaxed" style={{ color: "#64748b" }}>
               We didn't just build another directory. We built a full legal intelligence platform — with multi-AI strategy synthesis, regional legal knowledge, and genuine lawyer verification.
             </p>
@@ -1191,10 +1191,10 @@ export default function LandingPage() {
   return (
     <div className="dark" style={{ minHeight: "100vh", background: "#060d1a", color: "#e2e8f0", fontFamily: "Inter, sans-serif" }}>
       <SEOHelmet
-        title="LitigaForge AI — AI Legal Platform for India & Global"
+        title="LitigaForge AI — Global AI Legal Platform"
         description="AI-powered legal platform. Find verified lawyers, analyze documents, search judgments, get instant legal Q&A and free legal aid — in English, Hindi & Telugu. Free to start."
         canonical="/"
-        keywords="legal AI India, find lawyer Hyderabad, AI lawyer matching, legal document analyzer, free legal aid India, judgment finder, vakil AI, LitigaForge"
+        keywords="legal AI, find a lawyer, AI lawyer matching, legal document analyzer, free legal aid, case law search, LitigaForge"
         structuredData={{
           "@context": "https://schema.org",
           "@type": "WebSite",

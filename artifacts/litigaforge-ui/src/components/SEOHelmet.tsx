@@ -5,7 +5,12 @@ const SITE_URL = "https://litigaforge.com";
 const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
 
 const DEFAULT_KEYWORDS =
-  "lawyer in Hyderabad, advocate Telangana, legal help Andhra Pradesh, find lawyer online India, legal AI, case filing help, free legal advice India, eCourts India, NALSA free legal aid, document analyzer";
+  "find a lawyer online, legal AI assistant, legal advice, legal document analyzer, case law search, free legal aid, lawyer matching, AI legal help";
+
+const OG_LOCALE: Record<string, string> = {
+  IN: "en_IN", US: "en_US", GB: "en_GB", AE: "en_AE",
+  AU: "en_AU", CA: "en_CA", SG: "en_SG", DE: "de_DE",
+};
 
 interface SEOHelmetProps {
   title?: string;
@@ -37,6 +42,7 @@ export function SEOHelmet({
   const keywords = _keywords ?? DEFAULT_KEYWORDS;
   const fullTitle = title.includes("LitigaForge") ? title : `${title} | LitigaForge AI`;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : SITE_URL;
+  const ogLocale = OG_LOCALE[urlCode] ?? "en_US";
 
   return (
     <Helmet>
@@ -54,7 +60,7 @@ export function SEOHelmet({
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="LitigaForge AI" />
-      <meta property="og:locale" content="en_IN" />
+      <meta property="og:locale" content={ogLocale} />
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
