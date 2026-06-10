@@ -94,11 +94,22 @@
 
     <!-- Critical Latin fonts only — Space Grotesk (UI) + JetBrains Mono (mono).
          Telugu / Devanagari / Arabic are loaded on demand by useLanguage when a
-         non-Latin language is active, keeping the default payload small. -->
+         non-Latin language is active, keeping the default payload small.
+         Loaded NON-render-blocking: preload as style, then swap rel→stylesheet
+         on load so the font CSS never blocks first paint (text shows in the
+         fallback face via display=swap until the webfont arrives). -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      />
+    </noscript>
 
     <!-- JSON-LD: SoftwareApplication -->
     <script type="application/ld+json">

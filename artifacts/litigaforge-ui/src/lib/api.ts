@@ -6,7 +6,7 @@ const PUBLIC_PATH = /^\/(ask|clarify|document\/analyze|judgments|lawyers|legal-a
 // Guard against concurrent refresh calls
 let _refreshing: Promise<boolean> | null = null;
 
-async function _tryRefresh(): Promise<boolean> {
+export async function _tryRefresh(): Promise<boolean> {
   if (_refreshing) return _refreshing;
   _refreshing = (async () => {
     try {

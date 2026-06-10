@@ -35,7 +35,7 @@ description: How per-country content/localization works for post-login pages, an
 - `ai_brain.py`'s `STRATEGY_SYSTEM` / `EXTRACT_SYSTEM` / `REFINE_SYSTEM` (and the PAN/GST/CIN/pincode `re.search` extractors via `smart_extract_entities`/`smart_legal_strategy`/`smart_refine_section`) are hardcoded "Indian advocate / Telangana / IndianKanoon" — but **no router imports those `smart_*` functions**; routers only import the raw `_call_*` + `get_active_providers`. So they are not a live India leak; do NOT spend effort "localizing" them.
 - The reachable free-document generator is `routers/documents_free.py`. Its `ai_prompt_template` strings are India-worded, BUT `generate_document` already prepends a per-country `directive` + `sys_msg` (built from `get_config(country)`) that explicitly says "treat the template as a guide only — adapt every legal reference to {country}". So the live output is already country-adaptive; the India wording in the templates is overridden at runtime.
 
-**Why:** an architect review flagged these as India leaks, but tracing imports showed the `smart_*` paths are unreachable and the document flow is already wrapped. Localizing dead code is wasted effort and violates "targeted leak-fixing, not rebuild".
+**Why:** these read as India leaks, but tracing imports shows the `smart_*` paths are unreachable and the document flow is already wrapped. Localizing dead code is wasted effort and violates "targeted leak-fixing, not rebuild".
 
 # emergency_legal → tel: link extraction
 

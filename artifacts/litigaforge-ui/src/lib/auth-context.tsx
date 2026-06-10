@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { getCountryFromPath, buildCountryUrl } from "./country";
+import { _tryRefresh } from "./api";
 
 function dashboardUrl(role: string): string {
   const country =
@@ -65,9 +66,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
+    // Anonymous visitors (no stored JWT) are definitely logged out — skip the
+    // /auth/me round-trip entirely. This (a) renders the app immediately
+    // instead of blocking first paint behind a network request, and (b) avoids
+    // logging a 401 in the console on every public page load (the homepage /
+    // Lighthouse case). Logged-in users still revalidate via /auth/me.
+    if (typeof window !== "undefined" && !localStorage.getItem("lf_token")) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
-      const data = await authFetch("/auth/me");
-      setUser(data);
+      let res = await fetch(`${BASE}/auth/me`, {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      // The access cookie is short-lived. On a 401, attempt one silent refresh
+      // (using the long-lived refresh cookie) and re-check before giving up, so
+      // a genuinely logged-in user stays signed in across a cold reload instead
+      // of being bounced once their access token expires.
+      if (res.status === 401 && (await _tryRefresh())) {
+        res = await fetch(`${BASE}/auth/me`, {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (res.ok) {
+        setUser(await res.json());
+      } else {
+        setUser(null);
+        // Session is truly gone (refresh failed too) but a stale lf_token flag
+        // remains. Drop it so future page loads skip the /auth/me probe and
+        // stop logging repeated 401s. Only on a real 401 — never on a network
+        // error, so a transient blip doesn't silently sign the user out.
+        if (res.status === 401 && typeof window !== "undefined") {
+          localStorage.removeItem("lf_token");
+        }
+      }
     } catch {
       setUser(null);
     } finally {
