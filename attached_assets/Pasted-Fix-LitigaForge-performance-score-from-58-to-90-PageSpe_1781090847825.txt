@@ -1,0 +1,78 @@
+Fix LitigaForge performance score from 58 to 90+.
+PageSpeed report shows these specific issues:
+
+CRITICAL FIX 1 — CSS SPLITTING
+The file /assets/index-dspr0cCr.css is 194.8 KiB
+and blocks all rendering for 4,730ms.
+
+In vite.config.ts, enable CSS code splitting:
+build: {
+  cssCodeSplit: true,
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        vendor: ['react', 'react-dom'],
+        motion: ['framer-motion'],
+        query: ['@tanstack/react-query']
+      }
+    }
+  }
+}
+
+CRITICAL FIX 2 — COUNTRY DETECTION DELAY
+The /api/country-detect + /country/US API chain
+takes 3,985ms and blocks LCP completely.
+
+Fix: Move country detection to run AFTER first
+render, not before. Use React useEffect with
+a loading state so the hero section renders
+immediately without waiting for geolocation.
+
+Pattern:
+- Render homepage immediately with default
+  content (India)
+- Detect country in background after mount
+- Update content silently when detection
+  completes
+- Cache result in localStorage for 24 hours
+
+CRITICAL FIX 3 — ENABLE GZIP COMPRESSION
+In FastAPI main.py add:
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+CRITICAL FIX 4 — LAZY LOAD UNUSED JS
+motion-onlOvMkg.js has 109 KiB unused.
+Lazy load framer-motion animations:
+
+const MotionDiv = lazy(() => 
+  import('framer-motion').then(m => ({
+    default: m.motion.div
+  }))
+)
+
+CRITICAL FIX 5 — DEFER GOOGLE TAG MANAGER
+Move GTM script to load after page is
+interactive. In index.html change:
+<script async src="gtag...">
+to load after window.onload event
+
+CRITICAL FIX 6 — PRELOAD HERO FONT
+The woff2 font takes 2,624ms.
+Add to index.html <head>:
+<link rel="preload" 
+  href="/fonts/main.woff2" 
+  as="font" 
+  type="font/woff2" 
+  crossorigin>
+
+Or switch to system fonts for hero text
+to eliminate font loading delay entirely.
+
+After all fixes, target scores:
+- FCP: under 2.0s
+- LCP: under 2.5s  
+- Performance: 85+
+
+Show me the updated vite.config.ts and
+the updated country detection logic.

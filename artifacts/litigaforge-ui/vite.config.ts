@@ -125,6 +125,7 @@ export default defineConfig({
       },
     }),
     compression({ algorithm: "gzip" }),
+    compression({ algorithm: "brotliCompress", exclude: [/\.(gz|br)$/] }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -151,6 +152,8 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 500,
+    // Split per-route CSS so a chunk only ships the styles it needs.
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks: {

@@ -15,6 +15,25 @@ const COUNTRY_DEFAULT_LANG: Record<string, string> = {
 
 const LANG_EVENT = "lf-lang-change";
 
+// Non-Latin scripts are loaded on demand (not in index.html) so the default
+// English experience never downloads Telugu/Devanagari/Arabic webfonts.
+const SCRIPT_FONTS: Record<string, string> = {
+  te: "https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;600;700&display=swap",
+  hi: "https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap",
+  ar: "https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap",
+};
+
+function ensureScriptFont(lang: string) {
+  const href = SCRIPT_FONTS[lang];
+  if (!href || typeof document === "undefined") return;
+  if (document.querySelector(`link[data-font="${lang}"]`)) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  link.setAttribute("data-font", lang);
+  document.head.appendChild(link);
+}
+
 function resolveLang(countryCode: string): string {
   const country = translations[countryCode] || translations.IN;
   const available = Object.keys(country);
@@ -45,6 +64,7 @@ export function useLanguage(countryCode?: string) {
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    ensureScriptFont(lang);
   }, [lang]);
 
   const switchLang = (newLang: string) => {

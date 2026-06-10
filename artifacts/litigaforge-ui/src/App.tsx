@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-provider";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { initGA, trackPageView } from "@/lib/analytics";
 import { initRecaptcha } from "@/lib/recaptcha";
 import { loadGoogleIdentity } from "@/lib/google-auth";
@@ -108,46 +108,126 @@ function CountryRoot() {
   return <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
 }
 
-// Ensures a valid country code is always present as the first URL segment.
-// If missing/invalid, detects the country (stored pref → IP → India) and
-// rewrites the URL before the router mounts.
-function CountryGate({ children }: { children: (code: string) => React.ReactNode }) {
-  const [country, setCountry] = useState<string | null>(() => getCountryFromPath());
+// IP geolocation is slow (~4s). We cache the detected country so we only pay
+// that cost once per day, and never on the critical first-paint path.
+const DETECT_CACHE_KEY = "country_detected";
+const DETECT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
+function readFreshDetectedCountry(): string | null {
+  try {
+    const raw = localStorage.getItem(DETECT_CACHE_KEY);
+    if (!raw) return null;
+    const { code, ts } = JSON.parse(raw) as { code?: string; ts?: number };
+    if (code && ts && isValidCountry(code) && Date.now() - ts < DETECT_TTL_MS) {
+      return code.toLowerCase();
+    }
+  } catch {
+    /* ignore malformed cache */
+  }
+  return null;
+}
+
+// Best country we can determine *synchronously*, so the hero paints instantly
+// without ever waiting on the network: URL segment → alias → saved manual
+// choice → fresh cached detection → India default.
+function resolveInitialCountry(): string {
+  const fromPath = getCountryFromPath();
+  if (fromPath) return fromPath.toLowerCase();
+  const alias = getCountryAliasFromPath();
+  if (alias && isValidCountry(alias)) return alias.toLowerCase();
+  const stored = (localStorage.getItem("country_override") || "").toLowerCase();
+  if (isValidCountry(stored)) return stored;
+  const detected = readFreshDetectedCountry();
+  if (detected) return detected;
+  return "in";
+}
+
+// Ensures a valid country code is always present as the first URL segment.
+// Renders immediately with the best synchronously-known country, then runs IP
+// detection in the background (after first paint) and updates silently. This
+// removes the geolocation request from the critical rendering path.
+function CountryGate({ children }: { children: (code: string) => React.ReactNode }) {
+  // Did the visitor explicitly ask for a country (URL segment or alias)?
+  // Captured before we rewrite the URL, so background detection only runs for
+  // ambiguous first visits to the bare root.
+  const explicitRef = useRef<boolean>(
+    Boolean(getCountryFromPath() || getCountryAliasFromPath()),
+  );
+  const [country, setCountry] = useState<string>(() => resolveInitialCountry());
+
+  // 1) Guarantee the URL carries a valid country prefix — synchronously, no
+  //    network wait — so the router mounts and the hero paints right away.
   useEffect(() => {
     if (getCountryFromPath()) return;
-    const rel = getPathWithoutCountry();
-    const finish = (code: string) => {
-      const valid = isValidCountry(code) ? code.toLowerCase() : "in";
-      window.history.replaceState(
-        null,
-        "",
-        buildCountryUrl(valid, rel) + window.location.search + window.location.hash,
-      );
-      localStorage.setItem("country_override", valid.toUpperCase());
-      setCountry(valid);
-    };
-
-    // A friendly alias like /uae or /usa — redirect to the canonical code.
+    // Read the alias BEFORE rewriting the URL — replaceState canonicalizes
+    // /uae → /ae, after which getCountryAliasFromPath() would return null.
     const alias = getCountryAliasFromPath();
-    if (alias) {
-      finish(alias);
-      return;
+    const rel = getPathWithoutCountry();
+    window.history.replaceState(
+      null,
+      "",
+      buildCountryUrl(country, rel) + window.location.search + window.location.hash,
+    );
+    // A friendly alias like /uae or /usa is an explicit choice — persist it.
+    if (alias && isValidCountry(alias)) {
+      localStorage.setItem("country_override", country.toUpperCase());
     }
-
-    const stored = (localStorage.getItem("country_override") || "").toLowerCase();
-    if (isValidCountry(stored)) {
-      finish(stored);
-      return;
-    }
-    fetch("/litigaforge/api/country-detect")
-      .then((r) => r.json())
-      .then((d) => finish((d.country_code || "in").toLowerCase()))
-      .catch(() => finish("in"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the router base in sync with the URL country segment so switching
-  // country (or browser back/forward) re-renders without a full page reload.
+  // 2) Background IP detection — runs AFTER first paint, never blocks it. Only
+  //    for ambiguous first visits (no explicit URL/alias, no saved manual
+  //    choice, no fresh cached detection). Updates the page silently.
+  useEffect(() => {
+    if (explicitRef.current) return;
+    const manual = (localStorage.getItem("country_override") || "").toLowerCase();
+    if (isValidCountry(manual)) return; // a manual choice always wins
+    if (readFreshDetectedCountry()) return; // detected < 24h ago
+
+    let cancelled = false;
+    fetch("/litigaforge/api/country-detect")
+      .then((r) => r.json())
+      .then((d) => {
+        const raw = (d.country_code || "in").toLowerCase();
+        const valid = isValidCountry(raw) ? raw : "in";
+        try {
+          localStorage.setItem(
+            DETECT_CACHE_KEY,
+            JSON.stringify({ code: valid, ts: Date.now() }),
+          );
+        } catch {
+          /* ignore storage quota errors */
+        }
+        if (cancelled) return;
+        // Only swap if the user hasn't picked a country since mount and the
+        // detected one differs from what we optimistically rendered.
+        const pickedSince = (localStorage.getItem("country_override") || "").toLowerCase();
+        if (
+          !isValidCountry(pickedSince) &&
+          getCountryFromPath()?.toLowerCase() === country &&
+          valid !== country
+        ) {
+          const rel = getPathWithoutCountry();
+          window.history.replaceState(
+            null,
+            "",
+            buildCountryUrl(valid, rel) + window.location.search + window.location.hash,
+          );
+          setCountry(valid);
+          window.dispatchEvent(new Event("lf-country-change"));
+        }
+      })
+      .catch(() => {
+        /* offline / detection failed — keep the optimistic country */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 3) Keep the router base in sync with the URL country segment so switching
+  //    country (or browser back/forward) re-renders without a full page reload.
   useEffect(() => {
     const sync = () => {
       const c = getCountryFromPath();
@@ -161,13 +241,6 @@ function CountryGate({ children }: { children: (code: string) => React.ReactNode
     };
   }, []);
 
-  if (!country) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-white text-lg">Detecting your location… 🌍</div>
-      </div>
-    );
-  }
   return <>{children(country.toLowerCase())}</>;
 }
 

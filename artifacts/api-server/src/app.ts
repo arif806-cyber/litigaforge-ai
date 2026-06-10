@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { existsSync, readFileSync } from "fs";
@@ -29,6 +30,11 @@ app.use(
     },
   }),
 );
+
+// Compress all responses (HTML, JS, CSS, JSON). The render-critical CSS bundle
+// is ~195 KiB uncompressed and shrinks to ~28 KiB gzipped — a major LCP win.
+app.use(compression());
+
 app.use(cors());
 
 // ── Stripe webhook ────────────────────────────────────────────────────────
@@ -135,8 +141,18 @@ if (true) { // serve frontend in both dev and production when dist exists
       };
 
       // Serve static assets (JS, CSS, fonts, images) — index:false so we
-      // control index.html ourselves via the routes below
-      app.use(express.static(_frontendDist, { index: false }));
+      // control index.html ourselves via the routes below. Hashed assets under
+      // /assets/ are content-addressed, so they can be cached forever.
+      app.use(
+        express.static(_frontendDist, {
+          index: false,
+          setHeaders: (res, filePath) => {
+            if (/[\\/]assets[\\/]/.test(filePath)) {
+              res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            }
+          },
+        }),
+      );
 
       // Root: serve meta-injected HTML
       app.get("/", _sendIndex);
