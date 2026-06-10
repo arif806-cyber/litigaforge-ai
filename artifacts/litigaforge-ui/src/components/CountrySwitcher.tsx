@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useCountry } from "../hooks/useCountry";
 import { X, Check, ChevronDown, Globe } from "lucide-react";
 
@@ -42,9 +43,10 @@ export default function CountrySwitcher() {
         <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
       </button>
 
-      {open && (
-        <>
-          {/* ── Mobile: bottom sheet ────────────────── */}
+      {/* ── Mobile: bottom sheet (portalled to body to escape the
+            header's backdrop-filter containing block) ───────────── */}
+      {open &&
+        createPortal(
           <div className="sm:hidden fixed inset-0 z-[100]">
             {/* Backdrop */}
             <div
@@ -101,10 +103,13 @@ export default function CountrySwitcher() {
                 })}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body,
+        )}
 
-          {/* ── Desktop: dropdown ───────────────────── */}
-          <div className="hidden sm:block">
+      {/* ── Desktop: dropdown (anchored inline to the trigger) ──── */}
+      {open && (
+        <div className="hidden sm:block">
             {/* Backdrop */}
             <div
               className="fixed inset-0 z-40"
