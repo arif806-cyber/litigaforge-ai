@@ -45,8 +45,9 @@ description: How per-country content/localization works for post-login pages, an
 
 - In `layout.tsx`, `<main>` has `relative z-0` (a stacking context) and the mobile bottom tab `<nav>` is a sibling at `fixed bottom-0 z-30`. So ANY overlay/modal rendered *inside a page* (inside `<main>`) is trapped in main's z-0 layer and paints UNDER the z-30 bottom nav — even with `z-50`. On mobile this hid the ClarifyDialog footer (Skip / Get Answer buttons) behind the tab bar.
 - Fix/convention: render full-screen modals via `createPortal(..., document.body)` (same pattern the mobile drawer already uses) and give them `z-[100]`. Do NOT rely on a high z-index alone — the stacking context, not the z value, is the trap.
+- SECOND, distinct trap (same fix): `backdrop-filter` (e.g. `backdrop-blur` on the sticky `<header>` in `CountryLanding.tsx`), `filter`, `transform`, `perspective`, or `will-change` on ANY ancestor establishes a **containing block** for `position: fixed` descendants. A `fixed inset-0` overlay then anchors to that ancestor (e.g. the ~64px header), NOT the viewport — so a mobile bottom sheet renders pinned near the top, cut off. Symptom: the `CountrySwitcher` sheet appeared at the top under the browser bar. Portalling the sheet to `document.body` escapes it.
 
-**Why:** z-index only competes within the same stacking context; `z-50` inside `main(z-0)` still loses to a `z-30` sibling of main. This will bite every future in-page modal/sheet on mobile.
+**Why:** two independent mechanisms break in-page `fixed`/`z-index` overlays on mobile — (1) z-index only competes within the same stacking context (`z-50` inside `main(z-0)` loses to a `z-30` sibling); (2) a `transform`/`filter`/`backdrop-filter` ancestor re-roots `position: fixed` to itself. Both are fixed the same way: portal the overlay to `document.body`. Check for both before adding any in-page modal/sheet.
 
 # asyncpg placeholder numbering
 
