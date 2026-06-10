@@ -362,6 +362,36 @@ async def lifespan(app: FastAPI):
             logger.warning("push_subscriptions init: %s", me)
 
         logger.info("Database tables initialized")
+
+        # ── Admin bootstrap ──────────────────────────────────────────────────
+        # Promote designated accounts to superuser. Idempotent + safe to re-run.
+        # Configure via the ADMIN_EMAILS env var (comma-separated emails).
+        try:
+            _admin_emails = [
+                e.strip().lower()
+                for e in os.getenv("ADMIN_EMAILS", "").split(",")
+                if e.strip()
+            ]
+            if _admin_emails:
+                _promoted = await conn.fetch(
+                    "UPDATE users SET is_superuser = TRUE "
+                    "WHERE lower(email) = ANY($1::text[]) "
+                    "AND is_superuser IS DISTINCT FROM TRUE "
+                    "RETURNING email",
+                    _admin_emails,
+                )
+                if _promoted:
+                    logger.info(
+                        "Admin bootstrap: promoted %d account(s) to superuser",
+                        len(_promoted),
+                    )
+                else:
+                    logger.info(
+                        "Admin bootstrap: %d email(s) configured; already admin or not found",
+                        len(_admin_emails),
+                    )
+        except Exception as ae:
+            logger.warning("Admin bootstrap skipped: %s", ae)
     except Exception as e:
         logger.warning("DB init check: %s", e)
     finally:
