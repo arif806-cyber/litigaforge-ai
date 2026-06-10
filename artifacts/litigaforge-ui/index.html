@@ -11,7 +11,10 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-DHTR1SECG4');
+      // send_page_view:false — page_views are sent manually from the SPA
+      // (src/lib/analytics.ts) on every route change so client-side
+      // navigations are tracked, not just the first load.
+      gtag('config', 'G-DHTR1SECG4', { send_page_view: false });
       window.addEventListener('load', function () {
         var loadGA = function () {
           var s = document.createElement('script');

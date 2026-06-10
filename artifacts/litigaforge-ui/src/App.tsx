@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { initGA, trackPageView } from "@/lib/analytics";
+import { trackPageView } from "@/lib/analytics";
 import { initRecaptcha } from "@/lib/recaptcha";
 import { loadGoogleIdentity } from "@/lib/google-auth";
 import { Loader2, ShieldAlert } from "lucide-react";
@@ -309,10 +309,13 @@ function Router() {
 function Analytics() {
   const [location] = useLocation();
   useEffect(() => {
-    initGA();
     initRecaptcha();
     loadGoogleIdentity().catch(() => {});
   }, []);
+  // GA4 is loaded/configured by the inline snippet in index.html; here we just
+  // send a page_view on every route change (wouter location is relative to the
+  // country base, e.g. "/ask" under /in). Fires on mount too, covering the
+  // first load since index.html now uses send_page_view:false.
   useEffect(() => { trackPageView(location); }, [location]);
   return null;
 }
