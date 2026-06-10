@@ -392,6 +392,41 @@ async def lifespan(app: FastAPI):
                     )
         except Exception as ae:
             logger.warning("Admin bootstrap skipped: %s", ae)
+
+        # ── One-time admin password reset ─────────────────────────────────────
+        # Break-glass password reset for the ADMIN_EMAILS account(s) when
+        # email-based reset is unavailable. Set the ADMIN_RESET_PASSWORD secret
+        # to the desired new password, redeploy once, log in, then DELETE the
+        # secret. Idempotent + safe to re-run; never logs the password.
+        try:
+            _reset_pw = os.getenv("ADMIN_RESET_PASSWORD", "").strip()
+            _reset_emails = [
+                e.strip().lower()
+                for e in os.getenv("ADMIN_EMAILS", "").split(",")
+                if e.strip()
+            ]
+            if _reset_emails and _reset_pw:
+                from auth import hash_password
+                _hashed = hash_password(_reset_pw)
+                _reset = await conn.fetch(
+                    "UPDATE users SET password_hash = $2 "
+                    "WHERE lower(email) = ANY($1::text[]) "
+                    "RETURNING email",
+                    _reset_emails,
+                    _hashed,
+                )
+                if _reset:
+                    logger.info(
+                        "Admin password reset applied to %d account(s); "
+                        "remove the ADMIN_RESET_PASSWORD secret now",
+                        len(_reset),
+                    )
+                else:
+                    logger.info(
+                        "Admin password reset: no matching account(s) found"
+                    )
+        except Exception as pe:
+            logger.warning("Admin password reset skipped: %s", pe)
     except Exception as e:
         logger.warning("DB init check: %s", e)
     finally:
