@@ -4,6 +4,7 @@ import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PainPointsGrid from "@/components/PainPointsGrid";
 import PricingSection from "@/components/PricingSection";
+import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getLandingContent } from "@/lib/countryLandingData";
 
@@ -153,6 +154,9 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
           </div>
         </section>
       </div>
+
+      {/* FOOTER — consistent with the in-app shell */}
+      <LegalDisclaimerFooter />
     </div>
   );
 }

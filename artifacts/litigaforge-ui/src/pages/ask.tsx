@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle } from "lucide-react";
+import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle, Sparkles, Bot, User, Trash2 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +45,14 @@ interface QAItem {
   created_at: string;
 }
 
+interface ChatMsg {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  category?: string;
+  isError?: boolean;
+}
+
 function QACard({ item }: { item: QAItem }) {
   const [expanded, setExpanded] = useState(false);
   const color = CAT_COLORS[item.category] ?? CAT_COLORS.general;
@@ -58,6 +66,7 @@ function QACard({ item }: { item: QAItem }) {
       <button
         onClick={() => setExpanded(e => !e)}
         className="w-full text-left px-6 py-5 flex items-start justify-between gap-4"
+        data-testid={`button-qa-${item.id}`}
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-3">
@@ -100,9 +109,44 @@ function QACard({ item }: { item: QAItem }) {
   );
 }
 
+function ChatBubble({ msg }: { msg: ChatMsg }) {
+  const isUser = msg.role === "user";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}
+      data-testid={`chat-msg-${msg.role}`}
+    >
+      <div className={cn(
+        "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1",
+        isUser ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+      )}>
+        {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+      </div>
+      <div className={cn(
+        "rounded-2xl px-4 py-3 max-w-[85%] text-sm leading-relaxed",
+        isUser
+          ? "bg-primary text-primary-foreground rounded-tr-sm"
+          : msg.isError
+            ? "bg-destructive/10 border border-destructive/20 text-destructive rounded-tl-sm"
+            : "bg-muted/60 border border-border text-foreground rounded-tl-sm"
+      )}>
+        {!isUser && msg.category && !msg.isError && (
+          <span className={cn("inline-block text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border mb-2", CAT_COLORS[msg.category] ?? CAT_COLORS.general)}>
+            {msg.category}
+          </span>
+        )}
+        <div className="whitespace-pre-line">{msg.content}</div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Ask() {
   const { activeCode, activeConfig } = useCountry();
   const categories = getAskCategories(activeCode);
+  const countryName = activeConfig?.name ?? "your country";
 
   // CTAs from the country landing cards arrive as /ask?category=…&q=… — pre-fill
   // the form so the question opens in the right legal area for this jurisdiction.
@@ -114,9 +158,11 @@ export default function Ask() {
   const [question, setQuestion] = useState(paramQ);
   const [category, setCategory] = useState(initialCategory);
   const [browseCategory, setBrowseCategory] = useState("all");
-  const [answer, setAnswer] = useState<{ question: string; answer: string; category: string } | null>(null);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [clarifyOpen, setClarifyOpen] = useState(false);
+  const [progressStep, setProgressStep] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // When opened from a landing CTA with a prefilled question, focus and reveal it.
   useEffect(() => {
@@ -161,31 +207,70 @@ export default function Ask() {
     mutationFn: (data: { question: string; category: string; country: string }) =>
       apiFetch("/ask", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: (data) => {
-      setAnswer({ question: data.question, answer: data.answer, category: data.category });
-      setQuestion("");
+      setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: data.answer, category: data.category }]);
       refetch();
+    },
+    onError: (err) => {
+      setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: (err as Error).message || "Something went wrong. Please try again.", isError: true }]);
     },
   });
 
+  // Visible, rotating progress while the AI works on an answer.
+  const progressSteps = [
+    "Reading your question…",
+    `Checking ${countryName} statutes & procedure…`,
+    "Reviewing relevant case law…",
+    "Drafting your answer…",
+  ];
+  useEffect(() => {
+    if (!askMutation.isPending) {
+      setProgressStep(0);
+      return;
+    }
+    const id = setInterval(() => setProgressStep(s => (s + 1) % progressSteps.length), 1800);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askMutation.isPending]);
+
+  // Keep the latest message / progress indicator in view. Skip while the thread
+  // is empty so the page doesn't jump past the title on first load.
+  useEffect(() => {
+    if (messages.length === 0 && !askMutation.isPending) return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, askMutation.isPending]);
+
   const copy = ASK_COPY[activeCode.toUpperCase()] ?? ASK_COPY.IN;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const triggerAsk = () => {
     if (!question.trim() || askMutation.isPending) return;
     setClarifyOpen(true);
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    triggerAsk();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      triggerAsk();
+    }
+  };
+
   const runAsk = (extraDetails: string) => {
     setClarifyOpen(false);
-    setAnswer(null);
-    const finalQuestion = extraDetails
-      ? `${question.trim()}\n\n${extraDetails}`
-      : question.trim();
+    const userText = question.trim();
+    const finalQuestion = extraDetails ? `${userText}\n\n${extraDetails}` : userText;
+    setMessages(prev => [...prev, { id: Date.now(), role: "user", content: userText, category }]);
+    setQuestion("");
     askMutation.mutate({ question: finalQuestion, category, country: activeCode });
   };
 
+  const clearChat = () => setMessages([]);
+
   return (
-    <PageShell title={copy.title} subtitle={copy.subtitle ?? `Ask any legal question — get instant answers grounded in the law of ${activeConfig?.name ?? "your country"} and local procedures.`} icon={<MessageSquare className="w-6 h-6 text-primary" />}>
+    <PageShell title={copy.title} subtitle={copy.subtitle ?? `Ask any legal question — get instant answers grounded in the law of ${countryName} and local procedures.`} icon={<MessageSquare className="w-6 h-6 text-primary" />}>
       <SEOHelmet
         title={copy.title}
         description={copy.description}
@@ -195,83 +280,130 @@ export default function Ask() {
       />
 
       <div className="space-y-10">
-        {/* Ask form */}
-        <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8">
-          <h2 className="text-lg font-bold text-foreground mb-6">Ask a Question</h2>
-
-          <div className="flex flex-wrap gap-2 mb-6">
-            {categories.map(c => (
+        {/* Chat interface */}
+        <div className="bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden" data-testid="ask-chat-panel">
+          {/* Panel header */}
+          <div className="flex items-center justify-between gap-3 px-5 md:px-6 py-4 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-foreground leading-tight">AI Legal Assistant</h2>
+                <p className="text-xs text-muted-foreground">Answers grounded in {countryName} law</p>
+              </div>
+            </div>
+            {messages.length > 0 && (
               <button
-                key={c.id}
-                onClick={() => setCategory(c.id)}
-                className={cn(
-                  "text-xs font-semibold px-4 py-2 rounded-full border transition-all",
-                  category === c.id
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-                )}
+                onClick={clearChat}
+                className="text-xs font-medium text-muted-foreground hover:text-destructive flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-muted transition-colors"
+                data-testid="button-clear-chat"
               >
-                {askCategoryLabel(c, activeCode)}
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear
               </button>
-            ))}
+            )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <textarea
-              ref={textareaRef}
-              value={question}
-              onChange={e => setQuestion(e.target.value)}
-              placeholder="e.g. My neighbor has encroached on my property. What legal steps can I take to get it back?"
-              rows={4}
-              className="w-full px-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none shadow-sm"
-            />
-            <div className="flex justify-end">
-               <Button
-                  type="submit"
-                  size="lg"
-                  disabled={!question.trim() || askMutation.isPending}
-                  className="px-8 shadow-md"
-                >
-                  {askMutation.isPending
-                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Consulting AI…</>
-                    : <><Send className="w-4 h-4 mr-2" /> Get Legal Advice</>}
-                </Button>
-            </div>
-          </form>
-
-          {askMutation.isError && (
-            <div className="mt-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
-              {(askMutation.error as Error).message}
-            </div>
-          )}
-        </div>
-
-        {/* AI answer */}
-        <AnimatePresence>
-          {answer && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-card border-2 border-primary/30 rounded-2xl shadow-md overflow-hidden"
-            >
-              <div className="px-6 py-4 bg-primary/5 border-b border-primary/10 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-xs font-bold text-primary uppercase tracking-widest">
-                  AI Legal Analysis
-                </span>
-                <span className={cn("text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border ml-auto", CAT_COLORS[answer.category] ?? CAT_COLORS.general)}>
-                  {answer.category}
-                </span>
+          {/* Message thread */}
+          <div className="px-4 md:px-6 py-5 space-y-5 min-h-[280px] max-h-[540px] overflow-y-auto" aria-live="polite" data-testid="ask-chat-thread">
+            {messages.length === 0 && !askMutation.isPending && (
+              <div className="flex flex-col items-center justify-center text-center py-12">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Bot className="w-7 h-7 text-primary" />
+                </div>
+                <p className="text-base font-semibold text-foreground">Ask your first legal question</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Pick a category below, describe your situation, and get a clear answer based on {countryName} law.
+                </p>
               </div>
-              <div className="px-6 py-6">
-                <p className="text-sm text-muted-foreground font-medium mb-4 italic">"{answer.question}"</p>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 whitespace-pre-line leading-relaxed text-base">
-                  {answer.answer}
+            )}
+
+            {messages.map(msg => (
+              <ChatBubble key={msg.id} msg={msg} />
+            ))}
+
+            {/* Visible progress indicator */}
+            {askMutation.isPending && (
+              <div className="flex gap-3" data-testid="ask-progress">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-1">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div className="bg-muted/60 border border-border rounded-2xl rounded-tl-sm px-4 py-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={progressStep}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.25 }}
+                      className="text-xs text-muted-foreground font-medium"
+                    >
+                      {progressSteps[progressStep]}
+                    </motion.p>
+                  </AnimatePresence>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input area */}
+          <div className="border-t border-border p-4 md:p-5 space-y-3 bg-muted/20">
+            <div className="flex flex-wrap gap-2" data-testid="ask-category-chips">
+              {categories.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategory(c.id)}
+                  className={cn(
+                    "text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-all",
+                    category === c.id
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                  )}
+                  data-testid={`chip-ask-${c.id}`}
+                >
+                  {askCategoryLabel(c, activeCode)}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex items-end gap-3">
+              <textarea
+                ref={textareaRef}
+                value={question}
+                onChange={e => setQuestion(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Describe your situation… (e.g. My landlord won't return my deposit)"
+                rows={2}
+                className="flex-1 px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none shadow-sm"
+                data-testid="input-question"
+              />
+              <Button
+                type="submit"
+                size="lg"
+                disabled={!question.trim() || askMutation.isPending}
+                className="px-5 shadow-md h-12"
+                data-testid="button-send"
+              >
+                {askMutation.isPending
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Send className="w-4 h-4" />}
+                <span className="hidden sm:inline ml-2">Send</span>
+              </Button>
+            </form>
+            <p className="text-[11px] text-muted-foreground/70">
+              Press <kbd className="px-1 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Enter</kbd> to send, <kbd className="px-1 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Shift+Enter</kbd> for a new line.
+            </p>
+          </div>
+        </div>
 
         {/* Community Q&A */}
         <div>
@@ -290,6 +422,7 @@ export default function Ask() {
                   ? "bg-foreground text-background border-foreground shadow-sm"
                   : "bg-transparent text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               )}
+              data-testid="chip-browse-all"
             >
               {allCategoryLabel(activeCode)}
             </button>
@@ -303,6 +436,7 @@ export default function Ask() {
                     ? "bg-foreground text-background border-foreground shadow-sm"
                     : "bg-transparent text-muted-foreground border-border hover:border-foreground hover:text-foreground"
                 )}
+                data-testid={`chip-browse-${c.id}`}
               >
                 {askCategoryLabel(c, activeCode)}
               </button>
