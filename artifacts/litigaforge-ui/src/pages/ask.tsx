@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle } from "lucide-react";
@@ -10,28 +10,28 @@ import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { ASK_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
-
-const CATEGORIES = [
-  { id: "all", label: "All" },
-  { id: "property", label: "Property" },
-  { id: "criminal", label: "Criminal" },
-  { id: "family", label: "Family" },
-  { id: "gst-tax", label: "GST & Tax" },
-  { id: "labour", label: "Labour" },
-  { id: "consumer", label: "Consumer" },
-  { id: "motor-accident", label: "Motor Accident" },
-  { id: "civil", label: "Civil" },
-  { id: "general", label: "General" },
-];
+import { getAskCategories, askCategoryLabel, allCategoryLabel } from "@/data/askCategories";
 
 const CAT_COLORS: Record<string, string> = {
   property: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
+  tenancy: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
+  housing: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
   criminal: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
   family: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800",
   "gst-tax": "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+  immigration: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+  visa: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
   labour: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+  employment: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
   consumer: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
   "motor-accident": "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
+  insurance: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
+  business: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800",
+  ip: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800",
+  "data-privacy": "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",
+  "human-rights": "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800",
+  "small-claims": "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
+  contracts: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800",
   civil: "bg-muted text-slate-700 border-border dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800",
   general: "bg-muted text-muted-foreground border-border",
 };
@@ -102,11 +102,39 @@ function QACard({ item }: { item: QAItem }) {
 
 export default function Ask() {
   const { activeCode, activeConfig } = useCountry();
-  const [question, setQuestion] = useState("");
-  const [category, setCategory] = useState("general");
+  const categories = getAskCategories(activeCode);
+
+  // CTAs from the country landing cards arrive as /ask?category=…&q=… — pre-fill
+  // the form so the question opens in the right legal area for this jurisdiction.
+  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const paramCategory = params.get("category") ?? "";
+  const paramQ = params.get("q") ?? "";
+  const initialCategory = categories.some((c) => c.id === paramCategory) ? paramCategory : "general";
+
+  const [question, setQuestion] = useState(paramQ);
+  const [category, setCategory] = useState(initialCategory);
   const [browseCategory, setBrowseCategory] = useState("all");
   const [answer, setAnswer] = useState<{ question: string; answer: string; category: string } | null>(null);
   const [clarifyOpen, setClarifyOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // When opened from a landing CTA with a prefilled question, focus and reveal it.
+  useEffect(() => {
+    if (paramQ && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // If the user switches country, drop a selected category that doesn't exist in
+  // the new jurisdiction so we never submit a category invalid for that country.
+  useEffect(() => {
+    if (!categories.some((c) => c.id === category)) {
+      setCategory("general");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCode]);
 
   const { data: qaList, refetch, isLoading: qaLoading, isError: qaError, error: qaErrorData } = useQuery<{ questions: QAItem[]; total: number }>({
     queryKey: ["questions", browseCategory, activeCode],
@@ -172,7 +200,7 @@ export default function Ask() {
           <h2 className="text-lg font-bold text-foreground mb-6">Ask a Question</h2>
 
           <div className="flex flex-wrap gap-2 mb-6">
-            {CATEGORIES.slice(1).map(c => (
+            {categories.map(c => (
               <button
                 key={c.id}
                 onClick={() => setCategory(c.id)}
@@ -183,13 +211,14 @@ export default function Ask() {
                     : "bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
                 )}
               >
-                {c.label}
+                {askCategoryLabel(c, activeCode)}
               </button>
             ))}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <textarea
+              ref={textareaRef}
               value={question}
               onChange={e => setQuestion(e.target.value)}
               placeholder="e.g. My neighbor has encroached on my property. What legal steps can I take to get it back?"
@@ -252,7 +281,19 @@ export default function Ask() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
-            {CATEGORIES.map(c => (
+            <button
+              key="all"
+              onClick={() => setBrowseCategory("all")}
+              className={cn(
+                "text-xs font-semibold px-4 py-2 rounded-full border transition-all",
+                browseCategory === "all"
+                  ? "bg-foreground text-background border-foreground shadow-sm"
+                  : "bg-transparent text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              )}
+            >
+              {allCategoryLabel(activeCode)}
+            </button>
+            {categories.map(c => (
               <button
                 key={c.id}
                 onClick={() => setBrowseCategory(c.id)}
@@ -263,7 +304,7 @@ export default function Ask() {
                     : "bg-transparent text-muted-foreground border-border hover:border-foreground hover:text-foreground"
                 )}
               >
-                {c.label}
+                {askCategoryLabel(c, activeCode)}
               </button>
             ))}
           </div>

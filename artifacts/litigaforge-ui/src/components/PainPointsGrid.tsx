@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
-import { getPainPoints, type PainPoint, type Urgency } from "@/data/countryPainPoints";
+import { getPainPoints, painPointHref, type PainPoint, type Urgency } from "@/data/countryPainPoints";
 
 const UI_LABELS: Record<string, Record<string, string>> = {
   heading: {
@@ -129,7 +129,7 @@ export default function PainPointsGrid({ countryCode }: PainPointsGridProps) {
               <p className="text-sm text-muted-foreground leading-relaxed flex-1">{p.desc}</p>
               <button
                 type="button"
-                onClick={() => navigate(`/ask?topic=${encodeURIComponent(p.service)}`)}
+                onClick={() => navigate(painPointHref(p))}
                 className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
                 data-testid={`cta-${p.service}`}
               >

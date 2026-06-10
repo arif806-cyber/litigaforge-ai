@@ -12,6 +12,12 @@ export interface PainPoint {
   service: string;
   cta: string;
   price_free: boolean;
+  /** /ask category id to pre-select when the CTA opens the Q&A tool. */
+  category?: string;
+  /** Explicit destination. When set, the CTA navigates here instead of /ask. */
+  href?: string;
+  /** Starter question pre-filled into /ask when the CTA opens the Q&A tool. */
+  prompt?: string;
 }
 
 const PAIN_POINTS: Record<string, PainPoint[]> = {
@@ -27,6 +33,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "cheque-bounce",
       cta: "Get 15-Day Notice Draft",
       price_free: true,
+      category: "criminal",
+      href: "/free-documents",
     },
     {
       id: 2,
@@ -39,6 +47,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "legal-notice",
       cta: "Draft Notice in 2 Minutes",
       price_free: false,
+      category: "civil",
+      href: "/free-documents",
     },
     {
       id: 3,
@@ -51,6 +61,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "property",
       cta: "Check Your Rights",
       price_free: true,
+      category: "property",
+      prompt: "My neighbour has encroached on my property. What legal steps can I take under Indian law to recover it?",
     },
     {
       id: 4,
@@ -63,6 +75,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "consumer",
       cta: "File Complaint Now",
       price_free: true,
+      category: "consumer",
+      prompt: "I bought a defective product and the seller refuses a refund. How do I file a complaint under the Consumer Protection Act 2019?",
     },
     {
       id: 5,
@@ -73,8 +87,10 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       desc: "Employer withheld your dues",
       urgency: "high",
       service: "employment",
-      cta: "Send Salary Notice",
+      cta: "Check What You're Owed",
       price_free: false,
+      category: "labour",
+      prompt: "My employer has not paid my salary for 2 months. What legal action can I take in India to recover my dues?",
     },
   ],
   US: [
@@ -87,6 +103,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "tenant-rights",
       cta: "Know Your Rights Now",
       price_free: true,
+      category: "tenancy",
+      prompt: "My landlord is trying to evict me. What are my tenant rights and how much notice must they give under US law?",
     },
     {
       id: 2,
@@ -97,6 +115,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "employment",
       cta: "Check If You Have a Claim",
       price_free: true,
+      category: "employment",
+      prompt: "I was fired from my job. How do I know if this was wrongful termination and what can I do about it?",
     },
     {
       id: 3,
@@ -107,6 +127,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "immigration",
       cta: "Get Immigration Guide",
       price_free: true,
+      category: "immigration",
+      prompt: "I need help understanding my visa and green card options in the US. Where do I start?",
     },
     {
       id: 4,
@@ -117,6 +139,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "wage-theft",
       cta: "Calculate What You're Owed",
       price_free: true,
+      category: "employment",
+      prompt: "My employer did not pay me overtime or minimum wage. How do I recover unpaid wages under the FLSA?",
     },
     {
       id: 5,
@@ -127,6 +151,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "small-claims",
       cta: "Start Your Claim",
       price_free: false,
+      category: "small-claims",
+      prompt: "Someone owes me money. How do I file a small claims case and what is the dollar limit in my state?",
     },
   ],
   GB: [
@@ -139,6 +165,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "car-finance",
       cta: "Check If You Qualify NOW",
       price_free: true,
+      category: "consumer",
+      prompt: "I think my car finance (PCP/HP) was mis-sold. How do I check if I qualify for compensation in the UK?",
     },
     {
       id: 2,
@@ -149,6 +177,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "housing",
       cta: "Know Your Tenant Rights",
       price_free: true,
+      category: "housing",
+      prompt: "My landlord is withholding my deposit and not doing repairs. What are my rights as a tenant in the UK?",
     },
     {
       id: 3,
@@ -159,6 +189,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "employment-tribunal",
       cta: "File ET1 Guide",
       price_free: false,
+      category: "employment",
+      prompt: "I want to bring an unfair dismissal claim to an employment tribunal. How do I file an ET1 and what is the time limit?",
     },
     {
       id: 4,
@@ -169,6 +201,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "immigration",
       cta: "Check Your Status",
       price_free: true,
+      category: "immigration",
+      prompt: "I'm confused about my immigration status after Brexit and the EU Settlement Scheme. What should I do?",
     },
     {
       id: 5,
@@ -179,6 +213,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "consumer",
       cta: "Get Your Money Back",
       price_free: true,
+      category: "consumer",
+      prompt: "A retailer refuses to refund a faulty product. What are my rights under the Consumer Rights Act 2015?",
     },
   ],
   AE: [
@@ -187,22 +223,26 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       icon: "🏦",
       title: "Cheque Bounce",
       title_ar: "ارتداد الشيك",
-      desc: "Criminal offense — act within 15 days",
+      desc: "Act fast — strict deadlines apply",
       urgency: "emergency",
       service: "cheque-bounce",
       cta: "Emergency Steps NOW",
       price_free: true,
+      category: "civil",
+      prompt: "A cheque has bounced in the UAE. What are the legal consequences and what steps should I take right now?",
     },
     {
       id: 2,
       icon: "💼",
-      title: "Labor Dispute",
+      title: "Labour Dispute",
       title_ar: "نزاع عمالي",
       desc: "Salary unpaid or unfair dismissal",
       urgency: "critical",
-      service: "labor",
-      cta: "File MOL Complaint",
+      service: "labour",
+      cta: "File MOHRE Complaint",
       price_free: true,
+      category: "labour",
+      prompt: "My employer hasn't paid my salary or end-of-service benefits. How do I file a MOHRE labour complaint in the UAE?",
     },
     {
       id: 3,
@@ -214,6 +254,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "visa",
       cta: "Know Your Rights",
       price_free: true,
+      category: "visa",
+      prompt: "My employer cancelled my residency visa in the UAE. What are my rights and options?",
     },
     {
       id: 4,
@@ -225,6 +267,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "rera",
       cta: "File RERA Dispute",
       price_free: false,
+      category: "tenancy",
+      prompt: "I have a rent or Ejari dispute with my landlord in Dubai. How do I file a RERA rental dispute?",
     },
     {
       id: 5,
@@ -236,6 +280,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "business-setup",
       cta: "Get Setup Guide",
       price_free: false,
+      category: "business",
+      prompt: "I want to set up a company in the UAE. What is the difference between mainland and free zone licensing?",
     },
   ],
   DE: [
@@ -243,11 +289,13 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       id: 1,
       icon: "📨",
       title: "Abmahnung",
-      desc: "Respond within 48 hours or face court",
+      desc: "Respond within the deadline or face court",
       urgency: "emergency",
       service: "abmahnung",
-      cta: "Jetzt Antworten — Kostenlos",
+      cta: "Jetzt Antworten",
       price_free: true,
+      category: "consumer",
+      prompt: "Ich habe eine Abmahnung erhalten. Wie soll ich innerhalb der Frist nach deutschem Recht reagieren?",
     },
     {
       id: 2,
@@ -258,6 +306,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "mietrecht",
       cta: "Mieterrechte Prüfen",
       price_free: true,
+      category: "tenancy",
+      prompt: "Mein Vermieter erhöht die Miete oder behält die Kaution ein. Welche Rechte habe ich als Mieter nach dem BGB?",
     },
     {
       id: 3,
@@ -268,6 +318,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "kuendigung",
       cta: "Kündigungsschutz Prüfen",
       price_free: true,
+      category: "employment",
+      prompt: "Ich wurde gekündigt. Habe ich Kündigungsschutz und kann ich eine Kündigungsschutzklage erheben?",
     },
     {
       id: 4,
@@ -276,8 +328,10 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       desc: "GDPR compliance for your business",
       urgency: "high",
       service: "dsgvo",
-      cta: "Compliance Checklist",
+      cta: "Compliance Prüfen",
       price_free: false,
+      category: "data-privacy",
+      prompt: "Was muss mein Unternehmen tun, um DSGVO-konform zu sein?",
     },
     {
       id: 5,
@@ -288,6 +342,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "verbraucher",
       cta: "Anspruch Prüfen",
       price_free: true,
+      category: "consumer",
+      prompt: "Ein Online-Händler verweigert die Rückerstattung. Welche Verbraucherrechte habe ich in Deutschland?",
     },
   ],
   AU: [
@@ -300,6 +356,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "wage-theft",
       cta: "Calculate What You're Owed",
       price_free: true,
+      category: "employment",
+      prompt: "I think I've been underpaid by my employer. How do I recover unpaid wages under the Fair Work Act 2009?",
     },
     {
       id: 2,
@@ -310,6 +368,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "fair-work",
       cta: "Check Your Claim",
       price_free: true,
+      category: "employment",
+      prompt: "I was dismissed from my job in Australia. Do I have an unfair dismissal claim and what is the time limit?",
     },
     {
       id: 3,
@@ -320,6 +380,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "visa",
       cta: "Find Your Visa",
       price_free: true,
+      category: "immigration",
+      prompt: "I need help understanding which Australian visa subclass applies to my situation.",
     },
     {
       id: 4,
@@ -330,6 +392,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "insurance",
       cta: "Dispute Your Claim",
       price_free: false,
+      category: "insurance",
+      prompt: "My insurance claim was rejected. How do I dispute it and escalate to AFCA in Australia?",
     },
     {
       id: 5,
@@ -340,6 +404,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "tenant",
       cta: "Know Your Rights",
       price_free: true,
+      category: "tenancy",
+      prompt: "My landlord or agent is withholding my bond or trying to evict me. What are my rental rights in my state?",
     },
   ],
   CA: [
@@ -350,8 +416,10 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       desc: "Express Entry, PNP, sponsorship",
       urgency: "critical",
       service: "immigration",
-      cta: "Check Your PR Status",
+      cta: "Check Your PR Options",
       price_free: true,
+      category: "immigration",
+      prompt: "I want to apply for permanent residency in Canada through Express Entry or a PNP. Where do I start?",
     },
     {
       id: 2,
@@ -362,6 +430,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "employment",
       cta: "Know Your Province Rights",
       price_free: true,
+      category: "employment",
+      prompt: "I was terminated without cause. What severance and notice am I owed under my province's employment standards?",
     },
     {
       id: 3,
@@ -372,6 +442,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "tenant",
       cta: "Find Your Rights",
       price_free: true,
+      category: "tenancy",
+      prompt: "My landlord is raising the rent or evicting me. What are my tenant rights in my province?",
     },
     {
       id: 4,
@@ -382,6 +454,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "human-rights",
       cta: "File a Complaint",
       price_free: false,
+      category: "human-rights",
+      prompt: "I've experienced discrimination. How do I file a human rights complaint in Canada?",
     },
     {
       id: 5,
@@ -392,6 +466,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "small-claims",
       cta: "Start Your Claim",
       price_free: false,
+      category: "small-claims",
+      prompt: "Someone owes me money. How do I file a small claims case in my province?",
     },
   ],
   SG: [
@@ -402,8 +478,10 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       desc: "Employer violating MOM regulations",
       urgency: "critical",
       service: "employment",
-      cta: "File MOM Complaint",
+      cta: "File a Salary Claim",
       price_free: true,
+      category: "employment",
+      prompt: "My employer is violating MOM regulations or hasn't paid my salary. How do I file a claim with TADM/MOM in Singapore?",
     },
     {
       id: 2,
@@ -414,6 +492,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "hdb",
       cta: "Dispute Guide",
       price_free: true,
+      category: "tenancy",
+      prompt: "I have an HDB lease or neighbour dispute in Singapore. What are my options?",
     },
     {
       id: 3,
@@ -424,6 +504,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "ip",
       cta: "Protect Your IP",
       price_free: false,
+      category: "ip",
+      prompt: "I want to protect my startup's trademark or patent in Singapore. How do I register with IPOS?",
     },
     {
       id: 4,
@@ -434,6 +516,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "pdpa",
       cta: "Get PDPA Checklist",
       price_free: false,
+      category: "data-privacy",
+      prompt: "What do I need to do to make my business PDPA compliant in Singapore?",
     },
     {
       id: 5,
@@ -444,6 +528,8 @@ const PAIN_POINTS: Record<string, PainPoint[]> = {
       service: "family",
       cta: "Understand Your Options",
       price_free: true,
+      category: "family",
+      prompt: "I'm considering divorce in Singapore. What are my rights under the Women's Charter?",
     },
   ],
 };
@@ -452,4 +538,16 @@ export default PAIN_POINTS;
 
 export function getPainPoints(code: string): PainPoint[] {
   return PAIN_POINTS[code.toUpperCase()] || PAIN_POINTS.IN;
+}
+
+/**
+ * Resolve the destination for a pain-point CTA. Tool links (href) win;
+ * otherwise open the country-aware /ask Q&A pre-filled with the matching
+ * category and a starter question.
+ */
+export function painPointHref(p: PainPoint): string {
+  if (p.href) return p.href;
+  const cat = p.category ?? "general";
+  const q = p.prompt ? `&q=${encodeURIComponent(p.prompt)}` : "";
+  return `/ask?category=${cat}${q}`;
 }

@@ -21,6 +21,15 @@ description: How per-country content/localization works for post-login pages, an
 - Duplicate workflows (`artifacts/api-server: LitigaForge AI`, `artifacts/litigaforge-ui: web`) stay "failed" due to port collisions (EADDRINUSE) — the canonical `LitigaForge AI` + `artifacts/api-server: API Server` serve the app. This failed state is expected, not a regression.
 - Verify via the shared proxy: `curl localhost:80/litigaforge/<endpoint>` and `curl localhost:80/<country>`.
 
+# Country pain-point cards → /ask deep-link invariant
+
+- Country landing "What is your legal problem?" cards come from `src/data/countryPainPoints.ts`; each has a `category`/`href`/`prompt`. `painPointHref(p)` builds `/ask?category=X&q=<encoded prompt>` (or uses `href` for tool routes like `/free-documents`).
+- `/ask` (`src/pages/ask.tsx`) builds its category chips from `src/data/askCategories.ts` via `getAskCategories(activeCode)` and validates an incoming `?category=` against that list, else falls back to `general`.
+- **Invariant:** every `category` id used in `countryPainPoints` (for a country) MUST exist in that same country's `askCategories` list, or the deep-linked category silently won't pre-select. When adding/renaming a category, update both files together. Also add the id to `CAT_COLORS` in `ask.tsx` (has a `?? general` fallback but unstyled otherwise).
+- DE labels are localized: `askCategoryLabel` uses `label_de`, `allCategoryLabel` returns "Alle"; DE pain-point prompts are intentionally German.
+
+**Why:** the landing→/ask flow relies on category ids matching across two static data files; a mismatch fails silently (no error, just no pre-selected chip).
+
 # asyncpg placeholder numbering
 
 - When building dynamic WHERE clauses with asyncpg, the first positional param must be `$1` (`len(params)+1`), not `$2`. A latent off-by-one only surfaces once a filter is always applied.
