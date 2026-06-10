@@ -1,3 +1,3 @@
 - [LitigaForge country localization](litigaforge-country-localization.md) — per-country pages key off URL path prefix; live UI is built dist served by Node api-server (rebuild+restart to see changes); i18n covers nav/landing only by design.
 - [Stripe + stripe-replit-sync on Replit](stripe-replit-integration.md) — esbuild must externalize the lib (migrations silently skip), connector secret field is `secret` not `secret_key`, seed via code_execution.
-- [LitigaForge auth init + PWA gotchas](litigaforge-auth-and-pwa.md) — cookie-only auth (lf_token = browser flag); /auth/me probe must skip-when-no-token + refresh-retry on 401; stale VitePWA SW masks preview changes; admin = is_superuser, bootstrapped via ADMIN_EMAILS on deploy.
+- [LitigaForge auth init + PWA gotchas](litigaforge-auth-and-pwa.md) — cookie-only auth; /auth/me refresh-retries on 401; stale PWA SW masks preview; admin = is_superuser via env-var bootstrap on deploy (incl. break-glass password reset).
