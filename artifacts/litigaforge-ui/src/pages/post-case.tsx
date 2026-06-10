@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
+import { POST_CASE_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 const CASE_TYPES = [
@@ -39,6 +40,7 @@ const BUDGET_RANGES = [
 export default function PostCase() {
   const { user } = useAuth();
   const { activeCode } = useCountry();
+  const copy = POST_CASE_COPY[activeCode.toUpperCase()] ?? POST_CASE_COPY.IN;
   const [, setLocation] = useLocation();
   const [title, setTitle] = useState("");
   const [caseType, setCaseType] = useState("");
@@ -110,7 +112,7 @@ export default function PostCase() {
   }
 
   return (
-    <PageShell title="Post a Legal Requirement" subtitle="Describe your legal need. Verified lawyers will review and reach out.">
+    <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle}>
       <SEOHelmet title="Post a Case" description="Post your legal case requirements." canonical="/post-case" />
 
       <div className="bg-card rounded-2xl shadow-sm p-6 space-y-6" style={{ border: "1px solid #F1F5F9" }}>

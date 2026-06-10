@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
+import { ASK_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 const CATEGORIES = [
@@ -138,6 +139,8 @@ export default function Ask() {
     },
   });
 
+  const copy = ASK_COPY[activeCode.toUpperCase()] ?? ASK_COPY.IN;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || askMutation.isPending) return;
@@ -154,12 +157,12 @@ export default function Ask() {
   };
 
   return (
-    <PageShell title="Legal Q&A" subtitle={`Ask any legal question — get instant answers grounded in the law of ${activeConfig?.name ?? "your country"} and local procedures.`} icon={<MessageSquare className="w-6 h-6 text-primary" />}>
+    <PageShell title={copy.title} subtitle={copy.subtitle ?? `Ask any legal question — get instant answers grounded in the law of ${activeConfig?.name ?? "your country"} and local procedures.`} icon={<MessageSquare className="w-6 h-6 text-primary" />}>
       <SEOHelmet
-        title="Free Legal Q&A | Ask a Lawyer Online – LitigaForge"
-        description="Ask any legal question and get an instant AI-powered answer based on your country's law — criminal, consumer, property, and family law. Free. No login required."
+        title={copy.title}
+        description={copy.description}
         canonical="/ask"
-        keywords="ask lawyer online free, legal question answer, statute help, consumer dispute query, free legal advice"
+        keywords={copy.keywords}
         structuredData={qaSchema}
       />
 
@@ -189,7 +192,7 @@ export default function Ask() {
             <textarea
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              placeholder="e.g. My neighbour has encroached on my property. What legal steps can I take to get it back?"
+              placeholder="e.g. My neighbor has encroached on my property. What legal steps can I take to get it back?"
               rows={4}
               className="w-full px-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none shadow-sm"
             />

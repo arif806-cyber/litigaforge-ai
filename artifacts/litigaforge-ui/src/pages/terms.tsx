@@ -1,16 +1,20 @@
 import { Scale, FileText, AlertTriangle, Users, CreditCard, Shield, XCircle, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { useCountry } from "@/hooks/useCountry";
+import { TERMS_COPY } from "@/lib/country-copy";
 
 const EFFECTIVE_DATE = "1 June 2026";
 const CONTACT_EMAIL = "legal@litigaforge.ai";
 
 export default function TermsOfService() {
+  const { activeCode } = useCountry();
+  const copy = TERMS_COPY[activeCode.toUpperCase()] ?? TERMS_COPY.IN;
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-10" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
       <SEOHelmet
         title="Terms of Service"
-        description="LitigaForge AI Terms of Service — the rules and conditions for using our platform to connect with verified advocates in Telangana & AP."
+        description={copy.description}
         canonical="/terms"
       />
 
@@ -33,12 +37,12 @@ export default function TermsOfService() {
       <Section icon={<Scale className="w-4 h-4" />} title="1. About LitigaForge AI">
         <p>
           LitigaForge AI ("<strong>Platform</strong>", "<strong>we</strong>", "<strong>us</strong>") is a legal-technology marketplace that connects clients
-          with verified advocates registered with the Bar Councils of Telangana and Andhra Pradesh. We also provide AI-assisted legal information tools.
+          with verified legal professionals. We also provide AI-assisted legal information tools.
         </p>
         <p className="mt-2">
-          <strong>We are not a law firm and do not provide legal advice.</strong> The Platform is a technology intermediary under the
-          Information Technology Act 2000. The attorney-client relationship is formed directly and exclusively between the client and the
-          advocate — LitigaForge AI is not a party to that relationship.
+          <strong>We are not a law firm and do not provide legal advice.</strong> The Platform is a technology intermediary.
+          The attorney-client relationship is formed directly and exclusively between the client and the
+          legal professional — LitigaForge AI is not a party to that relationship.
         </p>
       </Section>
 
@@ -69,7 +73,7 @@ export default function TermsOfService() {
           <li>Attempt to access another user's data, documents, or account</li>
           <li>Reverse-engineer, scrape, or extract data from the Platform at scale</li>
           <li>Harass, threaten, or abuse other users or advocates</li>
-          <li>Violate any applicable Indian law, including the IT Act 2000, IPC, or Bar Council rules</li>
+          <li>Violate any applicable law in your jurisdiction</li>
           <li>Use the Platform for money laundering, fraud, or any criminal purpose</li>
         </ul>
         <p className="mt-2 text-sm">Violations may result in immediate account suspension, content removal, and reporting to law enforcement.</p>
@@ -122,8 +126,7 @@ export default function TermsOfService() {
 
       <Section icon={<Scale className="w-4 h-4" />} title="9. Governing Law & Disputes">
         <ul className="space-y-1.5 text-sm list-disc list-inside">
-          <li>These Terms are governed by the laws of the Republic of India.</li>
-          <li>Any disputes shall be subject to the exclusive jurisdiction of the courts at Hyderabad, Telangana.</li>
+          <li>{copy.jurisdiction}</li>
           <li>We encourage resolution of disputes through our grievance process before litigation. Contact us at <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a>.</li>
         </ul>
       </Section>

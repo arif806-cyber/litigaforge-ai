@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { getCountryFromPath } from "@/lib/country";
+import { useCountry } from "@/hooks/useCountry";
+import { LEGAL_AID_COPY } from "@/lib/country-copy";
 import { Heart, Phone, Globe, MapPin, ChevronRight, CheckCircle2, XCircle, ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
@@ -54,7 +56,9 @@ interface ContactData {
 }
 
 export default function LegalAid() {
-  const cc = (getCountryFromPath() || "in").toUpperCase();
+  const { activeCode } = useCountry();
+  const cc = (getCountryFromPath() || activeCode || "in").toUpperCase();
+  const copy = LEGAL_AID_COPY[cc] ?? LEGAL_AID_COPY.IN;
   const [step, setStep] = useState<WizardStep>("income");
   const [income, setIncome] = useState<string>("");
   const [category, setCategory] = useState<string>("");
@@ -113,7 +117,7 @@ export default function LegalAid() {
   };
 
   return (
-    <PageShell title="Free Legal Aid" subtitle={`Check if you qualify for free legal aid in ${countryName} and find official helplines near you.`} icon={<Heart className="w-6 h-6 text-primary" />}>
+    <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle} icon={<Heart className="w-6 h-6 text-primary" />}>
       <SEOHelmet
         title={`Free Legal Aid in ${countryName} | LitigaForge`}
         description={`Find free and low-cost legal aid in ${countryName}. Eligibility checker plus official legal-aid bodies, helplines and websites.`}

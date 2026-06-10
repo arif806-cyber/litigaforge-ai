@@ -3,6 +3,8 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { articles } from "@/data/articles";
 import { Clock, ArrowRight, BookOpen, Tag } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCountry } from "@/hooks/useCountry";
+import { BLOG_COPY } from "@/lib/country-copy";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Legal Help":      "bg-blue-100 text-blue-700 border-blue-200",
@@ -13,18 +15,20 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function Blog() {
+  const { activeCode } = useCountry();
+  const copy = BLOG_COPY[activeCode.toUpperCase()] ?? BLOG_COPY.IN;
   return (
     <>
       <SEOHelmet
-        title="Legal Guides & Articles – LitigaForge AI"
-        description="Free legal guides covering property disputes, consumer rights, free legal aid, eCourts case tracking, and RERA in Telangana and Andhra Pradesh."
+        title={`${copy.title} | LitigaForge AI`}
+        description={copy.description}
         canonical="/blog"
-        keywords="legal guides India, legal articles Telangana, property law guide AP, consumer rights India, free legal aid guide, eCourts how to"
+        keywords={copy.keywords}
         structuredData={{
           "@context": "https://schema.org",
           "@type": "Blog",
           "name": "LitigaForge AI Legal Guides",
-          "description": "Free legal guides for citizens of Telangana and Andhra Pradesh",
+          "description": copy.description,
           "url": "https://litiga-forge-ai.replit.app/blog",
           "blogPost": articles.map(a => ({
             "@type": "BlogPosting",
@@ -47,10 +51,10 @@ export default function Blog() {
               <span className="text-sm font-semibold text-primary uppercase tracking-widest">Legal Guides</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-              Free Legal Articles for India
+              {copy.title}
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Plain-language guides on property law, consumer rights, free legal aid, court procedures, and more — focused on Telangana &amp; Andhra Pradesh.
+              {copy.subtitle}
             </p>
           </div>
         </div>

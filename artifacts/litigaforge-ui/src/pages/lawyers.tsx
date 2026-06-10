@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { getCountryFromPath } from "@/lib/country";
 import { useAuth } from "@/lib/auth-context";
+import { useCountry } from "@/hooks/useCountry";
+import { LAWYERS_COPY } from "@/lib/country-copy";
 import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle, Globe2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -352,7 +354,9 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
 
 export default function LawyersPage() {
   const { user } = useAuth();
-  const cc = (getCountryFromPath() || "in").toUpperCase();
+  const { activeCode } = useCountry();
+  const cc = (getCountryFromPath() || activeCode || "in").toUpperCase();
+  const copy = LAWYERS_COPY[cc] ?? LAWYERS_COPY.IN;
   const dir = COUNTRY_DIR[cc] ?? COUNTRY_DIR.IN;
   const allRegions = `All Regions`;
   const allAreas = `All Areas`;
@@ -406,7 +410,7 @@ export default function LawyersPage() {
     : undefined;
 
   return (
-    <PageShell title="Advocate Directory" subtitle={`Verified advocates in ${dir.name} — filter by region, practice area, and language.`} icon={<Users className="w-6 h-6 text-primary" />}
+    <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle} icon={<Users className="w-6 h-6 text-primary" />}
       action={user?.role === "lawyer" ? (
         <Button onClick={() => setShowRegister(true)} size="lg" className="shadow-md flex-shrink-0">
           <Plus className="w-5 h-5 mr-2" /> List Your Profile

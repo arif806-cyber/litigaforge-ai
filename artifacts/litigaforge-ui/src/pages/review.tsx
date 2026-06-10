@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
+import { REVIEW_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 const DOC_TYPES = [
@@ -56,6 +57,7 @@ function RiskScoreBadge({ score }: { score: number }) {
 
 export default function Review() {
   const { activeCode, activeConfig } = useCountry();
+  const copy = REVIEW_COPY[activeCode.toUpperCase()] ?? REVIEW_COPY.IN;
   const [inputMode, setInputMode] = useState<"paste" | "upload">("paste");
   const [docText, setDocText] = useState("");
   const [docType, setDocType] = useState("contract");
@@ -130,7 +132,7 @@ export default function Review() {
   };
 
   return (
-    <PageShell title="Document Analyzer" subtitle={`Paste or upload any legal document — AI identifies risks, missing clauses, and jurisdiction issues under the law of ${activeConfig?.name ?? "your country"}.`} icon={<FileSearch className="w-6 h-6 text-primary" />}>
+    <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle} icon={<FileSearch className="w-6 h-6 text-primary" />}>
       <SEOHelmet
         title="Free Legal Document Analyzer | LitigaForge AI"
         description="Upload or paste any contract, agreement, notice, or legal document and get an instant AI risk score, missing clause detection, and recommendations."

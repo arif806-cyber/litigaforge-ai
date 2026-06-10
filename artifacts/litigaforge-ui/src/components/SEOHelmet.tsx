@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { getCountryName } from "@/lib/country-copy";
 
 const SITE_URL = "https://litigaforge.com";
 const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
@@ -17,14 +18,23 @@ interface SEOHelmetProps {
 }
 
 export function SEOHelmet({
-  title = "LitigaForge AI – Find Lawyers & Legal Help in Telangana & Andhra Pradesh",
-  description = "AI-powered legal platform connecting clients with verified advocates in Telangana and Andhra Pradesh. Get instant legal advice, document analysis, and case matching.",
+  title: _title,
+  description: _description,
   canonical,
   ogImage = DEFAULT_OG_IMAGE,
-  keywords = DEFAULT_KEYWORDS,
+  keywords: _keywords,
   structuredData,
   noIndex = false,
 }: SEOHelmetProps) {
+  const urlCode = (typeof window !== "undefined" ? window.location.pathname.split("/")[1] : "in").toUpperCase();
+  const isIndia = urlCode === "IN" || !urlCode;
+  const title = _title ?? (isIndia
+    ? "LitigaForge AI – Find Lawyers & Legal Help in India"
+    : `LitigaForge AI – AI Legal Help for ${getCountryName(urlCode)}`);
+  const description = _description ?? (isIndia
+    ? "AI-powered legal platform connecting clients with verified advocates in India. Get instant legal advice, document analysis, and case matching."
+    : `AI-powered legal platform for ${getCountryName(urlCode)}. Connect with verified lawyers, analyze documents, and get instant legal guidance.`);
+  const keywords = _keywords ?? DEFAULT_KEYWORDS;
   const fullTitle = title.includes("LitigaForge") ? title : `${title} | LitigaForge AI`;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : SITE_URL;
 

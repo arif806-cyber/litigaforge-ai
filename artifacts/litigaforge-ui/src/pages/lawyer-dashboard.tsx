@@ -5,7 +5,7 @@ import {
   Scale, Star, Briefcase, Users, FileText, BookOpen, User,
   Search, Bell, ChevronRight, Plus, Upload, CheckCircle2,
   X, LogOut, MessageSquare, ExternalLink, Info,
-  FileSearch, Gavel, Phone, Award, AlertTriangle, IndianRupee,
+  FileSearch, Gavel, Phone, Award, AlertTriangle,
   Shield, MapPin, Clock, XCircle, Loader2, Trash2, Sparkles,
   FolderOpen, PenSquare, ChevronDown, Check, Download, Share2, StickyNote, Send, Copy,
   Hourglass,
@@ -13,6 +13,8 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useCountry } from "@/hooks/useCountry";
+import { LAWYER_DASHBOARD_COPY } from "@/lib/country-copy";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 
@@ -32,12 +34,19 @@ const CASE_TYPES = [
   "GST / Tax", "Other",
 ];
 
-const COURTS = [
-  "High Court of Telangana", "District Court Hyderabad", "District Court Warangal",
-  "District Court Vijayawada", "District Court Visakhapatnam",
-  "Family Court Hyderabad", "NCLT Hyderabad", "RERA Tribunal",
-  "Consumer Forum", "Revenue Court", "Other",
-];
+const COURTS: Record<string, string[]> = {
+  IN: ["High Court", "District Court", "Family Court", "NCLT", "RERA Tribunal", "Consumer Forum", "Revenue Court", "Other"],
+  US: ["District Court", "Circuit Court", "State Court", "Small Claims Court", "Bankruptcy Court", "Other"],
+  GB: ["High Court", "County Court", "Crown Court", "Family Court", "Employment Tribunal", "Other"],
+  AE: ["DIFC Courts", "Dubai Courts", "Abu Dhabi Courts", "Labour Court", "Rental Dispute Centre", "Other"],
+  AU: ["Federal Court", "Supreme Court", "District Court", "Local Court", "Family Court", "Other"],
+  CA: ["Superior Court", "Provincial Court", "Small Claims Court", "Family Court", "Other"],
+  SG: ["High Court", "State Courts", "Family Justice Courts", "Small Claims Tribunals", "Other"],
+  DE: ["Landgericht", "Amtsgericht", "Arbeitsgericht", "Verwaltungsgericht", "Oberlandesgericht", "Other"],
+};
+function getCourts(countryCode: string) {
+  return COURTS[countryCode.toUpperCase()] ?? COURTS.IN;
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────────────
 interface LawyerCase {
@@ -54,6 +63,8 @@ interface LawyerDoc {
 // ── Sidebar ───────────────────────────────────────────────────────────────────────────────────
 function DashboardSidebar({ location, onNav }: { location: string; onNav?: () => void }) {
   const { user, logout } = useAuth();
+  const { activeCode } = useCountry();
+  const copy = LAWYER_DASHBOARD_COPY[activeCode.toUpperCase()] ?? LAWYER_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
@@ -91,7 +102,7 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
             <Shield className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-xs font-semibold text-emerald-400">Bar Council Verified</span>
           </div>
-          <p className="text-[11px] leading-relaxed text-sidebar-foreground/40">Your profile is verified by Telangana Bar Council.</p>
+          <p className="text-[11px] leading-relaxed text-sidebar-foreground/40">{copy.verifiedBy}</p>
         </div>
         <div className="mt-4 space-y-0.5">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Quick Access</p>
@@ -162,6 +173,8 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 // ── Main Page ─────────────────────────────────────────────────────────────────────────
 export default function LawyerDashboard() {
   const { user, refreshUser, logout } = useAuth();
+  const { activeCode } = useCountry();
+  const copy = LAWYER_DASHBOARD_COPY[activeCode.toUpperCase()] ?? LAWYER_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -314,7 +327,7 @@ export default function LawyerDashboard() {
 
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Awaiting Verification</h1>
             <p className="text-sm text-gray-500 leading-relaxed mb-6">
-              Your advocate profile has been submitted. Our team will review your Bar Council credentials and
+              Your profile has been submitted. Our team will review your credentials and
               verify your account — usually within 24 hours.
             </p>
 
@@ -322,7 +335,7 @@ export default function LawyerDashboard() {
             <div className="space-y-3 text-left mb-6">
               {[
                 { label: "Profile submitted", done: true },
-                { label: "Bar Council credentials review", done: false, active: true },
+                { label: "Credentials review", done: false, active: true },
                 { label: "Account activated", done: false },
               ].map(({ label, done, active }) => (
                 <div key={label} className="flex items-center gap-3">
@@ -396,8 +409,8 @@ export default function LawyerDashboard() {
               {/* Welcome */}
               <div className="rounded-2xl px-5 py-4 border border-blue-100 bg-gradient-to-r from-white to-blue-50/60 flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Welcome back, Advocate {lawyerFirstName} 👋</h1>
-                  <p className="text-sm text-gray-500 mt-0.5">Your AI-powered legal practice dashboard — Telangana &amp; AP courts</p>
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Welcome back, {lawyerFirstName} 👋</h1>
+                  <p className="text-sm text-gray-500 mt-0.5">{copy.pageSubtitle}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {isAdvocatePro ? (
@@ -601,10 +614,9 @@ export default function LawyerDashboard() {
               <div className="rounded-xl p-4 flex gap-3" style={{ background: "#EFF6FF", border: "1px solid #DBEAFE" }}>
                 <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-blue-900">AI trained on Indian law</p>
+                  <p className="text-sm font-semibold text-blue-900">AI Legal Assistant</p>
                   <p className="text-[12px] text-blue-700 mt-0.5 leading-relaxed">
-                    AI references IPC, CrPC, CPC, Evidence Act, RERA, GST Act, Motor Vehicles Act,
-                    and Consumer Protection Act. Always verify AI output before filing in Telangana / AP courts.
+                    AI references relevant statutes, case law, and procedural rules. Always verify AI output before filing in any court.
                   </p>
                 </div>
               </div>
@@ -728,7 +740,7 @@ export default function LawyerDashboard() {
 
       {/* ── Add Case Modal ── */}
       <Modal open={showCaseModal} onClose={() => setShowCaseModal(false)} title="Add New Case">
-        <CaseForm onSubmit={(data) => createCaseMut.mutate(data)} loading={createCaseMut.isPending} />
+        <CaseForm onSubmit={(data) => createCaseMut.mutate(data)} loading={createCaseMut.isPending} countryCode={activeCode} />
       </Modal>
 
       {/* ── Edit Case Modal ── */}
@@ -737,6 +749,7 @@ export default function LawyerDashboard() {
           initialCase={editingCase}
           onSubmit={(data) => editingCase && editCaseMut.mutate({ caseId: editingCase.id, body: data })}
           loading={editCaseMut.isPending}
+          countryCode={activeCode}
         />
       </Modal>
 
@@ -1032,12 +1045,13 @@ function CaseFolderModal({
 }
 
 // ── Case Form ────────────────────────────────────────────────────────────────────────────────
-function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object) => void; loading: boolean; initialCase?: LawyerCase | null }) {
+function CaseForm({ onSubmit, loading, initialCase, countryCode }: { onSubmit: (data: object) => void; loading: boolean; initialCase?: LawyerCase | null; countryCode?: string }) {
   const isEdit = !!initialCase;
+  const courts = getCourts(countryCode ?? "IN");
   const [title, setTitle] = useState(initialCase?.title ?? "");
   const [caseType, setCaseType] = useState(initialCase?.case_type ?? CASE_TYPES[0]);
   const [clientName, setClientName] = useState(initialCase?.client_name ?? "");
-  const [courtName, setCourtName] = useState(initialCase?.court_name ?? COURTS[0]);
+  const [courtName, setCourtName] = useState(initialCase?.court_name ?? courts[0]);
   const [cnrNumber, setCnrNumber] = useState(initialCase?.cnr_number ?? "");
   const [description, setDescription] = useState(initialCase?.description ?? "");
   const [status, setStatus] = useState(initialCase?.status ?? "active");
@@ -1054,7 +1068,7 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-xs font-semibold text-gray-700 mb-1">Case Title *</label>
-        <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Ravi vs. State of Telangana"
+        <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Smith vs. ABC Corp"
           className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "#E2E8F0" }} />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -1081,7 +1095,7 @@ function CaseForm({ onSubmit, loading, initialCase }: { onSubmit: (data: object)
           </button>
           {showCourtDropdown && (
             <div className="absolute z-10 mt-1 w-full bg-card rounded-lg shadow-lg border py-1" style={{ borderColor: "#E2E8F0", maxHeight: "200px", overflow: "auto" }}>
-              {COURTS.map((c) => (
+              {courts.map((c) => (
                 <button key={c} type="button" onClick={() => { setCourtName(c); setShowCourtDropdown(false); }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">{c}</button>
               ))}

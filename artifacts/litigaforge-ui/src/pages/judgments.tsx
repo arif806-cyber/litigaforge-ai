@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
+import { JUDGMENTS_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
 
 interface Judgment {
@@ -32,6 +33,7 @@ const SAMPLE_QUERIES = [
 
 export default function Judgments() {
   const { activeCode, activeConfig } = useCountry();
+  const copy = JUDGMENTS_COPY[activeCode.toUpperCase()] ?? JUDGMENTS_COPY.IN;
   const [query, setQuery] = useState("");
   const [court, setCourt] = useState("");
   const [courtOpen, setCourtOpen] = useState(false);
@@ -77,7 +79,7 @@ export default function Judgments() {
       canonical="/judgments"
       keywords="search court judgments, supreme court precedents, case law finder, legal research, court orders"
     />
-    <PageShell title="Judgment Finder" subtitle={`Search ${activeConfig?.name ?? "case"} law — AI finds relevant precedents with citations and plain-language summaries.`} icon={<BookOpen className="w-6 h-6 text-primary" />}>
+    <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle} icon={<BookOpen className="w-6 h-6 text-primary" />}>
 
       <div className="space-y-8">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">

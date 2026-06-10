@@ -15,7 +15,7 @@ paths = [ "/" ]
 localPort = 23790
 
 [services.development]
-run = "pnpm --filter @workspace/litigaforge-ui run dev"
+run = "BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run dev"
 
 [services.production]
 

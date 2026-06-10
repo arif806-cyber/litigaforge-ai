@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CLIENT_DASHBOARD_COPY } from "@/lib/country-copy";
 import { motion } from "framer-motion";
 import {
   Briefcase, FileText, User, MessageSquare,
@@ -125,6 +126,8 @@ function MatchScoreBar({ score }: { score: number }) {
 
 export default function ClientDashboard() {
   const { user } = useAuth();
+  const { activeCode } = useCountry();
+  const copy = CLIENT_DASHBOARD_COPY[activeCode.toUpperCase()] ?? CLIENT_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
@@ -302,11 +305,11 @@ export default function ClientDashboard() {
               </div>
             </div>
             <div className="px-4 py-3 space-y-3">
-              {activeConfig.top_services?.length > 0 && (
+              {(activeConfig.top_services?.length ?? 0) > 0 && (
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Top Services</p>
                   <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                    {activeConfig.top_services.map((s: string) => (
+                    {activeConfig.top_services!.map((s: string) => (
                       <span key={s} className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                         {s}
                       </span>
@@ -314,11 +317,11 @@ export default function ClientDashboard() {
                   </div>
                 </div>
               )}
-              {activeConfig.courts?.length > 0 && (
+              {(activeConfig.courts?.length ?? 0) > 0 && (
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Courts & Tribunals</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {activeConfig.courts.slice(0, 4).map((c: string) => (
+                    {activeConfig.courts!.slice(0, 4).map((c: string) => (
                       <span key={c} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                         {c}
                       </span>
@@ -478,7 +481,7 @@ export default function ClientDashboard() {
                                     {new Date(c.hearing_date).toLocaleDateString(locale)}
                                   </span>
                                 )}
-                                <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.lawyer_name || "Advocate"}</span>
+                                <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.lawyer_name || "Lawyer"}</span>
                               </div>
                             </div>
                           </div>
@@ -690,7 +693,7 @@ export default function ClientDashboard() {
                       {(c.lawyer_name || "A")[0]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-foreground truncate">{c.lawyer_name || "Advocate"}</p>
+                      <p className="text-[12px] font-semibold text-foreground truncate">{c.lawyer_name || "Lawyer"}</p>
                       <p className="text-[10px] text-muted-foreground">{c.case_type}</p>
                     </div>
                     {c.lawyer_phone && (

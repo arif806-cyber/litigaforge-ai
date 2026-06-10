@@ -1,16 +1,20 @@
 import { Shield, Lock, Eye, Trash2, Download, Bell, Mail, Scale } from "lucide-react";
 import { Link } from "wouter";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { useCountry } from "@/hooks/useCountry";
+import { PRIVACY_COPY } from "@/lib/country-copy";
 
 const EFFECTIVE_DATE = "1 June 2026";
 const CONTACT_EMAIL = "privacy@litigaforge.ai";
 
 export default function PrivacyPolicy() {
+  const { activeCode } = useCountry();
+  const copy = PRIVACY_COPY[activeCode.toUpperCase()] ?? PRIVACY_COPY.IN;
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-10" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
       <SEOHelmet
         title="Privacy Policy"
-        description="LitigaForge AI Privacy Policy — how we collect, use and protect your personal data under the Digital Personal Data Protection Act 2023."
+        description={copy.description}
         canonical="/privacy"
       />
 
@@ -26,19 +30,12 @@ export default function PrivacyPolicy() {
           </div>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900">
-          <strong>Compliance notice:</strong> This policy is drafted in accordance with the{" "}
-          <strong>Digital Personal Data Protection Act 2023 (DPDP Act)</strong> of India, the{" "}
-          <strong>Information Technology Act 2000</strong>, and the{" "}
-          <strong>IT (Reasonable Security Practices) Rules 2011</strong>.
+          <strong>Compliance notice:</strong> This policy is drafted in accordance with applicable data protection laws in your jurisdiction.
         </div>
       </div>
 
       <Section icon={<Scale className="w-4 h-4" />} title="1. Who We Are">
-        <p>
-          LitigaForge AI ("<strong>we</strong>", "<strong>our</strong>", "<strong>the Platform</strong>") is a legal-technology platform
-          connecting clients with verified advocates in Telangana and Andhra Pradesh. We are the <strong>Data Fiduciary</strong>
-          under the DPDP Act 2023 for all personal data processed on this platform.
-        </p>
+        <p>{copy.about}</p>
         <p className="mt-2">
           <strong>Contact for data matters:</strong>{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a>

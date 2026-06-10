@@ -12,6 +12,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
 import { cn } from "@/lib/utils";
+import { LEGAL_CHAT_COPY } from "@/lib/country-copy";
 
 const DETAIL_FIELDS = [
   { id: "location", label: "Location / jurisdiction", placeholder: "e.g. city, state or region" },
@@ -40,11 +41,13 @@ export default function LegalChat() {
   const [pendingQ, setPendingQ] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [details, setDetails] = useState<Record<string, string>>({});
+
+  const chatCopy = LEGAL_CHAT_COPY[activeCode.toUpperCase()] ?? LEGAL_CHAT_COPY.IN;
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
       role: "ai",
-      content: "Hello! I am LitigaForge AI, your legal assistant for Telangana and Andhra Pradesh.\n\nI can help you with:\n- Drafting legal notices, agreements, and petitions\n- Explaining procedural steps\n- Analyzing case scenarios\n- Citing relevant Indian laws\n\nSelect a template below or type your question.\n\n---\n*This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice.*",
+      content: chatCopy.welcome,
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
@@ -174,11 +177,7 @@ export default function LegalChat() {
   const clearChat = () => {
     if (!confirm("Clear this chat session? This cannot be undone.")) return;
     setMessages([
-      {
-        id: 0,
-        role: "ai",
-        content: "Hello! I am LitigaForge AI, your legal assistant for Telangana and Andhra Pradesh.\n\nI can help you with:\n- Drafting legal notices, agreements, and petitions\n- Explaining procedural steps\n- Analyzing case scenarios\n- Citing relevant Indian laws\n\nSelect a template below or type your question.\n\n---\n*This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice.*",
-      },
+      { id: 0, role: "ai", content: chatCopy.welcome },
     ]);
   };
 
