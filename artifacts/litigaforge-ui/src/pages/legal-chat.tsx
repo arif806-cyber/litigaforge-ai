@@ -18,13 +18,13 @@ const DETAIL_FIELDS = [
   { id: "location", label: "Location / jurisdiction", placeholder: "e.g. city, state or region" },
   { id: "parties", label: "People or parties involved", placeholder: "e.g. employer, landlord, spouse" },
   { id: "dates", label: "Key dates", placeholder: "e.g. when it happened, deadlines" },
-  { id: "amount", label: "Amount / value involved", placeholder: "e.g. ₹50,000, $2,000" },
+  { id: "amount", label: "Amount / value involved", placeholder: "e.g. amount in dispute" },
 ] as const;
 
 const TEMPLATES = [
-  { id: "legal_notice", label: "Legal Notice", icon: FileText, prompt: "Draft a formal legal notice for [describe issue]. Include all necessary sections under Indian law." },
-  { id: "agreement", label: "Agreement Draft", icon: Scale, prompt: "Draft a [rental/partnership/employment] agreement. Include standard clauses under Indian Contract Act, 1872." },
-  { id: "petition", label: "Court Petition", icon: Gavel, prompt: "Draft a petition for [civil/criminal/writ] matter for filing in [High Court/District Court]." },
+  { id: "legal_notice", label: "Legal Notice", icon: FileText, prompt: "Draft a formal legal notice for [describe issue]. Include all the sections required under the applicable law of my jurisdiction." },
+  { id: "agreement", label: "Agreement Draft", icon: Scale, prompt: "Draft a [rental/partnership/employment] agreement with the standard clauses that are valid and enforceable in my jurisdiction." },
+  { id: "petition", label: "Court Petition", icon: Gavel, prompt: "Draft a petition for a [civil/criminal/writ] matter for filing in the appropriate court in my jurisdiction." },
   { id: "reply", label: "Reply to Notice", icon: BookOpen, prompt: "Draft a reply to a legal notice received regarding [matter]. Be firm but legally sound." },
 ];
 
@@ -71,7 +71,7 @@ export default function LegalChat() {
     try {
       const data = await apiFetch("/ai-legal-chat", {
         method: "POST",
-        body: JSON.stringify({ message, context }),
+        body: JSON.stringify({ message, context, country: activeCode }),
       });
       const aiMsg: Message = { id: Date.now() + 1, role: "ai", content: data.reply || "Sorry, I could not generate a response." };
       setMessages((prev) => [...prev, aiMsg]);
@@ -302,7 +302,7 @@ export default function LegalChat() {
                       key={f.id}
                       value={details[f.id] ?? ""}
                       onChange={e => setDetails(p => ({ ...p, [f.id]: e.target.value }))}
-                      placeholder={f.placeholder}
+                      placeholder={f.id === "amount" && activeConfig?.currency_symbol ? `e.g. ${activeConfig.currency_symbol}50,000` : f.placeholder}
                       className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       data-testid={`chat-detail-${f.id}`}
                     />

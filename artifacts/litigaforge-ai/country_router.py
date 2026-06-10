@@ -35,6 +35,12 @@ COUNTRY_CONFIG = {
       "Consumer Protection Act 2019",
       "Motor Vehicles Act"
     ],
+    "authoritative_sources": [
+      "India Code (indiacode.nic.in)",
+      "Supreme Court of India (main.sci.gov.in)",
+      "eCourts India (ecourts.gov.in)",
+      "IndianKanoon (indiankanoon.org)"
+    ],
     "payment_methods": ["Razorpay", "UPI", "NetBanking"]
   },
   "US": {
@@ -65,6 +71,12 @@ COUNTRY_CONFIG = {
       "Federal Rules of Civil Procedure",
       "ADA",
       "FLSA Employment Law"
+    ],
+    "authoritative_sources": [
+      "Legal Information Institute (law.cornell.edu)",
+      "GovInfo / U.S. Code (govinfo.gov)",
+      "U.S. Courts (uscourts.gov)",
+      "CourtListener (courtlistener.com)"
     ],
     "payment_methods": ["Stripe", "PayPal", "Credit Card"]
   },
@@ -98,6 +110,11 @@ COUNTRY_CONFIG = {
       "Housing Act 2004",
       "Consumer Rights Act 2015"
     ],
+    "authoritative_sources": [
+      "UK Legislation (legislation.gov.uk)",
+      "GOV.UK (gov.uk)",
+      "Find Case Law (caselaw.nationalarchives.gov.uk)"
+    ],
     "payment_methods": ["Stripe", "PayPal", "Credit Card"]
   },
   "AE": {
@@ -130,6 +147,11 @@ COUNTRY_CONFIG = {
       "Tenancy Law Dubai",
       "Commercial Companies Law"
     ],
+    "authoritative_sources": [
+      "UAE Legislation Portal (uaelegislation.gov.ae)",
+      "UAE Ministry of Justice (moj.gov.ae)",
+      "The Official Portal of the UAE Government (u.ae)"
+    ],
     "payment_methods": ["Stripe", "Credit Card", "Bank Transfer"]
   },
   "AU": {
@@ -160,6 +182,11 @@ COUNTRY_CONFIG = {
       "Australian Consumer Law",
       "Family Law Act 1975",
       "Migration Act 1958"
+    ],
+    "authoritative_sources": [
+      "Federal Register of Legislation (legislation.gov.au)",
+      "AustLII (austlii.edu.au)",
+      "Fair Work Ombudsman (fairwork.gov.au)"
     ],
     "payment_methods": ["Stripe", "PayPal", "Credit Card"]
   },
@@ -193,6 +220,11 @@ COUNTRY_CONFIG = {
       "Immigration IRPA",
       "Consumer Protection Act"
     ],
+    "authoritative_sources": [
+      "Justice Laws Website (laws-lois.justice.gc.ca)",
+      "CanLII (canlii.org)",
+      "Supreme Court of Canada (scc-csc.ca)"
+    ],
     "payment_methods": ["Stripe", "PayPal", "Credit Card"]
   },
   "SG": {
@@ -223,6 +255,11 @@ COUNTRY_CONFIG = {
       "Companies Act",
       "Women's Charter",
       "Consumer Protection Act"
+    ],
+    "authoritative_sources": [
+      "Singapore Statutes Online (sso.agc.gov.sg)",
+      "Singapore Courts (judiciary.gov.sg)",
+      "Attorney-General's Chambers (agc.gov.sg)"
     ],
     "payment_methods": ["Stripe", "PayNow", "Credit Card"]
   },
@@ -255,6 +292,11 @@ COUNTRY_CONFIG = {
       "Employment Protection Act",
       "Tenancy Law BGB",
       "GDPR"
+    ],
+    "authoritative_sources": [
+      "Gesetze im Internet (gesetze-im-internet.de)",
+      "Federal Court of Justice (bundesgerichtshof.de)",
+      "Federal Ministry of Justice (bmj.de)"
     ],
     "payment_methods": ["Stripe", "SEPA", "Credit Card"]
   }

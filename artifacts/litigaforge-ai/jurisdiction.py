@@ -59,10 +59,16 @@ def jurisdiction_block(code):
     c = get_config(code)
     laws = ", ".join(c.get("primary_laws", [])) or "the applicable national statutes"
     courts = ", ".join(c.get("courts", [])) or "the relevant courts"
+    sources = "; ".join(c.get("authoritative_sources", []))
+    sources_line = (
+        f"Ground every answer in these official legal sources for {c['name']}: {sources}.\n"
+        if sources else ""
+    )
     return (
         f"JURISDICTION: {c['name']} — {c['legal_system']} legal system.\n"
         f"Primary laws to rely on: {laws}.\n"
         f"Relevant courts / forums: {courts}.\n"
+        f"{sources_line}"
         f"Currency: {c['currency']} ({c['currency_symbol']}).\n"
         f"Answer strictly under the law of {c['name']}. Cite real {c['name']} statutes, sections, "
         f"and procedures, and use {c['currency']} for any monetary amounts. Do NOT cite the law of "

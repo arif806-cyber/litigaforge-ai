@@ -11,9 +11,12 @@ import {
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
+import { useCountry } from "@/hooks/useCountry";
+import { formatDate } from "@/lib/locale";
 
 export default function DocumentsPage() {
   const { user } = useAuth();
+  const { activeCode } = useCountry();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -127,7 +130,7 @@ export default function DocumentsPage() {
                     <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-400">
                       <span className="text-blue-600 font-medium uppercase">{doc.file_type}</span>
                       <span>{doc.file_size ? (doc.file_size / 1024).toFixed(1) + " KB" : "N/A"}</span>
-                      <span>{new Date(doc.created_at).toLocaleDateString("en-IN")}</span>
+                      <span>{formatDate(doc.created_at, activeCode)}</span>
                       {doc.case_title && <span className="text-gray-500">Case: {doc.case_title}</span>}
                     </div>
                   </div>

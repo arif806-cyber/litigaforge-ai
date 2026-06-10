@@ -15,6 +15,7 @@ import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useCountry } from "@/hooks/useCountry";
 import { LAWYER_DASHBOARD_COPY } from "@/lib/country-copy";
+import { formatDate, caseTerms } from "@/lib/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 
@@ -173,7 +174,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 // ── Main Page ─────────────────────────────────────────────────────────────────────────
 export default function LawyerDashboard() {
   const { user, refreshUser, logout } = useAuth();
-  const { activeCode } = useCountry();
+  const { activeCode, activeConfig } = useCountry();
   const copy = LAWYER_DASHBOARD_COPY[activeCode.toUpperCase()] ?? LAWYER_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -496,7 +497,7 @@ export default function LawyerDashboard() {
                                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
                                 {c.cnr_number && (
                                   <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F0F9FF", color: "#0284C7", border: "1px solid #BAE6FD" }}>
-                                    <FileText className="w-2.5 h-2.5" /> CNR: {c.cnr_number}
+                                    <FileText className="w-2.5 h-2.5" /> {caseTerms(activeCode).short}: {c.cnr_number}
                                   </span>
                                 )}
                                 {/* Status changer dropdown */}
@@ -532,7 +533,7 @@ export default function LawyerDashboard() {
                               <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
                                 {c.client_name && <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.client_name}</span>}
                                 {c.court_name && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.court_name}</span>}
-                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString("en-IN")}</span>
+                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(c.created_at, activeCode)}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
@@ -590,7 +591,7 @@ export default function LawyerDashboard() {
                               ) : (
                                 <p className="text-[12px] text-gray-400 mt-0.5 line-clamp-1">{d.content_text?.slice(0, 80) || "No content preview"}{d.content_text && d.content_text.length > 80 ? "…" : ""}</p>
                               )}
-                              <p className="text-[11px] text-gray-400 mt-1">{new Date(d.created_at).toLocaleDateString("en-IN")}</p>
+                              <p className="text-[11px] text-gray-400 mt-1">{formatDate(d.created_at, activeCode)}</p>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
                               {!d.ai_summary && (
@@ -683,7 +684,7 @@ export default function LawyerDashboard() {
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-medium text-gray-800 truncate">{d.filename}</p>
                           <p className="text-[11px] text-gray-400">{linkedCase ? `Linked: ${linkedCase.title}` : "Unlinked document"}</p>
-                          <p className="text-[10px] text-gray-300">{new Date(d.created_at).toLocaleDateString("en-IN")}</p>
+                          <p className="text-[10px] text-gray-300">{formatDate(d.created_at, activeCode)}</p>
                         </div>
                       </div>
                     );
@@ -725,16 +726,26 @@ export default function LawyerDashboard() {
                 </div>
               )}
 
-              {/* NALSA Helpline */}
-              <a href="tel:15100" className="rounded-xl p-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                  <Phone className="w-4 h-4 text-emerald-700" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-emerald-800">NALSA Free Legal Aid</p>
-                  <p className="text-[11px] text-emerald-600 font-medium">Toll-free: 15100</p>
-                </div>
-              </a>
+              {/* Emergency Legal Aid (per country) */}
+              {activeConfig && (() => {
+                const tel = activeConfig.emergency_legal?.replace(/[^\d+]/g, "") ?? "";
+                const inner = (
+                  <>
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-4 h-4 text-emerald-700" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-emerald-800">Free Legal Aid · {activeConfig.flag}</p>
+                      <p className="text-[11px] text-emerald-600 font-medium">{activeConfig.emergency_legal}</p>
+                    </div>
+                  </>
+                );
+                return tel ? (
+                  <a href={`tel:${tel}`} className="rounded-xl p-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">{inner}</a>
+                ) : (
+                  <div className="rounded-xl p-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200">{inner}</div>
+                );
+              })()}
 
       </aside>
 
@@ -770,6 +781,7 @@ export default function LawyerDashboard() {
         analyzePending={analyzeDocMut.isPending}
         onSaveNotes={(docId: number, notes: string) => saveNotesMut.mutate({ docId, notes })}
         notesPending={saveNotesMut.isPending}
+        countryCode={activeCode}
       />
 
     </div>
@@ -864,7 +876,7 @@ function shareDoc(doc: LawyerDoc) {
 
 // ── Case Folder Modal ────────────────────────────────────────────────────────────────────────────────
 function CaseFolderModal({
-  open, onClose, caseData, docs, onUpload, onAnalyze, analyzingDoc, analyzePending, onSaveNotes, notesPending,
+  open, onClose, caseData, docs, onUpload, onAnalyze, analyzingDoc, analyzePending, onSaveNotes, notesPending, countryCode,
 }: {
   open: boolean; onClose: () => void; caseData: LawyerCase | null; docs: LawyerDoc[];
   onUpload: () => void;
@@ -873,6 +885,7 @@ function CaseFolderModal({
   analyzePending: boolean;
   onSaveNotes: (docId: number, notes: string) => void;
   notesPending: boolean;
+  countryCode?: string;
 }) {
   const [expandedDoc, setExpandedDoc] = useState<number | null>(null);
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
@@ -906,13 +919,13 @@ function CaseFolderModal({
                     : "bg-amber-50 text-amber-600 border border-amber-200")}>{caseData.status.toUpperCase()}</span>
                 {caseData.cnr_number && (
                   <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F0F9FF", color: "#0284C7", border: "1px solid #BAE6FD" }}>
-                    <FileText className="w-2.5 h-2.5" /> CNR: {caseData.cnr_number}
+                    <FileText className="w-2.5 h-2.5" /> {caseTerms(countryCode).short}: {caseData.cnr_number}
                   </span>
                 )}
                 <span className="text-[11px] text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{caseData.court_name || "No court"}</span>
               </div>
               <p className="text-[12px] text-gray-500 mt-1">{caseData.description || "No description"}</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Client: {caseData.client_name || "N/A"} · Added {new Date(caseData.created_at).toLocaleDateString("en-IN")}</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Client: {caseData.client_name || "N/A"} · Added {formatDate(caseData.created_at, countryCode)}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -954,7 +967,7 @@ function CaseFolderModal({
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{d.file_type.toUpperCase()}</span>
                         {d.ai_summary && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">AI Analyzed</span>}
                       </div>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{new Date(d.created_at).toLocaleDateString("en-IN")}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{formatDate(d.created_at, countryCode)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button onClick={() => setExpandedDoc(expandedDoc === d.id ? null : d.id)}
@@ -1110,8 +1123,8 @@ function CaseForm({ onSubmit, loading, initialCase, countryCode }: { onSubmit: (
             className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "#E2E8F0" }} />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">CNR Number</label>
-          <input value={cnrNumber} onChange={(e) => setCnrNumber(e.target.value)} placeholder="e.g., AP0101234567890"
+          <label className="block text-xs font-semibold text-gray-700 mb-1">{caseTerms(countryCode).label}</label>
+          <input value={cnrNumber} onChange={(e) => setCnrNumber(e.target.value)} placeholder={caseTerms(countryCode).placeholder}
             className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "#E2E8F0" }} />
         </div>
       </div>

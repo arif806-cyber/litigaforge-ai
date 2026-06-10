@@ -15,6 +15,10 @@ from rate_limit import limiter
 from database import fetchrow, fetch, execute
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
+from jurisdiction import (
+    jurisdiction_block, advisor_descriptor, localize_currency,
+    country_name, normalize_code,
+)
 
 logger = logging.getLogger("litigaforge.chat")
 router = APIRouter(tags=["chat"])
@@ -73,6 +77,7 @@ class AIChatRequest(BaseModel):
     message: str
     context: str = ""
     thread_id: Optional[int] = None
+    country: str = "IN"
 
 
 @router.post("/ai-legal-chat")
@@ -95,13 +100,16 @@ async def ai_legal_chat(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    system_prompt = """You are LitigaForge AI, a legal assistant for the Indian legal system, specifically for Telangana and Andhra Pradesh.
+    code = normalize_code(req.country)
+    system_prompt = f"""You are LitigaForge AI, {advisor_descriptor(code)}.
 You help advocates and clients with legal drafting, procedural guidance, and case analysis.
+
+{jurisdiction_block(code)}
 
 IMPORTANT: Always include this disclaimer at the end of your response:
 "This is AI-generated guidance only. Please verify with a qualified lawyer before acting. This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
 
-Be concise, accurate, and cite relevant Indian laws (IPC, CrPC, CPC, specific state acts) where applicable."""
+Be concise and accurate, and cite the real statutes, sections, and procedures of {country_name(code)} where applicable."""
 
     user_prompt = safe_message
     if safe_context:
@@ -110,6 +118,7 @@ Be concise, accurate, and cite relevant Indian laws (IPC, CrPC, CPC, specific st
     full_prompt = f"{system_prompt}\n\n{user_prompt}"
     response = _ai(wrap_user_prompt(full_prompt), 2500)
     response = validate_ai_response(response)
+    response = localize_currency(response, code)
     response = add_disclaimer(response)
 
     if req.thread_id:

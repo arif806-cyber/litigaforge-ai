@@ -162,7 +162,7 @@ export default function PostCase() {
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Location</label>
             <input value={locationVal} onChange={(e) => setLocationVal(e.target.value)}
-              placeholder="e.g., Hyderabad, Telangana"
+              placeholder={copy.locationPlaceholder}
               className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
           </div>
           <div className="space-y-2">

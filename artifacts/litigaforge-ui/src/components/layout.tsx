@@ -249,6 +249,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <CountrySwitcher />
           <LanguageSwitcher />
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

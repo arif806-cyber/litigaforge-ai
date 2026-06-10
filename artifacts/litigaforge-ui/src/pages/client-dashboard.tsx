@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CLIENT_DASHBOARD_COPY } from "@/lib/country-copy";
+import { localeFor, caseTerms } from "@/lib/locale";
 import { motion } from "framer-motion";
 import {
   Briefcase, FileText, User, MessageSquare,
@@ -46,10 +47,6 @@ function stageLabel(stage: string) {
   return labels[stage] || stage;
 }
 
-function dateLocale(lang: string) {
-  const map: Record<string, string> = { ar: "ar-AE", hi: "hi-IN", te: "te-IN", de: "de-DE", fr: "fr-CA", es: "es-US" };
-  return map[lang] ?? "en-IN";
-}
 
 /* ── Modal ─────────────────────────────────────────────────── */
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
@@ -200,8 +197,8 @@ export default function ClientDashboard() {
   const firstName = user?.name?.split(" ")[0] ?? "Client";
   const initials = (user?.name ?? "C").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   const { activeConfig, loading: countryLoading } = useCountry();
-  const { t, lang } = useLanguage();
-  const locale = dateLocale(lang);
+  const { t } = useLanguage();
+  const locale = localeFor(activeCode);
 
   const quickActions = [
     { label: t.post_case,    icon: Plus,       iconColor: "text-blue-600",   bgColor: "bg-blue-50 border-blue-100",   action: () => setLocation("/post-case") },
@@ -268,23 +265,34 @@ export default function ClientDashboard() {
         </motion.div>
 
         {/* ── Emergency Legal Aid Banner ───────────────────────── */}
-        {!countryLoading && activeConfig && (
-          <motion.a initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-            href={`tel:${activeConfig.emergency_legal?.match(/\d+/)?.[0] || "15100"}`}
-            className="flex items-center gap-3.5 p-4 rounded-2xl text-white transition-all active:scale-[0.98] hover:shadow-lg shadow-md"
-            style={{ background: "linear-gradient(135deg, #059669 0%, #10b981 100%)", boxShadow: "0 4px 20px -4px rgba(16,185,129,0.35)" }}>
-            <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <AlertCircle className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm leading-tight">Emergency Legal Aid · {activeConfig.flag}</p>
-              <p className="text-xs text-emerald-100 mt-0.5 truncate">{activeConfig.emergency_legal} · Tap to call</p>
-            </div>
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Phone className="w-4 h-4" />
-            </div>
-          </motion.a>
-        )}
+        {!countryLoading && activeConfig && (() => {
+          const tel = activeConfig.emergency_legal?.replace(/[^\d+]/g, "") ?? "";
+          const cls = "flex items-center gap-3.5 p-4 rounded-2xl text-white transition-all hover:shadow-lg shadow-md";
+          const style = { background: "linear-gradient(135deg, #059669 0%, #10b981 100%)", boxShadow: "0 4px 20px -4px rgba(16,185,129,0.35)" };
+          const inner = (
+            <>
+              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm leading-tight">Emergency Legal Aid · {activeConfig.flag}</p>
+                <p className="text-xs text-emerald-100 mt-0.5 truncate">{activeConfig.emergency_legal}{tel ? " · Tap to call" : ""}</p>
+              </div>
+              {tel && (
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-4 h-4" />
+                </div>
+              )}
+            </>
+          );
+          return tel ? (
+            <motion.a initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+              href={`tel:${tel}`} className={cls + " active:scale-[0.98]"} style={style}>{inner}</motion.a>
+          ) : (
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+              className={cls} style={style}>{inner}</motion.div>
+          );
+        })()}
 
         {/* ── Stat Cards ───────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -492,14 +500,14 @@ export default function ClientDashboard() {
                               <PenSquare className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => {
-                              const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\nCNR: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
+                              const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
                               if (navigator.share) navigator.share({ title: c.title, text });
                               else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
                             }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Share">
                               <Share2 className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => {
-                              const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\nCNR: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nStage: ${c.case_stage || "N/A"}\nDescription: ${c.description || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
+                              const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nStage: ${c.case_stage || "N/A"}\nDescription: ${c.description || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
                               const blob = new Blob([text], { type: "text/plain" });
                               const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `case-${c.id}.txt`; a.click();
                             }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Download">
@@ -819,7 +827,7 @@ export default function ClientDashboard() {
               {[
                 { label: "Case Type", value: showCaseDetail.case_type },
                 { label: "Court",     value: showCaseDetail.court_name || "N/A" },
-                { label: "CNR",       value: showCaseDetail.cnr_number || "N/A" },
+                { label: caseTerms(activeCode).short, value: showCaseDetail.cnr_number || "N/A" },
                 { label: "Hearing",   value: showCaseDetail.hearing_date ? new Date(showCaseDetail.hearing_date).toLocaleDateString(locale) : "N/A" },
               ].map((item) => (
                 <div key={item.label} className="rounded-xl p-3 bg-muted/40 border border-border">
@@ -922,14 +930,14 @@ export default function ClientDashboard() {
                 <PenSquare className="w-3.5 h-3.5" /> Edit
               </button>
               <button onClick={() => {
-                const text = `Case: ${showCaseDetail.title}\nType: ${showCaseDetail.case_type}\nCourt: ${showCaseDetail.court_name || "N/A"}\nCNR: ${showCaseDetail.cnr_number || "N/A"}\nHearing: ${showCaseDetail.hearing_date || "N/A"}\n\n— LitigaForge AI`;
+                const text = `Case: ${showCaseDetail.title}\nType: ${showCaseDetail.case_type}\nCourt: ${showCaseDetail.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${showCaseDetail.cnr_number || "N/A"}\nHearing: ${showCaseDetail.hearing_date || "N/A"}\n\n— LitigaForge AI`;
                 if (navigator.share) navigator.share({ title: showCaseDetail.title, text });
                 else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
               }} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">
                 <Share2 className="w-3.5 h-3.5" /> Share
               </button>
               <button onClick={() => {
-                const text = `Case: ${showCaseDetail.title}\nType: ${showCaseDetail.case_type}\nCourt: ${showCaseDetail.court_name || "N/A"}\nCNR: ${showCaseDetail.cnr_number || "N/A"}\n\n— LitigaForge AI`;
+                const text = `Case: ${showCaseDetail.title}\nType: ${showCaseDetail.case_type}\nCourt: ${showCaseDetail.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${showCaseDetail.cnr_number || "N/A"}\n\n— LitigaForge AI`;
                 const blob = new Blob([text], { type: "text/plain" });
                 const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `case-${showCaseDetail.id}.txt`; a.click(); URL.revokeObjectURL(a.href);
               }} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">

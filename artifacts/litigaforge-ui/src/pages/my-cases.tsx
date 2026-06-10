@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { useCountry } from "@/hooks/useCountry";
+import { formatDate } from "@/lib/locale";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   open:     { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" },
@@ -30,6 +32,7 @@ export default function MyCases() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
+  const { activeCode } = useCountry();
   const [tab, setTab] = useState<"open" | "pending" | "closed">("open");
   const [search, setSearch] = useState("");
   const [editingCase, setEditingCase] = useState<any>(null);
@@ -141,7 +144,7 @@ export default function MyCases() {
                       </div>
                       <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
                         {c.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.location}</span>}
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(c.created_at).toLocaleDateString("en-IN")}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(c.created_at, activeCode)}</span>
                         {c.budget_range && <span className="flex items-center gap-1 text-amber-600 font-medium">{c.budget_range}</span>}
                       </div>
                       {c.description && <p className="text-[12px] text-gray-500 mt-1 line-clamp-2">{c.description}</p>}

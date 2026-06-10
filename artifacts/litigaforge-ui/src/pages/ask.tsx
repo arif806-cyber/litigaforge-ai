@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { ASK_COPY } from "@/lib/country-copy";
+import { formatDate } from "@/lib/locale";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
 import { getAskCategories, askCategoryLabel, allCategoryLabel } from "@/data/askCategories";
 
@@ -53,7 +54,7 @@ interface ChatMsg {
   isError?: boolean;
 }
 
-function QACard({ item }: { item: QAItem }) {
+function QACard({ item, country }: { item: QAItem; country?: string }) {
   const [expanded, setExpanded] = useState(false);
   const color = CAT_COLORS[item.category] ?? CAT_COLORS.general;
 
@@ -75,7 +76,7 @@ function QACard({ item }: { item: QAItem }) {
             </span>
             <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
-              {new Date(item.created_at).toLocaleDateString("en-IN")}
+              {formatDate(item.created_at, country)}
             </span>
           </div>
           <p className="text-base font-semibold text-foreground leading-snug">
@@ -466,7 +467,7 @@ export default function Ask() {
               </div>
             )}
             {!qaLoading && !qaError && (qaList?.questions ?? []).map(item => (
-              <QACard key={item.id} item={item} />
+              <QACard key={item.id} item={item} country={activeCode} />
             ))}
           </div>
         </div>
