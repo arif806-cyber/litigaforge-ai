@@ -139,7 +139,6 @@ export default function CountrySwitcher() {
               })}
             </div>
           </div>
-        </>
       )}
     </>
   );
