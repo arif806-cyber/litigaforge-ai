@@ -397,7 +397,7 @@ if _prod_domain not in _cors_origins:
     _cors_origins.append(_prod_domain)
 if not _cors_origins:
     _cors_origins = ["http://localhost:5173", "http://localhost:4173"]
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,

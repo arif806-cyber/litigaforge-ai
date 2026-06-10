@@ -1,21 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Google Analytics — deferred until after the page is interactive so the
-         GTM payload never competes with the hero for main-thread or bandwidth.
-         gtag() calls queue in dataLayer and flush once the script loads. -->
+    <!-- Google Analytics (GA4) — loaded completely off the critical path so it
+         never blocks the main thread (the PageSpeed TBT culprit). The gtag()
+         stub queues events immediately into dataLayer; the heavy script is
+         fetched only AFTER the page is interactive: load + 3s, then during a
+         browser idle slot. NOTE: this GA4 measurement id (G-…) must be loaded
+         via gtag/js, NOT gtm.js (gtm.js is for GTM container ids, GTM-…). -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-DHTR1SECG4');
       window.addEventListener('load', function () {
-        setTimeout(function () {
+        var loadGA = function () {
           var s = document.createElement('script');
           s.async = true;
           s.src = 'https://www.googletagmanager.com/gtag/js?id=G-DHTR1SECG4';
           document.head.appendChild(s);
-        }, 1500);
+        };
+        setTimeout(function () {
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(loadGA, { timeout: 2000 });
+          } else {
+            loadGA();
+          }
+        }, 3000); // load 3s after the page is interactive
       });
     </script>
     <meta charset="UTF-8" />
@@ -295,12 +305,11 @@
       ]
     }
     </script>
-    <script type="module" crossorigin src="/assets/index-Dv9dmP6r.js"></script>
+    <script type="module" crossorigin src="/assets/index-w3jsz1oR.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/query-BIuYWTRv.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-BeCKiQwk.js">
-    <link rel="modulepreload" crossorigin href="/assets/icons-BYMwwsZS.js">
-    <link rel="modulepreload" crossorigin href="/assets/motion-onlOvMkg.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-BBm1N_99.css">
+    <link rel="modulepreload" crossorigin href="/assets/icons-lYGwB5p8.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DUgZtsuj.css">
   <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
   <body>
     <div id="root"></div>

@@ -2,7 +2,6 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Layout } from "@/components/layout";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
@@ -52,6 +51,13 @@ const TermsOfService      = lazy(() => import("@/pages/terms"));
 const RefundPolicy        = lazy(() => import("@/pages/refund-policy"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
 const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
+
+// Layout pulls in framer-motion. It only wraps the authenticated app routes —
+// never the public homepage/landing/login — so lazy-load it to keep
+// framer-motion (~40 KiB gz) out of the initial bundle on first paint.
+const Layout = lazy(() =>
+  import("@/components/layout").then((m) => ({ default: m.Layout })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
