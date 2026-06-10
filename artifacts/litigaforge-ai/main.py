@@ -308,6 +308,21 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("Migration email_verify: %s", me)
 
+        # ── Password reset tokens ──────────────────────────────────────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    token TEXT UNIQUE NOT NULL,
+                    expires_at TIMESTAMPTZ NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            logger.info("Migration: password_reset_tokens added")
+        except Exception as me:
+            logger.warning("Migration password_reset: %s", me)
+
         # ── Passkeys (WebAuthn / FIDO2) ───────────────────────────────────────
         try:
             await conn.execute("""

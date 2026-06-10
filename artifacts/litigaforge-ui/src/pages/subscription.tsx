@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth, TIER_LABELS } from "@/lib/auth-context";
 import { getCountryFromPath, buildCountryUrl } from "@/lib/country";
-import { CheckCircle2, Zap, Crown, Star, Loader2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Zap, Crown, Star, Loader2, AlertTriangle, Download, ArrowDownCircle, FileText } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ export default function Subscription() {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [razorpayError, setRazorpayError] = useState<string | null>(null);
+  const [downgrading, setDowngrading] = useState(false);
 
   const country = getCountryFromPath();
   const isIndia = !country || country === "in";
@@ -126,6 +127,39 @@ export default function Subscription() {
         body: JSON.stringify(payload),
       }),
   });
+
+  const downgrade = useMutation({
+    mutationFn: () =>
+      apiFetch("/subscription/downgrade", {
+        method: "POST",
+      }),
+  });
+
+  const handleDowngrade = async () => {
+    if (!confirm("Downgrade to Free? You will keep current benefits until the end of this billing period.")) return;
+    setDowngrading(true);
+    setSuccess(null);
+    setError(null);
+    try {
+      await downgrade.mutateAsync();
+      await refreshUser();
+      setSuccess("Free");
+    } catch (e: any) {
+      setError(e.message || "Downgrade failed.");
+    } finally {
+      setDowngrading(false);
+    }
+  };
+
+  const { data: invoices } = useQuery<{ invoices: { id: number; tier: string; started_at: string; status: string; payment_ref: string }[] }>({
+    queryKey: ["invoices"],
+    enabled: !!user,
+    queryFn: () => apiFetch("/subscription/invoices"),
+  });
+
+  const downloadInvoice = (id: number) => {
+    window.open(`/litigaforge/subscription/download-invoice/${id}`, "_blank");
+  };
 
   const handleRazorpayUpgrade = async (tier: string) => {
     setUpgrading(tier);
@@ -321,6 +355,62 @@ export default function Subscription() {
             <AlertTriangle className="w-6 h-6 flex-shrink-0" />
             <span className="font-semibold text-lg">{error}</span>
           </div>
+        )}
+
+        {currentTier !== "free" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="max-w-3xl mx-auto flex items-center justify-between gap-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl px-6 py-4 text-amber-800 dark:text-amber-300"
+          >
+            <div className="flex items-center gap-3">
+              <ArrowDownCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium text-sm">Not satisfied? You can downgrade to Free anytime. Benefits continue until the end of the billing period.</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDowngrade}
+              disabled={downgrading}
+              className="flex-shrink-0 border-amber-300 hover:bg-amber-100 text-amber-900"
+            >
+              {downgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Downgrade"}
+            </Button>
+          </motion.div>
+        )}
+
+        {invoices && invoices.invoices.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="max-w-3xl mx-auto bg-card border border-border rounded-2xl p-6 shadow-sm"
+          >
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Billing History
+            </h3>
+            <div className="space-y-2">
+              {invoices.invoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                  <div>
+                    <p className="text-sm font-medium capitalize">{inv.tier.replace("_", " ")} Plan</p>
+                    <p className="text-xs text-muted-foreground">{inv.started_at.split("T")[0]} &middot; {inv.status}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-mono">{inv.payment_ref.slice(0, 12)}...</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => downloadInvoice(inv.id)}
+                      className="text-primary hover:text-primary hover:bg-primary/10"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         )}
 
         {razorpayError && (

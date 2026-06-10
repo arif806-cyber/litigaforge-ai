@@ -13,7 +13,23 @@ import bcrypt
 from fastapi import Depends, HTTPException, Request, Response
 from jose import jwt, JWTError
 
-from database import get_user_by_id
+from database import get_user_by_id, fetchrow as _fetchrow
+
+TIER_LIMITS = {
+    "free": 5,
+    "professional": 50,
+    "advocate_pro": -1,
+}
+
+
+def check_tier_usage(user: dict) -> bool:
+    """Returns True if user is within their tier's monthly limit."""
+    tier = user.get("subscription_tier", "free")
+    limit = TIER_LIMITS.get(tier, 5)
+    if limit == -1:
+        return True
+    return (user.get("cases_this_month", 0) or 0) < limit
+
 
 SECRET_KEY = os.getenv("SESSION_SECRET", "litigaforge-dev-secret-change-in-prod")
 ALGORITHM = "HS256"

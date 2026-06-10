@@ -12,7 +12,7 @@ import requests as _req
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from auth import get_current_user
+from auth import get_current_user, check_tier_usage
 from rate_limit import limiter
 from database import fetchrow, fetch
 from sanitizer import sanitize_text
@@ -199,6 +199,11 @@ Provide a thorough, practical answer in this format:
 
 Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimers."""
 
+    # Tier enforcement
+    if current_user and not check_tier_usage(current_user):
+        limit = TIER_LIMITS.get(current_user.get("subscription_tier", "free"), 5)
+        raise HTTPException(403, f"Monthly limit reached ({limit} questions/month). Upgrade to continue.")
+
     answer = _ai(wrap_user_prompt(prompt, req.country), 1800)
     answer = validate_ai_response(answer)
     answer = add_disclaimer(answer)
@@ -304,6 +309,137 @@ Document text:
             "summary": "Analysis could not be completed automatically.",
         }
     return {"analysis": result, "document_type": req.document_type}
+
+
+# ── File Upload Analyzer ──────────────────────────────────────────────────────────────────
+
+def _extract_text_from_pdf(data: bytes) -> str:
+    """Extract text from PDF bytes using PyPDF2."""
+    try:
+        from PyPDF2 import PdfReader
+        from io import BytesIO
+        reader = PdfReader(BytesIO(data))
+        text = ""
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+        return text[:8000]
+    except Exception:
+        return ""
+
+
+def _extract_text_from_docx(data: bytes) -> str:
+    """Extract text from DOCX bytes using python-docx."""
+    try:
+        from docx import Document
+        from io import BytesIO
+        doc = Document(BytesIO(data))
+        text = "\n".join(p.text for p in doc.paragraphs if p.text)
+        return text[:8000]
+    except Exception:
+        return ""
+
+
+from fastapi import File, UploadFile
+
+@router.post("/document/analyze-file")
+@limiter.limit("10/minute")
+async def analyze_document_file(
+    request: Request,
+    file: UploadFile = File(...),
+    document_type: str = "contract",
+    country: str = "IN",
+    context: str = "",
+):
+    """Analyze uploaded file (PDF, DOCX, TXT, PNG, JPG). Extracts text then runs AI analysis."""
+    allowed = {"application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+               "text/plain", "image/png", "image/jpeg", "image/jpg", "image/webp"}
+    content_type = file.content_type or ""
+    filename = (file.filename or "").lower()
+
+    if not content_type or content_type == "application/octet-stream":
+        if filename.endswith(".pdf"):
+            content_type = "application/pdf"
+        elif filename.endswith(".docx"):
+            content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif filename.endswith(".txt"):
+            content_type = "text/plain"
+        elif filename.endswith(".png"):
+            content_type = "image/png"
+        elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
+            content_type = "image/jpeg"
+        elif filename.endswith(".webp"):
+            content_type = "image/webp"
+
+    if content_type not in allowed:
+        raise HTTPException(415, f"Unsupported file type: {content_type}. Supported: PDF, DOCX, TXT, PNG, JPG, WEBP")
+
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(413, "File too large. Max 10MB.")
+
+    extracted_text = ""
+    if content_type == "application/pdf":
+        extracted_text = _extract_text_from_pdf(data)
+    elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        extracted_text = _extract_text_from_docx(data)
+    elif content_type.startswith("text/"):
+        extracted_text = data.decode("utf-8", errors="replace")[:8000]
+    elif content_type.startswith("image/"):
+        try:
+            import pytesseract
+            from PIL import Image
+            from io import BytesIO
+            img = Image.open(BytesIO(data))
+            extracted_text = pytesseract.image_to_string(img)[:8000]
+        except Exception:
+            extracted_text = ""
+
+    if not extracted_text or len(extracted_text.strip()) < 50:
+        raise HTTPException(422, "Could not extract sufficient text from the file. Please paste the text directly or try a clearer document.")
+
+    try:
+        safe_context = sanitize_text(context, max_length=1500, field_name="context") if context else ""
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    cfg = get_config(country)
+    context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
+    prompt = f"""You are {advisor_descriptor(country)} reviewing a {document_type}.
+
+{jurisdiction_block(country)}
+{context_block}
+Analyze the following {document_type} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
+
+{{
+  "risk_score": 0-100,
+  "missing_clauses": ["list"],
+  "red_flags": ["list"],
+  "recommendations": ["list"],
+  "compliance_notes": "string — note compliance specifically under {cfg['name']} law",
+  "summary": "string"
+}}
+
+Document text:
+----
+{extracted_text[:8000]}
+----"""
+
+    raw = _ai(wrap_user_prompt(prompt, country), 2500)
+    raw = validate_ai_response(raw)
+    try:
+        result = _extract_json_object(raw)
+    except Exception:
+        result = {
+            "risk_score": 50,
+            "missing_clauses": [],
+            "red_flags": ["Could not parse AI output"],
+            "recommendations": ["Please review manually or try again"],
+            "compliance_notes": "AI parsing failed — manual review recommended.",
+            "summary": "Analysis could not be completed automatically.",
+        }
+    return {"analysis": result, "document_type": document_type, "source": "upload", "extracted_chars": len(extracted_text)}
 
 
 # ── Judgment Finder ────────────────────────────────────────────────────────────────────

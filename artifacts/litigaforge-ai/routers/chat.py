@@ -10,7 +10,7 @@ import requests as _req
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from auth import get_current_user
+from auth import get_current_user, check_tier_usage
 from rate_limit import limiter
 from database import fetchrow, fetch, execute
 from sanitizer import sanitize_text
@@ -84,6 +84,10 @@ async def ai_legal_chat(
 ):
     if not current_user:
         raise HTTPException(401, "Login required")
+
+    if not check_tier_usage(current_user):
+        limit = {"free": 5, "professional": 50, "advocate_pro": -1}.get(current_user.get("subscription_tier", "free"), 5)
+        raise HTTPException(403, f"Monthly limit reached ({limit} chats/month). Upgrade to continue.")
 
     try:
         safe_message = sanitize_text(req.message, max_length=2000, field_name="message")

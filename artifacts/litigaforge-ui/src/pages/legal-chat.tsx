@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, Loader2, Bot, User, FileText, MessageSquare,
-  Scale, BookOpen, Gavel, ChevronDown, Sparkles
+  Scale, BookOpen, Gavel, ChevronDown, Sparkles,
+  Download, Trash2
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
@@ -151,6 +152,36 @@ export default function LegalChat() {
     </>);
   }
 
+  const exportChat = (format: "txt" | "md") => {
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const header = `LitigaForge AI - Legal Chat Export\nDate: ${timestamp}\nUser: ${user?.name ?? "Anonymous"}\n\n`;
+    const body = messages.map(m => {
+      const label = m.role === "user" ? "You" : "LitigaForge AI";
+      return `--- ${label} ---\n${m.content}\n`;
+    }).join("\n");
+    const content = header + body;
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `litigaforge-chat-${timestamp}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const clearChat = () => {
+    if (!confirm("Clear this chat session? This cannot be undone.")) return;
+    setMessages([
+      {
+        id: 0,
+        role: "ai",
+        content: "Hello! I am LitigaForge AI, your legal assistant for Telangana and Andhra Pradesh.\n\nI can help you with:\n- Drafting legal notices, agreements, and petitions\n- Explaining procedural steps\n- Analyzing case scenarios\n- Citing relevant Indian laws\n\nSelect a template below or type your question.\n\n---\n*This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice.*",
+      },
+    ]);
+  };
+
   return (
     // On mobile the layout chain (min-h-full + footer) never gives this page a
     // definite height, so a plain `h-full` collapses and the bottom input bar
@@ -158,6 +189,27 @@ export default function LegalChat() {
     // bar. Bound the height explicitly: 100dvh minus the 56px mobile header and
     // the 72px bottom tab bar. Desktop keeps the flexbox `h-full`.
     <div className="flex flex-col h-[calc(100dvh-3.5rem-72px)] md:h-full bg-background">
+      <div className="flex items-center justify-between px-4 md:px-6 pt-4 md:pt-6">
+        <div />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportChat("txt")}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded hover:bg-muted transition-colors"
+            title="Export chat"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export
+          </button>
+          <button
+            onClick={clearChat}
+            className="text-xs font-medium text-muted-foreground hover:text-destructive flex items-center gap-1 px-2 py-1 rounded hover:bg-muted transition-colors"
+            title="Clear chat"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Clear
+          </button>
+        </div>
+      </div>
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((msg) => (

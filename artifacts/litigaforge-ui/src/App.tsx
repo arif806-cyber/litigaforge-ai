@@ -24,6 +24,7 @@ import {
 } from "@/lib/country";
 
 const Login               = lazy(() => import("@/pages/login"));
+const ForgotPassword      = lazy(() => import("@/pages/forgot-password"));
 const Subscription        = lazy(() => import("@/pages/subscription"));
 const Ask                 = lazy(() => import("@/pages/ask"));
 const Review              = lazy(() => import("@/pages/review"));
@@ -48,6 +49,7 @@ const LandingPage         = lazy(() => import("@/pages/landing"));
 const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
 const TermsOfService      = lazy(() => import("@/pages/terms"));
+const RefundPolicy        = lazy(() => import("@/pages/refund-policy"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
 const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
 
@@ -187,16 +189,18 @@ function Router() {
         <Route path="/demo" component={DemoPage} />
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsOfService} />
+        <Route path="/refund-policy" component={RefundPolicy} />
         <Route path="/settings" component={() => <ProtectedRoute component={AccountSettings} />} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
+        <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/" component={CountryRoot} />
         <Route>
           <Layout>
             <Switch>
               <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
               <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
-              <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
+              <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><ProtectedRoute component={Subscription} /></ErrorBoundary>} />
               <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
               <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
               <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />

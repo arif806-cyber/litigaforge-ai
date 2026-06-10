@@ -1,0 +1,64 @@
+You are building LitigaForge AI (litigaforge.com) — an AI-powered legal SaaS platform focused on India (Telangana/AP priority) with global support.
+
+Current state: It's mostly a static landing page with navigation to /ask, /review, /lawyers, /judgments, etc. Some country-specific pages exist but core features (chat, document upload, matching) are placeholders or not fully functional.
+
+Goal: Make it 100% production-ready for real users. Prioritize:
+- Secure user flows
+- Monetization
+- Reliability
+- Legal disclaimers everywhere
+
+**User Expectations & Key Flows to Implement/Fix:**
+
+1. **Onboarding & Auth Flow**
+   - Email/password + Google/Apple login (use Replit Auth or Firebase).
+   - Profile: Name, location (India states), preferred language (English/Hindi/Telugu), user type (Client / Advocate / Free).
+   - Email verification, password reset, session management.
+
+2. **AI Legal Guidance (/ask)**
+   - Multi-turn chat interface with context memory per conversation.
+   - Ground answers in real laws (use IndianKanoon, local statutes, multi-AI backend: Claude + Gemini + GPT).
+   - Show sources/references. Add disclaimers: "Not a substitute for professional legal advice."
+   - Rate limiting: Free (5 queries/mo), paid unlimited.
+   - History of past chats, save/export.
+
+3. **Document Analyzer (/review)**
+   - Secure file upload (PDF, DOCX, images) with size limits + virus scan if possible.
+   - AI analysis: Risk score, missing clauses, summaries, suggestions.
+   - Store documents privately per user. Allow re-analysis.
+   - Progress indicator + email notification on completion (heavy jobs).
+
+4. **Lawyer Matching (/lawyers + post-case)**
+   - Post a case form (anonymous option) → AI scores & suggests matches (0-100) from verified directory.
+   - Advocate directory with filters (location, practice area, language, ratings).
+   - Lead generation for advocates (paid priority).
+
+5. **Judgments & Free Legal Aid**
+   - Searchable interface (integrate IndianKanoon API or scrape ethically).
+   - NALSA/DLSA checker with location-based helplines.
+
+6. **Subscription & Payments (/subscription)**
+   - Razorpay integration (India-friendly) for ₹999 & ₹2,499 plans.
+   - Tier enforcement, usage tracking, upgrade/downgrade flows.
+   - Invoice generation, cancellation, prorated billing.
+
+7. **Advocate Dashboard (Pro plan)**
+   - Case management, client tracking, CNR integration if feasible.
+   - Analytics for their leads.
+
+**Production Requirements (Non-functional):**
+- **Security**: HTTPS (already good), input sanitization, rate limiting, no PII leaks, GDPR/Indian data laws compliance. Store secrets properly.
+- **Database**: Proper schema (users, chats, documents, cases, subscriptions) with migrations. Use Replit DB or Postgres.
+- **Performance**: Auto-scaling, caching for common queries, fast load times (<2s).
+- **Error Handling & Logging**: User-friendly messages, backend logs, monitoring.
+- **Mobile Responsiveness & UX**: Clean Legal Glass design system, dark mode, accessibility.
+- **SEO & Marketing**: Meta tags, sitemap, blog integration, analytics (Google).
+- **Disclaimers & Legal**: Prominent everywhere (footer + per feature). Add Terms, Privacy Policy, Refund policy pages.
+- **Testing**: Unit/integration tests for core flows. Simulate free/paid users.
+- **Deployment**: Production deployment with custom domain, environment variables separation (dev/prod), backups, rollback plan.
+- **Scalability**: Prepare for traffic spikes; consider moving heavy AI calls to background jobs.
+- **Analytics**: Track user journeys, drop-offs, conversion to paid.
+
+Start by auditing current code, then implement missing pieces one by one. Use Secrets for API keys (OpenAI/Claude/Gemini/Razorpay). Provide step-by-step summary after each major flow.
+
+Output: Updated code + instructions for deployment and testing.

@@ -27,6 +27,8 @@ from logger import get_logger
 import re as _re
 import os as _os
 import pathlib as _pathlib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 logger = get_logger("litigaforge.auth")
 
@@ -271,7 +273,6 @@ async def refresh_token(request: Request, response: Response):
 async def _send_verification_email(email: str, token: str) -> bool:
     """Send verification email via SMTP. Returns True on success, False if SMTP not configured."""
     import smtplib
-    from email.mime.text import MIMEText
     smtp_host = _os.getenv("SMTP_HOST")
     if not smtp_host:
         return False
@@ -279,7 +280,8 @@ async def _send_verification_email(email: str, token: str) -> bool:
     smtp_user = _os.getenv("SMTP_USER", "")
     smtp_pass = _os.getenv("SMTP_PASSWORD", "")
     smtp_from = _os.getenv("SMTP_FROM", smtp_user)
-    verify_url = f"https://litiga-forge-ai.replit.app/litigaforge/auth/verify-email?token={token}"
+    base_url = _os.getenv("APP_URL", "https://litigaforge.com")
+    verify_url = f"{base_url}/litigaforge/auth/verify-email?token={token}"
     body = (
         f"Welcome to LitigaForge AI!\n\n"
         f"Please verify your email address by clicking the link below:\n\n"
@@ -293,12 +295,12 @@ async def _send_verification_email(email: str, token: str) -> bool:
     msg["To"] = email
     try:
         if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
                 if smtp_user:
                     server.login(smtp_user, smtp_pass)
                 server.sendmail(smtp_from, [email], msg.as_string())
         else:
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
                 server.starttls()
                 if smtp_user:
                     server.login(smtp_user, smtp_pass)
@@ -469,6 +471,151 @@ async def delete_account(
         "message": "Your account and all personal data have been permanently deleted "
                    "in compliance with the Digital Personal Data Protection Act 2023."
     }
+
+
+# ── Password Reset ───────────────────────────────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+async def _create_password_reset_token(user_id: int) -> str:
+    """Create a 1-hour password reset token."""
+    import secrets
+    token = secrets.token_urlsafe(32)
+    expires = datetime.utcnow() + timedelta(hours=1)
+    await db_execute(
+        "DELETE FROM password_reset_tokens WHERE user_id = $1",
+        user_id,
+    )
+    await db_execute(
+        "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
+        user_id, token, expires,
+    )
+    return token
+
+
+async def _send_password_reset_email(email: str, token: str) -> bool:
+    """Send password reset email via SMTP."""
+    import smtplib
+    smtp_host = _os.getenv("SMTP_HOST")
+    if not smtp_host:
+        return False
+    smtp_port = int(_os.getenv("SMTP_PORT", "587"))
+    smtp_user = _os.getenv("SMTP_USER", "")
+    smtp_pass = _os.getenv("SMTP_PASSWORD", "")
+    smtp_from = _os.getenv("SMTP_FROM", smtp_user)
+    base_url = _os.getenv("APP_URL", "https://litigaforge.com")
+    reset_url = f"{base_url}/litigaforge/reset-password?token={token}"
+    body = (
+        f"LitigaForge AI — Password Reset\n\n"
+        f"You requested a password reset. Click the link below to set a new password:\n\n"
+        f"{reset_url}\n\n"
+        f"This link expires in 1 hour. If you didn't request this, you can safely ignore this email.\n\n"
+        f"— LitigaForge AI Team"
+    )
+    html = (
+        f"""<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="560" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+        <tr>
+          <td style="background:#1a2744;padding:28px 32px;">
+            <p style="margin:0;color:#f0a500;font-size:20px;font-weight:700;">⛮️ LitigaForge AI</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 32px 12px;">
+            <p style="margin:0 0 16px;font-size:22px;font-weight:700;color:#0f172a;">
+              Reset your password
+            </p>
+            <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">
+              You requested a password reset. Click the button below to set a new password.
+              This link expires in 1 hour.
+            </p>
+            <a href="{reset_url}"
+               style="display:inline-block;background:#1a2744;color:#ffffff;text-decoration:none;
+                      font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;">
+              Reset Password →
+            </a>
+            <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;">
+              If you didn't request this, you can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+    )
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "LitigaForge AI — Password Reset"
+    msg["From"] = smtp_from
+    msg["To"] = email
+    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(html, "html"))
+    try:
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+                if smtp_user:
+                    server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                if smtp_user:
+                    server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [email], msg.as_string())
+        return True
+    except Exception as exc:
+        logger.warning("Password reset email failed for %s: %s", email, exc)
+        return False
+
+
+@router.post("/auth/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password(req: ForgotPasswordRequest, request: Request):
+    """Request password reset. Always returns success to prevent email enumeration."""
+    user = await get_user_by_email(req.email)
+    if user:
+        token = await _create_password_reset_token(user["id"])
+        sent = await _send_password_reset_email(req.email, token)
+        logger.info("Password reset requested for user_id=%s email=%s sent=%s", user["id"], req.email, sent)
+    return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+
+@router.post("/auth/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(req: ResetPasswordRequest, request: Request):
+    """Reset password using token from email link."""
+    if len(req.new_password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+    row = await db_fetchrow(
+        "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = $1",
+        req.token,
+    )
+    if not row:
+        raise HTTPException(400, "Invalid or expired reset link")
+    if row["expires_at"].replace(tzinfo=None) < datetime.utcnow():
+        await db_execute("DELETE FROM password_reset_tokens WHERE token = $1", req.token)
+        raise HTTPException(400, "Reset link has expired — please request a new one")
+    from auth import hash_password
+    new_hash = hash_password(req.new_password)
+    await db_execute("UPDATE users SET password_hash = $1 WHERE id = $2", new_hash, row["user_id"])
+    await db_execute("DELETE FROM password_reset_tokens WHERE token = $1", req.token)
+    # Revoke all existing sessions for security
+    await delete_all_user_refresh_tokens(row["user_id"])
+    logger.info("Password reset complete for user_id=%s", row["user_id"])
+    return {"message": "Password reset successfully. Please log in with your new password."}
 
 
 # ── Sign in with Apple ────────────────────────────────────────────────────────

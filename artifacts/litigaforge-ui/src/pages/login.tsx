@@ -455,7 +455,14 @@ export default function Login() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Password</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">Password</label>
+                  {isSignIn && (
+                    <Link href="/forgot-password">
+                      <span className="text-xs text-primary hover:underline cursor-pointer">Forgot password?</span>
+                    </Link>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type={showPass ? "text" : "password"}

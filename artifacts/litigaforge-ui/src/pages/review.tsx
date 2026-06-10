@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown } from "lucide-react";
+import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown, Upload, FileText, X, FileCheck } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,13 +56,19 @@ function RiskScoreBadge({ score }: { score: number }) {
 
 export default function Review() {
   const { activeCode, activeConfig } = useCountry();
+  const [inputMode, setInputMode] = useState<"paste" | "upload">("paste");
   const [docText, setDocText] = useState("");
   const [docType, setDocType] = useState("contract");
   const [docTypeOpen, setDocTypeOpen] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [clarifyOpen, setClarifyOpen] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const analyze = useMutation({
+  const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
+
+  const analyzeText = useMutation({
     mutationFn: (context: string) => apiFetch("/document/analyze", {
       method: "POST",
       body: JSON.stringify({ document_text: docText, document_type: docType, country: activeCode, context }),
@@ -70,25 +76,71 @@ export default function Review() {
     onSuccess: (data) => setResult(data),
   });
 
+  const analyzeFile = useMutation({
+    mutationFn: async (context: string) => {
+      if (!uploadedFile) throw new Error("No file selected");
+      const form = new FormData();
+      form.append("file", uploadedFile);
+      form.append("document_type", docType);
+      form.append("country", activeCode);
+      form.append("context", context);
+      const res = await fetch("/litigaforge/document/analyze-file", {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = text;
+        try { msg = JSON.parse(text).detail ?? text; } catch {}
+        throw new Error(msg);
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setResult(data);
+      setUploadedFile(null);
+    },
+  });
+
   const runAnalyze = (extraDetails: string) => {
     setClarifyOpen(false);
     setResult(null);
-    analyze.mutate(extraDetails);
+    if (inputMode === "upload" && uploadedFile) {
+      analyzeFile.mutate(extraDetails);
+    } else {
+      analyzeText.mutate(extraDetails);
+    }
   };
 
-  const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
+  const isAnalyzing = analyzeText.isPending || analyzeFile.isPending;
+  const canAnalyze = inputMode === "paste"
+    ? docText.trim().length >= 50
+    : uploadedFile !== null;
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) setUploadedFile(f);
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) setUploadedFile(f);
+  };
 
   return (
-    <PageShell title="Document Analyzer" subtitle={`Paste any legal document — AI identifies risks, missing clauses, and jurisdiction issues under the law of ${activeConfig?.name ?? "your country"}.`} icon={<FileSearch className="w-6 h-6 text-primary" />}>
+    <PageShell title="Document Analyzer" subtitle={`Paste or upload any legal document — AI identifies risks, missing clauses, and jurisdiction issues under the law of ${activeConfig?.name ?? "your country"}.`} icon={<FileSearch className="w-6 h-6 text-primary" />}>
       <SEOHelmet
         title="Free Legal Document Analyzer | LitigaForge AI"
-        description="Paste any contract, agreement, notice, or legal document and get an instant AI risk score, missing clause detection, and recommendations. Free online legal document analyzer."
+        description="Upload or paste any contract, agreement, notice, or legal document and get an instant AI risk score, missing clause detection, and recommendations."
         canonical="/review"
         keywords="legal document analyzer, contract review online free, document analysis, rental agreement check, missing clause detector"
       />
 
       <div className="space-y-8">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
+          {/* Document Type */}
           <div className="relative">
             <label className="block text-sm font-semibold text-foreground mb-3">Document Type</label>
             <button
@@ -123,38 +175,119 @@ export default function Review() {
             </AnimatePresence>
           </div>
 
-          <div>
-            <div className="flex justify-between items-end mb-3">
-              <label className="block text-sm font-semibold text-foreground">
-                Document Text
-              </label>
-               <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">{docText.length.toLocaleString()} chars</span>
-            </div>
-            <textarea
-              value={docText}
-              onChange={e => setDocText(e.target.value)}
-              rows={12}
-              placeholder="Paste the full text of the document here. The more complete the text, the better the analysis..."
-              className="w-full px-5 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-y font-mono leading-relaxed shadow-sm"
-            />
+          {/* Input Mode Toggle */}
+          <div className="flex bg-muted rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setInputMode("paste")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all",
+                inputMode === "paste" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <FileText className="w-4 h-4" /> Paste Text
+            </button>
+            <button
+              onClick={() => setInputMode("upload")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all",
+                inputMode === "upload" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Upload className="w-4 h-4" /> Upload File
+            </button>
           </div>
 
+          {/* Paste Mode */}
+          {inputMode === "paste" && (
+            <div>
+              <div className="flex justify-between items-end mb-3">
+                <label className="block text-sm font-semibold text-foreground">
+                  Document Text
+                </label>
+                <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">{docText.length.toLocaleString()} chars</span>
+              </div>
+              <textarea
+                value={docText}
+                onChange={e => setDocText(e.target.value)}
+                rows={12}
+                placeholder="Paste the full text of the document here. The more complete the text, the better the analysis..."
+                className="w-full px-5 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-y font-mono leading-relaxed shadow-sm"
+              />
+            </div>
+          )}
+
+          {/* Upload Mode */}
+          {inputMode === "upload" && (
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-3">
+                Upload Document
+              </label>
+              {!uploadedFile ? (
+                <div
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
+                    dragOver
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                    onChange={handleFileSelect}
+                  />
+                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm font-medium text-foreground">Click or drag to upload</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PDF, DOCX, TXT, PNG, JPG, WEBP — max 10MB
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 bg-muted rounded-xl px-4 py-3">
+                  <FileCheck className="w-5 h-5 text-green-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{uploadedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button
+                    onClick={() => setUploadedFile(null)}
+                    className="p-1.5 rounded-lg hover:bg-background/80 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Analyze Button */}
           <div className="flex justify-end">
             <Button
               onClick={() => setClarifyOpen(true)}
-              disabled={docText.trim().length < 50 || analyze.isPending}
+              disabled={!canAnalyze || isAnalyzing}
               size="lg"
               className="px-8 shadow-md"
             >
-              {analyze.isPending
-                ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Analysing…</>
+              {isAnalyzing
+                ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Analysing...</>
                 : <><FileSearch className="w-5 h-5 mr-2" /> Analyse Document</>}
             </Button>
           </div>
 
-          {analyze.isError && (
+          {analyzeText.isError && (
             <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
-              {(analyze.error as Error).message}
+              {(analyzeText.error as Error).message}
+            </div>
+          )}
+          {analyzeFile.isError && (
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
+              {(analyzeFile.error as Error).message}
             </div>
           )}
         </div>
@@ -261,7 +394,7 @@ export default function Review() {
       <ClarifyDialog
         open={clarifyOpen}
         surface="document"
-        baseText={docText}
+        baseText={inputMode === "paste" ? docText : (uploadedFile?.name ?? "")}
         country={activeCode}
         onProceed={runAnalyze}
         onClose={() => setClarifyOpen(false)}
