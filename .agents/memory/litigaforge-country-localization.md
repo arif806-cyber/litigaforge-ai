@@ -41,6 +41,13 @@ description: How per-country content/localization works for post-login pages, an
 
 - To turn `activeConfig.emergency_legal` (e.g. US "Legal Aid: 1-800-398-4529") into a `tel:` href, use `.replace(/[^\d+]/g, "")`, NOT `.match(/\d+/)?.[0]` — the latter returns only the first digit run (→ `tel:1`). When the result is empty, render a non-anchor element instead of a broken `tel:`; never fall back to an India number like `15100`.
 
+# Modals/overlays must be portalled to escape the mobile bottom nav
+
+- In `layout.tsx`, `<main>` has `relative z-0` (a stacking context) and the mobile bottom tab `<nav>` is a sibling at `fixed bottom-0 z-30`. So ANY overlay/modal rendered *inside a page* (inside `<main>`) is trapped in main's z-0 layer and paints UNDER the z-30 bottom nav — even with `z-50`. On mobile this hid the ClarifyDialog footer (Skip / Get Answer buttons) behind the tab bar.
+- Fix/convention: render full-screen modals via `createPortal(..., document.body)` (same pattern the mobile drawer already uses) and give them `z-[100]`. Do NOT rely on a high z-index alone — the stacking context, not the z value, is the trap.
+
+**Why:** z-index only competes within the same stacking context; `z-50` inside `main(z-0)` still loses to a `z-30` sibling of main. This will bite every future in-page modal/sheet on mobile.
+
 # asyncpg placeholder numbering
 
 - When building dynamic WHERE clauses with asyncpg, the first positional param must be `$1` (`len(params)+1`), not `$2`. A latent off-by-one only surfaces once a filter is always applied.
