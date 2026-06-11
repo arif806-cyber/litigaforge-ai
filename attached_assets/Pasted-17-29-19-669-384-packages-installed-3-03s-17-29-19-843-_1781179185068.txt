@@ -1,0 +1,67 @@
+17:29:19.669
+384 packages installed [3.03s]
+17:29:19.843
+Executing user build command: npm run build
+17:29:20.213
+17:29:20.213
+> litigaforge-blog@1.0.0 build
+17:29:20.213
+> astro build
+17:29:20.213
+17:29:22.790
+11:59:22 [types] Added src/env.d.ts type declarations
+17:29:22.790
+11:59:22 [types] Generated 371ms
+17:29:22.791
+11:59:22 [build] output: "static"
+17:29:22.791
+11:59:22 [build] directory: /opt/buildhome/repo/dist/
+17:29:22.791
+11:59:22 [build] Collecting build info...
+17:29:22.791
+11:59:22 [build] ✓ Completed in 455ms.
+17:29:22.793
+11:59:22 [build] Building static entrypoints...
+17:29:23.297
+17:29:23.297
+warn - The `content` option in your Tailwind CSS configuration is missing or empty.
+17:29:23.297
+warn - Configure your content sources or your generated CSS will be missing styles.
+17:29:23.297
+warn - https://tailwindcss.com/docs/content-configuration
+17:29:24.260
+11:59:24 [vite] ✓ built in 1.43s
+17:29:24.261
+11:59:24 [build] ✓ Completed in 1.47s.
+17:29:24.268
+17:29:24.268
+ generating static routes 
+17:29:24.276
+11:59:24 ▶ src/pages/blog/[slug].astro
+17:29:24.287
+11:59:24   └─ /blog/welcome/index.html (+9ms)
+17:29:24.289
+11:59:24 ▶ src/pages/blog/index.astro
+17:29:24.295
+11:59:24   └─ /blog/index.html (+6ms)
+17:29:24.296
+11:59:24 ✓ Completed in 28ms.
+17:29:24.297
+17:29:24.497
+Cannot read properties of undefined (reading 'reduce')
+17:29:24.497
+  Location:
+17:29:24.497
+    /opt/buildhome/repo/node_modules/@astrojs/sitemap/dist/index.js:85:37
+17:29:24.497
+  Stack trace:
+17:29:24.497
+    at astro:build:done (file:///opt/buildhome/repo/node_modules/@astrojs/sitemap/dist/index.js:85:37)
+17:29:24.497
+    at async AstroBuilder.build (file:///opt/buildhome/repo/node_modules/astro/dist/core/build/index.js:159:5)
+17:29:24.498
+    at async build (file:///opt/buildhome/repo/node_modules/astro/dist/core/build/index.js:51:3)
+17:29:24.498
+    at async runCommand (file:///opt/buildhome/repo/node_modules/astro/dist/cli/index.js:147:7)
+17:29:24.603
+Failed: error occurred while running build command
