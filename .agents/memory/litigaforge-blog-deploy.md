@@ -21,10 +21,14 @@ CLOUDFLARE_ACCOUNT_ID=9581b3dc96de95c5d2f81129fb2a3670 CLOUDFLARE_API_TOKEN=<tok
 ```
 A CF API token needs `Account: Workers Scripts: Edit` + `Account: Account Settings: Read`. (`Workers Builds` is a separate permission the basic token lacks.) Repo commits/pushes use the GitHub PAT/API, unrelated to CF.
 
-## Autonomy gap (open design choice)
-Deploying to Cloudflare ALWAYS needs either a CF token (wrangler) or a CF-side Git integration. The user wants autonomous + "tokenless." Two ways to close the gap:
-- **GH Action deploy:** add a `deploy.yml` (on push to main: checkout → npm build → wrangler deploy) with `CLOUDFLARE_API_TOKEN` stored as a GitHub repo secret. Fully hands-off but stores a token in GitHub.
-- **CF dashboard "Connect to Git" (Workers Build):** truly tokenless (CF pulls from GitHub on push), but requires a one-time dashboard/OAuth step by the user — cannot be set up via API token alone.
+## Autonomy — RESOLVED (auto-deploy lives inside pipeline.yml)
+Deploying to Cloudflare ALWAYS needs either a CF token (wrangler) or a CF-side Git integration. User chose the token route. The deploy is now part of `.github/workflows/pipeline.yml` itself (NOT a separate workflow) and runs every 2 hrs: pipeline.py commits articles → `git fetch origin main && git reset --hard origin/main` (to pull the API-committed files into the runner) → `npm install` + `npx astro build` → `npx wrangler@4 deploy`. Secrets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` are stored as GitHub repo secrets.
+
+**Key non-obvious lesson — why deploy MUST live in the same job, not a separate `on: push` workflow:** pipeline.py commits via the GitHub Contents API using the default `GITHUB_TOKEN`. Commits/pushes made with `GITHUB_TOKEN` do **NOT** trigger other workflow runs (GitHub's anti-recursion rule), so a `push`-triggered `deploy.yml` would never fire for pipeline commits. Putting build+deploy as later steps in the same scheduled run sidesteps this entirely. The runner's checkout is stale after the API commits, hence the explicit fetch+reset before building.
+
+**Free + reliable:** repo is **public** → GitHub Actions minutes are unlimited/free. The CF API token has **no expiry** (`expires_on: null`) → won't silently break.
+
+**Alternative not used:** CF dashboard "Connect to Git" (Workers Build) is truly tokenless but needs a one-time dashboard/OAuth step the user didn't want.
 
 ## Other confirmed facts (don't re-chase)
 - `astro.config.mjs` has **no sitemap** and **no Cloudflare adapter**; the screenshotted "sitemap crash + empty collection" was a STALE older build, not current `main`.
