@@ -3,7 +3,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 
 export default function Blog() {
   useEffect(() => {
-    window.location.href = "https://blog.litigaforge.com/";
+    window.location.href = "https://litigaforge-blog.arif-806.workers.dev/blog/";
   }, []);
 
   return (

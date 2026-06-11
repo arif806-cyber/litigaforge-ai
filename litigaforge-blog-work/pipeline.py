@@ -325,7 +325,7 @@ tags: [{tags_str}]
 readTime: "{article['readTime']}"
 author: "LitigaForge AI Editorial Team"
 authorUrl: "https://litigaforge.com/about"
-canonicalUrl: "https://{BLOG_DOMAIN}/{article['slug']}"
+canonicalUrl: "https://{BLOG_DOMAIN}/blog/{article['slug']}"
 schema: "FAQPage"
 ---
 
@@ -363,7 +363,7 @@ async def push_to_github(slug: str, content: str) -> bool:
         print("  ⚠ No GITHUB_TOKEN — skipping commit (add to GitHub Secrets)")
         return False
 
-    path     = f"content/blog/{slug}.md"
+    path     = f"src/content/blog/{slug}.md"
     encoded  = base64.b64encode(content.encode("utf-8")).decode("utf-8")
     api_url  = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
     headers  = {
