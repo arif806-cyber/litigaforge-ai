@@ -1,0 +1,74 @@
+18:01:28.847
++ @astrojs/tailwind@5.1.5 (v6.0.2 available)
+18:01:28.847
++ astro@4.16.19 (v6.4.6 available)
+18:01:28.847
++ tailwindcss@3.4.19 (v4.3.0 available)
+18:01:28.847
+18:01:28.847
+384 packages installed [2.62s]
+18:01:29.019
+Executing user build command: npm run build
+18:01:29.422
+18:01:29.422
+> litigaforge-blog@1.0.0 build
+18:01:29.422
+> astro build
+18:01:29.422
+18:01:31.335
+12:31:31 [types] Added src/env.d.ts type declarations
+18:01:31.336
+12:31:31 [types] Generated 392ms
+18:01:31.336
+12:31:31 [build] output: "static"
+18:01:31.336
+12:31:31 [build] directory: /opt/buildhome/repo/dist/
+18:01:31.336
+12:31:31 [build] Collecting build info...
+18:01:31.337
+12:31:31 [build] ✓ Completed in 442ms.
+18:01:31.338
+12:31:31 [build] Building static entrypoints...
+18:01:31.911
+18:01:31.911
+warn - The `content` option in your Tailwind CSS configuration is missing or empty.
+18:01:31.911
+warn - Configure your content sources or your generated CSS will be missing styles.
+18:01:31.911
+warn - https://tailwindcss.com/docs/content-configuration
+18:01:32.942
+12:31:32 [vite] ✓ built in 1.55s
+18:01:32.943
+12:31:32 [build] ✓ Completed in 1.60s.
+18:01:32.948
+18:01:32.948
+ generating static routes 
+18:01:32.956
+12:31:32 ▶ src/pages/blog/[slug].astro
+18:01:32.970
+12:31:32   └─ /blog/welcome/index.html (+12ms)
+18:01:32.971
+12:31:32 ▶ src/pages/blog/index.astro
+18:01:32.974
+12:31:32   └─ /blog/index.html (+2ms)
+18:01:32.974
+12:31:32 ✓ Completed in 27ms.
+18:01:32.974
+18:01:33.158
+Cannot read properties of undefined (reading 'reduce')
+18:01:33.158
+  Location:
+18:01:33.158
+    /opt/buildhome/repo/node_modules/@astrojs/sitemap/dist/index.js:85:37
+18:01:33.158
+  Stack trace:
+18:01:33.158
+    at astro:build:done (file:///opt/buildhome/repo/node_modules/@astrojs/sitemap/dist/index.js:85:37)
+18:01:33.158
+    at async AstroBuilder.build (file:///opt/buildhome/repo/node_modules/astro/dist/core/build/index.js:159:5)
+18:01:33.158
+    at async build (file:///opt/buildhome/repo/node_modules/astro/dist/core/build/index.js:51:3)
+18:01:33.158
+    at async runCommand (file:///opt/buildhome/repo/node_modules/astro/dist/cli/index.js:147:7)
+18:01:33.246
+Failed: error occurred while running build command
