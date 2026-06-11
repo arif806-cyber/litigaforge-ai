@@ -1,6 +1,6 @@
 ---
 // src/pages/blog/[slug].astro
-// Individual article page — litigaforge.com/blog/{slug}
+// Individual article page — blog.litigaforge.com/{slug}
 
 import { getCollection, getEntry } from 'astro:content';
 
@@ -44,13 +44,13 @@ const articleSchema = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{post.data.title} | LitigaForge AI</title>
   <meta name="description" content={post.data.description} />
-  <link rel="canonical" href={`https://litigaforge.com/blog/${post.slug}`} />
+  <link rel="canonical" href={`https://blog.litigaforge.com/${post.slug}`} />
 
   <!-- Open Graph -->
   <meta property="og:title"       content={post.data.title} />
   <meta property="og:description" content={post.data.description} />
   <meta property="og:type"        content="article" />
-  <meta property="og:url"         content={`https://litigaforge.com/blog/${post.slug}`} />
+  <meta property="og:url"         content={`https://blog.litigaforge.com/${post.slug}`} />
   <meta property="og:site_name"   content="LitigaForge AI" />
 
   <!-- Twitter Card -->

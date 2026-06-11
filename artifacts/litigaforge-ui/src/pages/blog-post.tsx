@@ -7,9 +7,9 @@ export default function BlogPost() {
 
   useEffect(() => {
     if (slug) {
-      window.location.href = `https://litigaforge-blog.arif-806.workers.dev/blog/${slug}`;
+      window.location.href = `https://blog.litigaforge.com/${slug}`;
     } else {
-      window.location.href = "https://litigaforge-blog.arif-806.workers.dev/blog/";
+      window.location.href = "https://blog.litigaforge.com/";
     }
   }, [slug]);
 

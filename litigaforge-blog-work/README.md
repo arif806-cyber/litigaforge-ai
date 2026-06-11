@@ -41,7 +41,7 @@ Add these secrets:
 GEMINI_API_KEY   = AIza...
 GROQ_API_KEY     = gsk_...
 INDEXNOW_KEY     = abc123def456...  (your random key)
-BLOG_DOMAIN      = litigaforge.com
+BLOG_DOMAIN      = blog.litigaforge.com
 ```
 
 `GITHUB_TOKEN` is automatic — no need to add it.
@@ -50,7 +50,7 @@ BLOG_DOMAIN      = litigaforge.com
 
 1. Rename `public/indexnow-key.txt` to `public/{YOUR_KEY}.txt`
 2. File content = just your key, nothing else
-3. After deploy, verify: `https://litigaforge.com/{YOUR_KEY}.txt`
+3. After deploy, verify: `https://blog.litigaforge.com/{YOUR_KEY}.txt`
 4. Update `INDEXNOW_KEY` in pipeline.py to match
 
 ### Step 4 — Connect Cloudflare Pages (10 min)
@@ -63,7 +63,7 @@ BLOG_DOMAIN      = litigaforge.com
    - Output directory: `dist`
 4. Add environment variable: `NODE_VERSION = 18`
 5. Deploy — your blog is live!
-6. Add custom domain: `litigaforge.com` or `blog.litigaforge.com`
+6. Add custom domain: `blog.litigaforge.com` (see below)
 
 ---
 
@@ -107,7 +107,7 @@ Trigger the pipeline manually anytime:
 - **GitHub Actions tab** → see every run, logs, errors
 - **Cloudflare Pages dashboard** → deploy status
 - **published_slugs.json** → list of all published articles
-- **litigaforge.com/blog** → live articles
+- **blog.litigaforge.com** → live articles
 
 ---
 

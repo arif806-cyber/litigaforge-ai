@@ -27,7 +27,7 @@ GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "")
 GITHUB_TOKEN    = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO     = os.environ.get("GITHUB_REPO", "arif806-cyber/litigaforge-blog")
 INDEXNOW_KEY    = os.environ.get("INDEXNOW_KEY", "")
-BLOG_DOMAIN     = os.environ.get("BLOG_DOMAIN", "litigaforge.com")
+BLOG_DOMAIN     = os.environ.get("BLOG_DOMAIN", "blog.litigaforge.com")
 SCORE_THRESHOLD = int(os.environ.get("SCORE_THRESHOLD", "60"))
 MAX_ARTICLES    = int(os.environ.get("MAX_ARTICLES", "3"))  # per run
 
@@ -325,7 +325,7 @@ tags: [{tags_str}]
 readTime: "{article['readTime']}"
 author: "LitigaForge AI Editorial Team"
 authorUrl: "https://litigaforge.com/about"
-canonicalUrl: "https://{BLOG_DOMAIN}/blog/{article['slug']}"
+canonicalUrl: "https://{BLOG_DOMAIN}/{article['slug']}"
 schema: "FAQPage"
 ---
 
@@ -402,7 +402,7 @@ async def submit_indexnow(slug: str) -> bool:
     """
     IndexNow — free, instant Bing + Yandex indexing.
     Google follows within 24-48hrs via sitemap.
-    Key file must exist at: litigaforge.com/{INDEXNOW_KEY}.txt
+    Key file must exist at: {INDEXNOW_KEY}.txt at the root
     """
     if not INDEXNOW_KEY:
         print("  ⚠ No INDEXNOW_KEY — skipping IndexNow submission")

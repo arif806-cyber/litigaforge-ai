@@ -8,7 +8,7 @@ legalArea: "General"
 tags: ["welcome", "legal guides", "LitigaForge", "AI"]
 readTime: "2 min read"
 author: "LitigaForge AI Editorial Team"
-canonicalUrl: "https://litigaforge.com/blog/welcome"
+canonicalUrl: "https://blog.litigaforge.com/welcome"
 schema: "FAQPage"
 ---
 

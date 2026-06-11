@@ -9,6 +9,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - Production build: `PORT=23790 BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run build`
 - GitHub branch: `feature/arifbase` on `arif806-cyber/litigaforge-ai`
 - `BASE_PATH=/litigaforge` and `PORT=5000` are set as shared Replit env vars — all workflows pick them up automatically
+- **Blog**: `https://blog.litigaforge.com` (Cloudflare Pages, auto-publishes via GitHub Actions every 2 hours)
 
 ## Stack
 
@@ -183,6 +184,7 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 - **Lawyer Directory** (`/lawyers`): verified TG/AP advocates with badges, ratings, hourly rates
 - **Free Legal Aid** (`/legal-aid`): NALSA eligibility wizard + DLSA contacts
 - **Subscription** (`/subscription`): plan comparison, upgrade/downgrade
+- **Blog** (`/blog`): redirects to `https://blog.litigaforge.com` — auto-publishes AI legal guides via Reddit pipeline
 
 ## User preferences
 
