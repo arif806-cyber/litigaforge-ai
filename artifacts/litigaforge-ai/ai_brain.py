@@ -1,15 +1,17 @@
 """
 LitigaForge AI Brain — Multi-model intelligence layer (all free via Replit).
 
-Three AI providers, each doing what it does best:
-  • Gemini 2.5 Flash  — fast entity extraction & intent detection
-  • Claude Sonnet 4-6 — deep legal strategy synthesis (best structured writing)
-  • GPT-5-mini        — fallback strategy when Claude is busy
+Four AI providers, each doing what it does best:
+  • Gemini 2.5 Flash    — fast entity extraction & intent detection
+  • Claude Sonnet 4-6   — deep legal strategy synthesis (best structured writing)
+  • GPT-5-mini          — fallback strategy when Claude is busy
+  • Groq (Llama 3.3 70B) — high-speed fallback for strategy & refinement
 
 Cascade for entity extraction : Gemini → regex
-Cascade for strategy synthesis: Claude → GPT-5 → Gemini → smart data template
+Cascade for strategy synthesis: Claude → GPT-5 → Groq → Gemini → smart data template
 
-No API keys needed from the user — all provisioned free via Replit AI Integrations.
+Replit AI Integrations (Claude, Gemini, GPT-5) are free — no user keys needed.
+Groq requires a user-provided GROQ_API_KEY (secret).
 """
 import asyncio
 import os
@@ -94,8 +96,24 @@ def _init_providers():
     _providers["openai"] = {"base": openai_base, "key": openai_key, "ready": openai_ready}
     logger.info(f"[AI_BRAIN] OpenAI GPT-5-mini: {'✓ ready' if openai_ready else '✗ unavailable'}")
 
+    # ── Groq (Llama 3.3 70B) ───────────────────────────────────────────────
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    groq_ready = False
+    if groq_key:
+        try:
+            hdrs = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+            body = {"model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 5}
+            r = _req.post("https://api.groq.com/openai/v1/chat/completions", json=body, headers=hdrs, timeout=6)
+            groq_ready = r.status_code == 200
+        except Exception:
+            pass
+    _providers["groq"] = {"base": "https://api.groq.com/openai/v1", "key": groq_key, "ready": groq_ready}
+    logger.info(f"[AI_BRAIN] Groq (Llama 3.3 70B): {'✓ ready' if groq_ready else '✗ unavailable'}")
+
     ready_count = sum(1 for p in _providers.values() if p["ready"])
-    logger.info(f"[AI_BRAIN] {ready_count}/3 AI providers active")
+    logger.info(f"[AI_BRAIN] {ready_count}/4 AI providers active")
 
 
 def get_active_providers() -> list[str]:
@@ -236,6 +254,49 @@ async def _call_openai_async(system: str, user: str, temperature: float = 0.3,
         return None
     except Exception as e:
         logger.warning("[OPENAI] async call failed: %s", e)
+        return None
+
+
+def _call_groq(system: str, user: str, temperature: float = 0.3,
+               max_tokens: int = 8000) -> str | None:
+    _init_providers()
+    p = _providers.get("groq", {})
+    if not p.get("ready"):
+        return None
+    hdrs = {"Authorization": f"Bearer {p['key']}", "Content-Type": "application/json"}
+    body = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    try:
+        r = _req.post(f"{p['base']}/chat/completions", json=body, headers=hdrs, timeout=90)
+        if r.status_code != 200:
+            logger.warning("[GROQ] HTTP %s: %s", r.status_code, r.text[:150])
+            return None
+        text = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+        return text.strip() or None
+    except Exception as e:
+        logger.warning("[GROQ] call failed: %s", e)
+        return None
+
+
+async def _call_groq_async(system: str, user: str, temperature: float = 0.3,
+                            max_tokens: int = 8000) -> str | None:
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_call_groq, system, user, temperature, max_tokens),
+            timeout=AI_CALL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("[GROQ] timed out after %.0fs — falling through to next model", AI_CALL_TIMEOUT)
+        return None
+    except Exception as e:
+        logger.warning("[GROQ] async call failed: %s", e)
         return None
 
 
@@ -562,7 +623,7 @@ Active AI Providers: {', '.join(active)}
 Case ID: {case_id}
 """)
 
-    # Cascade: Claude (best structured writing) → GPT-5 → Gemini → smart template
+    # Cascade: Claude (best structured writing) → GPT-5 → Groq → Gemini → smart template
     strategy_text = None
     if "claude" in active:
         logger.info(f"[AI_BRAIN] Strategy via Claude Sonnet 4-6 (case {case_id})")
@@ -573,6 +634,12 @@ Case ID: {case_id}
     if "openai" in active:
         logger.info(f"[AI_BRAIN] Strategy via GPT-5-mini (case {case_id})")
         strategy_text = _call_openai(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8000)
+        if strategy_text and len(strategy_text) > 400:
+            return safe_ai_output(strategy_text, api_results)
+
+    if "groq" in active:
+        logger.info(f"[AI_BRAIN] Strategy via Groq (Llama 3.3 70B) (case {case_id})")
+        strategy_text = _call_groq(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8000)
         if strategy_text and len(strategy_text) > 400:
             return safe_ai_output(strategy_text, api_results)
 
@@ -657,6 +724,12 @@ REWRITE ONLY THE SECTION CONTENT. Do not include heading or numbering.""")
         if result and len(result) > 50:
             return safe_ai_output(result, api_results)
 
+    if "groq" in active:
+        logger.info(f"[AI_BRAIN] Refine via Groq (section: {section_name}, case: {case_id})")
+        result = _call_groq(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4000)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
     if "gemini" in active:
         logger.info(f"[AI_BRAIN] Refine via Gemini (section: {section_name}, case: {case_id})")
         result = _call_gemini(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4096)
@@ -726,6 +799,12 @@ Case ID: {case_id}
         if result and len(result) > 400:
             return safe_ai_output(result, api_results)
 
+    if "groq" in active:
+        logger.info("[AI_BRAIN] [async] Strategy via Groq (Llama 3.3 70B) (case %s)", case_id)
+        result = await _call_groq_async(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8000)
+        if result and len(result) > 400:
+            return safe_ai_output(result, api_results)
+
     if "gemini" in active:
         logger.info("[AI_BRAIN] [async] Strategy via Gemini 2.5 Flash (case %s)", case_id)
         result = await _call_gemini_async(STRATEGY_SYSTEM, safe_context, temperature=0.25, max_tokens=8192)
@@ -780,6 +859,12 @@ REWRITE ONLY THE SECTION CONTENT. Do not include heading or numbering.""")
     if "openai" in active:
         logger.info("[AI_BRAIN] [async] Refine via GPT-5-mini (section: %s, case: %s)", section_name, case_id)
         result = await _call_openai_async(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4000)
+        if result and len(result) > 50:
+            return safe_ai_output(result, api_results)
+
+    if "groq" in active:
+        logger.info("[AI_BRAIN] [async] Refine via Groq (section: %s, case: %s)", section_name, case_id)
+        result = await _call_groq_async(REFINE_SYSTEM, safe_context, temperature=0.2, max_tokens=4000)
         if result and len(result) > 50:
             return safe_ai_output(result, api_results)
 
