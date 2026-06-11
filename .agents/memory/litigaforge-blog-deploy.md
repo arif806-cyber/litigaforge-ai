@@ -30,6 +30,15 @@ Deploying to Cloudflare ALWAYS needs either a CF token (wrangler) or a CF-side G
 
 **Alternative not used:** CF dashboard "Connect to Git" (Workers Build) is truly tokenless but needs a one-time dashboard/OAuth step the user didn't want.
 
+## Serving at the apex: litigaforge.com/blog (reverse-proxy, NOT DNS)
+`litigaforge.com` is **NOT on Cloudflare** — nameservers are GoDaddy and the apex A record points at the Replit deployment (Express `api-server`). DNS therefore **cannot** path-route `/blog` to the Worker; only a full domain migration to CF or an origin reverse-proxy can. We chose the reverse-proxy.
+
+The api-server (`artifacts/api-server/src/app.ts`) reverse-proxies `/blog`, `/blog/{*splat}`, and `/_astro/{*splat}` to `BLOG_ORIGIN` (the Worker), registered **before** `express.static` + the SPA catch-all. Uses Node global `fetch` with `redirect:"follow"` (the Worker 307-redirects `/blog`→`/blog/`, resolved server-side to one 200), forwards content-type/cache-control/etag/last-modified, returns the body as a Buffer; 502 on fetch error. Main app uses `/assets/` (Vite) so no collision with the blog's `/_astro/`.
+
+**PWA gotcha (critical, cost real debugging):** the litigaforge-ui service worker (VitePWA, scope `/`) has a SPA navigation fallback (`createHandlerBoundToURL("index.html")`). Without a denylist it intercepts `/blog` navigations and serves the React shell → `blog.tsx` redirects to `/blog` → **infinite loop**. Fix = `navigateFallbackDenylist: [/^\/blog/, /^\/_astro/]` in vite.config workbox. **AND** `index.html` MUST be precached (include `html` in `globPatterns`) — otherwise `createHandlerBoundToURL("index.html")` throws `non-precached-url`, the new SW fails to install, and old looping SWs can never be replaced by autoUpdate.
+
+**Takes effect on litigaforge.com only after a republish** — the change is in api-server code; production runs the old build until redeployed.
+
 ## Other confirmed facts (don't re-chase)
 - `astro.config.mjs` has **no sitemap** and **no Cloudflare adapter**; the screenshotted "sitemap crash + empty collection" was a STALE older build, not current `main`.
 - `index.astro` root redirect previously used `{html}` which Astro escapes → rendered escaped text; fixed to a normal template.

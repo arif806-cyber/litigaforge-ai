@@ -84,6 +84,46 @@ app.get("/BingSiteAuth.xml", (_req, res) => {
   );
 });
 
+// ── Blog reverse-proxy ───────────────────────────────────────────────────
+// The blog is an autonomous Astro site that the content pipeline deploys to a
+// Cloudflare Worker every 2 hours. We serve it under litigaforge.com/blog (and
+// its root-level /_astro asset bundle) by transparently proxying to the Worker.
+// This keeps the public URL on the apex domain while the Cloudflare pipeline
+// stays untouched. Registered BEFORE the static/SPA handlers so /blog and
+// /_astro are intercepted instead of falling through to the React app.
+const BLOG_ORIGIN = "https://litigaforge-blog.arif-806.workers.dev";
+const _blogProxy = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    // redirect:"follow" so the Worker's /blog -> /blog/ trailing-slash redirect
+    // is resolved server-side and the browser gets a single 200 response.
+    const upstream = await fetch(BLOG_ORIGIN + req.originalUrl, {
+      method: "GET",
+      headers: {
+        "user-agent": req.headers["user-agent"] ?? "",
+        accept: req.headers["accept"] ?? "*/*",
+        "accept-language": req.headers["accept-language"] ?? "",
+      },
+      redirect: "follow",
+    });
+    res.status(upstream.status);
+    for (const h of ["content-type", "cache-control", "etag", "last-modified"]) {
+      const v = upstream.headers.get(h);
+      if (v) res.setHeader(h, v);
+    }
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.send(buf);
+  } catch (err) {
+    logger.error({ err }, "blog proxy failed");
+    res.status(502).send("Blog temporarily unavailable");
+  }
+};
+app.get("/blog", _blogProxy);
+app.get("/blog/{*splat}", _blogProxy);
+app.get("/_astro/{*splat}", _blogProxy);
+
 // ── Frontend serving (production only) ───────────────────────────────────
 // Node.js injects the correct meta tags so the CDN/static layer cannot
 // override them. Only active when NODE_ENV=production and dist exists.

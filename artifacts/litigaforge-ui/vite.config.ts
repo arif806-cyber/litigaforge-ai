@@ -41,8 +41,13 @@ export default defineConfig({
         enabled: false,
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,png,svg,woff2,html}"],
         cleanupOutdatedCaches: true,
+        // The blog (/blog) and its assets (/_astro) are reverse-proxied by the
+        // API server to the Cloudflare Worker. Exclude them from the SPA
+        // navigation fallback so the service worker never serves the React
+        // shell for blog URLs (which would cause an infinite redirect loop).
+        navigateFallbackDenylist: [/^\/blog/, /^\/_astro/],
         runtimeCaching: [
           {
             urlPattern: /\/litigaforge\//,

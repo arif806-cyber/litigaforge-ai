@@ -1,4 +1,4 @@
 - [LitigaForge country localization](litigaforge-country-localization.md) — per-country pages key off URL path prefix; live UI is built dist served by Node api-server (rebuild+restart to see changes); i18n covers nav/landing only by design.
-- [LitigaForge blog Cloudflare deploy](litigaforge-blog-deploy.md) — static Astro on a CF Worker (not Pages); auto-deploys via wrangler inside pipeline.yml (CF token in GH secrets); GITHUB_TOKEN commits don't trigger separate workflows.
+- [LitigaForge blog + apex /blog](litigaforge-blog-deploy.md) — static Astro→CF Worker (wrangler in pipeline.yml, CF token in GH secrets); litigaforge.com not on CF → /blog via api-server reverse-proxy + PWA SW denylist.
 - [Stripe + stripe-replit-sync on Replit](stripe-replit-integration.md) — esbuild must externalize the lib (migrations silently skip), connector secret field is `secret` not `secret_key`, seed via code_execution.
 - [LitigaForge auth init + PWA gotchas](litigaforge-auth-and-pwa.md) — cookie-only auth; /auth/me refresh-retries on 401; stale PWA SW masks preview; admin = is_superuser via env-var bootstrap on deploy (incl. break-glass password reset).

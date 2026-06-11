@@ -10,6 +10,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - GitHub branch: `feature/arifbase` on `arif806-cyber/litigaforge-ai`
 - `BASE_PATH=/litigaforge` and `PORT=5000` are set as shared Replit env vars — all workflows pick them up automatically
 - **Blog**: live at `https://litigaforge-blog.arif-806.workers.dev/blog/` — a Cloudflare **Worker** (static-assets, NOT Pages). `.github/workflows/pipeline.yml` runs every 2 hrs and is fully autonomous: generates articles → commits via GitHub API → `git reset --hard origin/main` → `astro build` → `wrangler deploy`. Free (public repo = unlimited Actions); `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` stored as GitHub repo secrets (token has no expiry). Custom domain `blog.litigaforge.com` still pending DNS.
+  - **Apex `litigaforge.com/blog`**: the domain is NOT on Cloudflare (GoDaddy nameservers, apex A record → Replit deploy), so DNS can't path-route `/blog`. Instead the Express `api-server` (`artifacts/api-server/src/app.ts`) **reverse-proxies** `/blog`, `/blog/*`, `/_astro/*` to the Worker (registered before static + SPA catch-all). The litigaforge-ui PWA service worker denylists `/blog` + `/_astro` (`vite.config.ts` workbox) so it never serves the React shell for blog URLs. **Takes effect on litigaforge.com only after a republish.**
 
 ## Stack
 
