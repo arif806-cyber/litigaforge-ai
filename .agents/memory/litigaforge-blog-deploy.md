@@ -1,24 +1,32 @@
 ---
 name: LitigaForge blog Cloudflare deploy
-description: How the blog deploys (tokenless CF Git integration), how to verify CF is actually deploying, and the no-CF-credentials constraint.
+description: How the blog actually deploys (manual wrangler to a static-assets Worker — NOT a Git integration), how to deploy it, and the autonomy gap.
 ---
 
 # LitigaForge blog deploy (Cloudflare)
 
-The blog repo `arif806-cyber/litigaforge-blog` (default branch `main`) is a **pure static Astro site** (no adapter, `output: static`). It deploys via **Cloudflare's native Git integration** — push to `main` → CF auto-builds (`npm run build`) → serves `dist/` at `litigaforge-blog.arif-806.workers.dev`. This is the *tokenless* deploy mechanism and is intentional (user requirement: no tokens for daily operation).
+The blog repo `arif806-cyber/litigaforge-blog` (default branch `main`) is a **pure static Astro site** (no adapter, `output: static`). It is hosted on a **Cloudflare Worker** named `litigaforge-blog` (account `9581b3dc96de95c5d2f81129fb2a3670`, subdomain `arif-806`) that serves `dist/` via a static-**assets** binding (`ASSETS`, type `assets`). Live at `https://litigaforge-blog.arif-806.workers.dev`. It is a **Worker, not a Pages project** (`*.pages.dev` does not resolve; no Pages project exists).
 
-**Why tokenless matters:** the user's hard requirement is no GitHub token needed after setup. The content pipeline (`pipeline.yml`) uses the auto-provided `GITHUB_TOKEN`. The CF deploy uses CF's own Git connection — no secret in the repo. A GitHub-Actions+wrangler deploy would need a `CLOUDFLARE_API_TOKEN` secret, which the user has not opted into; do not add one without asking.
+## The real deploy mechanism (corrects BLOG_SETUP.md)
+Deploys are **manual `wrangler deploy` runs** — the Worker's deployments API shows every deploy as `source: "wrangler"`. There is **NO Cloudflare Git integration / Workers Builds** connected, despite BLOG_SETUP.md claiming "Cloudflare Pages auto-deploys on push ~45s." That claim was never true.
 
-## No Cloudflare credentials in the Replit env
-There are **no `CLOUDFLARE_*` / `CF_*` secrets** in this project's env. CF build logs and dashboard config are NOT accessible to the agent. Any CF-side failure (build failing, Git integration disconnected, wrong production branch) **cannot be diagnosed or fixed from here** — it needs the user's CF dashboard access or a one-time CF API token.
+**This is the recurring bug:** the content pipeline (`.github/workflows/pipeline.yml`) generates articles and commits them to the repo via the GitHub API, but has **no deploy step**. So new articles land in git but nothing runs wrangler → they 404 on the live site until someone manually deploys. The last manual deploy predated the article commits, so only `welcome` was live.
 
-## Deploy-signal verification technique (high value)
-To tell "CF isn't deploying" apart from "the source build is broken": make a **detectable change to an always-served page** (e.g. `src/pages/index.astro` root redirect), push, then poll the live page for that change. If the live page never changes, CF is not deploying new commits at all — regardless of whether article URLs 404. This isolates the failure to CF's side and avoids endlessly re-pushing speculative source fixes.
+## How to deploy manually (needs a Cloudflare API token)
+The repo `wrangler.toml` must contain `[assets]\ndirectory = "./dist"` (it was missing this — added). Then:
+```
+git clone <repo> /tmp/blog-deploy && cd /tmp/blog-deploy
+npm install && npx astro build      # produces dist/ with all articles
+CLOUDFLARE_ACCOUNT_ID=9581b3dc96de95c5d2f81129fb2a3670 CLOUDFLARE_API_TOKEN=<token> npx wrangler deploy
+```
+A CF API token needs `Account: Workers Scripts: Edit` + `Account: Account Settings: Read`. (`Workers Builds` is a separate permission the basic token lacks.) Repo commits/pushes use the GitHub PAT/API, unrelated to CF.
 
-**Why:** the source repeatedly built clean locally (all articles in `dist/`) yet the live site stayed on a stale welcome-only build; polling article 404s alone couldn't distinguish a CF deploy outage from a content-collection build error. The root-page signal proved CF was deploying *nothing* new.
+## Autonomy gap (open design choice)
+Deploying to Cloudflare ALWAYS needs either a CF token (wrangler) or a CF-side Git integration. The user wants autonomous + "tokenless." Two ways to close the gap:
+- **GH Action deploy:** add a `deploy.yml` (on push to main: checkout → npm build → wrangler deploy) with `CLOUDFLARE_API_TOKEN` stored as a GitHub repo secret. Fully hands-off but stores a token in GitHub.
+- **CF dashboard "Connect to Git" (Workers Build):** truly tokenless (CF pulls from GitHub on push), but requires a one-time dashboard/OAuth step by the user — cannot be set up via API token alone.
 
-## Confirmed-clean source facts (so don't re-chase these)
-- `astro.config.mjs` has **no sitemap** and **no Cloudflare adapter** — the screenshotted "sitemap crash + empty collection" failure was a STALE older build, not current `main`.
-- `package.json` build is a clean `astro build` (no `rm -rf node_modules/@astrojs/sitemap` hack anymore).
-- All 4 article frontmatters validate; `npm install` + `npx astro build` on a fresh clone produces 6 pages incl. every article.
-- `.npmrc` disables the lockfile; CF install step succeeds (it's the deploy, not install, that's the problem).
+## Other confirmed facts (don't re-chase)
+- `astro.config.mjs` has **no sitemap** and **no Cloudflare adapter**; the screenshotted "sitemap crash + empty collection" was a STALE older build, not current `main`.
+- `index.astro` root redirect previously used `{html}` which Astro escapes → rendered escaped text; fixed to a normal template.
+- Verify-deploy trick: change a detectable always-served page (root redirect) and poll the live URL — distinguishes "not deploying" from "source broken."
