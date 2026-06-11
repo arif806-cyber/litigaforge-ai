@@ -25,6 +25,11 @@ jobs:
       group: content-pipeline
       cancel-in-progress: false
 
+    # Required permissions for the auto-generated GITHUB_TOKEN
+    permissions:
+      contents: write          # push articles to src/content/blog/
+      actions: write           # cache published_slugs.json
+
     steps:
       # 1. Check out the repo (so pipeline.py can commit files back)
       - name: Checkout repo
