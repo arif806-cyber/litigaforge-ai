@@ -48,6 +48,12 @@ def _init_providers():
     # ── Gemini ──────────────────────────────────────────────────────────────
     gemini_base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
     gemini_key  = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "")
+    # Fallback to direct Gemini API if Replit proxy is not configured
+    if not gemini_base:
+        direct_key = os.getenv("GEMINI_API_KEY", "").strip()
+        if direct_key:
+            gemini_base = "https://generativelanguage.googleapis.com/v1beta"
+            gemini_key = direct_key
     gemini_ready = False
     if gemini_base:
         try:
