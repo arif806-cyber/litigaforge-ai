@@ -39,6 +39,12 @@ The api-server (`artifacts/api-server/src/app.ts`) reverse-proxies `/blog`, `/bl
 
 **Takes effect on litigaforge.com only after a republish** — the change is in api-server code; production runs the old build until redeployed.
 
+## Scheduled cron not firing (diagnosed via GitHub public API)
+Symptom: "no new article published at the scheduled time." Diagnosis tool (public repo, no auth needed):
+`GET api.github.com/repos/arif806-cyber/litigaforge-blog/actions/runs?event=schedule&per_page=1` → check `total_count`. If 0, the cron has **never** fired even though manual `workflow_dispatch` runs succeed and publish fine.
+Confirmed NOT the cause: fork (`fork:false`), disabled workflow (`actions/workflows` → `state:"active"`), wrong default branch (`main`, cron present in pipeline.yml on main).
+**Real cause = GitHub `schedule` is best-effort:** on a freshly created repo the first cron can be delayed many hours (often up to ~24h), and runs scheduled at the **top of the hour** (`0 */2`) sit in the most-contended slot and get dropped. Fixes: (1) move the cron off `:00` (e.g. `17 */2 * * *`) — GitHub's own docs recommend this; (2) give a new repo ~a day; (3) for guaranteed cadence, trigger via external cron (cron-job.org / Replit Scheduled Deployment) hitting the workflow_dispatch API. NOTE: pipeline.yml lives in the **separate** `litigaforge-blog` repo (not this Replit project; `extract/`+`litigaforge-blog-work/` are stale local copies) — editing it needs a GitHub token with `workflow` scope.
+
 ## Other confirmed facts (don't re-chase)
 - `astro.config.mjs` has **no sitemap** and **no Cloudflare adapter**; the screenshotted "sitemap crash + empty collection" was a STALE older build, not current `main`.
 - `index.astro` root redirect previously used `{html}` which Astro escapes → rendered escaped text; fixed to a normal template.
