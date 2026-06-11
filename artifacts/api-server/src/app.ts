@@ -135,6 +135,131 @@ if (true) { // serve frontend in both dev and production when dist exists
   const _frontendDist = _candidates.find(existsSync) ?? null;
 
   if (_frontendDist) {
+    // ── Dynamic sitemap.xml ────────────────────────────────────────────────
+    // The static sitemap built into the UI covers the app pages. Blog articles
+    // are auto-published to the Cloudflare Worker every 2 hours, so we enumerate
+    // them at request time (crawling the blog index + any pagination) and merge
+    // them into the static sitemap. Result is cached in-memory for 1h. If the
+    // Worker can't be reached we fall back to the static file, so we never serve
+    // an empty or broken sitemap. Registered BEFORE express.static so it wins
+    // over the static sitemap.xml on disk.
+    const _staticSitemapPath = resolve(_frontendDist, "sitemap.xml");
+    const SITEMAP_TTL_MS = 60 * 60 * 1000;
+    let _sitemapCache: { xml: string; at: number } | null = null;
+
+    const _readStaticSitemap = (): string => {
+      try {
+        return readFileSync(_staticSitemapPath, "utf-8");
+      } catch {
+        return (
+          '<?xml version="1.0" encoding="UTF-8"?>\n' +
+          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+          "  <url><loc>https://litigaforge.com/</loc></url>\n</urlset>\n"
+        );
+      }
+    };
+
+    // Crawl the blog index (and its pagination, whatever URL scheme it uses)
+    // to collect every published article path. Scheme-agnostic: it follows any
+    // /blog/<n> or /blog/page/<n> link it finds, so it stays complete as the
+    // blog grows past a single index page. Bounded to 50 pages for safety.
+    const _fetchBlogArticlePaths = async (): Promise<string[]> => {
+      const found = new Set<string>();
+      const visited = new Set<string>();
+      const queue: string[] = ["/blog/"];
+      const skipSeg = new Set([
+        "page",
+        "tag",
+        "tags",
+        "category",
+        "categories",
+        "author",
+        "authors",
+      ]);
+      let pages = 0;
+      while (queue.length > 0 && pages < 50) {
+        const path = queue.shift()!;
+        if (visited.has(path)) continue;
+        visited.add(path);
+        pages++;
+        let html: string;
+        try {
+          const r = await fetch(BLOG_ORIGIN + path, {
+            headers: { accept: "text/html" },
+            redirect: "follow",
+          });
+          if (!r.ok) continue;
+          html = await r.text();
+        } catch {
+          continue;
+        }
+        const hrefs = html.match(/href="([^"]+)"/g) ?? [];
+        for (const raw of hrefs) {
+          let p = raw.slice(6, -1);
+          if (p.startsWith(BLOG_ORIGIN)) p = p.slice(BLOG_ORIGIN.length);
+          if (p.startsWith("https://litigaforge.com"))
+            p = p.slice("https://litigaforge.com".length);
+          if (!p.startsWith("/blog/")) continue;
+          p = (p.split("#")[0] ?? "").split("?")[0] ?? "";
+          const article = p.match(/^\/blog\/([a-z0-9][a-z0-9-]*)\/?$/i);
+          if (article) {
+            const seg = article[1]!.toLowerCase();
+            if (/^\d+$/.test(seg)) {
+              const norm = `/blog/${seg}/`;
+              if (!visited.has(norm)) queue.push(norm);
+            } else if (!skipSeg.has(seg)) {
+              found.add(`/blog/${seg}`);
+            }
+            continue;
+          }
+          const paged = p.match(/^\/blog\/page\/(\d+)\/?$/i);
+          if (paged) {
+            const norm = `/blog/page/${paged[1]}/`;
+            if (!visited.has(norm)) queue.push(norm);
+          }
+        }
+      }
+      return [...found].sort();
+    };
+
+    const _buildSitemap = async (): Promise<string> => {
+      const base = _readStaticSitemap();
+      let paths: string[] = [];
+      try {
+        paths = await _fetchBlogArticlePaths();
+      } catch {
+        paths = [];
+      }
+      if (paths.length === 0 || !base.includes("</urlset>")) return base;
+      const blogUrls = paths
+        .map(
+          (p) =>
+            `  <url>\n    <loc>https://litigaforge.com${p}</loc>\n` +
+            "    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>",
+        )
+        .join("\n");
+      return base.replace(
+        "</urlset>",
+        `\n  <!-- Blog articles (auto-generated from the content pipeline) -->\n${blogUrls}\n</urlset>`,
+      );
+    };
+
+    app.get("/sitemap.xml", async (_req, res): Promise<void> => {
+      try {
+        const now = Date.now();
+        if (!_sitemapCache || now - _sitemapCache.at > SITEMAP_TTL_MS) {
+          _sitemapCache = { xml: await _buildSitemap(), at: now };
+        }
+        res.setHeader("Content-Type", "application/xml; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        res.send(_sitemapCache.xml);
+      } catch (err) {
+        logger.error({ err }, "sitemap generation failed — serving static");
+        res.setHeader("Content-Type", "application/xml; charset=utf-8");
+        res.send(_readStaticSitemap());
+      }
+    });
+
     // Read index.html once at startup and inject correct meta tags
     let _indexHtml: string;
     try {
