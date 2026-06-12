@@ -2,3 +2,4 @@
 - [LitigaForge blog + apex /blog](litigaforge-blog-deploy.md) — static Astro→CF Worker; apex not on CF → api-server reverse-proxies /blog & serves a dynamic /sitemap.xml (static app pages + live blog articles crawled from Worker).
 - [Stripe + stripe-replit-sync on Replit](stripe-replit-integration.md) — esbuild must externalize the lib (migrations silently skip), connector secret field is `secret` not `secret_key`, seed via code_execution.
 - [LitigaForge auth init + PWA gotchas](litigaforge-auth-and-pwa.md) — cookie-only auth; /auth/me refresh-retries on 401; stale PWA SW masks preview; admin = is_superuser via env-var bootstrap on deploy (incl. break-glass password reset).
+- [Replit sandbox secrets](replit-sandbox-secrets.md) — code_execution sandbox has NO Replit secrets in process.env; the bash tool env DOES — run scripts that USE a secret value via bash, not code_execution.
