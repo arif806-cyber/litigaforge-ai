@@ -4,7 +4,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 
 ## Run & Operate
 
-- Backend runs via `LitigaForge AI` workflow: `cd artifacts/litigaforge-ai && PORT=5000 python main.py`
+- Backend runs via `artifacts/api-server: LitigaForge AI` workflow: `cd artifacts/litigaforge-ai && BASE_PATH=/litigaforge PORT=5000 python main.py` (the standalone `LitigaForge AI` workflow was removed — it was a port-5000 duplicate of this artifact-managed one)
 - Frontend runs via `artifacts/litigaforge-ui: web` workflow: `pnpm --filter @workspace/litigaforge-ui run dev`
 - Production build: `PORT=23790 BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run build`
 - GitHub branch: `feature/arifbase` on `arif806-cyber/litigaforge-ai`
