@@ -21,7 +21,7 @@ fi
 
 echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] Triggering blog pipeline ($REPO / $WORKFLOW)..."
 
-http_code=$(curl -sS -o /tmp/dispatch_resp.txt -w "%{http_code}" \
+http_code=$(curl -sS --connect-timeout 15 --max-time 30 -o /tmp/dispatch_resp.txt -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Accept: application/vnd.github+json" \
