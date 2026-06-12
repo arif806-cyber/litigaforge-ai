@@ -1,0 +1,70 @@
+from fastapi import Response
+from fastapi.responses import PlainTextResponse
+import httpx
+from datetime import datetime
+
+@app.get("/sitemap.xml")
+async def sitemap():
+    try:
+        posts = await db.fetch_all(
+            "SELECT slug, updated_at FROM blog_posts ORDER BY updated_at DESC"
+        )
+    except:
+        posts = []
+
+    static_urls = [
+        ("https://litigaforge.com/", "1.0", "daily"),
+        ("https://litigaforge.com/blog", "0.9", "hourly"),
+        ("https://litigaforge.com/ask", "0.8", "weekly"),
+        ("https://litigaforge.com/lawyers", "0.8", "weekly"),
+        ("https://litigaforge.com/review", "0.8", "weekly"),
+        ("https://litigaforge.com/judgments", "0.8", "weekly"),
+        ("https://litigaforge.com/legal-aid", "0.8", "weekly"),
+        ("https://litigaforge.com/free-documents", "0.8", "weekly"),
+        ("https://litigaforge.com/subscription", "0.7", "weekly"),
+    ]
+
+    url_blocks = []
+
+    for loc, priority, freq in static_urls:
+        url_blocks.append(f"""  <url>
+    <loc>{loc}</loc>
+    <changefreq>{freq}</changefreq>
+    <priority>{priority}</priority>
+    <lastmod>{datetime.utcnow().date()}</lastmod>
+  </url>""")
+
+    for post in posts:
+        slug = post["slug"]
+        updated = post["updated_at"]
+        if hasattr(updated, "date"):
+            updated = updated.date()
+        url_blocks.append(f"""  <url>
+    <loc>https://litigaforge.com/blog/{slug}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>{updated}</lastmod>
+  </url>""")
+
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/0.9">
+{''.join(url_blocks)}
+</urlset>"""
+
+    return Response(content=xml, media_type="application/xml")
+
+
+async def ping_google():
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get(
+                "https://www.google.com/ping",
+                params={"sitemap": "https://litigaforge.com/sitemap.xml"},
+                timeout=10
+            )
+    except:
+        pass
+
+
+# Call ping_google() at the end of your blog publish function
+# Example: await ping_google()

@@ -1,0 +1,52 @@
+<!-- In your index.html <body>, keep your existing <div id="root"></div> and add this below it -->
+
+<noscript>
+  <style>
+    .noscript-wrap { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 24px; color: #111; }
+    h1 { font-size: 2rem; margin-bottom: 8px; }
+    h2 { font-size: 1.2rem; margin-top: 24px; color: #1a56db; }
+    ul { padding-left: 20px; }
+    a { color: #1a56db; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+  </style>
+  <div class="noscript-wrap">
+    <h1>LitigaForge AI — Global AI Legal Platform</h1>
+    <p>AI-powered legal guidance for India, USA, UK, UAE, Germany, Australia, Canada, and Singapore. Available 24/7 in English, Hindi, and Telugu.</p>
+
+    <h2>Features</h2>
+    <div class="grid">
+      <div class="card"><strong>AI Legal Guidance</strong><p>Ask any legal question and get instant answers grounded in your country's laws.</p></div>
+      <div class="card"><strong>Document Analyzer</strong><p>Upload contracts and get AI risk scores and missing-clause detection.</p></div>
+      <div class="card"><strong>Lawyer Matching</strong><p>Get matched with verified, rated lawyers scored 0–100.</p></div>
+      <div class="card"><strong>Free Legal Aid</strong><p>Check eligibility and find free legal aid contacts in your country.</p></div>
+      <div class="card"><strong>Court Judgments</strong><p>Search case law and precedents from courts in your jurisdiction.</p></div>
+      <div class="card"><strong>Free Documents</strong><p>Download free legal document templates for your country.</p></div>
+    </div>
+
+    <h2>Pricing</h2>
+    <ul>
+      <li><strong>Free Plan</strong> — 5 AI queries/month, legal Q&amp;A, document analyzer, judgment finder</li>
+      <li><strong>Professional — ₹999/month</strong> — Unlimited AI queries, priority lawyer matching, document uploads</li>
+      <li><strong>Advocate Pro — ₹2,499/month</strong> — Full practice management, client case tracking, CNR integration</li>
+    </ul>
+
+    <h2>Quick Links</h2>
+    <ul>
+      <li><a href="/ask">Ask a Legal Question</a></li>
+      <li><a href="/lawyers">Find Lawyers</a></li>
+      <li><a href="/review">Document Analyzer</a></li>
+      <li><a href="/judgments">Judgment Finder</a></li>
+      <li><a href="/legal-aid">Free Legal Aid</a></li>
+      <li><a href="/free-documents">Free Documents</a></li>
+      <li><a href="/blog">Legal Blog &amp; Guides</a></li>
+      <li><a href="/subscription">Pricing</a></li>
+    </ul>
+
+    <h2>Countries Supported</h2>
+    <p>India, United States, United Kingdom, UAE, Germany, Australia, Canada, Singapore</p>
+
+    <h2>Languages</h2>
+    <p>English, Hindi, Telugu</p>
+  </div>
+</noscript>

@@ -1,0 +1,56 @@
+# Add this to your blog auto-publish pipeline
+
+CLUSTER_MIN_POSTS = 4  # Fill cluster before starting new topic
+
+async def get_cluster_count(country: str, category: str) -> int:
+    row = await db.fetch_one("""
+        SELECT COUNT(*) as cnt FROM blog_posts
+        WHERE country = :country AND category = :category
+    """, {"country": country, "category": category})
+    return row["cnt"] if row else 0
+
+async def get_active_cluster():
+    # Get the most recently started cluster that isn't complete yet
+    row = await db.fetch_one("""
+        SELECT country, category, COUNT(*) as cnt
+        FROM blog_posts
+        GROUP BY country, category
+        HAVING COUNT(*) < :min
+        ORDER BY MAX(published_at) DESC
+        LIMIT 1
+    """, {"min": CLUSTER_MIN_POSTS})
+    return row
+
+async def decide_next_blog_topic():
+    active = await get_active_cluster()
+
+    if active:
+        # Continue filling this cluster
+        return {
+            "country": active["country"],
+            "category": active["category"],
+            "instruction": f"Write another detailed legal guide about {active['category']} law in {active['country']}. Make it different from existing posts but closely related."
+        }
+    else:
+        # Start a new cluster — rotate through countries and categories
+        CLUSTERS = [
+            {"country": "India", "category": "Employment Law"},
+            {"country": "India", "category": "Family Law"},
+            {"country": "India", "category": "Criminal Law"},
+            {"country": "India", "category": "Property Law"},
+            {"country": "USA", "category": "Immigration Law"},
+            {"country": "USA", "category": "Employment Law"},
+            {"country": "UAE", "category": "Labour Law"},
+            {"country": "UK", "category": "Employment Law"},
+        ]
+        # Pick one not yet started or least populated
+        for cluster in CLUSTERS:
+            cnt = await get_cluster_count(cluster["country"], cluster["category"])
+            if cnt == 0:
+                return {**cluster, "instruction": f"Write a comprehensive legal guide about {cluster['category']} in {cluster['country']}."}
+        # All started — pick least filled
+        return CLUSTERS[0]
+
+# In your 2-hour cron/scheduler, replace your current topic selection with:
+# topic = await decide_next_blog_topic()
+# then pass topic["country"], topic["category"], topic["instruction"] to your AI generator
