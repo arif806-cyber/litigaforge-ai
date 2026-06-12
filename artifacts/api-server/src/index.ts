@@ -2,6 +2,7 @@ import { runMigrations } from "stripe-replit-sync";
 import app from "./app";
 import { getStripeSync } from "./stripeClient";
 import { logger } from "./lib/logger";
+import { startBlogScheduler } from "./lib/blogScheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -67,4 +68,5 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
   void initStripe();
+  startBlogScheduler();
 });
