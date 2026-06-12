@@ -201,7 +201,7 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 - `data-testid` attributes must be preserved on all interactive elements
 - pnpm workspaces: run build/dev with `--filter @workspace/<name>`, never `pnpm dev` at root
 - WhatsApp sandbox: Twilio sandbox number is `whatsapp:+14155238886`; advocate must first send join message to activate
-- GitHub push: requires valid `GITHUB_TOKEN` secret. If pushing fails, regenerate token at github.com/settings/tokens with `repo` scope
+- GitHub push / repo edits: use the **no-expiry** classic PAT secret `GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE` (scopes `repo`+`workflow`, never expires). Read secret VALUES via the bash tool env, NOT the code_execution sandbox (sandbox has no Replit secrets). The blog auto-publish pipeline does NOT use any user PAT — it uses the GitHub Actions built-in `secrets.GITHUB_TOKEN` (per-run, can't expire), so token expiry never breaks the blog.
 
 ## Pointers
 
