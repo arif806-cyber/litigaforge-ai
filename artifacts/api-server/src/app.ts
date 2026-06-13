@@ -8,6 +8,7 @@ import { resolve } from "path";
 import router from "./routes";
 import { WebhookHandlers } from "./webhookHandlers";
 import { logger } from "./lib/logger";
+import { BLOG_REDIRECTS } from "./lib/blogRedirects";
 
 const app: Express = express();
 
@@ -120,6 +121,19 @@ const _blogProxy = async (
     res.status(502).send("Blog temporarily unavailable");
   }
 };
+// ── Blog 301 redirects (retired / deduplicated slugs) ─────────────────────
+// Must run BEFORE the reverse-proxy: the proxy uses redirect:"follow", so a
+// Worker-side _redirects rule would be flattened to a 200 at the old apex URL.
+// Single-segment match only (/blog/:slug); the index (/blog) and asset paths
+// fall through untouched. Destinations are always internal /blog paths.
+app.get("/blog/:slug", (req, res, next) => {
+  const dest = BLOG_REDIRECTS[req.params.slug];
+  if (dest !== undefined) {
+    res.redirect(301, dest ? `/blog/${dest}` : "/blog");
+    return;
+  }
+  next();
+});
 app.get("/blog", _blogProxy);
 app.get("/blog/{*splat}", _blogProxy);
 app.get("/_astro/{*splat}", _blogProxy);

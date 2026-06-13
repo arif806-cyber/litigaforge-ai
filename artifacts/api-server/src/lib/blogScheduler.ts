@@ -32,7 +32,7 @@ async function triggerBlogPipeline(token: string): Promise<void> {
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "litigaforge-vm-scheduler",
       },
-      body: JSON.stringify({ ref: "main", inputs: { max_articles: "3" } }),
+      body: JSON.stringify({ ref: "main", inputs: { max_articles: "2" } }),
       signal: controller.signal,
     });
     if (res.status === 204) {
