@@ -3,3 +3,5 @@
 - [Stripe + stripe-replit-sync on Replit](stripe-replit-integration.md) — esbuild must externalize the lib (migrations silently skip), connector secret field is `secret` not `secret_key`, seed via code_execution.
 - [LitigaForge auth init + PWA gotchas](litigaforge-auth-and-pwa.md) — cookie-only auth; /auth/me refresh-retries on 401; stale PWA SW masks preview; admin = is_superuser via env-var bootstrap on deploy (incl. break-glass password reset).
 - [Replit sandbox secrets](replit-sandbox-secrets.md) — code_execution sandbox has NO Replit secrets in process.env; the bash tool env DOES — run scripts that USE a secret value via bash, not code_execution.
+- [slowapi + FastAPI body binding](slowapi-fastapi-body-binding.md) — never combine `from __future__ import annotations` with slowapi @limiter.limit on Pydantic-body endpoints; deferred string annotations resolve in slowapi's module → valid JSON bodies 422.
+- [GitHub push blocked for main agent](github-push-blocked-main-agent.md) — main agent can't run local git writes (add/commit/push); sync to GitHub origin only via a background Project Task; origin was stale since 2026-05-24 (clean fast-forward behind local).

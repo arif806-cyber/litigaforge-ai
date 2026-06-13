@@ -271,6 +271,29 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS paid_documents (
+                id TEXT PRIMARY KEY,
+                slug TEXT NOT NULL,
+                country TEXT DEFAULT 'US',
+                email TEXT,
+                fields JSONB,
+                full_text TEXT,
+                preview_text TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                mor_provider TEXT,
+                mor_order_id TEXT,
+                mor_variant_id TEXT,
+                mor_store_id TEXT,
+                paid_amount_cents INTEGER,
+                currency TEXT DEFAULT 'USD',
+                webhook_event_id TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                paid_at TIMESTAMPTZ
+            )
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_paid_documents_status ON paid_documents (status)")
         # ── Performance indexes ────────────────────────────────────────────────
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_case_requirements_user ON case_requirements (user_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_case_requirements_status ON case_requirements (status)")
@@ -521,6 +544,7 @@ from routers import (
     matching_router, chat_router, community_router,
     watch_router, alerts_router, admin_router,
     lawyer_router, documents_free_router,
+    paid_documents_router,
     passkeys_router, push_router,
 )
 from country_router import router as country_router
@@ -539,6 +563,7 @@ app.include_router(alerts_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
 app.include_router(lawyer_router,      prefix=BASE_PATH)
 app.include_router(documents_free_router, prefix=BASE_PATH)
+app.include_router(paid_documents_router, prefix=BASE_PATH)
 app.include_router(passkeys_router,    prefix=BASE_PATH)
 app.include_router(push_router,        prefix=BASE_PATH)
 app.include_router(country_router,     prefix=BASE_PATH)
