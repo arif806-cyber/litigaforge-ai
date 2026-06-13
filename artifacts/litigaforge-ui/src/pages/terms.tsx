@@ -1,17 +1,19 @@
 import { Scale, FileText, AlertTriangle, Users, CreditCard, Shield, XCircle, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import { useCountry } from "@/hooks/useCountry";
 import { TERMS_COPY } from "@/lib/country-copy";
 
 const EFFECTIVE_DATE = "1 June 2026";
-const CONTACT_EMAIL = "legal@litigaforge.ai";
+const CONTACT_EMAIL = "legal@litigaforge.com";
 
 export default function TermsOfService() {
   const { activeCode } = useCountry();
   const copy = TERMS_COPY[activeCode.toUpperCase()] ?? TERMS_COPY.IN;
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-10" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 py-10 space-y-10" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
       <SEOHelmet
         title="Terms of Service"
         description={copy.description}
@@ -154,6 +156,8 @@ export default function TermsOfService() {
           <Link href="/"><span className="text-primary hover:underline cursor-pointer">Home</span></Link>
         </div>
       </div>
+      </div>
+      <LegalDisclaimerFooter />
     </div>
   );
 }

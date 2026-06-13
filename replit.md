@@ -46,6 +46,9 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - `legal-aid.tsx` — **Free Legal Aid Finder**: NALSA/TSLSA eligibility wizard + helplines
 - `free-documents.tsx` — **Free Legal Documents**: 10 AI-powered document templates with search/filter
 - `document-template.tsx` — **Document Template Fill Form**: dynamic form fields, AI generate, download/share/print
+- `about.tsx` — **About Us** (AdSense-required): company overview, markets served, features, founder/T-Hub; standalone public route, ends with shared `LegalDisclaimerFooter`
+- `contact.tsx` — **Contact Us** (AdSense-required): contact form (name/email/subject/message) → public `POST /contact` (saved to `contact_messages` table); standalone public route, ends with shared `LegalDisclaimerFooter`
+- `privacy.tsx` / `terms.tsx` — Privacy Policy / Terms of Service (AdSense-required); both now end with shared `LegalDisclaimerFooter`; contact email aligned to `legal@litigaforge.com`. privacy.tsx includes "Cookies & Tracking" + "Google AdSense & Advertising" sections
 
 ### Backend (`artifacts/litigaforge-ai/`)
 
@@ -121,6 +124,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 | `client_documents` | id, case_id FK, client_id FK, filename, file_type, file_size, file_path, file_url, created_at |
 | `chat_threads` | id, match_id FK, title, created_at |
 | `chat_messages` | id, thread_id FK, sender_id FK, sender_role, content, created_at |
+| `contact_messages` | id, name, email, subject, message, created_at — public Contact Us form submissions |
 
 ## Auth & Subscription
 
@@ -152,6 +156,7 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
+| `POST /contact` | None | Submit Contact Us message — saved to `contact_messages` (rate-limited 5/min, email validated, subject whitelisted) |
 | `POST /ask` | None | Ask legal question — AI answers instantly |
 | `GET /ask` | None | Browse past Q&As (optional `?category=` filter) |
 | `POST /document/analyze` | None | Document risk score, missing clauses, recommendations |
@@ -189,6 +194,9 @@ JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-con
 - **Lawyer Directory** (`/lawyers`): verified TG/AP advocates with badges, ratings, hourly rates
 - **Free Legal Aid** (`/legal-aid`): NALSA eligibility wizard + DLSA contacts
 - **Subscription** (`/subscription`): plan comparison, upgrade/downgrade
+- **About Us** (`/about`): company info, markets, features (AdSense-required)
+- **Contact Us** (`/contact`): working contact form saved to DB (AdSense-required)
+- **Privacy Policy** (`/privacy`, alias `/privacy-policy`) & **Terms** (`/terms`): AdSense-required legal pages; all four public pages render the shared footer with Company links + copyright line
 - **Blog** (`/blog`): redirects to `https://blog.litigaforge.com` — auto-publishes AI legal guides via Reddit pipeline
 
 ## User preferences

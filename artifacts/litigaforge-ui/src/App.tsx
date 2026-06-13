@@ -48,6 +48,8 @@ const LandingPage         = lazy(() => import("@/pages/landing"));
 const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
 const TermsOfService      = lazy(() => import("@/pages/terms"));
+const About               = lazy(() => import("@/pages/about"));
+const Contact             = lazy(() => import("@/pages/contact"));
 const RefundPolicy        = lazy(() => import("@/pages/refund-policy"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
 const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
@@ -267,7 +269,10 @@ function Router() {
         <Route path="/landing" component={LandingPage} />
         <Route path="/demo" component={DemoPage} />
         <Route path="/privacy" component={PrivacyPolicy} />
+        <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsOfService} />
+        <Route path="/about" component={About} />
+        <Route path="/contact" component={Contact} />
         <Route path="/refund-policy" component={RefundPolicy} />
         <Route path="/settings" component={() => <ProtectedRoute component={AccountSettings} />} />
         <Route path="/login" component={Login} />

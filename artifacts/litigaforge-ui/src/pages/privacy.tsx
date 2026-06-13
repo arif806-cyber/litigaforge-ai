@@ -1,17 +1,19 @@
-import { Shield, Lock, Eye, Trash2, Download, Bell, Mail, Scale } from "lucide-react";
+import { Shield, Lock, Eye, Trash2, Download, Bell, Mail, Scale, Cookie, Megaphone } from "lucide-react";
 import { Link } from "wouter";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import { useCountry } from "@/hooks/useCountry";
 import { PRIVACY_COPY } from "@/lib/country-copy";
 
 const EFFECTIVE_DATE = "1 June 2026";
-const CONTACT_EMAIL = "privacy@litigaforge.ai";
+const CONTACT_EMAIL = "legal@litigaforge.com";
 
 export default function PrivacyPolicy() {
   const { activeCode } = useCountry();
   const copy = PRIVACY_COPY[activeCode.toUpperCase()] ?? PRIVACY_COPY.IN;
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-10" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 py-10 space-y-10" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
       <SEOHelmet
         title="Privacy Policy"
         description={copy.description}
@@ -138,7 +140,34 @@ export default function PrivacyPolicy() {
         </ul>
       </Section>
 
-      <Section icon={<Shield className="w-4 h-4" />} title="8. Children's Data">
+      <Section icon={<Cookie className="w-4 h-4" />} title="8. Cookies & Tracking Technologies">
+        <p className="text-sm">We use the following categories of cookies and similar technologies:</p>
+        <ul className="mt-2 space-y-1.5 text-sm list-disc list-inside">
+          <li><strong>Essential cookies</strong> — required for the website and your session to function (authentication, security).</li>
+          <li><strong>Analytics cookies</strong> — help us understand how visitors use the site so we can improve it.</li>
+          <li><strong>Advertising cookies</strong> — used by Google AdSense to serve relevant ads (see section 9).</li>
+        </ul>
+        <p className="mt-2 text-sm">
+          You can control or disable cookies at any time through your browser settings. Disabling essential cookies may affect core functionality.
+        </p>
+      </Section>
+
+      <Section icon={<Megaphone className="w-4 h-4" />} title="9. Google AdSense & Advertising">
+        <p className="text-sm">
+          We use <strong>Google AdSense</strong> to display advertisements on this website. Google AdSense uses cookies to
+          serve ads based on your prior visits to this and other websites.
+        </p>
+        <ul className="mt-2 space-y-1.5 text-sm list-disc list-inside">
+          <li>Third-party vendors, including Google, use cookies to serve ads based on your prior visits to our website.</li>
+          <li>Google's use of advertising cookies enables it and its partners to serve ads to you based on your visit to our site and/or other sites on the Internet.</li>
+          <li>You may opt out of personalised advertising by visiting{" "}
+            <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-primary underline">google.com/settings/ads</a>.</li>
+          <li>For more on how Google handles data, see{" "}
+            <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google's Privacy &amp; Terms</a>.</li>
+        </ul>
+      </Section>
+
+      <Section icon={<Shield className="w-4 h-4" />} title="10. Children's Data">
         <p className="text-sm">
           LitigaForge AI is not intended for persons under the age of 18. We do not knowingly collect personal data from minors.
           If you believe a minor has registered, please contact us at{" "}
@@ -147,7 +176,7 @@ export default function PrivacyPolicy() {
         </p>
       </Section>
 
-      <Section icon={<Bell className="w-4 h-4" />} title="9. Breach Notification">
+      <Section icon={<Bell className="w-4 h-4" />} title="11. Breach Notification">
         <p className="text-sm">
           In the event of a personal data breach that is likely to result in harm, we will notify the{" "}
           <strong>Data Protection Board of India</strong> within <strong>72 hours</strong> of becoming aware,
@@ -155,7 +184,7 @@ export default function PrivacyPolicy() {
         </p>
       </Section>
 
-      <Section icon={<Mail className="w-4 h-4" />} title="10. Contact & Grievance Officer">
+      <Section icon={<Mail className="w-4 h-4" />} title="12. Contact & Grievance Officer">
         <div className="bg-muted/40 rounded-xl p-4 text-sm space-y-1 border border-border">
           <p><strong>Data Protection Officer / Grievance Officer</strong></p>
           <p>LitigaForge AI</p>
@@ -176,6 +205,8 @@ export default function PrivacyPolicy() {
           <Link href="/"><span className="text-primary hover:underline cursor-pointer">Home</span></Link>
         </div>
       </div>
+      </div>
+      <LegalDisclaimerFooter />
     </div>
   );
 }

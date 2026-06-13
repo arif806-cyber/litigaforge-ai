@@ -261,6 +261,16 @@ async def lifespan(app: FastAPI):
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS refresh_tokens_token_idx ON refresh_tokens (token)
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS contact_messages (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                subject TEXT DEFAULT 'General Inquiry',
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         # ── Performance indexes ────────────────────────────────────────────────
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_case_requirements_user ON case_requirements (user_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_case_requirements_status ON case_requirements (status)")

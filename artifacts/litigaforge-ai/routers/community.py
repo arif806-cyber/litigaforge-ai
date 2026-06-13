@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from auth import get_current_user, check_tier_usage
 from rate_limit import limiter
-from database import fetchrow, fetch
+from database import fetchrow, fetch, execute
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
 from jurisdiction import (
@@ -151,6 +151,51 @@ USER INPUT:
     # Keep only non-empty strings, cap at 3
     questions = [str(q).strip() for q in questions if isinstance(q, str) and str(q).strip()][:3]
     return {"needs_clarification": bool(questions), "questions": questions}
+
+
+# ── Contact form ──────────────────────────────────────────────────────────────────
+
+CONTACT_SUBJECTS = {
+    "General Inquiry", "Legal Question", "Technical Support",
+    "Partnership", "Press & Media", "Other",
+}
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class ContactRequest(BaseModel):
+    name: str
+    email: str
+    subject: str = "General Inquiry"
+    message: str
+
+
+@router.post("/contact")
+@limiter.limit("5/minute")
+async def submit_contact(req: ContactRequest, request: Request):
+    """Public contact form — saves a message to the database. No auth required."""
+    try:
+        name = sanitize_text(req.name, max_length=200, field_name="name")
+        message = sanitize_text(req.message, max_length=5000, field_name="message")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    email = (req.email or "").strip().lower()
+    if not name.strip():
+        raise HTTPException(status_code=422, detail="Please enter your name.")
+    if not _EMAIL_RE.match(email) or len(email) > 320:
+        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+    if not message.strip():
+        raise HTTPException(status_code=422, detail="Please enter a message.")
+
+    subject = req.subject if req.subject in CONTACT_SUBJECTS else "Other"
+
+    await execute(
+        """INSERT INTO contact_messages (name, email, subject, message)
+           VALUES ($1, $2, $3, $4)""",
+        name.strip(), email, subject, message.strip(),
+    )
+    return {"ok": True, "message": "Thank you! We will get back to you within 24 hours."}
 
 
 # ── Legal Q&A ─────────────────────────────────────────────────────────────────────

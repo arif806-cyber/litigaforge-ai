@@ -43,8 +43,10 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
   {
     heading: "Company",
     links: [
+      { label: "About Us", href: "/about" },
+      { label: "Contact", href: "/contact" },
       { label: "Legal Guides", href: "/blog" },
-      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Privacy Policy", href: "/privacy-policy" },
       { label: "Terms of Service", href: "/terms" },
       { label: "Refund Policy", href: "/refund-policy" },
     ],
@@ -103,7 +105,7 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground/70">
-            &copy; {year} LitigaForge AI. All rights reserved.
+            &copy; {year} LitigaForge AI. All rights reserved. LitigaForge AI is not a law firm and does not provide legal advice.
           </p>
         </div>
       </div>
