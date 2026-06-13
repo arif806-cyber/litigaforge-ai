@@ -1,0 +1,233 @@
+Fix all the following issues in the LitigaForge blog system. 
+Implement all changes in order. Do not run bulk generation 
+until all fixes are confirmed working.
+
+═══════════════════════════════════════
+PHASE 1 — CLEANUP (Do This First)
+═══════════════════════════════════════
+
+1. DELETE DUPLICATES
+Scan the blog posts table and find all posts where topic+country 
+combination is duplicated. Keep the post with the highest word count. 
+For all others, create a 301 redirect from the old slug to the 
+kept slug, then delete the duplicate record from DB.
+
+Specific duplicates to resolve:
+- Germany Overtime (3 posts) → keep highest word count, redirect others
+- India Tenant Rights (2 posts) → keep highest word count, redirect other
+- India Divorce/Alimony (4 posts) → keep highest word count, redirect others
+- India Wrongful Termination (3 posts) → keep highest, redirect others
+- Australia Workplace Bullying (2 posts) → keep highest, redirect other
+- India Defective Product (2 posts) → keep highest, redirect other
+- India Protect IP (2 posts) → keep highest, redirect other
+- UAE Gratuity (3 posts) → keep highest, redirect others
+- UK Unfair Dismissal (2 posts) → keep highest, redirect other
+
+2. DELETE WELCOME POST
+Delete the blog post with ~2 min read time that is a 
+generic welcome/intro post. It has zero SEO value.
+
+═══════════════════════════════════════
+PHASE 2 — DATABASE FIXES
+═══════════════════════════════════════
+
+3. ADD UNIQUE CONSTRAINT
+Run this migration on the blog posts table:
+- Add column: normalized_topic VARCHAR (lowercase, alphanumeric only)
+- Add column: category VARCHAR
+- Add column: word_count INTEGER  
+- Add column: featured_image_url VARCHAR
+- Add UNIQUE constraint on (normalized_topic, country)
+- Add index on (country, category, created_at)
+
+4. ADD REDIRECTS TABLE
+Create a new table: blog_redirects
+- old_slug VARCHAR PRIMARY KEY
+- new_slug VARCHAR NOT NULL
+- created_at TIMESTAMP DEFAULT NOW()
+
+The blog router must check this table and serve 301 if 
+old slug is requested.
+
+═══════════════════════════════════════
+PHASE 3 — GENERATOR FIXES
+═══════════════════════════════════════
+
+5. DEDUPLICATION LOGIC
+Before generating any post:
+- Normalize topic: lowercase, strip special chars, strip stopwords
+- Query DB: SELECT id FROM posts WHERE normalized_topic = ? AND country = ?
+- If exists: log "SKIPPED: duplicate topic+country [topic] [country]" and abort
+- If not exists: proceed with generation
+
+6. FIX TITLE TRUNCATION
+- Remove ALL character limits from the post title field in DB and generator
+- Full title must be stored as-is in the database
+- Only truncate in the HTML <meta title> tag to 60 chars with "..." appended
+- Never truncate the H1 heading — always show full title on page
+
+7. FIX SLUG TRUNCATION  
+- Slugs must be max 70 characters
+- Always cut at a word boundary (never mid-word)
+- Format: lowercase, hyphens only, no special chars
+- Example: "wrongful-termination-rights-for-employees-in-india" not 
+  "wrongful-termination-rights-for-employees-in-ind"
+
+8. MINIMUM WORD COUNT
+- After generating post content, count words
+- If word count < 1500: regenerate once with this addition to prompt:
+  "Write a comprehensive detailed guide of at least 1500 words"
+- If still < 1500 after retry: discard and log "DISCARDED: too short"
+- Store word_count in DB on every save
+
+9. CATEGORY ROTATION SYSTEM
+Add 10 categories to rotate through per country per day:
+- Employment Law
+- Family Law
+- Tenant & Property Rights
+- Consumer Rights
+- Criminal Law
+- Immigration Law
+- Business & Startup Law
+- Tax & Finance Law
+- Intellectual Property
+- Civil Rights
+
+Rules:
+- Max 2 consecutive posts per category per country per day
+- Track last 5 categories used per country in memory/DB
+- Never repeat same category+country combo back to back
+- India gets minimum 8 posts/day across all 10 categories
+- Each other country gets minimum 2 posts/day
+
+10. COUNTRY QUOTA BALANCE
+Daily post distribution (total 25-30 posts/day):
+- India: 8 posts
+- USA: 4 posts
+- UK: 4 posts
+- UAE: 3 posts
+- Germany: 3 posts
+- Australia: 2 posts
+- Canada: 2 posts
+- Singapore: 2 posts
+
+Enforce this quota strictly. If one country hits its limit, 
+skip it for rest of the day regardless of generation queue.
+
+═══════════════════════════════════════
+PHASE 4 — CONTENT QUALITY FIXES
+═══════════════════════════════════════
+
+11. INTERNAL LINKING
+After generating each post, scan existing posts in same country:
+- Find 3 to 5 related posts by matching keywords in title
+- Insert natural anchor text links to those posts within the content
+- Place links within body paragraphs, not as a list at the end
+- Format: <a href="/blog/[slug]">[anchor text]</a>
+
+12. FAQ SECTION + JSON-LD SCHEMA
+Every post must end with a FAQ section:
+- Generate 5 questions and answers relevant to the post topic
+- Add FAQ JSON-LD schema in the <head> of each post page:
+
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Question here",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Answer here"
+      }
+    }
+  ]
+}
+
+13. ARTICLE JSON-LD SCHEMA
+Add Article schema to every blog post <head>:
+
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "[post title]",
+  "datePublished": "[created_at ISO date]",
+  "dateModified": "[updated_at ISO date]",
+  "author": {
+    "@type": "Organization",
+    "name": "LitigaForge AI",
+    "url": "https://litigaforge.com"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LitigaForge AI",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://litigaforge.com/logo.png"
+    }
+  },
+  "description": "[meta description]"
+}
+
+14. FEATURED IMAGE
+For each post, assign a featured image:
+- Use Unsplash API (free) with query = "[category] law legal"
+- Store image URL in featured_image_url column in DB
+- Render image at top of post with alt text = "[post title] - LitigaForge"
+- Add width and height attributes for Core Web Vitals
+
+15. SITEMAP UPDATE
+After every new post is saved:
+- Automatically add its URL to /sitemap.xml
+- Format: 
+  <url>
+    <loc>https://litigaforge.com/blog/[slug]</loc>
+    <lastmod>[created_at date]</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+- Sitemap must be regenerated/updated within 60 seconds of new post
+
+═══════════════════════════════════════
+PHASE 5 — VALIDATION TEST
+═══════════════════════════════════════
+
+16. DRY RUN TEST (Before going live)
+Generate exactly 5 test posts without saving to DB:
+- 1 India Criminal Law post
+- 1 Canada Immigration Law post  
+- 1 Singapore Business Law post
+- 1 UAE Family Law post
+- 1 Germany Tax Law post
+
+For each test post show me:
+✓ Full title (not truncated)
+✓ Slug (max 70 chars, clean)
+✓ Word count
+✓ Category assigned
+✓ Country assigned
+✓ Number of internal links found
+✓ FAQ questions generated (just the 5 questions, not answers)
+✓ Featured image URL fetched
+
+Only proceed to save real posts after I approve the dry run output.
+
+═══════════════════════════════════════
+PHASE 6 — MONITORING
+═══════════════════════════════════════
+
+17. GENERATION LOG
+Create a daily generation log that tracks:
+- Timestamp
+- Post title
+- Country
+- Category  
+- Word count
+- Status (PUBLISHED / SKIPPED / DISCARDED)
+- Reason if skipped or discarded
+
+Expose this log at /admin/blog-log (no public access, 
+add basic auth or admin-only route).
+
+Show me this log as a simple table in the admin dashboard.
