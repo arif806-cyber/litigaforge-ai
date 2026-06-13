@@ -1,0 +1,213 @@
+Create 4 pages required for Google AdSense approval 
+and add them to the footer. Complete all tasks below.
+
+═══════════════════════════════════════
+TASK 1 — /about
+═══════════════════════════════════════
+
+Create route /about with this content:
+
+Headline: "About LitigaForge AI"
+
+Who We Are:
+LitigaForge AI is a global AI-powered legal platform 
+headquartered in Hyderabad, India. We make legal help 
+accessible and affordable to everyone — whether you 
+are an individual, a startup, or a business.
+
+Our Mission:
+To bridge the gap between people and legal help using 
+artificial intelligence. Legal advice should not be a 
+privilege — it should be available to anyone, anywhere.
+
+Markets We Serve:
+India, United States, United Kingdom, UAE, Germany, 
+Australia, Canada, Singapore
+
+Our Features:
+- AI Legal Chat
+- Document Analyzer
+- Lawyer Connect
+- Free Legal Aid
+- Judgment Finder
+- Legal Q&A
+
+Our Story:
+Founded by Mohammed Anjum Arif, an AWS and DevOps 
+engineer based in Hyderabad, India. LitigaForge AI 
+is associated with T-Hub Hyderabad, India's leading 
+startup incubator.
+
+Contact:
+Email: legal@litigaforge.com
+Location: Hyderabad, Telangana, India
+
+═══════════════════════════════════════
+TASK 2 — /contact
+═══════════════════════════════════════
+
+Create route /contact with:
+
+Headline: "Contact Us"
+Subheading: "We typically respond within 24 hours"
+
+Contact form fields:
+- Full Name (required)
+- Email Address (required)
+- Subject dropdown (General Inquiry, Legal Question, 
+  Technical Support, Partnership, Press & Media, Other)
+- Message textarea (required)
+- Submit button: "Send Message"
+
+On submit: save to DB and show success message:
+"Thank you! We will get back to you within 24 hours."
+
+Below the form show:
+- Email: legal@litigaforge.com
+- Location: Hyderabad, Telangana, India
+- Hours: Monday to Saturday, 9AM to 6PM IST
+
+═══════════════════════════════════════
+TASK 3 — /privacy-policy
+═══════════════════════════════════════
+
+Create route /privacy-policy with this content:
+
+Title: Privacy Policy
+Effective Date: June 13, 2026
+
+1. Introduction
+LitigaForge AI operates litigaforge.com. This policy 
+explains how we collect, use and protect your data.
+
+2. Information We Collect
+- Name and email when you register or contact us
+- Legal questions and documents you submit
+- Usage data including pages visited
+- Device info including browser type and IP address
+- Cookies and tracking data
+
+3. How We Use Your Information
+- To provide AI legal assistance and platform features
+- To match you with lawyers via Lawyer Connect
+- To improve our platform and services
+- To send service updates and notifications
+- To comply with legal obligations
+
+4. Google AdSense and Advertising
+We use Google AdSense to display advertisements. 
+Google AdSense uses cookies to serve ads based on 
+your prior visits to our website and other websites. 
+You may opt out of personalized advertising by 
+visiting google.com/settings/ads
+
+5. Cookies
+We use the following cookies:
+- Essential: required for the website to function
+- Analytics: help us understand how visitors use the site
+- Advertising: used by Google AdSense for relevant ads
+You can control cookies through your browser settings.
+
+6. Data Sharing
+We do not sell your personal data. We may share with:
+- Google (Analytics and AdSense)
+- Lawyers you connect with via Lawyer Connect
+- Service providers who help operate our platform
+- Law enforcement when required by law
+
+7. Data Retention
+- Account data: while your account is active
+- Contact form submissions: 24 months
+- Legal documents: 12 months after upload
+- Analytics: retained in anonymized form
+
+8. Your Rights
+- Access the personal data we hold about you
+- Correct inaccurate data
+- Request deletion of your data
+- Opt out of marketing communications
+
+9. Children
+Our services are not for children under 13. We do 
+not knowingly collect data from children.
+
+10. Contact for Privacy
+Email: legal@litigaforge.com
+LitigaForge AI, Hyderabad, Telangana, India
+
+═══════════════════════════════════════
+TASK 4 — /terms
+═══════════════════════════════════════
+
+Create route /terms with this content:
+
+Title: Terms of Service
+Effective Date: June 13, 2026
+
+1. Acceptance
+By using litigaforge.com you agree to these terms.
+
+2. Not a Law Firm — Important Disclaimer
+LitigaForge AI is NOT a law firm. We are a technology 
+platform. All AI-generated content is for informational 
+purposes only and does NOT constitute legal advice. 
+Always consult a qualified lawyer for your situation.
+
+3. User Responsibilities
+- Must be 18 or older to use our services
+- Must provide accurate information
+- Must not misuse or abuse the platform
+- Must not upload unlawful content
+- Responsible for keeping your account secure
+
+4. Lawyer Connect
+We connect users with independent lawyers. We do not 
+employ lawyers and are not responsible for advice 
+provided by lawyers on our platform.
+
+5. Intellectual Property
+All content and features of LitigaForge AI are our 
+property and protected by intellectual property laws.
+
+6. Limitation of Liability
+LitigaForge AI is not liable for any damages arising 
+from use of the platform. Maximum liability shall not 
+exceed amount paid in the last 3 months.
+
+7. Governing Law
+These terms are governed by the laws of India. 
+Disputes subject to courts in Hyderabad, Telangana.
+
+8. Contact
+Email: legal@litigaforge.com
+
+═══════════════════════════════════════
+TASK 5 — FOOTER
+═══════════════════════════════════════
+
+Add these links to the footer on every page:
+
+Company section:
+- About Us → /about
+- Contact → /contact
+
+Legal section:
+- Privacy Policy → /privacy-policy
+- Terms of Service → /terms
+
+Add this line at the very bottom of footer:
+"© 2026 LitigaForge AI. All rights reserved. 
+LitigaForge AI is not a law firm and does not 
+provide legal advice."
+
+═══════════════════════════════════════
+CONFIRM AFTER DONE
+═══════════════════════════════════════
+
+Confirm these are all live:
+✓ /about loads with content
+✓ /contact loads with working form
+✓ /privacy-policy loads with full content
+✓ /terms loads with full content
+✓ All 4 links in footer on every page
+✓ Copyright line showing in footer

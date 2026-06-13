@@ -25,5 +25,7 @@ export const BLOG_REDIRECTS: Record<string, string> = {
   "uae-labour-law-end-of-service-gratuity-calculation": "uae-end-of-service-gratuity-calculation",
   "unfair-dismissal-claims-uk": "uk-unfair-dismissal-claim-compensation",
   "understanding-australias-workplace-bullying-laws-and-how-to-": "australia-workplace-bullying-laws-2026",
+  "us-h1b-visa-rights-2026": "us-immigration-law-h1b-visa-rights",
+  "file-rera-complaint-against-builder-in-india": "file-complaint-against-fraudulent-builder-in-india",
   "welcome": "",
 };
