@@ -1,0 +1,55 @@
+The blog overhaul ran but these issues are still live. Fix now:
+
+1. DELETE these duplicate posts from DB and add 301 redirects 
+   to the canonical URL (highest word count version):
+
+GERMANY OVERTIME — delete these 2, keep /germany-labour-law-claim-compensation-overtime:
+- /germany-labour-law-claim-compensation-for-overtime
+- /germany-labour-law-overtime-compensation
+
+INDIA PROTECT IP — delete this 1, keep /startup-founder-legal-guide-protect-ip-india:
+- /startup-founder-legal-guide-protect-ip-in-india
+
+INDIA TENANT RIGHTS — delete this 1, keep /tenant-rights-in-india:
+- /india-tenant-rights-security-deposit-refund
+
+INDIA WRONGFUL TERMINATION — delete these 2, keep /wrongful-termination-in-india:
+- /how-to-send-legal-notice-for-wrongful-termination-in-india
+- /how-to-send-a-legal-notice-to-your-employer-for-wrongful-ter
+
+INDIA DIVORCE — delete these 3, keep /india-divorce-laws-and-alimony:
+- /divorce-and-alimony-rights-for-women-in-india
+- /india-divorce-laws-and-alimony-rights
+- /understanding-divorce-and-alimony-laws-in-india-what-women-n
+
+INDIA DEFECTIVE PRODUCT — delete this 1, keep /consumer-complaint-refund-india-2026:
+- /consumer-complaint-defective-product-refund-india
+
+UAE GRATUITY — delete these 2, keep /uae-end-of-service-gratuity-calculation:
+- /uae-labour-law-end-of-service-gratuity
+- /uae-labour-law-end-of-service-gratuity-calculation
+
+UK UNFAIR DISMISSAL — delete this 1, keep /uk-unfair-dismissal-claim-compensation:
+- /unfair-dismissal-claims-uk
+
+AUSTRALIA BULLYING — delete this 1, keep /australia-workplace-bullying-laws-2026:
+- /understanding-australias-workplace-bullying-laws-and-how-to-
+
+WELCOME POST — delete /blog/welcome entirely, no redirect needed.
+
+2. FIX TITLE TRUNCATION on these 5 posts — fetch full title 
+   from AI generation prompt output or regenerate, 
+   store complete title in DB:
+- /settlement-agreements-in-the-uk-what-to-check-before-you-sig
+- /unpaid-overtime-claims-under-the-flsa-in-the-usa
+- /mutual-consent-divorce-in-india-step-by-step-process-and-tim
+- /singapore-employment-law-notice-period-requirements-and-when
+- /understanding-australias-workplace-bullying-laws-and-how-to-
+
+3. REPUBLISH Replit so apex redirects and dynamic 
+   sitemap go live on litigaforge.com immediately.
+
+After fixes confirm:
+- Total live post count
+- Zero duplicates in DB
+- All 5 broken titles now complete
