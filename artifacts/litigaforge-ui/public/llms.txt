@@ -46,6 +46,9 @@ English, Telugu, Hindi
 - Blog: https://litigaforge.com/blog
 - Privacy Policy: https://litigaforge.com/privacy
 - Terms of Service: https://litigaforge.com/terms
+- Refund Policy: https://litigaforge.com/refund-policy
+- U.S. Demand Letter: https://litigaforge.com/us-demand-letter
+- About Us: https://litigaforge.com/about
 
 ## Technology
 
