@@ -148,3 +148,25 @@ async def admin_list_users(
 async def admin_reset_usage(user_id: int, current_user: dict = Depends(get_superuser)):
     await execute("UPDATE users SET cases_this_month = 0 WHERE id = $1", user_id)
     return {"success": True}
+
+
+@router.post("/admin/judgments/ingest/run")
+async def admin_run_judgment_ingest(
+    max_docs: int = 0,
+    current_user: dict = Depends(get_superuser),
+):
+    """Manually trigger one judgment-ingestion pass (ops + verification).
+
+    Mirrors the daily scheduler but runs on demand. Advisory-locked inside
+    ``run_ingestion`` so it can never overlap the scheduler. Returns a benign
+    "no_source_configured" result when no compliant API token is set; returns
+    HTTP 502 when a *configured* source is unavailable — it never falls back to
+    scraping or fabricated data.
+    """
+    from judgment_ingest import run_ingestion, IndianKanoonError
+
+    try:
+        stats = await run_ingestion(max_docs=max_docs or None, trigger="manual")
+    except IndianKanoonError as e:
+        raise HTTPException(status_code=502, detail=f"Compliant source unavailable: {e}")
+    return {"success": True, "result": stats}

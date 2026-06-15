@@ -2,6 +2,7 @@
 Modular router aggregator: 9 clean routers, lifespan, CORS, rate limiting,
 structured logging, request middleware, Sentry (conditional).
 """
+import asyncio
 import os
 import sys
 import time
@@ -649,6 +650,13 @@ async def lifespan(app: FastAPI):
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_judgments_status ON judgments (status)"
             )
+            # Dedup ingested judgments by their canonical source document URL,
+            # independent of any later slug/title change. Partial (NOT NULL) so
+            # the seed rows and manual entries without a URL are unaffected.
+            await conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_judgments_source_url "
+                "ON judgments (source_url) WHERE source_url IS NOT NULL"
+            )
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS digest_subscribers (
                     id SERIAL PRIMARY KEY,
@@ -744,7 +752,22 @@ async def lifespan(app: FastAPI):
         "DATABASE_URL is required"
     logger.info("✓ Startup checks passed")
 
+    # Daily judgment-ingestion scheduler (production only; benign no-op without a
+    # compliant API token). Returns None when disabled.
+    from judgment_ingest import start_scheduler as _start_judgment_scheduler
+    app.state.judgment_scheduler = _start_judgment_scheduler()
+
     yield
+
+    _sched = getattr(app.state, "judgment_scheduler", None)
+    if _sched is not None:
+        _sched.cancel()
+        try:
+            await _sched
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("judgment-ingest: scheduler shutdown error: %s", e)
     await close_pool()
 
 
