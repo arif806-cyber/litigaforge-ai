@@ -14,6 +14,7 @@ from routers.documents_free import router as documents_free_router
 from routers.paid_documents import router as paid_documents_router
 from routers.passkeys     import router as passkeys_router
 from routers.push         import router as push_router
+from routers.judgments    import router as judgments_router
 
 __all__ = [
     "auth_router",
@@ -29,4 +30,5 @@ __all__ = [
     "paid_documents_router",
     "passkeys_router",
     "push_router",
+    "judgments_router",
 ]

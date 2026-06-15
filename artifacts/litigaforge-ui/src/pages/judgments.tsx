@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { apiFetch } from "@/lib/api";
-import { BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale } from "lucide-react";
+import {
+  BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale,
+  Gavel, ArrowRight, CalendarDays, Landmark,
+} from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,6 +26,32 @@ interface Judgment {
   source_name?: string;
 }
 
+interface DigestItem {
+  id: number;
+  case_name: string;
+  court: string;
+  court_slug: string;
+  judgment_date: string | null;
+  year: number;
+  slug: string;
+  summary_en: string;
+  outcome: string;
+  citation: string;
+  path: string;
+}
+
+interface CourtFacet {
+  court_slug: string;
+  court: string;
+  count: number;
+}
+
+interface DigestResponse {
+  total: number;
+  judgments: DigestItem[];
+  courts: CourtFacet[];
+}
+
 const SAMPLE_QUERIES = [
   "Property encroachment injunction",
   "Motor accident compensation claim",
@@ -30,6 +60,13 @@ const SAMPLE_QUERIES = [
   "Domestic violence protection order",
   "Defective product consumer refund",
 ];
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
 
 export default function Judgments() {
   const { activeCode, activeConfig } = useCountry();
@@ -40,6 +77,13 @@ export default function Judgments() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [pendingQuery, setPendingQuery] = useState("");
+  const [digestCourt, setDigestCourt] = useState("");
+
+  const digest = useQuery<DigestResponse>({
+    queryKey: ["judgments-digest", digestCourt],
+    queryFn: () =>
+      apiFetch(`/judgments${digestCourt ? `?court=${encodeURIComponent(digestCourt)}` : ""}`),
+  });
 
   const courtOptions = [
     { id: "", label: "All Courts" },
@@ -72,17 +116,149 @@ export default function Judgments() {
   const selectedCourt = courtOptions.find(c => c.id === court) ?? courtOptions[0];
   const sourceName = (search.data as { source_name?: string } | undefined)?.source_name ?? "the source database";
 
+  const digestItems = digest.data?.judgments ?? [];
+  const courtFacets = digest.data?.courts ?? [];
+
   return (<>
       <SEOHelmet
-      title="Search Court Judgments | LitigaForge"
-      description="Search court judgments and case law precedents across multiple jurisdictions. AI-curated precedents with links to the relevant case-law database."
+      title="Daily Judgment Digest — Supreme Court & High Court | LitigaForge"
+      description="Plain-English summaries of landmark Supreme Court and High Court judgments, with key acts cited, outcomes and AI case-law search across jurisdictions."
       canonical="/judgments"
-      keywords="search court judgments, supreme court precedents, case law finder, legal research, court orders"
+      keywords="daily judgment digest, supreme court judgments, high court judgments, case law summaries, indian judgments explained, legal precedents"
     />
-    <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle} icon={<BookOpen className="w-6 h-6 text-primary" />}>
+    <PageShell
+      title={copy.pageTitle}
+      subtitle="Plain-English summaries of landmark Supreme Court & High Court judgments — updated for quick legal research."
+      icon={<Gavel className="w-6 h-6 text-primary" />}
+    >
+      <div className="space-y-10">
+        {/* ── Daily Digest ─────────────────────────────────────────── */}
+        <section className="space-y-5" data-testid="section-digest">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-primary" />
+              Recent Judgments
+            </h2>
+            {digest.data && (
+              <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
+                {digest.data.total} in digest
+              </span>
+            )}
+          </div>
 
-      <div className="space-y-8">
-        <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
+          {/* court filter chips */}
+          {courtFacets.length > 0 && (
+            <div className="flex flex-wrap gap-2" data-testid="digest-court-filter">
+              <button
+                onClick={() => setDigestCourt("")}
+                className={cn(
+                  "text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-all",
+                  digestCourt === ""
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border bg-card text-foreground hover:border-primary/40",
+                )}
+              >
+                All Courts
+              </button>
+              {courtFacets.map(c => (
+                <button
+                  key={c.court_slug}
+                  onClick={() => setDigestCourt(c.court_slug)}
+                  className={cn(
+                    "text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-all",
+                    digestCourt === c.court_slug
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border bg-card text-foreground hover:border-primary/40",
+                  )}
+                >
+                  {c.court} <span className="opacity-70">({c.count})</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {digest.isLoading && (
+            <div className="flex items-center justify-center py-16 gap-3 bg-card border border-border rounded-2xl">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Loading judgments…</span>
+            </div>
+          )}
+
+          {digest.isError && (
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-5 py-4">
+              Couldn't load the judgment digest. Please try again shortly.
+            </div>
+          )}
+
+          {!digest.isLoading && !digest.isError && digestItems.length === 0 && (
+            <div className="text-center py-16 bg-card border border-border rounded-2xl">
+              <BookOpen className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No judgments in this filter yet.</p>
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {digestItems.map((j, idx) => (
+              <motion.div
+                key={j.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(idx * 0.04, 0.3) }}
+              >
+                <Link
+                  href={j.path}
+                  data-testid={`digest-card-${j.id}`}
+                  className="group block h-full bg-card rounded-2xl border border-border shadow-sm hover:border-primary/40 hover:shadow-md transition-all p-5"
+                >
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded bg-primary/10 text-primary border border-primary/20">
+                      {j.court}
+                    </span>
+                    {j.judgment_date && (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {formatDate(j.judgment_date)}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground leading-snug group-hover:text-primary transition-colors">
+                    {j.case_name}
+                  </h3>
+                  {j.citation && (
+                    <p className="text-xs text-muted-foreground font-mono mt-1">{j.citation}</p>
+                  )}
+                  <p className="text-sm text-foreground/70 leading-relaxed mt-3 line-clamp-2">
+                    {j.summary_en}
+                  </p>
+                  <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-border/60">
+                    {j.outcome && (
+                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full line-clamp-1">
+                        {j.outcome}
+                      </span>
+                    )}
+                    <span className="text-xs font-semibold text-primary inline-flex items-center gap-1 flex-shrink-0 ml-auto">
+                      Read <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── AI case-law search (secondary) ───────────────────────── */}
+        <section className="space-y-6" data-testid="section-search">
+          <div className="flex items-center gap-3 pt-2">
+            <div className="h-px flex-1 bg-border/60" />
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Search className="w-4 h-4" /> Search all case law with AI
+            </h2>
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
+          <p className="text-sm text-muted-foreground text-center max-w-2xl mx-auto -mt-2">
+            {copy.pageSubtitle}
+          </p>
+
+          <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -92,6 +268,7 @@ export default function Judgments() {
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()}
                 placeholder="e.g. breach of contract damages appeal"
+                data-testid="input-judgment-search"
                 className="w-full pl-12 pr-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
               />
             </div>
@@ -133,6 +310,7 @@ export default function Judgments() {
               onClick={() => handleSearch()}
               disabled={!query.trim() || search.isPending}
               size="lg"
+              data-testid="button-judgment-search"
               className="h-14 px-8 text-base shadow-md w-full md:w-auto"
             >
               {search.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Search"}
@@ -266,6 +444,7 @@ export default function Judgments() {
             </p>
           </motion.div>
         )}
+        </section>
       </div>
 
       <ClarifyDialog

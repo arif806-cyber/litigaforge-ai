@@ -149,6 +149,12 @@ if (true) { // serve frontend in both dev and production when dist exists
   const _frontendDist = _candidates.find(existsSync) ?? null;
 
   if (_frontendDist) {
+    // Internal origin of the Python (litigaforge-ai) service for server-side
+    // data fetches (judgment SEO + sitemap). Reached directly, NOT via proxy.
+    const LF_API_ORIGIN = process.env.LITIGAFORGE_API_ORIGIN ?? "http://localhost:5000";
+    const LF_API_BASE =
+      (process.env.BASE_PATH ?? "/litigaforge").replace(/\/+$/, "") || "/litigaforge";
+
     // ── Dynamic sitemap.xml ────────────────────────────────────────────────
     // The static sitemap built into the UI covers the app pages. Blog articles
     // are auto-published to the Cloudflare Worker every 2 hours, so we enumerate
@@ -236,26 +242,52 @@ if (true) { // serve frontend in both dev and production when dist exists
       return [...found].sort();
     };
 
+    // Pull the published judgment URLs (path + lastmod) from the Python service.
+    interface JudgmentSitemapItem { path: string; lastmod?: string | null }
+    const _fetchJudgmentSitemap = async (): Promise<JudgmentSitemapItem[]> => {
+      try {
+        const r = await fetch(`${LF_API_ORIGIN}${LF_API_BASE}/judgments/sitemap-data`, {
+          headers: { accept: "application/json" },
+        });
+        if (!r.ok) return [];
+        const j = (await r.json()) as { items?: JudgmentSitemapItem[] };
+        return Array.isArray(j.items) ? j.items : [];
+      } catch {
+        return [];
+      }
+    };
+
     const _buildSitemap = async (): Promise<string> => {
       const base = _readStaticSitemap();
-      let paths: string[] = [];
-      try {
-        paths = await _fetchBlogArticlePaths();
-      } catch {
-        paths = [];
-      }
-      if (paths.length === 0 || !base.includes("</urlset>")) return base;
-      const blogUrls = paths
+      if (!base.includes("</urlset>")) return base;
+      let blogPaths: string[] = [];
+      let judgmentItems: JudgmentSitemapItem[] = [];
+      try { blogPaths = await _fetchBlogArticlePaths(); } catch { blogPaths = []; }
+      try { judgmentItems = await _fetchJudgmentSitemap(); } catch { judgmentItems = []; }
+
+      const blogUrls = blogPaths
         .map(
           (p) =>
             `  <url>\n    <loc>https://litigaforge.com${p}</loc>\n` +
             "    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>",
         )
         .join("\n");
-      return base.replace(
-        "</urlset>",
-        `\n  <!-- Blog articles (auto-generated from the content pipeline) -->\n${blogUrls}\n</urlset>`,
-      );
+      const judgmentUrls = judgmentItems
+        .map(
+          (it) =>
+            `  <url>\n    <loc>https://litigaforge.com${it.path}</loc>\n` +
+            (it.lastmod ? `    <lastmod>${it.lastmod}</lastmod>\n` : "") +
+            "    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>",
+        )
+        .join("\n");
+
+      let inject = "";
+      if (blogUrls)
+        inject += `\n  <!-- Blog articles (auto-generated from the content pipeline) -->\n${blogUrls}`;
+      if (judgmentUrls)
+        inject += `\n  <!-- Daily Judgment Digest -->\n${judgmentUrls}`;
+      if (!inject) return base;
+      return base.replace("</urlset>", `${inject}\n</urlset>`);
     };
 
     app.get("/sitemap.xml", async (_req, res): Promise<void> => {
@@ -555,6 +587,123 @@ if (true) { // serve frontend in both dev and production when dist exists
         .replace(/<p>[\s\S]*?<\/p>/, () => `<p>${meta.intro}</p>`);
     };
 
+    const _esc = (s: unknown): string =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    // Per-judgment bot HTML: fetch the judgment from the Python service and
+    // inject case-specific <title>, description, canonical, OG/Twitter tags
+    // (incl. the dynamic OG card image) and BlogPosting + LegalCase JSON-LD.
+    // Returns null for non-judgment paths or when the judgment can't be found,
+    // so callers fall back to the generic bot/index HTML.
+    const _judgmentBotHtml = async (reqPath: string): Promise<string | null> => {
+      if (!_staticBotHtml) return null;
+      let bare = _stripCountry(reqPath);
+      if (bare.length > 1) bare = bare.replace(/\/+$/, "");
+      const m = bare.match(/^\/judgments\/([^/]+)\/(\d{4})\/([^/]+)$/);
+      if (!m) return null;
+      const [, court, year, slug] = m;
+      interface JudgmentData {
+        case_name: string; court: string; year: number; citation?: string;
+        summary_en?: string; judgment_date?: string | null;
+        og_image_url?: string; path?: string; url?: string;
+      }
+      let data: JudgmentData;
+      try {
+        const r = await fetch(
+          `${LF_API_ORIGIN}${LF_API_BASE}/judgments/item/${court}/${year}/${slug}`,
+          { headers: { accept: "application/json" } },
+        );
+        if (!r.ok) return null;
+        data = (await r.json()) as JudgmentData;
+      } catch {
+        return null;
+      }
+
+      const canonical = `${_SITE_URL}${data.path ?? bare}`;
+      const title = `${data.case_name} (${data.year}) — ${data.court} | LitigaForge AI`;
+      const ogTitle = `${data.case_name} (${data.year})`;
+      const desc = (data.summary_en ?? "").slice(0, 200);
+      const ogImage = data.og_image_url ?? `${_SITE_URL}/og-image.png`;
+
+      const jsonld = JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "BlogPosting",
+            headline: data.case_name,
+            description: desc,
+            datePublished: data.judgment_date || undefined,
+            dateModified: data.judgment_date || undefined,
+            image: ogImage,
+            inLanguage: "en",
+            author: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
+            publisher: {
+              "@type": "Organization",
+              name: "LitigaForge AI",
+              logo: { "@type": "ImageObject", url: `${_SITE_URL}/og-image.png` },
+            },
+            mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+          },
+          {
+            "@type": "LegalCase",
+            name: data.case_name,
+            url: canonical,
+            ...(data.citation ? { alternateName: data.citation } : {}),
+            ...(data.court ? { about: data.court } : {}),
+          },
+        ],
+      }).replace(/</g, "\\u003c");
+
+      return _staticBotHtml
+        .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${_esc(title)}</title>`)
+        .replace(
+          /<meta name="description"[^>]*>/,
+          () => `<meta name="description" content="${_esc(desc)}"/>`,
+        )
+        .replace(
+          /<link rel="canonical"[^>]*>/,
+          () => `<link rel="canonical" href="${canonical}"/>`,
+        )
+        .replace(
+          /<meta property="og:url"[^>]*>/,
+          () => `<meta property="og:url" content="${canonical}"/>`,
+        )
+        .replace(
+          /<meta property="og:title"[^>]*>/,
+          () => `<meta property="og:title" content="${_esc(ogTitle)}"/>`,
+        )
+        .replace(
+          /<meta property="og:description"[^>]*>/,
+          () => `<meta property="og:description" content="${_esc(desc)}"/>`,
+        )
+        .replace(
+          /<meta property="og:image"[^>]*>/,
+          () => `<meta property="og:image" content="${_esc(ogImage)}"/>`,
+        )
+        .replace(
+          /<meta name="twitter:title"[^>]*>/,
+          () => `<meta name="twitter:title" content="${_esc(ogTitle)}"/>`,
+        )
+        .replace(
+          /<meta name="twitter:description"[^>]*>/,
+          () => `<meta name="twitter:description" content="${_esc(desc)}"/>`,
+        )
+        .replace(
+          /<meta name="twitter:image"[^>]*>/,
+          () => `<meta name="twitter:image" content="${_esc(ogImage)}"/>`,
+        )
+        .replace(/<h1>[\s\S]*?<\/h1>/, () => `<h1>${_esc(data.case_name)}</h1>`)
+        .replace(/<p>[\s\S]*?<\/p>/, () => `<p>${_esc(data.summary_en ?? "")}</p>`)
+        .replace(
+          /<\/head>/,
+          () => `<script type="application/ld+json">${jsonld}</script>\n</head>`,
+        );
+    };
+
     if (_indexHtml) {
       const _sendIndex = (req: express.Request, res: express.Response): void => {
         const ua = req.headers["user-agent"] ?? "";
@@ -585,6 +734,31 @@ if (true) { // serve frontend in both dev and production when dist exists
 
       // Root: serve meta-injected HTML
       app.get("/", _sendIndex);
+
+      // Judgment detail: bots get per-judgment meta + OG card + JSON-LD fetched
+      // from the Python service; humans get the SPA shell (react-helmet sets
+      // meta client-side). Registered BEFORE the SPA catch-all. Matches both the
+      // bare and country-prefixed (/in/judgments/...) forms.
+      const _judgmentRoute = async (
+        req: express.Request,
+        res: express.Response,
+      ): Promise<void> => {
+        const ua = req.headers["user-agent"] ?? "";
+        if (_staticBotHtml && _botPattern.test(ua)) {
+          try {
+            const html = await _judgmentBotHtml(req.path);
+            res.setHeader("Cache-Control", "public, max-age=3600");
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.send(html ?? _botHtmlForPath(req.path));
+            return;
+          } catch (err) {
+            logger.error({ err }, "judgment bot html failed — serving generic");
+          }
+        }
+        _sendIndex(req, res);
+      };
+      app.get("/judgments/:court/:year/:slug", _judgmentRoute);
+      app.get("/:cc/judgments/:court/:year/:slug", _judgmentRoute);
 
       // SPA fallback: any path not under /api or /litigaforge returns the
       // React app so client-side routing works (/ask, /login, /forge, etc.)

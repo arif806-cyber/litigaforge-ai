@@ -30,6 +30,7 @@ const Subscription        = lazy(() => import("@/pages/subscription"));
 const Ask                 = lazy(() => import("@/pages/ask"));
 const Review              = lazy(() => import("@/pages/review"));
 const Judgments           = lazy(() => import("@/pages/judgments"));
+const JudgmentDetail      = lazy(() => import("@/pages/judgment-detail"));
 const LawyersPage         = lazy(() => import("@/pages/lawyers"));
 const LegalAid            = lazy(() => import("@/pages/legal-aid"));
 const NotFound            = lazy(() => import("@/pages/not-found"));
@@ -298,6 +299,7 @@ function Router() {
               <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><ProtectedRoute component={Subscription} /></ErrorBoundary>} />
               <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
               <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
+              <Route path="/judgments/:court/:year/:slug" component={() => <ErrorBoundary section="judgment-detail"><JudgmentDetail /></ErrorBoundary>} />
               <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />
               <Route path="/lawyers/:city" component={() => <ErrorBoundary section="city-lawyers"><CityPage /></ErrorBoundary>} />
               <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />

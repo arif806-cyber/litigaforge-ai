@@ -79,6 +79,225 @@ else:
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 
+# ── Sample judgments (Phase 1 — real landmark cases, accurate holdings) ──────────
+# These are genuine, well-documented Supreme Court / High Court precedents seeded so
+# the digest UI, URL structure and SEO can be reviewed before any real ingestion is
+# wired up. No fabricated holdings. Replaced/augmented by later ingestion phases.
+async def _seed_sample_judgments(conn) -> None:
+    from datetime import date
+    existing = await conn.fetchval("SELECT COUNT(*) FROM judgments")
+    if existing and int(existing) > 0:
+        return
+
+    samples = [
+        {
+            "case_name": "Kesavananda Bharati v. State of Kerala",
+            "court": "Supreme Court of India",
+            "court_slug": "supreme-court-of-india",
+            "bench": "13-Judge Constitution Bench",
+            "judgment_date": date(1973, 4, 24),
+            "year": 1973,
+            "slug": "kesavananda-bharati-v-state-of-kerala-basic-structure",
+            "citation": "(1973) 4 SCC 225",
+            "outcome": "Basic structure doctrine established",
+            "acts_cited": [
+                "Constitution of India, Article 368",
+                "Constitution of India, Article 13",
+                "24th Constitutional Amendment",
+                "25th Constitutional Amendment",
+            ],
+            "summary_en": (
+                "A 13-judge bench held that while Parliament has wide power under "
+                "Article 368 to amend the Constitution, it cannot alter or destroy its "
+                "'basic structure'. This established the basic structure doctrine, which "
+                "places certain core features — such as the supremacy of the Constitution, "
+                "the rule of law, separation of powers and judicial review — beyond the "
+                "reach of constitutional amendment."
+            ),
+            "summary_hi": (
+                "13 न्यायाधीशों की पीठ ने माना कि अनुच्छेद 368 के तहत संसद को संविधान में "
+                "संशोधन की व्यापक शक्ति है, परंतु वह संविधान के 'मूल ढाँचे' को नष्ट या "
+                "परिवर्तित नहीं कर सकती। इसी से 'मूल ढाँचा सिद्धांत' स्थापित हुआ, जो "
+                "संविधान की सर्वोच्चता, विधि का शासन, शक्तियों का पृथक्करण और न्यायिक "
+                "समीक्षा जैसे मूल तत्वों को संशोधन की पहुँच से बाहर रखता है।"
+            ),
+            "full_text": (
+                "Facts: The petitioner, head of a religious mutt in Kerala, challenged "
+                "the Kerala land reform laws and the 24th, 25th and 29th Constitutional "
+                "Amendments that curtailed property rights and limited judicial review of "
+                "such laws.\n\n"
+                "Issue: Whether Parliament's power to amend the Constitution under "
+                "Article 368 is unlimited, including the power to abridge or take away "
+                "fundamental rights.\n\n"
+                "Held: By a 7:6 majority, the Court held that Parliament can amend any "
+                "part of the Constitution but cannot alter its 'basic structure' or "
+                "essential framework. The Court overruled, in part, the earlier view in "
+                "Golak Nath and upheld the validity of the 24th Amendment, while reading "
+                "the basic structure limitation into the amending power.\n\n"
+                "Significance: The basic structure doctrine has since been the bedrock of "
+                "Indian constitutional law, used to test the validity of subsequent "
+                "amendments and to protect the Constitution's identity."
+            ),
+            "source_name": "IndianKanoon",
+            "source_url": "https://indiankanoon.org/doc/257876/",
+        },
+        {
+            "case_name": "Justice K.S. Puttaswamy (Retd.) v. Union of India",
+            "court": "Supreme Court of India",
+            "court_slug": "supreme-court-of-india",
+            "bench": "9-Judge Constitution Bench",
+            "judgment_date": date(2017, 8, 24),
+            "year": 2017,
+            "slug": "ks-puttaswamy-v-union-of-india-right-to-privacy",
+            "citation": "(2017) 10 SCC 1",
+            "outcome": "Right to privacy is a fundamental right",
+            "acts_cited": [
+                "Constitution of India, Article 21",
+                "Constitution of India, Article 14",
+                "Constitution of India, Article 19",
+            ],
+            "summary_en": (
+                "A unanimous 9-judge bench held that the right to privacy is a "
+                "fundamental right intrinsic to the right to life and personal liberty "
+                "under Article 21 and to the freedoms guaranteed by Part III of the "
+                "Constitution. The decision overruled earlier rulings (M.P. Sharma and "
+                "Kharak Singh) to the extent they held otherwise."
+            ),
+            "summary_hi": (
+                "9 न्यायाधीशों की सर्वसम्मत पीठ ने माना कि निजता का अधिकार अनुच्छेद 21 के "
+                "तहत जीवन और व्यक्तिगत स्वतंत्रता के अधिकार तथा संविधान के भाग III द्वारा "
+                "प्रदत्त स्वतंत्रताओं का अभिन्न अंग है, और इसलिए एक मौलिक अधिकार है। इस "
+                "निर्णय ने एम.पी. शर्मा और खड़क सिंह के विपरीत मतों को निरस्त कर दिया।"
+            ),
+            "full_text": (
+                "Facts: A challenge to the Aadhaar scheme raised the prior question of "
+                "whether the Constitution recognises a fundamental right to privacy, given "
+                "earlier larger-bench observations suggesting it did not.\n\n"
+                "Issue: Whether the right to privacy is a constitutionally protected "
+                "fundamental right.\n\n"
+                "Held: The nine judges unanimously declared that privacy is a fundamental "
+                "right protected under Article 21 and as a part of the freedoms guaranteed "
+                "by Part III. Any restriction must satisfy the tests of legality, a "
+                "legitimate state aim, and proportionality.\n\n"
+                "Significance: The judgment laid the constitutional foundation for data "
+                "protection jurisprudence in India and shaped the later analysis of "
+                "Aadhaar, surveillance and personal autonomy."
+            ),
+            "source_name": "IndianKanoon",
+            "source_url": "https://indiankanoon.org/doc/91938676/",
+        },
+        {
+            "case_name": "Vishaka v. State of Rajasthan",
+            "court": "Supreme Court of India",
+            "court_slug": "supreme-court-of-india",
+            "bench": "3-Judge Bench",
+            "judgment_date": date(1997, 8, 13),
+            "year": 1997,
+            "slug": "vishaka-v-state-of-rajasthan-workplace-harassment",
+            "citation": "(1997) 6 SCC 241",
+            "outcome": "Guidelines against workplace sexual harassment laid down",
+            "acts_cited": [
+                "Constitution of India, Article 14",
+                "Constitution of India, Article 15",
+                "Constitution of India, Article 19",
+                "Constitution of India, Article 21",
+                "Convention on the Elimination of All Forms of Discrimination against Women (CEDAW)",
+            ],
+            "summary_en": (
+                "In the absence of legislation, the Court laid down binding guidelines "
+                "(the 'Vishaka Guidelines') to prevent and redress sexual harassment of "
+                "women at the workplace, treating it as a violation of the fundamental "
+                "rights to equality, life and the freedom to practise any profession. "
+                "These guidelines were later codified in the POSH Act, 2013."
+            ),
+            "summary_hi": (
+                "किसी कानून के अभाव में, न्यायालय ने कार्यस्थल पर महिलाओं के यौन उत्पीड़न "
+                "की रोकथाम और निवारण के लिए बाध्यकारी दिशानिर्देश ('विशाखा दिशानिर्देश') "
+                "निर्धारित किए, इसे समानता, जीवन और किसी भी पेशे को अपनाने की स्वतंत्रता के "
+                "मौलिक अधिकारों का उल्लंघन माना। इन दिशानिर्देशों को बाद में 2013 के POSH "
+                "अधिनियम में संहिताबद्ध किया गया।"
+            ),
+            "full_text": (
+                "Facts: The petition followed the brutal gang-rape of a social worker in "
+                "Rajasthan and highlighted the absence of any legal framework protecting "
+                "women from sexual harassment at the workplace.\n\n"
+                "Issue: How to protect the fundamental rights of working women against "
+                "sexual harassment in the absence of enacted law.\n\n"
+                "Held: Invoking Articles 14, 15, 19(1)(g) and 21 and India's obligations "
+                "under CEDAW, the Court framed detailed guidelines defining sexual "
+                "harassment and prescribing preventive steps, complaint mechanisms and "
+                "employer duties, to operate as law until Parliament legislated.\n\n"
+                "Significance: The guidelines governed workplaces for over fifteen years "
+                "and directly informed the Sexual Harassment of Women at Workplace "
+                "(Prevention, Prohibition and Redressal) Act, 2013."
+            ),
+            "source_name": "IndianKanoon",
+            "source_url": "https://indiankanoon.org/doc/1031794/",
+        },
+        {
+            "case_name": "Faheema Shirin R.K. v. State of Kerala",
+            "court": "High Court of Kerala",
+            "court_slug": "kerala-high-court",
+            "bench": "Single Judge (Justice P.V. Asha)",
+            "judgment_date": date(2019, 9, 19),
+            "year": 2019,
+            "slug": "faheema-shirin-v-state-of-kerala-right-to-internet",
+            "citation": "2019 SCC OnLine Ker 2976",
+            "outcome": "Right to internet access read into Article 21",
+            "acts_cited": [
+                "Constitution of India, Article 21",
+                "Constitution of India, Article 19(1)(a)",
+            ],
+            "summary_en": (
+                "The Kerala High Court held that the right to access the internet is part "
+                "of the right to education and the right to privacy under Article 21, and "
+                "of the freedom of speech and expression under Article 19(1)(a). A college "
+                "hostel rule restricting students' mobile phone and internet use during "
+                "study hours was held to be arbitrary and was set aside."
+            ),
+            "summary_hi": (
+                "केरल उच्च न्यायालय ने माना कि इंटरनेट तक पहुँच का अधिकार अनुच्छेद 21 के "
+                "तहत शिक्षा के अधिकार और निजता के अधिकार का, तथा अनुच्छेद 19(1)(क) के तहत "
+                "वाक् एवं अभिव्यक्ति की स्वतंत्रता का हिस्सा है। अध्ययन के घंटों में "
+                "विद्यार्थियों के मोबाइल और इंटरनेट उपयोग पर रोक लगाने वाला छात्रावास नियम "
+                "मनमाना मानकर रद्द कर दिया गया।"
+            ),
+            "full_text": (
+                "Facts: A college student was expelled from her hostel for refusing to "
+                "comply with a rule barring the use of mobile phones and the internet "
+                "during designated study hours.\n\n"
+                "Issue: Whether such a restriction on internet access violated the "
+                "student's fundamental rights.\n\n"
+                "Held: The Court held that the right to have access to the internet forms "
+                "part of the right to education and the right to privacy under Article 21, "
+                "as well as the freedom of expression under Article 19(1)(a). The hostel "
+                "rule was found arbitrary, and the student was directed to be readmitted.\n\n"
+                "Significance: An early and influential High Court recognition of internet "
+                "access as integral to fundamental rights in the digital age."
+            ),
+            "source_name": "IndianKanoon",
+            "source_url": "https://indiankanoon.org/search/?formInput=faheema%20shirin",
+        },
+    ]
+
+    for s in samples:
+        await conn.execute(
+            """
+            INSERT INTO judgments
+                (case_name, court, court_slug, bench, judgment_date, year, slug,
+                 full_text, summary_en, summary_hi, acts_cited, outcome,
+                 source_url, source_name, citation, status)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'published')
+            ON CONFLICT (court_slug, year, slug) DO NOTHING
+            """,
+            s["case_name"], s["court"], s["court_slug"], s["bench"],
+            s["judgment_date"], s["year"], s["slug"], s["full_text"],
+            s["summary_en"], s["summary_hi"], s["acts_cited"], s["outcome"],
+            s["source_url"], s["source_name"], s["citation"],
+        )
+    logger.info("Seeded %d sample judgments", len(samples))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pool = await get_pool()
@@ -394,6 +613,60 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("push_subscriptions init: %s", me)
 
+        # ── Judgment Digest (Daily SC/HC Judgment Digest — Phase 1) ───────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS judgments (
+                    id SERIAL PRIMARY KEY,
+                    case_name TEXT NOT NULL,
+                    court TEXT NOT NULL,
+                    court_slug TEXT NOT NULL,
+                    bench TEXT,
+                    judgment_date DATE,
+                    year INTEGER,
+                    slug TEXT NOT NULL,
+                    full_text TEXT,
+                    summary_en TEXT,
+                    summary_hi TEXT,
+                    acts_cited TEXT[] DEFAULT '{}',
+                    outcome TEXT,
+                    source_url TEXT,
+                    source_name TEXT,
+                    citation TEXT,
+                    og_image_url TEXT,
+                    status TEXT DEFAULT 'published',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE (court_slug, year, slug)
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_judgments_date ON judgments (judgment_date DESC)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_judgments_court_slug ON judgments (court_slug)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_judgments_status ON judgments (status)"
+            )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS digest_subscribers (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    email TEXT UNIQUE NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    confirmed BOOLEAN DEFAULT FALSE,
+                    confirm_token TEXT,
+                    unsubscribe_token TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    last_sent_at TIMESTAMPTZ
+                )
+            """)
+            logger.info("judgments + digest_subscribers tables ready")
+            await _seed_sample_judgments(conn)
+        except Exception as me:
+            logger.warning("judgment digest init: %s", me)
+
         logger.info("Database tables initialized")
 
         # ── Admin bootstrap ──────────────────────────────────────────────────
@@ -546,6 +819,7 @@ from routers import (
     lawyer_router, documents_free_router,
     paid_documents_router,
     passkeys_router, push_router,
+    judgments_router,
 )
 from country_router import router as country_router
 
@@ -566,6 +840,7 @@ app.include_router(documents_free_router, prefix=BASE_PATH)
 app.include_router(paid_documents_router, prefix=BASE_PATH)
 app.include_router(passkeys_router,    prefix=BASE_PATH)
 app.include_router(push_router,        prefix=BASE_PATH)
+app.include_router(judgments_router,   prefix=BASE_PATH)
 app.include_router(country_router,     prefix=BASE_PATH)
 
 @app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
