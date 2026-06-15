@@ -10,12 +10,15 @@ Required env vars for live sending:
   SMTP_PASSWORD — sender password / app-password
   SMTP_FROM     — display From address; falls back to SMTP_USER
 """
+import html as _html
 import logging
 import os
 import smtplib
 import ssl
+from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from urllib.parse import urlsplit
 
 logger = logging.getLogger("litigaforge.email")
 
@@ -128,23 +131,25 @@ def _send(to_email: str, subject: str, html: str, text: str) -> dict:
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
+        # UTF-8 throughout so emoji subjects (e.g. "⚖️ Top 5 Judgments Today")
+        # and non-ASCII summaries (… ellipsis, accented case names) send cleanly.
+        msg["Subject"] = Header(subject, "utf-8")
         msg["From"] = SMTP_FROM
         msg["To"] = to_email
-        msg.attach(MIMEText(text, "plain"))
-        msg.attach(MIMEText(html, "html"))
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
 
         ctx = ssl.create_default_context()
         if SMTP_PORT == 465:
             with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx) as s:
                 s.login(SMTP_USER, SMTP_PASSWORD)
-                s.sendmail(SMTP_FROM, to_email, msg.as_string())
+                s.send_message(msg)
         else:
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
                 s.ehlo()
                 s.starttls(context=ctx)
                 s.login(SMTP_USER, SMTP_PASSWORD)
-                s.sendmail(SMTP_FROM, to_email, msg.as_string())
+                s.send_message(msg)
 
         logger.info("[Email] Sent '%s' → %s", subject, to_email)
         return {"success": True, "mode": "live", "to": to_email}
@@ -182,3 +187,126 @@ def send_rejection_email(to_email: str, name: str, reason: str = "") -> dict:
         "— LitigaForge AI Team"
     )
     return _send(to_email, "LitigaForge: Advocate Verification Update", html, text)
+
+
+def smtp_configured() -> bool:
+    """True only when SMTP is fully configured for LIVE sending (host + user +
+    password). The daily digest uses this to report an unconfigured mailer
+    loudly instead of silently mock-delivering to every subscriber."""
+    return bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
+
+
+def _safe_url(raw: str) -> str:
+    """Allow only absolute http(s) URLs or root-relative paths into href
+    attributes; anything else (javascript:, data:, malformed) collapses to '#'.
+    Result is HTML-attribute escaped. Judgment URLs are derived from
+    external/AI-sourced data, so they are treated as untrusted."""
+    raw = (raw or "").strip()
+    if raw.startswith("/"):
+        return _html.escape(raw, quote=True)
+    parts = urlsplit(raw)
+    if parts.scheme in ("http", "https") and parts.netloc:
+        return _html.escape(raw, quote=True)
+    return "#"
+
+
+def send_digest_email(to_email: str, name: str, items: list, date_label: str,
+                      unsubscribe_url: str) -> dict:
+    """Send the 'Top 5 Judgments Today' daily digest to one subscriber.
+
+    items: list of dicts with keys case_name, court, summary, url.
+
+    Judgment fields (case_name/court/summary/url) and the subscriber name are
+    treated as untrusted: every value interpolated into the HTML body is
+    HTML-escaped (and URLs are scheme-validated) to prevent HTML/markup
+    injection in the email broadcast.
+    """
+    greeting_raw = (name or "").strip() or "there"
+    greeting = _html.escape(greeting_raw, quote=True)
+    date_label_e = _html.escape((date_label or "").strip(), quote=True)
+    unsub_safe = _safe_url(unsubscribe_url)
+
+    rows_html = []
+    rows_text = []
+    for i, it in enumerate(items, 1):
+        case_name = (it.get("case_name") or "Judgment").strip()
+        court = (it.get("court") or "").strip()
+        summary = (it.get("summary") or "").strip()
+        url = it.get("url") or "#"
+        case_name_e = _html.escape(case_name, quote=True)
+        court_e = _html.escape(court, quote=True)
+        summary_e = _html.escape(summary, quote=True)
+        url_safe = _safe_url(url)
+        court_html = (
+            f'<p style="margin:0 0 10px;font-size:12px;font-weight:600;color:#b45309;'
+            f'text-transform:uppercase;letter-spacing:0.4px;">{court_e}</p>'
+            if court else ""
+        )
+        rows_html.append(
+            f'<table width="100%" cellpadding="0" cellspacing="0" '
+            f'style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;margin:0 0 16px;">'
+            f'<tr><td style="padding:18px 20px;">'
+            f'<p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#0f172a;line-height:1.4;">'
+            f'{i}. {case_name_e}</p>'
+            f'{court_html}'
+            f'<p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.6;">{summary_e}</p>'
+            f'<a href="{url_safe}" style="display:inline-block;background:#1a2744;color:#ffffff;'
+            f'text-decoration:none;font-size:13px;font-weight:600;padding:9px 18px;border-radius:7px;">'
+            f'Read Full Analysis &rarr;</a>'
+            f'</td></tr></table>'
+        )
+        rows_text.append(
+            f"{i}. {case_name}" + (f" ({court})" if court else "")
+            + f"\n   {summary}\n   Read: {url}\n"
+        )
+
+    items_html = "\n".join(rows_html)
+    subject = f"⚖️ Top 5 Judgments Today — {date_label}"
+
+    body_html = f"""\
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr><td style="background:#1a2744;padding:24px 28px;border-radius:12px 12px 0 0;">
+          <p style="margin:0;color:#f0a500;font-size:20px;font-weight:700;letter-spacing:-0.3px;">
+            ⚖️ LitigaForge AI</p>
+          <p style="margin:6px 0 0;color:#cbd5e1;font-size:13px;">
+            Top 5 Judgments Today &middot; {date_label_e}</p>
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:24px 28px 8px;">
+          <p style="margin:0 0 18px;font-size:15px;color:#475569;line-height:1.6;">
+            Hi {greeting}, here are today's most important new Supreme Court &amp; High Court judgments.
+          </p>
+          {items_html}
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:8px 28px 24px;border-radius:0 0 12px 12px;
+                       border-top:1px solid #f1f5f9;">
+          <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+            You're receiving this because you subscribed to the LitigaForge daily judgment digest.
+            <a href="{unsub_safe}" style="color:#64748b;text-decoration:underline;">Unsubscribe</a>.
+          </p>
+          <p style="margin:8px 0 0;font-size:11px;color:#cbd5e1;line-height:1.6;">
+            LitigaForge AI provides legal information, not legal advice.
+            Always verify with a qualified advocate.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    text = (
+        f"{subject}\n\n"
+        f"Hi {greeting_raw},\n\n"
+        "Today's most important new Supreme Court & High Court judgments:\n\n"
+        + "\n".join(rows_text)
+        + f"\nUnsubscribe: {unsubscribe_url}\n\n"
+        "LitigaForge AI provides legal information, not legal advice.\n"
+        "— LitigaForge AI"
+    )
+    return _send(to_email, subject, body_html, text)

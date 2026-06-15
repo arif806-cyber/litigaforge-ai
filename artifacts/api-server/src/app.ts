@@ -443,6 +443,15 @@ if (true) { // serve frontend in both dev and production when dist exists
         intro:
           "Have a question, partnership idea or support request? Reach out to the LitigaForge AI team and we will get back to you. We are here to help you get the legal support you need.",
       },
+      "/digest": {
+        title: "Daily Judgment Digest — Top 5 Judgments by Email | LitigaForge AI",
+        ogTitle: "Daily Judgment Digest — Free Email",
+        description:
+          "Subscribe to the free LitigaForge AI daily digest and get the 5 most important new Supreme Court and High Court judgments in your inbox every morning, each with a plain-language summary.",
+        h1: "Get the Top 5 Judgments in Your Inbox Daily",
+        intro:
+          "Subscribe to the free daily judgment digest and receive the 5 most important new Supreme Court and High Court judgments every morning — each with a concise, plain-language summary and a link to the full analysis.",
+      },
       "/privacy": {
         title: "Privacy Policy | LitigaForge AI",
         ogTitle: "Privacy Policy — LitigaForge AI",

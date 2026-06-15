@@ -6,10 +6,12 @@ import json
 import logging
 import os
 import re
+import secrets
 from typing import List, Optional
 
 import requests as _req
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from auth import get_current_user, check_tier_usage
@@ -24,6 +26,8 @@ from jurisdiction import (
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
+
+_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com").rstrip("/")
 
 
 # ── AI helpers ──────────────────────────────────────────────────────────────────────
@@ -196,6 +200,116 @@ async def submit_contact(req: ContactRequest, request: Request):
         name.strip(), email, subject, message.strip(),
     )
     return {"ok": True, "message": "Thank you! We will get back to you within 24 hours."}
+
+
+# ── Daily Judgment Digest ───────────────────────────────────────────────────────────
+
+class DigestSubscribeRequest(BaseModel):
+    name: str = ""
+    email: str
+
+
+@router.post("/digest/subscribe")
+@limiter.limit("5/minute")
+async def subscribe_digest(req: DigestSubscribeRequest, request: Request):
+    """Public signup for the daily Top-5 judgment digest email. No auth.
+
+    Idempotent: re-subscribing an existing email reactivates it and preserves
+    the original unsubscribe token so links in older emails keep working.
+    """
+    try:
+        name = sanitize_text(req.name, max_length=120, field_name="name") if req.name else ""
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    email = (req.email or "").strip().lower()
+    if not _EMAIL_RE.match(email) or len(email) > 320:
+        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+
+    token = secrets.token_urlsafe(32)
+    await execute(
+        """
+        INSERT INTO digest_subscribers (name, email, is_active, confirmed, unsubscribe_token)
+        VALUES ($1, $2, TRUE, TRUE, $3)
+        ON CONFLICT (email) DO UPDATE
+        SET is_active = TRUE,
+            confirmed = TRUE,
+            name = COALESCE(NULLIF(EXCLUDED.name, ''), digest_subscribers.name),
+            unsubscribe_token = COALESCE(digest_subscribers.unsubscribe_token,
+                                         EXCLUDED.unsubscribe_token)
+        """,
+        (name.strip() or None), email, token,
+    )
+    return {"ok": True,
+            "message": "You're subscribed! You'll get the top 5 judgments every morning at 7 AM IST."}
+
+
+def _unsub_page(title: str, body: str, ok: bool) -> str:
+    accent = "#059669" if ok else "#dc2626"
+    icon = "✓" if ok else "!"
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>{title} — LitigaForge AI</title>
+</head>
+<body style="margin:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:480px;margin:64px auto;padding:0 16px;">
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+      <div style="background:#1a2744;padding:22px 28px;">
+        <p style="margin:0;color:#f0a500;font-size:19px;font-weight:700;">⚖️ LitigaForge AI</p>
+      </div>
+      <div style="padding:28px;">
+        <div style="width:46px;height:46px;border-radius:50%;background:{accent}1a;color:{accent};
+                    font-size:24px;font-weight:700;text-align:center;line-height:46px;">{icon}</div>
+        <h1 style="margin:18px 0 8px;font-size:21px;color:#0f172a;">{title}</h1>
+        <p style="margin:0 0 22px;font-size:15px;color:#475569;line-height:1.6;">{body}</p>
+        <a href="{_SITE_URL}/digest" style="display:inline-block;background:#1a2744;color:#fff;
+           text-decoration:none;font-size:14px;font-weight:600;padding:10px 22px;border-radius:8px;">
+          Manage subscription</a>
+        <a href="{_SITE_URL}/" style="display:inline-block;margin-left:8px;color:#64748b;
+           text-decoration:underline;font-size:14px;padding:10px 4px;">Go to homepage</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+
+@router.get("/digest/unsubscribe")
+async def unsubscribe_digest(token: str = ""):
+    """Tokenized one-click unsubscribe. Returns a styled confirmation page so the
+    link works directly from any email client (no SPA / JS required)."""
+    token = (token or "").strip()
+    if not token:
+        return HTMLResponse(
+            _unsub_page("Invalid link",
+                        "This unsubscribe link is missing its token. Please use the "
+                        "link from your digest email.",
+                        ok=False),
+            status_code=400,
+        )
+    row = await fetchrow(
+        "UPDATE digest_subscribers SET is_active = FALSE "
+        "WHERE unsubscribe_token = $1 RETURNING email",
+        token,
+    )
+    if not row:
+        return HTMLResponse(
+            _unsub_page("Link not recognised",
+                        "This unsubscribe link is invalid or has already been used. "
+                        "You may already be unsubscribed.",
+                        ok=False),
+            status_code=404,
+        )
+    return HTMLResponse(
+        _unsub_page("You're unsubscribed",
+                    "You will no longer receive the LitigaForge daily judgment digest. "
+                    "Changed your mind? You can re-subscribe any time.",
+                    ok=True),
+    )
 
 
 # ── Legal Q&A ─────────────────────────────────────────────────────────────────────

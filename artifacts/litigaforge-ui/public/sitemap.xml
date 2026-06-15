@@ -64,6 +64,14 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- Daily Judgment Digest signup -->
+  <url>
+    <loc>https://litigaforge.com/digest</loc>
+    <lastmod>2026-06-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- Blog -->
   <url>
     <loc>https://litigaforge.com/blog</loc>

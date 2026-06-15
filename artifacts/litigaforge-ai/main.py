@@ -757,6 +757,11 @@ async def lifespan(app: FastAPI):
     from judgment_ingest import start_scheduler as _start_judgment_scheduler
     app.state.judgment_scheduler = _start_judgment_scheduler()
 
+    # Daily judgment-digest scheduler (production only; reports loudly when SMTP
+    # is unconfigured instead of silently mock-sending). None when disabled.
+    from digest import start_scheduler as _start_digest_scheduler
+    app.state.digest_scheduler = _start_digest_scheduler()
+
     yield
 
     _sched = getattr(app.state, "judgment_scheduler", None)
@@ -768,6 +773,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("judgment-ingest: scheduler shutdown error: %s", e)
+    _dsched = getattr(app.state, "digest_scheduler", None)
+    if _dsched is not None:
+        _dsched.cancel()
+        try:
+            await _dsched
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("digest: scheduler shutdown error: %s", e)
     await close_pool()
 
 
