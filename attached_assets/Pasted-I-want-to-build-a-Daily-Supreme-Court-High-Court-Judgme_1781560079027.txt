@@ -1,0 +1,71 @@
+I want to build a "Daily Supreme Court & High Court Judgment Digest" 
+feature on LitigaForge. This is a high-priority growth feature.
+
+Here's exactly what I need:
+
+**FEATURE 1 — Judgment Pages (SEO core)**
+- Scrape daily judgments from these public sources:
+  - https://main.sci.gov.in/judgments (Supreme Court)
+  - https://indiankanoon.org (aggregator, check robots.txt first)
+  - https://hcservices.ecourts.gov.in (High Courts)
+- For each judgment create a public page at:
+  /judgments/[court]/[year]/[case-slug]
+- Each page must have:
+  - Case name as H1
+  - Court, date, bench as metadata
+  - AI-generated plain English summary (3-5 sentences)
+  - AI-generated plain Hindi summary
+  - Key sections/acts cited
+  - Outcome (ruled in favor of plaintiff/defendant)
+  - Related judgments (internal links)
+  - Full judgment text (collapsible)
+  - Share buttons (WhatsApp, Twitter, LinkedIn)
+  - "Ask AI about this case" CTA linking to /legal-chat
+- Each page needs BlogPosting + LegalCase JSON-LD schema
+- Add to sitemap automatically when new judgment is added
+
+**FEATURE 2 — Daily Email Digest**
+- Every morning at 7 AM IST, send an email to subscribers with:
+  - 5 most important new judgments from yesterday
+  - Each with: case name, 2-line summary, "Read Full Analysis" link
+  - Subject line format: "⚖️ Top 5 Judgments Today — [Date]"
+- Email signup at: /digest (simple name + email form)
+- Store subscribers in PostgreSQL (table: digest_subscribers)
+- Use existing email infrastructure or configure SMTP
+
+**FEATURE 3 — WhatsApp Share Optimization**
+- Every judgment page must have og:image generated dynamically with:
+  - Case name
+  - Court name  
+  - One-line outcome
+  - LitigaForge branding
+- When someone shares on WhatsApp, this image appears
+- Use canvas or a simple og:image generation endpoint
+
+**FEATURE 4 — Student Research Portfolio**
+- When a logged-in user saves/bookmarks a judgment, it appears 
+  in their profile at /profile/[username]/research
+- Each saved judgment shows: date saved, their notes on it
+- Profile is PUBLIC and shareable (like GitHub profile)
+- Add "Cases Researched: 47" badge to profile
+
+**TECHNICAL REQUIREMENTS:**
+- Judgment scraping should run as a cron job daily at 6 AM IST
+- AI summaries generated using our existing FastAPI + AI setup
+- Must not violate robots.txt of any source site
+- Store judgments in PostgreSQL with this schema:
+  - id, case_name, court, date, year, slug, full_text, 
+    summary_en, summary_hi, acts_cited, outcome, 
+    source_url, created_at
+- Rate limit scraping to be respectful (1 request per 2 seconds)
+
+**START WITH:**
+1. Show me if indiankanoon.org allows scraping (check robots.txt)
+2. Show me the Supreme Court site structure for judgment URLs
+3. Create the PostgreSQL table schema first
+4. Then build the /judgments index page and one sample 
+   judgment page with hardcoded data so I can see the UI
+   before we connect real data
+
+Do not scrape anything yet — just check permissions and 
+show me the schema + UI first.
