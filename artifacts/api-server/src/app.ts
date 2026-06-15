@@ -305,13 +305,263 @@ if (true) { // serve frontend in both dev and production when dist exists
     // Bot user-agents that should receive plain HTML instead of the React SPA
     const _botPattern = /GPTBot|ClaudeBot|Claude-Web|PerplexityBot|Googlebot|bingbot|Applebot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discord|AhrefsBot|SEMrushBot|MJ12bot|YandexBot|DuckDuckBot/i;
 
+    // --- Per-route SEO for bot-facing static HTML ----------------------------
+    // Crawlers receive a route-specific <title>, description, canonical and
+    // <h1>/intro so each public page reads as its own page rather than a
+    // duplicate of the homepage. Canonicals always resolve to the bare
+    // (non-country-prefixed) URL listed in the sitemap, consolidating the
+    // /in, /us, ... country variants onto a single canonical page.
+    const _SITE_URL = "https://litigaforge.com";
+    const _VALID_CC = new Set(["in", "us", "gb", "ae", "au", "ca", "sg", "de"]);
+    const _CC_ALIASES = new Set([
+      "uae", "emirates", "dubai", "usa", "america", "uk", "britain", "england",
+      "india", "bharat", "australia", "aus", "canada", "can", "singapore",
+      "sgp", "germany", "deutschland", "ger",
+    ]);
+
+    interface RouteSeoEntry {
+      title: string;
+      ogTitle: string;
+      description: string;
+      h1: string;
+      intro: string;
+      canonical?: string;
+    }
+
+    const _ROUTE_SEO: Record<string, RouteSeoEntry> = {
+      "/ask": {
+        title: "Free Legal Q&amp;A — Ask AI Legal Questions Instantly | LitigaForge AI",
+        ogTitle: "Free Legal Q&amp;A — Ask AI Legal Questions Instantly",
+        description:
+          "Ask any legal question and get an instant, plain-language AI answer grounded in your country's laws. Free legal Q&amp;A across property, family, criminal, consumer and employment law.",
+        h1: "Ask a Legal Question — Get an Instant AI Answer",
+        intro:
+          "Type any legal question and LitigaForge AI gives you a clear, plain-language answer grounded in your jurisdiction's laws — free and instant. Browse a growing knowledge base of answered questions across property, family, criminal, consumer and employment law.",
+      },
+      "/review": {
+        title: "AI Legal Document Analyzer — Risk Score &amp; Missing Clauses | LitigaForge AI",
+        ogTitle: "AI Legal Document Analyzer — Free Risk Check",
+        description:
+          "Paste any contract, agreement, FIR or court notice and get an instant AI risk score (0–100), a list of missing clauses, and actionable recommendations. Free document analysis.",
+        h1: "Analyze a Legal Document with AI",
+        intro:
+          "Upload or paste any legal document — rental agreement, employment contract, FIR, court notice or sale deed — and receive an AI risk score (0–100), a list of missing clauses, and clear recommendations. Free and instant.",
+      },
+      "/lawyers": {
+        title: "Find &amp; Hire Verified Lawyers — AI Lawyer Matching | LitigaForge AI",
+        ogTitle: "Find Verified Lawyers — AI Lawyer Matching",
+        description:
+          "Search verified, rated lawyers and get matched with the right advocate for your case. AI lawyer matching with transparent 0–100 match scores and plain-language explanations.",
+        h1: "Find a Verified Lawyer for Your Case",
+        intro:
+          "Browse verified, rated advocates or post your case and let LitigaForge AI match you with the right lawyer — each scored 0–100 with a plain-language explanation of why they fit your legal issue, location and budget.",
+      },
+      "/judgments": {
+        title: "Judgment Finder — Search Case Law &amp; Court Precedents | LitigaForge AI",
+        ogTitle: "Judgment Finder — Search Case Law",
+        description:
+          "Search court judgments and case law by keyword, court name or case number. LitigaForge AI returns the most relevant precedents with citation links for your jurisdiction.",
+        h1: "Search Judgments &amp; Case Law",
+        intro:
+          "Find relevant court judgments and precedents by keyword, court name or case number. LitigaForge AI surfaces the most relevant case law with citation links so you can research your matter quickly.",
+      },
+      "/legal-aid": {
+        title: "Free Legal Aid Finder — Check Eligibility &amp; Helplines | LitigaForge AI",
+        ogTitle: "Free Legal Aid Finder — Eligibility &amp; Helplines",
+        description:
+          "Check your eligibility for free legal aid and find legal aid contacts and toll-free helplines for your region. Legal help for everyone, regardless of income.",
+        h1: "Find Free Legal Aid Near You",
+        intro:
+          "Check whether you qualify for free legal aid and get contact details and toll-free helplines for legal aid services in your region. Everyone deserves legal help, regardless of income.",
+      },
+      "/free-documents": {
+        title: "Free Legal Document Templates — AI-Generated | LitigaForge AI",
+        ogTitle: "Free Legal Document Templates — AI-Generated",
+        description:
+          "Generate free legal documents instantly — rental agreements, legal notices, affidavits, employment letters and NDAs — each customized for your jurisdiction with AI.",
+        h1: "Free Legal Document Templates",
+        intro:
+          "Generate 10+ legal document templates instantly — rental agreements, legal notices, affidavits, employment letters and NDAs — each AI-generated and customized for your jurisdiction. Free to download, share and print.",
+      },
+      "/subscription": {
+        title: "Pricing &amp; Plans — Free, Professional &amp; Advocate Pro | LitigaForge AI",
+        ogTitle: "LitigaForge AI Pricing &amp; Plans",
+        description:
+          "Compare LitigaForge AI plans: free legal tools to start, Professional for unlimited AI and priority lawyer matching, and Advocate Pro for full practice management.",
+        h1: "Plans &amp; Pricing",
+        intro:
+          "Start free with legal Q&amp;A, document analysis and judgment search. Upgrade to Professional for unlimited AI and priority lawyer matching, or Advocate Pro for full practice and case management.",
+      },
+      "/about": {
+        title: "About LitigaForge AI — Our Mission &amp; Global Legal Platform",
+        ogTitle: "About LitigaForge AI",
+        description:
+          "Learn about LitigaForge AI — an AI-powered legal platform making legal help affordable and accessible worldwide through lawyer matching, document analysis and free legal aid.",
+        h1: "About LitigaForge AI",
+        intro:
+          "LitigaForge AI is on a mission to make legal help affordable and accessible to everyone. We combine AI with verified lawyers to deliver instant guidance, document analysis, case-law search and free legal aid worldwide.",
+      },
+      "/contact": {
+        title: "Contact LitigaForge AI — Support &amp; Inquiries",
+        ogTitle: "Contact LitigaForge AI",
+        description:
+          "Get in touch with the LitigaForge AI team for support, partnership or media inquiries. We are here to help with any questions about our legal platform.",
+        h1: "Contact LitigaForge AI",
+        intro:
+          "Have a question, partnership idea or support request? Reach out to the LitigaForge AI team and we will get back to you. We are here to help you get the legal support you need.",
+      },
+      "/privacy": {
+        title: "Privacy Policy | LitigaForge AI",
+        ogTitle: "Privacy Policy — LitigaForge AI",
+        description:
+          "Read the LitigaForge AI privacy policy: what data we collect, how we use and protect it, cookies and advertising, and the rights you have over your data.",
+        h1: "Privacy Policy",
+        intro:
+          "This page explains what information LitigaForge AI collects, how we use and safeguard it, our use of cookies and advertising, and the rights you have over your data.",
+      },
+      "/privacy-policy": {
+        title: "Privacy Policy | LitigaForge AI",
+        ogTitle: "Privacy Policy — LitigaForge AI",
+        description:
+          "Read the LitigaForge AI privacy policy: what data we collect, how we use and protect it, cookies and advertising, and the rights you have over your data.",
+        h1: "Privacy Policy",
+        intro:
+          "This page explains what information LitigaForge AI collects, how we use and safeguard it, our use of cookies and advertising, and the rights you have over your data.",
+        canonical: "/privacy",
+      },
+      "/terms": {
+        title: "Terms of Service | LitigaForge AI",
+        ogTitle: "Terms of Service — LitigaForge AI",
+        description:
+          "The terms of service governing your use of LitigaForge AI, including acceptable use, disclaimers, and the limits of the AI-generated legal information we provide.",
+        h1: "Terms of Service",
+        intro:
+          "These terms govern your use of LitigaForge AI. They cover acceptable use, important disclaimers, and the limits of the AI-generated legal information provided on this platform.",
+      },
+      "/refund-policy": {
+        title: "Refund Policy | LitigaForge AI",
+        ogTitle: "Refund Policy — LitigaForge AI",
+        description:
+          "LitigaForge AI refund policy for subscription plans — how billing, cancellations and refunds are handled.",
+        h1: "Refund Policy",
+        intro:
+          "This page explains how LitigaForge AI handles subscription billing, cancellations and refunds for our Professional and Advocate Pro plans.",
+      },
+      "/us-demand-letter": {
+        title: "U.S. Demand Letter — Draft &amp; Send in Minutes | LitigaForge AI",
+        ogTitle: "U.S. Demand Letter — Draft &amp; Send in Minutes",
+        description:
+          "Create a professional, state-specific U.S. demand letter for unpaid debts, broken contracts, deposits, or damages. AI-drafted, ready to send. Pay only when you're happy.",
+        h1: "U.S. Demand Letter",
+        intro:
+          "Owed money or wronged? Generate a firm, professional, state-specific demand letter that gets results — often resolving disputes before you ever go to court. Preview free, pay only when you're happy.",
+      },
+      "/login": {
+        title: "Sign In | LitigaForge AI",
+        ogTitle: "Sign In — LitigaForge AI",
+        description:
+          "Sign in to your LitigaForge AI account to access lawyer matching, your cases, AI legal tools and document analysis.",
+        h1: "Sign In to LitigaForge AI",
+        intro:
+          "Log in to your LitigaForge AI account to manage your cases, message matched lawyers, and use our AI-powered legal tools.",
+      },
+      "/register": {
+        title: "Create a Free Account | LitigaForge AI",
+        ogTitle: "Create a Free Account — LitigaForge AI",
+        description:
+          "Create a free LitigaForge AI account to ask legal questions, analyze documents, and get matched with verified lawyers. No credit card required.",
+        h1: "Create Your Free LitigaForge AI Account",
+        intro:
+          "Sign up free to ask legal questions, analyze documents, find verified lawyers, and access AI-powered legal tools. No credit card required to start.",
+      },
+    };
+
+    const _stripCountry = (p: string): string => {
+      const parts = p.replace(/^\/+/, "").split("/");
+      const first = (parts[0] ?? "").toLowerCase();
+      if (
+        first &&
+        (_VALID_CC.has(first) || _CC_ALIASES.has(first) || /^[a-z]{2}$/.test(first))
+      ) {
+        parts.shift();
+      }
+      return "/" + parts.join("/");
+    };
+
+    const _titleCase = (s: string): string =>
+      s.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const _routeSeo = (
+      bare: string,
+    ): (RouteSeoEntry & { canonicalPath: string }) | null => {
+      if (bare === "/" || bare === "") return null;
+      const direct = _ROUTE_SEO[bare];
+      if (direct) return { ...direct, canonicalPath: direct.canonical ?? bare };
+      const m = bare.match(/^\/lawyers\/([a-z][a-z-]*)$/);
+      if (m) {
+        const city = _titleCase(m[1] ?? "");
+        return {
+          title: `Lawyers in ${city} — Verified Advocates | LitigaForge AI`,
+          ogTitle: `Lawyers in ${city} | LitigaForge AI`,
+          description: `Find and connect with verified, rated lawyers in ${city}. AI-powered lawyer matching with transparent 0–100 match scores. Free to start.`,
+          h1: `Verified Lawyers in ${city}`,
+          intro: `Connect with experienced, verified advocates in ${city}. LitigaForge AI matches you with the right lawyer for your case — each scored 0–100 with a plain-language explanation of the fit.`,
+          canonicalPath: bare,
+        };
+      }
+      return null;
+    };
+
+    const _botHtmlForPath = (reqPath: string): string => {
+      if (!_staticBotHtml) return _indexHtml;
+      let bare = _stripCountry(reqPath);
+      if (bare.length > 1) bare = bare.replace(/\/+$/, "");
+      const meta = _routeSeo(bare);
+      if (!meta) return _staticBotHtml; // homepage / unmapped routes
+      const canonical = `${_SITE_URL}${meta.canonicalPath}`;
+      // Function replacers (not string replacers) so that any `$` in the copy
+      // is treated literally and never interpreted as a replacement pattern.
+      return _staticBotHtml
+        .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${meta.title}</title>`)
+        .replace(
+          /<meta name="description"[^>]*>/,
+          () => `<meta name="description" content="${meta.description}"/>`,
+        )
+        .replace(
+          /<link rel="canonical"[^>]*>/,
+          () => `<link rel="canonical" href="${canonical}"/>`,
+        )
+        .replace(
+          /<meta property="og:url"[^>]*>/,
+          () => `<meta property="og:url" content="${canonical}"/>`,
+        )
+        .replace(
+          /<meta property="og:title"[^>]*>/,
+          () => `<meta property="og:title" content="${meta.ogTitle}"/>`,
+        )
+        .replace(
+          /<meta property="og:description"[^>]*>/,
+          () => `<meta property="og:description" content="${meta.description}"/>`,
+        )
+        .replace(
+          /<meta name="twitter:title"[^>]*>/,
+          () => `<meta name="twitter:title" content="${meta.ogTitle}"/>`,
+        )
+        .replace(
+          /<meta name="twitter:description"[^>]*>/,
+          () => `<meta name="twitter:description" content="${meta.description}"/>`,
+        )
+        .replace(/<h1>[\s\S]*?<\/h1>/, () => `<h1>${meta.h1}</h1>`)
+        .replace(/<p>[\s\S]*?<\/p>/, () => `<p>${meta.intro}</p>`);
+    };
+
     if (_indexHtml) {
       const _sendIndex = (req: express.Request, res: express.Response): void => {
         const ua = req.headers["user-agent"] ?? "";
         if (_staticBotHtml && _botPattern.test(ua)) {
           res.setHeader("Cache-Control", "public, max-age=3600");
           res.setHeader("Content-Type", "text/html; charset=utf-8");
-          res.send(_staticBotHtml);
+          res.send(_botHtmlForPath(req.path));
           return;
         }
         res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");

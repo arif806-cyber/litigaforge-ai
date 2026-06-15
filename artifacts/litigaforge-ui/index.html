@@ -175,8 +175,8 @@
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "LitigaForge AI",
-      "url": "https://litiga-forge-ai.replit.app",
-      "logo": "https://litiga-forge-ai.replit.app/opengraph.jpg",
+      "url": "https://litigaforge.com",
+      "logo": "https://litigaforge.com/opengraph.jpg",
       "description": "AI-powered legal platform connecting clients with verified lawyers worldwide.",
       "contactPoint": {
         "@type": "ContactPoint",
@@ -185,6 +185,26 @@
         "availableLanguage": ["English", "Hindi", "Telugu", "German", "Arabic"]
       },
       "sameAs": []
+    }
+    </script>
+
+    <!-- JSON-LD: WebSite + SearchAction -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "LitigaForge AI",
+      "alternateName": ["LitigaForge", "Litiga AI"],
+      "url": "https://litigaforge.com",
+      "inLanguage": ["en", "hi", "te"],
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://litigaforge.com/ask?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
     }
     </script>
 
@@ -254,7 +274,7 @@
         "url": "https://litigaforge.com",
         "sameAs": [
           "https://github.com/arif806-cyber",
-          "https://litigaforge.replit.app"
+          "https://litigaforge.com"
         ]
       },
       "priceRange": "Free – ₹2,499/month",

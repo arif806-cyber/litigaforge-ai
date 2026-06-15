@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { getCountryName } from "@/lib/country-copy";
+import { getPathWithoutCountry } from "@/lib/country";
 
 const SITE_URL = "https://litigaforge.com";
 const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
@@ -41,7 +42,19 @@ export function SEOHelmet({
     : `AI-powered legal platform for ${getCountryName(urlCode)}. Connect with verified lawyers, analyze documents, and get instant legal guidance.`);
   const keywords = _keywords ?? DEFAULT_KEYWORDS;
   const fullTitle = title.includes("LitigaForge") ? title : `${title} | LitigaForge AI`;
-  const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : SITE_URL;
+  // Self-referencing canonical: use the explicit prop when given, otherwise
+  // derive it from the current path stripped of its country prefix so every
+  // page canonicalizes to its bare URL (e.g. /in/ask and /us/ask -> /ask)
+  // instead of defaulting to the site root.
+  const canonicalPath =
+    canonical ??
+    (typeof window !== "undefined"
+      ? (() => {
+          const p = getPathWithoutCountry().replace(/\/+$/, "");
+          return p ? `/${p}` : "/";
+        })()
+      : "/");
+  const canonicalUrl = `${SITE_URL}${canonicalPath === "/" ? "/" : canonicalPath}`;
   const ogLocale = OG_LOCALE[urlCode] ?? "en_US";
 
   return (

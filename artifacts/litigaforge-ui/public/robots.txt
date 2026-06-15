@@ -1,69 +1,70 @@
 # LitigaForge AI — robots.txt
 # https://litigaforge.com
 
-# Allow all bots by default
+# Default group — applies to every crawler without a more specific group below.
+# Private, auth-gated areas are disallowed in both their bare form and their
+# country-prefixed form (e.g. /in/client-dashboard, /us/my-cases).
 User-agent: *
 Allow: /
 Disallow: /client-dashboard
+Disallow: /*/client-dashboard
 Disallow: /lawyer-dashboard
+Disallow: /*/lawyer-dashboard
 Disallow: /admin
+Disallow: /*/admin
 Disallow: /my-cases
+Disallow: /*/my-cases
 Disallow: /matches
+Disallow: /*/matches
 Disallow: /documents
+Disallow: /*/documents
 Disallow: /post-case
+Disallow: /*/post-case
 Disallow: /settings
+Disallow: /*/settings
+# /legal-chat is an authenticated drafting workspace with no public, indexable
+# content — kept disallowed by design.
 Disallow: /legal-chat
+Disallow: /*/legal-chat
 
-# Google
+# Search + AI crawlers are explicitly welcomed. They are grouped together so the
+# SAME private-area exclusions above also apply to them — a named user-agent
+# group otherwise ignores the "*" group entirely.
 User-agent: Googlebot
-Allow: /
 User-agent: Google-Extended
-Allow: /
-
-# Bing
 User-agent: Bingbot
-Allow: /
-
-# OpenAI / ChatGPT
+User-agent: msnbot
 User-agent: GPTBot
-Allow: /
 User-agent: OAI-SearchBot
-Allow: /
 User-agent: ChatGPT-User
-Allow: /
-
-# Anthropic / Claude
 User-agent: ClaudeBot
-Allow: /
 User-agent: Claude-Web
-Allow: /
 User-agent: Claude-User
-Allow: /
 User-agent: anthropic-ai
-Allow: /
-
-# Perplexity
 User-agent: PerplexityBot
-Allow: /
 User-agent: Perplexity-User
-Allow: /
-
-# Apple Intelligence
 User-agent: Applebot
-Allow: /
 User-agent: Applebot-Extended
-Allow: /
-
-# Meta AI
 User-agent: Meta-ExternalAgent
-Allow: /
-
-# Amazon AI
 User-agent: Amazonbot
 Allow: /
-
-# Microsoft Copilot
-User-agent: msnbot
-Allow: /
+Disallow: /client-dashboard
+Disallow: /*/client-dashboard
+Disallow: /lawyer-dashboard
+Disallow: /*/lawyer-dashboard
+Disallow: /admin
+Disallow: /*/admin
+Disallow: /my-cases
+Disallow: /*/my-cases
+Disallow: /matches
+Disallow: /*/matches
+Disallow: /documents
+Disallow: /*/documents
+Disallow: /post-case
+Disallow: /*/post-case
+Disallow: /settings
+Disallow: /*/settings
+Disallow: /legal-chat
+Disallow: /*/legal-chat
 
 Sitemap: https://litigaforge.com/sitemap.xml
