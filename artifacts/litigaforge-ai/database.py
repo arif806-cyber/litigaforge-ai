@@ -149,6 +149,7 @@ async def get_user_by_id(user_id: int) -> dict | None:
     row = await fetchrow(
         """SELECT u.id, u.email, u.name, u.subscription_tier,
                   u.cases_this_month, u.month_reset_date, u.is_superuser, u.role, u.created_at,
+                  u.username, COALESCE(u.is_profile_public, TRUE) AS is_profile_public,
                   COALESCE(l.verified, FALSE) AS is_verified
            FROM users u
            LEFT JOIN lawyers l ON l.user_id = u.id

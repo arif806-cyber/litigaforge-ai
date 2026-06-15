@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { JUDGMENTS_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
+import { MyResearchButton } from "@/components/research";
 
 interface Judgment {
   case_name: string;
@@ -139,11 +140,14 @@ export default function Judgments() {
               <CalendarDays className="w-4 h-4 text-primary" />
               Recent Judgments
             </h2>
-            {digest.data && (
-              <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-                {digest.data.total} in digest
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {digest.data && (
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
+                  {digest.data.total} in digest
+                </span>
+              )}
+              <MyResearchButton />
+            </div>
           </div>
 
           {/* court filter chips */}

@@ -551,6 +551,18 @@ if (true) { // serve frontend in both dev and production when dist exists
           canonicalPath: bare,
         };
       }
+      const p = bare.match(/^\/profile\/([a-z][a-z0-9_]{2,29})\/research$/);
+      if (p) {
+        const handle = p[1] ?? "";
+        return {
+          title: `@${handle}'s Legal Research Portfolio | LitigaForge AI`,
+          ogTitle: `@${handle}'s Legal Research Portfolio`,
+          description: `Browse the legal research portfolio of @${handle} on LitigaForge AI — saved court judgments and case-law notes, with a running count of cases researched.`,
+          h1: `@${handle}'s Legal Research Portfolio`,
+          intro: `A public collection of court judgments and case law saved by @${handle} on LitigaForge AI, each with personal research notes. Explore the precedents they're studying and the cases they've researched.`,
+          canonicalPath: bare,
+        };
+      }
       return null;
     };
 

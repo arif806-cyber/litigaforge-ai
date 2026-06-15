@@ -11,6 +11,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SaveToResearch } from "@/components/research";
 
 interface RelatedItem {
   case_name: string;
@@ -214,6 +215,9 @@ export default function JudgmentDetail() {
           </div>
         )}
       </header>
+
+      {/* save to research */}
+      <SaveToResearch judgmentId={j.id} />
 
       {/* share row */}
       <div className="flex items-center gap-2 flex-wrap border-y border-border/60 py-3">

@@ -53,6 +53,7 @@ const TermsOfService      = lazy(() => import("@/pages/terms"));
 const About               = lazy(() => import("@/pages/about"));
 const Contact             = lazy(() => import("@/pages/contact"));
 const Digest              = lazy(() => import("@/pages/digest"));
+const ProfileResearch     = lazy(() => import("@/pages/profile-research"));
 const RefundPolicy        = lazy(() => import("@/pages/refund-policy"));
 const UsDemandLetter      = lazy(() => import("@/pages/us-demand-letter"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
@@ -286,6 +287,7 @@ function Router() {
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
         <Route path="/digest" component={Digest} />
+        <Route path="/profile/:username/research" component={ProfileResearch} />
         <Route path="/refund-policy" component={RefundPolicy} />
         <Route path="/us-demand-letter" component={() => <ErrorBoundary section="us-demand-letter"><UsDemandLetter /></ErrorBoundary>} />
         <Route path="/settings" component={() => <ProtectedRoute component={AccountSettings} />} />

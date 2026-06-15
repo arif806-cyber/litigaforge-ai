@@ -368,6 +368,14 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT")
+        # ── Research Portfolio: public username + profile visibility ──────────
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_profile_public BOOLEAN DEFAULT TRUE")
+        # Case-insensitive uniqueness; partial so NULL usernames don't collide.
+        await conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower "
+            "ON users (lower(username)) WHERE username IS NOT NULL"
+        )
         # ── matches: payment tracking columns ────────────────────────────────
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending_payment'")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
@@ -670,7 +678,23 @@ async def lifespan(app: FastAPI):
                     last_sent_at TIMESTAMPTZ
                 )
             """)
-            logger.info("judgments + digest_subscribers tables ready")
+            # ── Research Portfolio: per-user judgment bookmarks ───────────────
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS judgment_bookmarks (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    judgment_id INTEGER NOT NULL REFERENCES judgments(id) ON DELETE CASCADE,
+                    notes TEXT DEFAULT '',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE (user_id, judgment_id)
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_judgment_bookmarks_user "
+                "ON judgment_bookmarks (user_id, created_at DESC)"
+            )
+            logger.info("judgments + digest_subscribers + judgment_bookmarks tables ready")
             await _seed_sample_judgments(conn)
         except Exception as me:
             logger.warning("judgment digest init: %s", me)
@@ -856,7 +880,7 @@ from routers import (
     lawyer_router, documents_free_router,
     paid_documents_router,
     passkeys_router, push_router,
-    judgments_router,
+    judgments_router, research_router,
 )
 from country_router import router as country_router
 
@@ -878,6 +902,7 @@ app.include_router(paid_documents_router, prefix=BASE_PATH)
 app.include_router(passkeys_router,    prefix=BASE_PATH)
 app.include_router(push_router,        prefix=BASE_PATH)
 app.include_router(judgments_router,   prefix=BASE_PATH)
+app.include_router(research_router,    prefix=BASE_PATH)
 app.include_router(country_router,     prefix=BASE_PATH)
 
 @app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
