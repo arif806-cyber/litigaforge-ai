@@ -248,6 +248,7 @@ if (true) { // serve frontend in both dev and production when dist exists
       try {
         const r = await fetch(`${LF_API_ORIGIN}${LF_API_BASE}/judgments/sitemap-data`, {
           headers: { accept: "application/json" },
+          signal: AbortSignal.timeout(4000),
         });
         if (!r.ok) return [];
         const j = (await r.json()) as { items?: JudgmentSitemapItem[] };
@@ -615,7 +616,7 @@ if (true) { // serve frontend in both dev and production when dist exists
       try {
         const r = await fetch(
           `${LF_API_ORIGIN}${LF_API_BASE}/judgments/item/${court}/${year}/${slug}`,
-          { headers: { accept: "application/json" } },
+          { headers: { accept: "application/json" }, signal: AbortSignal.timeout(4000) },
         );
         if (!r.ok) return null;
         data = (await r.json()) as JudgmentData;
