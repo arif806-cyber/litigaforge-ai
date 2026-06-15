@@ -1,0 +1,45 @@
+Please do a complete technical audit and fix the following issues:
+
+**1. INDEXING CHECK — robots.txt & sitemap**
+- Show me the current contents of robots.txt
+- Show me the current contents of sitemap.xml
+- Confirm sitemap includes ALL routes: /, /blog, /blog/:slug, /features, /pricing, /about, /contact, /legal-chat, /document-analyzer, /lawyer-connect, /judgment-finder, /legal-qa, /free-legal-aid
+- If any routes are missing from sitemap, add them
+- Confirm robots.txt is NOT blocking Googlebot (should have: User-agent: * Allow: /)
+
+**2. SSR / PRERENDER CHECK**
+- When Googlebot visits https://litigaforge.com, does it receive actual HTML content in the response body, or just a React shell div?
+- Run: curl -A "Googlebot" https://litigaforge.com and show me the raw HTML response
+- Do the same for /blog and /pricing
+- If the response body only has <div id="root"></div> with no content, we have a critical SSR problem that must be fixed
+
+**3. META TAGS CHECK**
+- For the homepage, /blog, and /pricing — confirm each page has unique:
+  - <title> tag
+  - <meta name="description">
+  - <meta property="og:title">
+  - <meta property="og:description">
+  - <meta property="og:image">
+  - <link rel="canonical">
+  - JSON-LD schema (Organization + WebSite on homepage, BlogPosting on blog posts)
+
+**4. PERFORMANCE CHECK**
+- Run a Lighthouse audit on the homepage and show scores for: Performance, SEO, Accessibility, Best Practices
+- Check if images have alt tags
+- Check if there are any console errors on page load
+
+**5. BLOG ROUTES CHECK**
+- List all blog posts currently in the system with their URLs
+- Confirm each blog post page renders full content server-side (not client-side only)
+- Confirm each blog post has its own unique title + meta description
+
+**6. LANGUAGE SWITCHER**
+- Is there a visible language switcher in the UI?
+- If not, where in the codebase is the multilingual data structure and how do we surface it to users?
+
+**7. COLD START FIX**
+- Is the Replit deployment always-on or does it sleep?
+- If it sleeps, Googlebot may get a timeout. How do we keep it awake 24/7?
+- Show me the current replit.nix or .replit config
+
+Please show me the output of each check before making any changes.
