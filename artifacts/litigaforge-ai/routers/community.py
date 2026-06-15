@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from auth import get_current_user, check_tier_usage
 from rate_limit import limiter
-from database import fetchrow, fetch, execute
+from database import fetchrow, fetch, execute, fetchval
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
 from jurisdiction import (
@@ -851,3 +851,38 @@ async def legal_aid_contacts(response: Response, country: str = "IN"):
     code = country.upper() if country.upper() in LEGAL_AID else "IN"
     data = LEGAL_AID[code]
     return {"country": code, **data}
+
+
+@router.get("/stats")
+@limiter.limit("60/minute")
+async def public_stats(request: Request, response: Response):
+    """Public, read-only aggregate counts for the homepage social-proof bar.
+
+    Returns real platform totals only (no PII). Each metric independently
+    degrades to 0 on query failure so a single bad count never 500s the
+    endpoint or breaks the landing page. Cached publicly for 1 hour.
+    """
+    response.headers["Cache-Control"] = "public, max-age=3600"
+
+    async def _count(sql: str) -> int:
+        try:
+            return int(await fetchval(sql) or 0)
+        except Exception as e:  # pragma: no cover - defensive
+            logger.warning("public_stats count failed: %s", e)
+            return 0
+
+    answered_questions = await _count(
+        "SELECT COUNT(*) FROM legal_questions WHERE ai_answer IS NOT NULL"
+    )
+    verified_lawyers = await _count(
+        "SELECT COUNT(*) FROM lawyers WHERE verified = TRUE"
+    )
+    documents_generated = await _count(
+        "SELECT COUNT(*) FROM paid_documents WHERE status = 'paid'"
+    )
+
+    return {
+        "answered_questions": answered_questions,
+        "verified_lawyers": verified_lawyers,
+        "documents_generated": documents_generated,
+    }

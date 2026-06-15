@@ -1,0 +1,1 @@
+function $(o,s,t,a){const n=(a-90)*Math.PI/180;return[o+t*Math.cos(n),s+t*Math.sin(n)]}function i(o,s,t,a,n){const[c,e]=$(o,s,t,a),[u,M]=$(o,s,t,n),h=(n-a)%360>180?1:0;return`M ${c} ${e} A ${t} ${t} 0 ${h} 1 ${u} ${M}`}export{i as a,$ as p};

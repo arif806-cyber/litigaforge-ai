@@ -68,7 +68,7 @@ export function ScoreRing({
           viewport={{ once: true }} transition={{ duration: 1.3, ease: [0.22, 0.61, 0.36, 1] }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="cfos-mono text-5xl font-bold leading-none text-foreground">{clamped}</div>
+        <div className="cfos-mono font-bold leading-none text-foreground" style={{ fontSize: size * 0.26 }}>{clamped}</div>
         {showLabel && (
           <div className="cfos-docket mt-1.5" style={{ color: "hsl(var(--cfos-gold))" }}>{label} score</div>
         )}

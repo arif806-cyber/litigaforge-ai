@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { PaymentModal } from "@/components/PaymentModal";
+import { ScoreRing } from "@/components/case-file-os";
 
 interface MyRequirement {
   id: number; title: string; case_type: string; description: string;
@@ -600,10 +601,7 @@ export default function ClientDashboard() {
                   <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                     className="rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all p-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm text-white"
-                        style={{ background: m.match_score >= 80 ? "#10b981" : m.match_score >= 60 ? "#f59e0b" : "#ef4444" }}>
-                        {m.match_score}
-                      </div>
+                      <ScoreRing score={m.match_score} size={48} showLabel={false} className="flex-shrink-0" data-testid={`dashboard-match-score-ring-${m.id}`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div>
@@ -989,10 +987,7 @@ export default function ClientDashboard() {
         {showMatchDetail && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg text-white"
-                style={{ background: showMatchDetail.match_score >= 80 ? "#10b981" : showMatchDetail.match_score >= 60 ? "#f59e0b" : "#ef4444" }}>
-                {showMatchDetail.match_score}
-              </div>
+              <ScoreRing score={showMatchDetail.match_score} size={72} showLabel={false} className="flex-shrink-0" data-testid="dashboard-match-detail-score-ring" />
               <div>
                 <p className="font-bold text-foreground text-base">{showMatchDetail.lawyer_name}</p>
                 <p className="text-[12px] text-muted-foreground">{showMatchDetail.district} · Bar: {showMatchDetail.bar_number}</p>

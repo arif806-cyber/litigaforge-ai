@@ -26,6 +26,13 @@ const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string
 type Role = "client" | "lawyer";
 type Mode = "signin" | "signup";
 
+// Read conversion intent passed from public CTAs (e.g. pricing plan, For Lawyers).
+function readAuthParams(): { role: string | null; plan: string | null; billing: string | null } {
+  if (typeof window === "undefined") return { role: null, plan: null, billing: null };
+  const p = new URLSearchParams(window.location.search);
+  return { role: p.get("role"), plan: p.get("plan"), billing: p.get("billing") };
+}
+
 export default function Login() {
   const { login, register, googleLogin, appleLogin, passkeyLogin } = useAuth();
   const [, setLocation] = useLocation();
@@ -55,6 +62,23 @@ export default function Login() {
   const isClient = role === "client";
 
   useEffect(() => { roleRef.current = role; }, [role]);
+
+  // Honor ?role= from the public "For Lawyers" CTA (/register?role=lawyer).
+  useEffect(() => {
+    const { role: r } = readAuthParams();
+    if (r === "lawyer" || r === "client") setRole(r);
+  }, []);
+
+  // Carry the selected pricing plan through registration into the upgrade flow.
+  const postAuthDest = (currentRole: Role): string => {
+    const { plan, billing } = readAuthParams();
+    if (plan && plan !== "free") {
+      const q = new URLSearchParams({ plan });
+      if (billing) q.set("billing", billing);
+      return `/subscription?${q.toString()}`;
+    }
+    return currentRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+  };
 
   // Preload Apple SDK
   useEffect(() => { if (hasAppleClientId) loadAppleSDK(); }, []);
@@ -143,7 +167,7 @@ export default function Login() {
         if (!alreadyOnboarded) {
           setShowOnboarding(true);
         } else {
-          setLocation(role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
+          setLocation(postAuthDest(role));
         }
       }
     } catch (err: any) {
@@ -570,6 +594,7 @@ export default function Login() {
         {showOnboarding && (
           <OnboardingModal
             role={role}
+            redirectTo={postAuthDest(role)}
             onComplete={() => setShowOnboarding(false)}
           />
         )}

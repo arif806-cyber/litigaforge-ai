@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
+import { ScoreRing } from "@/components/case-file-os";
 import { Button } from "@/components/ui/button";
 import { PaymentModal } from "@/components/PaymentModal";
 import { apiFetch } from "@/lib/api";
@@ -24,7 +25,7 @@ function MatchCard({ match, onAccept, onDecline }: {
 
   return (
     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+      className="rounded-xl p-4 hover:shadow-sm transition-all bg-card border border-border">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-sidebar">
@@ -32,11 +33,7 @@ function MatchCard({ match, onAccept, onDecline }: {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-gray-900 text-sm">{match.lawyer_name}</span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white"
-                style={{ background: match.match_score >= 80 ? "#059669" : match.match_score >= 60 ? "#D97706" : "#EF4444" }}>
-                {match.match_score}% Match
-              </span>
+              <span className="font-semibold text-foreground text-sm">{match.lawyer_name}</span>
               {match.rating > 0 && (
                 <span className="text-[11px] flex items-center gap-0.5 text-amber-600">
                   <Star className="w-3 h-3 fill-amber-400" />{match.rating}
@@ -44,18 +41,18 @@ function MatchCard({ match, onAccept, onDecline }: {
               )}
             </div>
 
-            <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-400">
+            <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{match.district}</span>
               <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{match.experience_years || 0} yrs</span>
               {match.hourly_rate && <span>₹{match.hourly_rate}/hr</span>}
             </div>
 
             {match.ai_explanation && (
-              <p className="text-[11px] text-gray-500 mt-1 leading-relaxed line-clamp-2">{match.ai_explanation}</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{match.ai_explanation}</p>
             )}
 
             {match.case_title && (
-              <p className="text-[10px] text-gray-400 mt-1">For: {match.case_title}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">For: {match.case_title}</p>
             )}
 
             <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -70,7 +67,7 @@ function MatchCard({ match, onAccept, onDecline }: {
                   </button>
                   <button
                     onClick={() => onDecline(match.id)}
-                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-border text-gray-600 hover:bg-background transition-colors"
+                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-background transition-colors"
                   >
                     <X className="w-3 h-3 inline mr-1" /> Decline
                   </button>
@@ -87,14 +84,14 @@ function MatchCard({ match, onAccept, onDecline }: {
 
               {isPaid && match.lawyer_phone && (
                 <a href={`tel:${match.lawyer_phone}`}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                   title={match.lawyer_phone}>
                   <Phone className="w-3.5 h-3.5" />
                 </a>
               )}
               {isPaid && match.lawyer_email && (
                 <a href={`mailto:${match.lawyer_email}`}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
                   title={match.lawyer_email}>
                   <Send className="w-3.5 h-3.5" />
                 </a>
@@ -108,6 +105,13 @@ function MatchCard({ match, onAccept, onDecline }: {
             </div>
           </div>
         </div>
+        <ScoreRing
+          score={match.match_score}
+          size={72}
+          label="Match"
+          className="flex-shrink-0"
+          data-testid={`match-score-ring-${match.id}`}
+        />
       </div>
     </motion.div>
   );
@@ -157,7 +161,7 @@ export default function Matches() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <UserCheck className="w-12 h-12 text-gray-300 mx-auto" />
+          <UserCheck className="w-12 h-12 text-muted-foreground mx-auto" />
           <h2 className="text-xl font-semibold">{t.sign_in_required}</h2>
           <Button onClick={() => setLocation("/login")}>{t.sign_in}</Button>
         </div>
@@ -177,7 +181,7 @@ export default function Matches() {
       <SEOHelmet title="Match Proposals — LitigaForge AI" description="Review AI-matched lawyer proposals." />
 
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setLocation("/my-cases")} className="text-gray-400 hover:text-gray-600">
+        <button onClick={() => setLocation("/my-cases")} className="text-muted-foreground hover:text-muted-foreground">
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
@@ -197,13 +201,13 @@ export default function Matches() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}>
               <Sparkles className="w-4 h-4 text-violet-600" />
             </div>
-            <h2 className="font-bold text-gray-900 text-sm">{t.match_proposals}</h2>
-            <span className="text-[11px] text-gray-400">({matches.length})</span>
+            <h2 className="font-bold text-foreground text-sm">{t.match_proposals}</h2>
+            <span className="text-[11px] text-muted-foreground">({matches.length})</span>
           </div>
           <div className="flex items-center gap-1 bg-background rounded-lg p-0.5">
             {(["pending", "accepted", "declined"] as const).map((tabKey) => (
               <button key={tabKey} onClick={() => setTab(tabKey)}
-                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === tabKey ? "bg-card text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md capitalize transition-all ${tab === tabKey ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-muted-foreground"}`}>
                 {tabKey}
               </button>
             ))}
@@ -212,12 +216,12 @@ export default function Matches() {
 
         <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
           <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-2">
-            <Search className="w-4 h-4 text-gray-400" />
+            <Search className="w-4 h-4 text-muted-foreground" />
             <input type="text" placeholder={t.search_cases}
               value={search} onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none" />
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none" />
             {search && (
-              <button onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-muted-foreground">
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -225,12 +229,12 @@ export default function Matches() {
         </div>
 
         <div className="p-4 space-y-2.5">
-          {isLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
+          {isLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>}
 
           {!isLoading && matches.length === 0 && (
             <div className="rounded-xl p-8 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-              <Sparkles className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No match proposals yet.</p>
+              <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No match proposals yet.</p>
               <Button size="sm" className="mt-3" onClick={() => setLocation("/my-cases")}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Go to My Cases
               </Button>
@@ -238,7 +242,7 @@ export default function Matches() {
           )}
 
           {!isLoading && matches.length > 0 && filtered.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-6">
+            <p className="text-sm text-muted-foreground text-center py-6">
               No {tab} matches{search ? " matching your search" : ""}.
             </p>
           )}

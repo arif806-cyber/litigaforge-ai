@@ -1,7 +1,7 @@
 const BASE = "/litigaforge";
 
 // Public endpoints that should NOT trigger a /login redirect on 401
-const PUBLIC_PATH = /^\/(ask|clarify|contact|document\/analyze|documents\/paid|judgments|lawyers|legal-aid|chains|healthz|memory|cases\?)/;
+const PUBLIC_PATH = /^\/(ask|clarify|contact|document\/analyze|documents\/paid|judgments|lawyers|legal-aid|chains|healthz|memory|stats|cases\?)/;
 
 // Guard against concurrent refresh calls
 let _refreshing: Promise<boolean> | null = null;

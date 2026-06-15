@@ -151,7 +151,7 @@ function SidebarContent({
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       {/* Brand */}
-      <div className="px-5 pt-6 pb-4 flex-shrink-0">
+      <div className="px-5 pt-6 pb-4 flex-shrink-0 border-b border-sidebar-border/40">
         <div className="flex items-center gap-2.5 mb-2">
           <div className="w-9 h-9 rounded-xl bg-sidebar-primary/15 flex items-center justify-center">
             <Scale className="w-5 h-5 text-sidebar-primary" />
@@ -270,7 +270,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
-        <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex-col relative z-10 shadow-xl">
+        <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex-col relative z-10" style={{ boxShadow: "var(--cfos-elev-3)" }}>
           <SidebarContent location={location} user={user} />
         </aside>
 

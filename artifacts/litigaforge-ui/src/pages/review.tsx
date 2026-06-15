@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { REVIEW_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
+import { RiskMeter } from "@/components/case-file-os";
 
 const DOC_TYPES = [
   { id: "contract", label: "Contract / Agreement" },
@@ -39,17 +40,72 @@ interface AnalysisResult {
   recommendations: string[];
 }
 
+// The backend returns { analysis: { risk_score: 0–100, red_flags, missing_clauses,
+// recommendations, compliance_notes, summary }, document_type }. Map that onto the
+// flat shape this page renders so the instrument + result panels populate correctly.
+function normalizeAnalysis(data: unknown): AnalysisResult {
+  const root = (data ?? {}) as Record<string, unknown>;
+  const a = (root.analysis && typeof root.analysis === "object"
+    ? root.analysis
+    : root) as Record<string, unknown>;
+
+  const rawFlags = Array.isArray(a.red_flags)
+    ? a.red_flags
+    : Array.isArray(a.risks)
+      ? a.risks
+      : [];
+  const risks = rawFlags
+    .map((item): { severity: string; issue: string; section?: string } => {
+      if (item && typeof item === "object") {
+        const o = item as Record<string, unknown>;
+        const sev = String(o.severity ?? "MEDIUM").toUpperCase();
+        return {
+          severity: sev === "CRITICAL" ? "HIGH" : sev,
+          issue: String(o.issue ?? o.text ?? ""),
+          section: o.section != null ? String(o.section) : undefined,
+        };
+      }
+      const s = String(item ?? "");
+      const m = s.match(/^\s*(critical|high|medium|low)\s*[—–:-]\s+(.+)$/i);
+      if (m) {
+        const sev = m[1].toUpperCase();
+        return { severity: sev === "CRITICAL" ? "HIGH" : sev, issue: m[2].trim() };
+      }
+      return { severity: "MEDIUM", issue: s.trim() };
+    })
+    .filter((r) => r.issue.length > 0);
+
+  const jurisdiction = Array.isArray(a.jurisdiction_issues)
+    ? (a.jurisdiction_issues as unknown[]).map(String)
+    : typeof a.compliance_notes === "string" && a.compliance_notes.trim()
+      ? [a.compliance_notes.trim()]
+      : [];
+
+  const scoreNum = Number(a.risk_score);
+
+  return {
+    summary: typeof a.summary === "string" ? a.summary : "",
+    risk_score: Number.isFinite(scoreNum) ? scoreNum : 0,
+    risks,
+    missing_clauses: Array.isArray(a.missing_clauses) ? (a.missing_clauses as unknown[]).map(String) : [],
+    jurisdiction_issues: jurisdiction,
+    recommendations: Array.isArray(a.recommendations) ? (a.recommendations as unknown[]).map(String) : [],
+  };
+}
+
 function RiskScoreBadge({ score }: { score: number }) {
-  const color = score >= 7 ? "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800"
-    : score >= 4 ? "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-    : "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800";
-  const label = score >= 7 ? "High Risk" : score >= 4 ? "Medium Risk" : "Low Risk";
+  // risk_score is on a 0–100 scale, matching the RiskMeter gauge directly.
+  const value = Math.max(0, Math.min(100, Math.round(score)));
+  const label = value >= 70 ? "High Risk" : value >= 40 ? "Medium Risk" : "Low Risk";
+  const labelColor = value >= 70 ? "text-red-700 dark:text-red-300"
+    : value >= 40 ? "text-amber-700 dark:text-amber-300"
+    : "text-green-700 dark:text-green-300";
   return (
-    <div className={cn("inline-flex items-center gap-4 px-5 py-3 rounded-2xl border", color)}>
-      <span className="text-3xl font-bold tracking-tighter">{score}<span className="text-lg opacity-50">/10</span></span>
-      <div className="text-left border-l border-current/20 pl-4">
-        <div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-0.5">Risk Score</div>
-        <div className="text-sm font-semibold">{label}</div>
+    <div className="flex flex-col items-center gap-1.5" data-testid="risk-score-badge">
+      <RiskMeter value={value} size={168} showLabel={false} />
+      <div className="text-center">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Risk Score</div>
+        <div className={cn("text-sm font-semibold", labelColor)}>{label}</div>
       </div>
     </div>
   );
@@ -75,7 +131,7 @@ export default function Review() {
       method: "POST",
       body: JSON.stringify({ document_text: docText, document_type: docType, country: activeCode, context }),
     }),
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => setResult(normalizeAnalysis(data)),
   });
 
   const analyzeFile = useMutation({
@@ -99,7 +155,7 @@ export default function Review() {
       return res.json();
     },
     onSuccess: (data) => {
-      setResult(data);
+      setResult(normalizeAnalysis(data));
       setUploadedFile(null);
     },
   });

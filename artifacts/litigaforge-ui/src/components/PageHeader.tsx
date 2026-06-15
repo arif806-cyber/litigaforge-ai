@@ -11,7 +11,7 @@ export function PageHeader({ onMenuClick }: PageHeaderProps) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="md:hidden flex-shrink-0 border-b border-border bg-card z-20 flex items-center justify-between px-4 h-14 shadow-sm">
+    <header className="md:hidden flex-shrink-0 border-b border-border bg-card z-20 flex items-center justify-between px-4 h-14" style={{ boxShadow: "var(--cfos-elev-1)" }}>
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
           <Scale className="w-4 h-4 text-primary" />

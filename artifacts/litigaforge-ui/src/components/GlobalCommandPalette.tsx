@@ -59,8 +59,17 @@ export function GlobalCommandPalette() {
         setOpen((prev) => !prev);
       }
     }
+    // Allow any UI affordance (e.g. a header "Search" button) to open the
+    // palette without a keyboard, by dispatching a window event.
+    function onOpenRequest() {
+      setOpen(true);
+    }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("lf-open-command-palette", onOpenRequest);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("lf-open-command-palette", onOpenRequest);
+    };
   }, []);
 
   // Reset the query whenever the palette closes so it opens fresh next time.

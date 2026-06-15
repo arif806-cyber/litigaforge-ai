@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 interface OnboardingModalProps {
   role: "client" | "lawyer";
   onComplete: () => void;
+  redirectTo?: string;
 }
 
 const CLIENT_STEPS = [
@@ -64,7 +65,7 @@ const LAWYER_STEPS = [
   },
 ];
 
-export default function OnboardingModal({ role, onComplete }: OnboardingModalProps) {
+export default function OnboardingModal({ role, onComplete, redirectTo }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
   const [, setLocation] = useLocation();
 
@@ -73,11 +74,12 @@ export default function OnboardingModal({ role, onComplete }: OnboardingModalPro
   const Icon = current.icon;
   const isLast = step === steps.length - 1;
 
+  const dest = redirectTo ?? (role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
+
   const handleNext = () => {
     if (isLast) {
       localStorage.setItem("lf_onboarded", "1");
       onComplete();
-      const dest = role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
       setLocation(dest);
     } else {
       setStep(step + 1);
@@ -87,7 +89,6 @@ export default function OnboardingModal({ role, onComplete }: OnboardingModalPro
   const handleSkip = () => {
     localStorage.setItem("lf_onboarded", "1");
     onComplete();
-    const dest = role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
     setLocation(dest);
   };
 

@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -46,7 +46,6 @@ const DocumentTemplatePage = lazy(() => import("@/pages/document-template"));
 const Blog                = lazy(() => import("@/pages/blog"));
 const BlogPost            = lazy(() => import("@/pages/blog-post"));
 const CityPage            = lazy(() => import("@/pages/city"));
-const LandingPage         = lazy(() => import("@/pages/landing"));
 const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
 const TermsOfService      = lazy(() => import("@/pages/terms"));
@@ -272,7 +271,9 @@ function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-        <Route path="/landing" component={LandingPage} />
+        {/* Legacy marketing route consolidated into the single country-aware
+            homepage. Redirect preserves any inbound links / SEO. */}
+        <Route path="/landing"><Redirect to="/" /></Route>
         <Route path="/demo" component={DemoPage} />
         {import.meta.env.DEV && DesignSystem && (
           <Route path="/design-system" component={DesignSystem} />
