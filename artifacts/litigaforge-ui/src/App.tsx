@@ -12,6 +12,8 @@ import { Loader2, ShieldAlert } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkipLink } from "@/components/SkipLink";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
+import { GlobalCommandPalette } from "@/components/GlobalCommandPalette";
+import { viewTransitionAroundNav } from "@/lib/view-transitions";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import {
   getAppBase,
@@ -54,6 +56,9 @@ const RefundPolicy        = lazy(() => import("@/pages/refund-policy"));
 const UsDemandLetter      = lazy(() => import("@/pages/us-demand-letter"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
 const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
+// DEV-only Case File OS gallery. import.meta.env.DEV is statically replaced by
+// Vite, so this whole branch (and its chunk) is tree-shaken out of prod builds.
+const DesignSystem        = import.meta.env.DEV ? lazy(() => import("@/pages/design-system")) : null;
 
 // Layout pulls in framer-motion. It only wraps the authenticated app routes —
 // never the public homepage/landing/login — so lazy-load it to keep
@@ -269,6 +274,9 @@ function Router() {
       <Switch>
         <Route path="/landing" component={LandingPage} />
         <Route path="/demo" component={DemoPage} />
+        {import.meta.env.DEV && DesignSystem && (
+          <Route path="/design-system" component={DesignSystem} />
+        )}
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsOfService} />
@@ -381,10 +389,11 @@ function App() {
           <AuthProvider>
             <CountryGate>
               {(country) => (
-                <WouterRouter base={`${getAppBase()}/${country}`}>
+                <WouterRouter base={`${getAppBase()}/${country}`} aroundNav={viewTransitionAroundNav}>
                   <SEOHelmet />
                   <SkipLink />
                   <KeyboardShortcuts />
+                  <GlobalCommandPalette />
                   <Analytics />
                   {/* <FirstVisitDisclaimer /> */}
                   <Router />

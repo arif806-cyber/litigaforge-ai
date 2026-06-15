@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle, Sparkles, Bot, User, Trash2 } from "lucide-react";
@@ -173,6 +174,28 @@ export default function Ask() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The global ⌘K palette (and any in-app link) can route here with a fresh
+  // ?q=…&category=… while this page is ALREADY mounted. The initial useState
+  // above only runs once, so react to subsequent query-string changes too —
+  // pre-fill the question, switch category, and reveal the composer.
+  const search = useSearch();
+  useEffect(() => {
+    const p = new URLSearchParams(search);
+    const q = p.get("q");
+    const cat = p.get("category");
+    if (q !== null) {
+      setQuestion(q);
+      if (q && textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+    if (cat && categories.some((c) => c.id === cat)) {
+      setCategory(cat);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   // If the user switches country, drop a selected category that doesn't exist in
   // the new jurisdiction so we never submit a category invalid for that country.

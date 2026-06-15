@@ -160,3 +160,173 @@
   );
   background-size: 200% auto;
 }
+
+/* ============================================================
+   CASE FILE OS — design language extension (additive, namespaced)
+   Validated on the mockup sandbox; consumed by
+   src/components/case-file-os/*. Extends the theme with depth,
+   instrument and "legal-pad" devices WITHOUT altering the core
+   navy / gold / paper palette defined above.
+   ============================================================ */
+:root {
+  --cfos-ink: 222 47% 11%;
+  --cfos-paper: 0 0% 100%;
+  --cfos-gold: 41 88% 48%;
+  --cfos-gold-soft: 41 84% 62%;
+  --cfos-rule: 4 64% 48%;          /* legal-pad margin red */
+  --cfos-good: 158 58% 36%;
+  --cfos-warn: 38 92% 46%;
+  --cfos-risk: 4 70% 50%;
+  --cfos-grid: 222 30% 14%;
+
+  --cfos-elev-1: 0 1px 2px hsl(222 40% 20% / .06), 0 1px 1px hsl(222 40% 20% / .04);
+  --cfos-elev-2: 0 2px 4px hsl(222 40% 20% / .05), 0 6px 16px hsl(222 40% 22% / .08);
+  --cfos-elev-3: 0 4px 8px hsl(222 40% 20% / .06), 0 18px 40px hsl(222 42% 22% / .14);
+  --cfos-inset: inset 0 1px 0 hsl(40 40% 100% / .7), inset 0 0 0 1px hsl(38 18% 85% / .6);
+}
+
+.dark {
+  --cfos-ink: 40 24% 92%;
+  --cfos-paper: 220 35% 10%;
+  --cfos-gold: 41 90% 55%;
+  --cfos-gold-soft: 41 86% 66%;
+  --cfos-rule: 8 72% 56%;
+  --cfos-good: 158 56% 48%;
+  --cfos-warn: 40 92% 56%;
+  --cfos-risk: 6 74% 58%;
+  --cfos-grid: 210 40% 80%;
+
+  --cfos-elev-1: 0 1px 2px hsl(0 0% 0% / .4), inset 0 0 0 1px hsl(220 30% 40% / .12);
+  --cfos-elev-2: 0 4px 14px hsl(0 0% 0% / .45), inset 0 0 0 1px hsl(220 30% 50% / .12);
+  --cfos-elev-3: 0 10px 40px hsl(0 0% 0% / .55), 0 0 0 1px hsl(220 30% 50% / .14), 0 0 32px hsl(41 90% 55% / .06);
+  --cfos-inset: inset 0 1px 0 hsl(220 40% 60% / .08);
+}
+
+/* ── Surfaces ── */
+.cfos-paper {
+  background-color: hsl(var(--card));
+  background-image: linear-gradient(hsl(var(--cfos-grid) / .025) 1px, transparent 1px);
+  background-size: 100% 30px;
+  box-shadow: var(--cfos-elev-2);
+}
+.cfos-elev-1 { box-shadow: var(--cfos-elev-1); }
+.cfos-elev-2 { box-shadow: var(--cfos-elev-2); }
+.cfos-elev-3 { box-shadow: var(--cfos-elev-3); }
+
+/* Margin rule — legal-pad signature: red margin + faint gold hairline.
+   Uses logical inline-start so it mirrors correctly under RTL. */
+.cfos-rule {
+  position: relative;
+  padding-inline-start: 1.75rem;
+}
+.cfos-rule::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0.9rem; top: 0; bottom: 0;
+  width: 2px;
+  background: hsl(var(--cfos-rule) / .55);
+}
+.cfos-rule::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 1.15rem; top: 0; bottom: 0;
+  width: 1px;
+  background: hsl(var(--cfos-gold) / .4);
+}
+
+/* Docket label — monospace metadata strip */
+.cfos-docket {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.66rem;
+  line-height: 1;
+  color: hsl(var(--muted-foreground));
+}
+.cfos-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Perforated / file-tab edge */
+.cfos-tab { clip-path: polygon(0 0, 78% 0, 88% 100%, 0 100%); }
+
+/* Hairline divider */
+.cfos-hairline {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+}
+
+/* Stamp — "VERIFIED" style impression */
+.cfos-stamp {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  border: 1.5px solid hsl(var(--cfos-good) / .6);
+  color: hsl(var(--cfos-good));
+  border-radius: 4px;
+  transform: rotate(-4deg);
+}
+
+/* ── Motion: things SETTLE into the file ── */
+@keyframes cfos-settle {
+  0%   { opacity: 0; transform: translateY(14px) scale(.985); filter: blur(2px); }
+  60%  { filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes cfos-pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--cfos-good) / .5); }
+  50%      { box-shadow: 0 0 0 5px hsl(var(--cfos-good) / 0); }
+}
+/* Document "scan" sweep — a gold scan-line travelling top→bottom, for
+   loading/analysing states on paper surfaces. */
+@keyframes cfos-scan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+.cfos-settle { animation: cfos-settle .7s cubic-bezier(.22,.61,.36,1) both; }
+.cfos-live-dot {
+  width: 7px; height: 7px; border-radius: 999px;
+  background: hsl(var(--cfos-good));
+  animation: cfos-pulse-dot 2s ease-out infinite;
+}
+.cfos-scan {
+  position: relative;
+  overflow: hidden;
+}
+.cfos-scan::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  block-size: 28%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, hsl(var(--cfos-gold) / .22), transparent);
+  animation: cfos-scan 1.8s cubic-bezier(.4,0,.2,1) infinite;
+}
+
+/* Gold underline for active nav / focus */
+.cfos-gold-underline {
+  background-image: linear-gradient(90deg, hsl(var(--cfos-gold)), hsl(var(--cfos-gold-soft)));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfos-settle, .cfos-live-dot { animation: none !important; }
+  .cfos-scan::after { animation: none !important; opacity: 0; }
+}
+
+/* ── Progressive cross-page View Transitions (see lib/view-transitions.ts) ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.26s;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
