@@ -1,0 +1,70 @@
+Analyze LitigaForge.com as it currently exists before making changes.
+
+Important: do not rebuild the site from scratch, and do not add duplicate sections just because they are common on SaaS sites. Many core sections already exist on LitigaForge, including AI legal Q&A, document analyzer, lawyer matching, judgment finder, legal aid, templates, pricing, multilingual support, city-based lawyer discovery, FAQ, and a legal blog. Your job is to improve what is already there.
+
+Current visible product scope includes:
+- AI legal Q&A
+- document analyzer with risk score and missing clause detection
+- lawyer matching with match score
+- judgment finder
+- free legal aid finder
+- legal document templates
+- pricing plans
+- English, Hindi, Telugu support
+- India plus multi-country coverage
+- legal blog/guides content
+
+Your task:
+1. Audit the existing site structure, messaging, UX hierarchy, trust signals, and conversion flow.
+2. Identify what is already good and should be preserved.
+3. Identify what is weak, unclear, repetitive, low-trust, or poorly prioritized.
+4. Recommend improvements with minimal unnecessary redesign.
+5. Improve the product so it feels more credible, focused, and conversion-ready for legal users.
+
+Focus areas:
+- stronger homepage hierarchy
+- clearer first-user journeys
+- stronger trust and compliance presentation
+- better CTA prioritization
+- better explanation of AI vs lawyer help
+- sharper pricing clarity
+- better lawyer-side onboarding page
+- stronger mobile UX
+- cleaner visual design without losing current content coverage
+- improved SEO structure using the existing blog and legal guides
+
+Do not:
+- remove useful existing features
+- replace specific legal product copy with generic startup language
+- turn the site into a flashy AI SaaS template
+- create duplicate sections that say the same thing in different words
+
+Deliverables:
+1. A full audit of the current LitigaForge site
+2. A preserve / improve / remove table
+3. A revised sitemap only if truly needed
+4. A prioritized list of high-impact changes
+5. Then implement the homepage, navigation, trust layer, and app shell improvements first
+
+Design direction:
+- premium legal-tech SaaS
+- trust-first
+- India-first but globally extensible
+- serious and clear
+- not gimmicky
+- compact product typography
+- restrained colors
+- polished light and dark modes
+
+Copy direction:
+- specific
+- plain-language
+- legally careful
+- confidence-building
+- not generic marketing copy
+
+Start by analyzing the current codebase and showing me:
+- what should stay
+- what should change
+- what should be added only if justified
+before making major UI changes.
