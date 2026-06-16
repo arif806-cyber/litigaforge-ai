@@ -275,9 +275,20 @@ export default function Subscription() {
         </>
       );
     }
+    // Non-India: show local-currency price from Stripe.
+    // While the query is still in-flight, stripeData is undefined — show a spinner.
+    // If Stripe returns no price for this tier (should not happen once seeded),
+    // show "View pricing" so the user is never left with a bare dash or ₹ symbol.
+    if (stripeData === undefined) {
+      return <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />;
+    }
     const sp = stripePlanFor(plan.id);
     if (!sp) {
-      return <span className="text-2xl font-bold text-muted-foreground">—</span>;
+      return (
+        <span className="text-xl font-semibold text-muted-foreground">
+          View pricing
+        </span>
+      );
     }
     const formatted = new Intl.NumberFormat(undefined, {
       style: "currency",
