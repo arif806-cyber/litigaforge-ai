@@ -17,6 +17,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PainPointsGrid from "@/components/PainPointsGrid";
 import PricingSection from "@/components/PricingSection";
 import SocialProofBar from "@/components/SocialProofBar";
+import TrustStrip from "@/components/TrustStrip";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import { MarginRuleCard, PaperSurface, ScoreRing, Stamp, Chip } from "@/components/case-file-os";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -253,6 +254,10 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
           {/* Social proof — real counts, zero-safe */}
           <div className="mt-10 md:mt-12 max-w-2xl mx-auto lg:mx-0">
             <SocialProofBar countryCode={cc} />
+            {/* Static, defensible trust signals (no fabricated claims) */}
+            <div className="mt-5">
+              <TrustStrip countryCode={cc} />
+            </div>
           </div>
         </div>
       </section>

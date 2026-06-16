@@ -19,6 +19,14 @@ template (`litigaforge-ui/public/index-static.html`, served from the built
   `<h1>` and **first** `<p>` are swapped via regex **function replacers**
   (`.replace(re, () => value)`) — function replacers are mandatory so any `$` in
   copy is never interpreted as a `$1/$&/$$` replacement pattern.
+- A separate `_ROUTE_BODY` map (keyed by bare path) holds route-specific
+  `<h2>/<p>` body content that is appended right after the rewritten first `<p>`.
+  **Why:** swapping only title/h1/intro still left every route sharing the same
+  homepage feature-directory body, so pages read as near-duplicates to no-JS
+  crawlers. The shared `<nav>`/footer links still follow for crawl depth, but the
+  *leading* content of each page is now distinct. `_ROUTE_BODY` is optional per
+  route — utility pages (`/privacy`, `/terms`, `/refund-policy`, `/login`,
+  `/register`) intentionally have no body entry (unique title/h1/intro suffices).
 
 **Why:** SPA shells produce duplicate title/description/canonical across every
 route, which suppresses indexing. Country-prefixed variants split link equity.

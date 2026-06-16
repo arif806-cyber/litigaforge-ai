@@ -396,6 +396,7 @@ if (true) { // serve frontend in both dev and production when dist exists
       h1: string;
       intro: string;
       canonical?: string;
+      bodyHtml?: string;
     }
 
     const _ROUTE_SEO: Record<string, RouteSeoEntry> = {
@@ -555,6 +556,57 @@ if (true) { // serve frontend in both dev and production when dist exists
       },
     };
 
+    // Route-specific body content injected after the intro paragraph so each
+    // crawler-facing page leads with substantial unique content instead of the
+    // shared homepage feature directory. Keyed by the bare (non-country) path.
+    // Keeps the shared <nav>/footer links below for crawl depth, but the
+    // primary content of each page is now distinct, fixing the "every page
+    // reads like the homepage" duplication problem for no-JS crawlers.
+    const _ROUTE_BODY: Record<string, string> = {
+      "/ask":
+        "<h2>How AI Legal Q&amp;A works</h2>" +
+        "<p>Describe your situation in plain language and LitigaForge AI returns a structured answer: the legal principles that apply, the practical steps you can take, and when you should speak to a lawyer. Every answer is tailored to your jurisdiction and written so a non-lawyer can act on it.</p>" +
+        "<p>Questions our community has already answered include wrongful termination and notice periods, security-deposit and rent disputes, refunds for defective goods, child-custody factors, and how to respond to a legal notice. Browse the knowledge base by category or ask your own question free — no account needed to start.</p>",
+      "/review":
+        "<h2>What the document analyzer checks</h2>" +
+        "<p>Paste a contract, agreement, notice or court document and LitigaForge AI returns an overall risk score from 0 to 100, a list of clauses that are missing or one-sided, and specific recommendations to act on before you sign or reply.</p>" +
+        "<p>It works on rental and lease agreements, employment contracts and offer letters, non-disclosure agreements, sale deeds, loan and service agreements, FIRs and court notices — analyzed instantly and free.</p>",
+      "/lawyers":
+        "<h2>How lawyer matching works</h2>" +
+        "<p>Tell us your case type, location and budget and LitigaForge AI ranks verified advocates from 0 to 100, with a plain-language explanation of why each lawyer fits your matter. You stay in control — review profiles, ratings and practice areas before you connect.</p>" +
+        "<p>Every advocate carries a verification status, so you can see who has confirmed Bar credentials. Browse by practice area — property, family, criminal, consumer, employment, corporate — or post your case and let qualified lawyers come to you.</p>",
+      "/judgments":
+        "<h2>Research case law faster</h2>" +
+        "<p>Search reported judgments by keyword, party name, court or citation and LitigaForge AI surfaces the most relevant precedents with links to the full text. Each result includes a concise, plain-language summary so you can decide quickly whether a case is on point.</p>" +
+        "<p>Use it to find Supreme Court and High Court authority for an argument, to track how courts treat a particular issue, or to prepare for a hearing. Save the judgments you care about to build a research portfolio you can revisit.</p>",
+      "/legal-aid":
+        "<h2>Free and low-cost legal help</h2>" +
+        "<p>Answer a few questions about your income, circumstances and case type, and the Free Legal Aid finder tells you whether you are likely to qualify for state-funded or pro-bono assistance in your region.</p>" +
+        "<p>You also get direct contact details and toll-free helplines for legal-aid authorities near you. Everyone deserves access to justice, regardless of their ability to pay.</p>",
+      "/free-documents":
+        "<h2>Ready-to-file legal templates</h2>" +
+        "<p>Choose a template, answer a short guided form, and LitigaForge AI generates a complete, jurisdiction-aware legal document you can download, share or print — no subscription required for the free templates.</p>" +
+        "<p>Available documents include rental and lease agreements, legal notices, affidavits, employment and appointment letters, non-disclosure agreements and demand letters — each drafted in clear language and customized to the details you provide.</p>",
+      "/subscription":
+        "<h2>Plans for every need</h2>" +
+        "<p>Start free with legal Q&amp;A, document analysis, judgment search, the free legal-aid finder and the advocate directory. Upgrade only when you need more.</p>" +
+        "<p>Professional unlocks unlimited AI queries and priority lawyer matching for individuals and small businesses. Advocate Pro adds full practice management — client and case tracking, a document workspace and hearing reminders — for working lawyers. Prices are shown in your local currency at checkout.</p>",
+      "/digest":
+        "<h2>Stay current in five minutes a day</h2>" +
+        "<p>Each morning the daily judgment digest delivers the five most important new Supreme Court and High Court decisions to your inbox, each with a concise summary and a link to the full analysis. It is free, and you can unsubscribe at any time.</p>",
+      "/us-demand-letter":
+        "<h2>Send a demand letter that gets results</h2>" +
+        "<p>Answer a few questions about what you are owed and LitigaForge AI drafts a firm, professional, state-specific demand letter — the kind that often resolves a dispute before it ever reaches court. Preview the full letter free and pay only when you are happy with it.</p>" +
+        "<p>Use it for unpaid invoices and debts, broken contracts, withheld security deposits, or property and service damages. A clear, well-structured demand shows the other side you are serious.</p>",
+      "/about":
+        "<h2>Why we built LitigaForge AI</h2>" +
+        "<p>Legal help is too expensive and too confusing for most people. LitigaForge AI combines artificial intelligence with verified human lawyers to give individuals and small businesses instant, affordable, plain-language guidance — and a clear path to a professional when they need one.</p>" +
+        "<p>The platform spans eight countries and multiple languages, offering legal Q&amp;A, document analysis, case-law research, ready-to-file documents and a free legal-aid finder in one place.</p>",
+      "/contact":
+        "<h2>We&apos;re here to help</h2>" +
+        "<p>Whether you have a support question, a partnership proposal or a media request, the LitigaForge AI team is glad to hear from you. Send us a message and we will get back to you as soon as we can.</p>",
+    };
+
     const _stripCountry = (p: string): string => {
       const parts = p.replace(/^\/+/, "").split("/");
       const first = (parts[0] ?? "").toLowerCase();
@@ -575,7 +627,12 @@ if (true) { // serve frontend in both dev and production when dist exists
     ): (RouteSeoEntry & { canonicalPath: string }) | null => {
       if (bare === "/" || bare === "") return null;
       const direct = _ROUTE_SEO[bare];
-      if (direct) return { ...direct, canonicalPath: direct.canonical ?? bare };
+      if (direct)
+        return {
+          ...direct,
+          canonicalPath: direct.canonical ?? bare,
+          bodyHtml: _ROUTE_BODY[bare],
+        };
       const m = bare.match(/^\/lawyers\/([a-z][a-z-]*)$/);
       if (m) {
         const city = _titleCase(m[1] ?? "");
@@ -585,6 +642,9 @@ if (true) { // serve frontend in both dev and production when dist exists
           description: `Find and connect with verified, rated lawyers in ${city}. AI-powered lawyer matching with transparent 0–100 match scores. Free to start.`,
           h1: `Verified Lawyers in ${city}`,
           intro: `Connect with experienced, verified advocates in ${city}. LitigaForge AI matches you with the right lawyer for your case — each scored 0–100 with a plain-language explanation of the fit.`,
+          bodyHtml:
+            `<h2>Legal help in ${city}</h2>` +
+            `<p>LitigaForge AI connects you with verified, rated advocates practising in ${city} across property, family, criminal, consumer, employment and corporate law. Describe your case and get matched in minutes — each lawyer scored 0–100 for fit, with a plain-language explanation. Prefer to browse first? Review profiles, credentials and ratings before you reach out.</p>`,
           canonicalPath: bare,
         };
       }
@@ -643,7 +703,10 @@ if (true) { // serve frontend in both dev and production when dist exists
           () => `<meta name="twitter:description" content="${meta.description}"/>`,
         )
         .replace(/<h1>[\s\S]*?<\/h1>/, () => `<h1>${meta.h1}</h1>`)
-        .replace(/<p>[\s\S]*?<\/p>/, () => `<p>${meta.intro}</p>`);
+        .replace(
+          /<p>[\s\S]*?<\/p>/,
+          () => `<p>${meta.intro}</p>${meta.bodyHtml ? `\n${meta.bodyHtml}` : ""}`,
+        );
     };
 
     const _esc = (s: unknown): string =>
