@@ -1,117 +1,85 @@
 # LitigaForge AI
 
-Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case requirements, AI matches them with verified lawyers (scored 0-100), and they collaborate via chat. Also includes: multi-AI legal strategy synthesis, legal Q&A, document analyzer, judgment finder, and free legal aid finder.
+Client–Lawyer matching platform + legal AI for Telangana & AP. Clients post case requirements, AI matches them with verified lawyers (scored 0–100), and they collaborate via chat. Also: multi-AI legal strategy synthesis, legal Q&A, document analyzer, judgment finder, and free legal-aid finder.
 
-## Run & Operate
+## Run & operate
 
-- Backend runs via `artifacts/api-server: LitigaForge AI` workflow: `cd artifacts/litigaforge-ai && BASE_PATH=/litigaforge PORT=5000 python main.py` (the standalone `LitigaForge AI` workflow was removed — it was a port-5000 duplicate of this artifact-managed one)
-- Frontend runs via `artifacts/litigaforge-ui: web` workflow: `pnpm --filter @workspace/litigaforge-ui run dev`
-- Production build: `PORT=23790 BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run build`
-- GitHub branch: `feature/arifbase` on `arif806-cyber/litigaforge-ai`
-- `BASE_PATH=/litigaforge` and `PORT=5000` are set as shared Replit env vars — all workflows pick them up automatically
-- **Blog**: live at `https://litigaforge-blog.arif-806.workers.dev/blog/` — a Cloudflare **Worker** (static-assets, NOT Pages). `.github/workflows/pipeline.yml` runs every 2 hrs and is fully autonomous: generates articles → commits via GitHub API → `git reset --hard origin/main` → `astro build` → `wrangler deploy`. Free (public repo = unlimited Actions); `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` stored as GitHub repo secrets (token has no expiry). Custom domain `blog.litigaforge.com` still pending DNS.
-  - **Reliable trigger (in-process VM scheduler)**: GitHub's free cron silently drops most scheduled runs (~1 of 24 fired over 2 days). The production deploy is a **`vm` (always-running)** instance (per `getDeploymentInfo`, NOT autoscale), so the dependable trigger is baked into the always-on `api-server` Express process: `src/lib/blogScheduler.ts` (started from `src/index.ts`) fires a GitHub `workflow_dispatch` every 2h aligned to **:15 IST** (00:15, 02:15 … 18:15 … 22:15) using the no-expiry PAT `GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE`. Zero extra cost (uses the existing VM). Self-disables off production via gate `NODE_ENV === "production"` (set by api-server `artifact.toml`; dev never fires). Per-run cap is **2** articles. **Takes effect only after a republish.** GitHub's flaky `schedule:` cron and the manual `bash scripts/trigger-blog.sh` are kept as harmless fallbacks (pipeline has a `content-pipeline` concurrency group, so an occasional extra batch is harmless).
-  - **Generation kill-switch (FAIL-CLOSED)**: `pipeline.py` only generates when the blog repo's Actions **variable** `GENERATION_ENABLED == "true"` (currently **true** = live). Unset/anything-else = paused, publishing nothing. To pause/resume publishing, flip that repo variable in `arif806-cyber/litigaforge-blog` — **no code change or republish needed.**
-  - **Content engine (quota + dedup)**: `pipeline.py` enforces a per-country daily quota (India 2, USA/UK/UAE/Germany 1 each, + 1 rotating Australia/Canada/Singapore = **~7/day**), 10-category rotation (no >2 consecutive same country/category, best-effort), slug ≤70 chars, min word count with one retry-then-discard, and a **daily-target gate** that counts today's IST-dated article frontmatter — if today's count ≥ `DAILY_TARGET` (7) the run publishes **0 (by design, not a bug)**. Dupes + `welcome.md` were removed; old slugs **301-redirect** to the user-chosen canonical slugs via the Worker's `public/_redirects` (fires before CF's trailing-slash 307) and at the apex via api-server `src/lib/blogRedirects.ts`. `_redirects` lists **both** `/blog/<old>` and `/blog/<old>/` sources (Astro serves articles at trailing-slash URLs, so old indexed links may use either form); the apex map covers both from one Express rule. `[slug].astro` emits FAQPage JSON-LD only when `faq.length > 0`.
-  - **Apex `litigaforge.com/blog`**: the domain is NOT on Cloudflare (GoDaddy nameservers, apex A record → Replit deploy), so DNS can't path-route `/blog`. Instead the Express `api-server` (`artifacts/api-server/src/app.ts`) **reverse-proxies** `/blog`, `/blog/*`, `/_astro/*` to the Worker (registered before static + SPA catch-all). The litigaforge-ui PWA service worker denylists `/blog` + `/_astro` (`vite.config.ts` workbox) so it never serves the React shell for blog URLs. **Takes effect on litigaforge.com only after a republish.**
-  - **Dynamic `/sitemap.xml`**: `api-server` serves a dynamic sitemap (route registered before `express.static`, so it overrides the on-disk `litigaforge-ui/public/sitemap.xml`). It keeps the static app-page URLs and **auto-merges live blog articles** by crawling the Worker blog index (follows pagination, 50-page cap), cached in-memory 1h, falling back to the static file if the Worker is unreachable. New articles appear automatically — no token or blog-repo change. **Takes effect on litigaforge.com only after a republish; then resubmit the sitemap in Google Search Console.**
+- **Backend** — workflow `artifacts/api-server: LitigaForge AI`: `cd artifacts/litigaforge-ai && BASE_PATH=/litigaforge PORT=5000 python main.py`
+- **Frontend** — workflow `artifacts/litigaforge-ui: web`: `pnpm --filter @workspace/litigaforge-ui run dev`
+- **Prod build** — `PORT=23790 BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run build`
+- `BASE_PATH=/litigaforge` and `PORT=5000` are **shared Replit env vars** — all workflows inherit them; do NOT add them inline to workflow commands.
+- GitHub: repo `arif806-cyber/litigaforge-ai`, branch `feature/arifbase`.
+- The deployed app builds from the **Replit workspace, not GitHub** — several features only go live **after a republish** (flagged per-feature below).
 
 ## Stack
 
-- Frontend: React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter
-- Backend: Python 3.12, FastAPI, Uvicorn, LangGraph, LangChain
-- AI: Claude Sonnet 4-6 + Gemini 2.5 Flash + GPT-5 via Replit AI Integrations (all free, no key needed)
-- Portable AI layer: `litellm` (`artifacts/litigaforge-ai/llm/`) — provider-agnostic, switchable via the single env var `LLM_MODEL` (default `anthropic/claude-sonnet-4-6` through the free Replit proxy). Powers judgment summarization + `/ask`; `ai_brain.py` cascade stays as fallback
-- Database: PostgreSQL (Replit managed) — users, subscriptions, legal_questions, lawyers, case memory
-- Auth: bcrypt (direct) password hashing, JWT (python-jose), 30-day tokens
-- Mobile: Expo (React Native), Expo Router, NativeWind — in `deployable/mobile/`
-- Fonts: Space Grotesk + JetBrains Mono (Google Fonts)
-
-## Where things live
-
-### Frontend pages (`artifacts/litigaforge-ui/src/pages/`)
-
-- `use-cases.tsx` — Redirects to `/ask`
-- `login.tsx`, `register.tsx` — Authentication (JWT via localStorage). Role-based: Client vs Lawyer tabs
-- `client-dashboard.tsx` — **Client Dashboard**: assigned cases with stage timeline, match proposals, AI explanations, lawyer contact (call/email), case document upload, edit/share/download, NALSA helpline, upgrade banner. Navy sidebar + mobile hamburger drawer
-- `documents.tsx` — **Documents Dashboard**: all client documents across cases with search, download, share (Web Share API + WhatsApp fallback), delete, upload
-- `subscription.tsx` — Plan comparison & upgrade/downgrade
-- `post-case.tsx` — **Post a Case**: client case posting form with anonymous option, 9 case types, budget range
-- `my-cases.tsx` — **My Cases**: client tracks posted cases, views match proposals, accept/decline flow
-- `matches.tsx` — **AI Matching**: lawyer match scores (0-100), AI explanations, accept/decline proposals
-- `legal-chat.tsx` — **AI Legal Chat**: drafting assistant with 4 templates, live chat with Claude/Gemini
-- `ask.tsx` — **Legal Q&A with AI**: ask questions, Claude answers instantly, community knowledge base
-- `review.tsx` — **Document Analyzer**: risk scoring, missing clauses, recommendations
-- `judgments.tsx` — **Judgment Finder**: precedent search + IndianKanoon links
-- `lawyers.tsx` — **Lawyer Directory**: searchable advocate profiles with verification badges, ratings, hourly rates
-- `legal-aid.tsx` — **Free Legal Aid Finder**: NALSA/TSLSA eligibility wizard + helplines
-- `free-documents.tsx` — **Free Legal Documents**: 10 AI-powered document templates with search/filter
-- `document-template.tsx` — **Document Template Fill Form**: dynamic form fields, AI generate, download/share/print
-- `about.tsx` — **About Us** (AdSense-required): company overview, markets served, features, founder/T-Hub; standalone public route, ends with shared `LegalDisclaimerFooter`
-- `contact.tsx` — **Contact Us** (AdSense-required): contact form (name/email/subject/message) → public `POST /contact` (saved to `contact_messages` table); standalone public route, ends with shared `LegalDisclaimerFooter`
-- `privacy.tsx` / `terms.tsx` — Privacy Policy / Terms of Service (AdSense-required); both now end with shared `LegalDisclaimerFooter`; contact email aligned to `legal@litigaforge.com`. privacy.tsx includes "Cookies & Tracking" + "Google AdSense & Advertising" sections
-
-### Backend (`artifacts/litigaforge-ai/`)
-
-- `main.py` — FastAPI app: lifespan, CORS, rate limits, table init + includes 10 routers
-- `routers/auth.py` — Register, login, logout, me
-- `routers/subscription.py` — Plans, Razorpay create-order, verify
-- `routers/matching.py` — Post case requirements, AI find-lawyers, match management
-- `routers/chat.py` — AI legal drafting chat, match-based messaging threads
-- `routers/community.py` — Legal Q&A, Document Analyzer, Judgment Finder, Lawyer Directory, Legal Aid
-- `routers/watch.py` — Watch mode start/stop/add/list/remove (in-memory)
-- `routers/alerts.py` — WhatsApp alerts, hearing reminders
-- `routers/admin.py` — Pending lawyer verification, approve/reject, user management
-- `routers/lawyer.py` — Lawyer case/document CRUD + **Client case endpoints**: `GET /client/cases`, `PATCH /client/cases/{id}`, document upload/share/delete, CNR tracking, AI analysis, notes
-- `database.py` — PostgreSQL async pool (asyncpg): fetch, fetchrow, execute, executemany
-- `auth.py` — bcrypt hashing, JWT create/decode, cookie-first auth with Bearer fallback
-- `payments.py` — Razorpay integration: create_order, verify_payment, PLAN_PRICES
-- `rate_limit.py` — slowapi limiter + custom 429 exception handler
-- `ai_brain.py` — Multi-AI cascade (Claude → Gemini → GPT-5)
-- `alerts/whatsapp.py` — Twilio WhatsApp integration
-
-### Components & utilities
-
-- `src/components/layout.tsx` — Sidebar: "Match & Connect" (Dashboard, Post Case, My Cases, Match Proposals, Documents) + "Legal Tools" (AI Chat, Q&A, Analyzer, etc). **Navy (#1a2744) sidebar for clients**, white sidebar for lawyers. Fixed bottom tab bar on mobile
-- `src/components/legal-disclaimer.tsx` — Footer disclaimer + FirstVisitDisclaimer modal
-- `src/components/graphics/` — ParticleCanvas, ScalesHero, EmptyStateArt
-- `src/lib/api.ts` — apiFetch (auto-attaches Bearer token); BASE = "/litigaforge"
-- `src/lib/auth-context.tsx` — AuthProvider, useAuth, TIER_LABELS, TIER_LIMITS
-
-## Environment Variables (shared, set in Replit)
-
-| Variable | Current Value | Notes |
-|---|---|---|
-| `BASE_PATH` | `/litigaforge` | Backend route prefix — shared env var |
-| `PORT` | `5000` | Backend port — shared env var |
-| `DATABASE_URL` | (Replit auto-set) | PostgreSQL connection string |
-| `SESSION_SECRET` | (Replit Secret) | JWT signing |
-
-### Secrets to add for more features
-
-| Secret | Where to get it | Enables |
-|---|---|---|
-| `TWILIO_ACCOUNT_SID` | twilio.com console | WhatsApp alerts |
-| `TWILIO_AUTH_TOKEN` | twilio.com console | WhatsApp alerts |
-| `TWILIO_FROM_NUMBER` | Twilio sandbox: `whatsapp:+14155238886` | WhatsApp sender |
-| `ADVOCATE_WHATSAPP` | Your number e.g. `whatsapp:+919876543210` | WhatsApp recipient |
-| `SMTP_HOST` | e.g. `smtp.gmail.com` | Email notifications (verification/rejection) |
-| `SMTP_PORT` | `587` (STARTTLS) or `465` (SSL) | Email port, defaults to 587 |
-| `SMTP_USER` | Your email login | SMTP authentication |
-| `SMTP_PASSWORD` | App password / SMTP password | SMTP authentication |
-| `SMTP_FROM` | Display From address | Defaults to SMTP_USER if not set |
+- **Frontend**: React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter
+- **Backend**: Python 3.12, FastAPI, Uvicorn, LangGraph, LangChain
+- **AI**: Claude Sonnet 4-6 + Gemini 2.5 Flash + GPT-5 via Replit AI Integrations (all free, no key needed). Portable LiteLLM layer (`artifacts/litigaforge-ai/llm/`) is switchable via `LLM_MODEL` (default `anthropic/claude-sonnet-4-6`); it's the primary path for judgment summarization + `/ask`, with the `ai_brain.py` cascade as fallback.
+- **Database**: PostgreSQL (Replit-managed)
+- **Auth**: bcrypt password hashing + JWT (python-jose), 30-day tokens
+- **Mobile**: Expo / React Native / NativeWind — in `deployable/mobile/`
+- **Fonts**: Space Grotesk + JetBrains Mono (Google Fonts)
 
 ## Architecture decisions
 
-- `BASE_PATH=/litigaforge`: backend router mounts all routes at this prefix; proxy routes `/litigaforge/*` to port 5000
-- AI layer: `ai_brain.py` calls all 3 providers (Claude, Gemini, GPT-5) via Replit's proxy. No API keys needed from user
-- Fallback chain: Claude → Gemini → GPT-5 → smart regex + data-driven templates. Never generic output
-- Portable LiteLLM layer (`llm/config.py` + `llm/legal_llm.py`): default `anthropic/claude-sonnet-4-6` via the free Replit proxy (auto-wires `AI_INTEGRATIONS_ANTHROPIC_*`; `openai/*` auto-wires the OpenAI proxy; other providers use ambient keys). Switch provider with `LLM_MODEL` alone (override creds with `LLM_API_BASE`/`LLM_API_KEY`). `LLM_TIMEOUT` defaults to 60s (long `/ask` answers need it). Used as the PRIMARY path for judgment summarization (`judgment_ingest._summarize`) and `/ask`, each falling back to the `ai_brain.py` cascade on error/empty. `GET {BASE_PATH}/llm/health` reports the active provider; `?probe=true` runs a cached (5 min), rate-limited live test. Canonical URL is `/litigaforge/llm/health`; the Node api-server also reverse-proxies `/api/llm/*` → the Python service so `/api/llm/health` works too (added because users expect the `/api/...` namespace). litellm is lazy-imported (heavy); pinned in `requirements.txt` (install with `pip`, not the `uv` packager which fails on Replit's read-only nix store)
-- Tailwind v4, light/white UI — no `@apply dark`
-- Mobile layout: sidebar hidden on mobile, replaced by hamburger drawer + fixed bottom tab bar (h-16); main content has `pb-16 md:pb-0`
-- Code splitting: vite.config.ts splits react-vendor, motion, query, ui into separate chunks
+- `BASE_PATH=/litigaforge`: backend mounts all routes at this prefix; the proxy routes `/litigaforge/*` → port 5000.
+- AI fallback chain: Claude → Gemini → GPT-5 → smart regex + data-driven templates (never generic output). No user API keys needed — all via Replit's proxy.
+- LiteLLM layer (`llm/config.py` + `llm/legal_llm.py`): auto-wires the free Replit proxy creds; switch provider with `LLM_MODEL` alone (override with `LLM_API_BASE`/`LLM_API_KEY`). `LLM_TIMEOUT` ≥60s. Lazy-imported; pinned in `requirements.txt` (install with `pip`, not the `uv` packager). Health: `GET /litigaforge/llm/health` (`?probe=true` = cached live test); also reverse-proxied at `/api/llm/*`.
+- Tailwind v4, light/white UI (no dark mode).
+- Mobile layout: sidebar hidden, replaced by hamburger drawer + fixed bottom tab bar (`pb-16 md:pb-0`).
+- Code splitting in `vite.config.ts` (react-vendor, motion, query, ui chunks).
 
-## Database Schema (PostgreSQL)
+## Blog & SEO infrastructure
+
+The blog is a **Cloudflare Worker** (static Astro assets, NOT Pages), live at `https://litigaforge-blog.arif-806.workers.dev/blog/` (custom domain `blog.litigaforge.com` pending DNS). Pipeline `.github/workflows/pipeline.yml`: generate articles → commit via GitHub API → `astro build` → `wrangler deploy`. Public repo = free unlimited Actions; `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` are GitHub repo secrets (no expiry).
+
+- **Reliable trigger** — GitHub's free cron silently drops most scheduled runs, so the dependable trigger is baked into the always-on `api-server` process (`src/lib/blogScheduler.ts`, started from `src/index.ts`): fires a GitHub `workflow_dispatch` (authenticated with the no-expiry PAT `GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE`) every 2h at :15 IST, prod-only (`NODE_ENV==="production"`), per-run cap 2 articles. **Takes effect after a republish.** GitHub `schedule:` cron + `scripts/trigger-blog.sh` remain as harmless fallbacks (pipeline has a `content-pipeline` concurrency group).
+- **Pause/resume (no code change)** — `pipeline.py` is FAIL-CLOSED on the blog repo's Actions variable `GENERATION_ENABLED` (`"true"` = live; anything else = paused). Flip it in `arif806-cyber/litigaforge-blog` — no republish needed.
+- **Content engine** — per-country daily quota (~7/day: India 2, US/UK/UAE/Germany 1, +1 rotating AU/CA/SG), 10-category rotation, slug ≤70 chars, min word count w/ one retry, and a daily-target gate (today's count ≥ `DAILY_TARGET` 7 → publishes **0 by design**). Old slugs **301-redirect** to canonical via the Worker's `public/_redirects` and at the apex via `src/lib/blogRedirects.ts` (both `/blog/<old>` and `/blog/<old>/` forms).
+- **Apex `litigaforge.com/blog`** — domain is on GoDaddy (not Cloudflare), so the Express `api-server` reverse-proxies `/blog`, `/blog/*`, `/_astro/*` to the Worker; the litigaforge-ui PWA service worker denylists `/blog` + `/_astro`. **Takes effect after a republish.**
+- **Dynamic `/sitemap.xml`** — `api-server` serves a sitemap merging static app URLs + live blog articles (crawled from the Worker, cached 1h, static fallback). **After republish, resubmit in Google Search Console.**
+
+## Where things live
+
+### Frontend (`artifacts/litigaforge-ui/src/`)
+
+Pages (`pages/`), route in parens:
+- `login.tsx` (`/login`), `register.tsx` (`/register`) — JWT auth (localStorage `lf_token`), Client vs Lawyer tabs
+- `client-dashboard.tsx` (`/client-dashboard`) — assigned cases, stage timeline, match proposals, AI explanations, lawyer contact, doc upload, NALSA helpline; navy sidebar
+- `lawyer-dashboard` (`/lawyer-dashboard`) — lawyer landing
+- `documents.tsx` (`/documents`) — all client docs: search, download, share (Web Share + WhatsApp), delete, upload
+- `post-case.tsx` (`/post-case`) — post a case (anonymous option, 9 types, budget range)
+- `my-cases.tsx` (`/my-cases`) — track posted cases + match proposals (accept/decline)
+- `matches.tsx` (`/matches`) — AI match scores (0–100), AI explanations, accept/decline
+- `legal-chat.tsx` (`/legal-chat`) — AI drafting assistant, 4 templates, live chat
+- `ask.tsx` (`/ask`) — Legal Q&A, AI answers instantly + community knowledge base
+- `review.tsx` (`/review`) — document analyzer: risk scoring, missing clauses, recommendations
+- `judgments.tsx` (`/judgments`) + `judgment-detail.tsx` — judgment digest/finder + IndianKanoon links
+- `lawyers.tsx` (`/lawyers`) — advocate directory (verification badges, ratings, hourly rates)
+- `legal-aid.tsx` (`/legal-aid`) — NALSA/TSLSA eligibility wizard + helplines
+- `free-documents.tsx` (`/free-documents`) + `document-template.tsx` — 10 AI doc templates + dynamic fill form
+- `subscription.tsx` (`/subscription`) — plan comparison & upgrade/downgrade
+- `about.tsx`, `contact.tsx`, `privacy.tsx` (alias `/privacy-policy`), `terms.tsx` — AdSense-required public pages, all ending in shared `LegalDisclaimerFooter` (contact email `legal@litigaforge.com`); `contact.tsx` posts to `POST /contact`; `privacy.tsx` has Cookies + AdSense sections
+- `use-cases.tsx` — redirects to `/ask`
+
+All main routes are protected via `ProtectedRoute` (`AuthProvider` in `lib/auth-context.tsx`).
+
+Components/utils:
+- `components/layout.tsx` — sidebar ("Match & Connect" + "Legal Tools"); navy (#1a2744) for clients, white for lawyers; mobile fixed bottom tabs
+- `components/legal-disclaimer.tsx` — footer disclaimer + FirstVisitDisclaimer modal
+- `components/graphics/` — ParticleCanvas, ScalesHero, EmptyStateArt
+- `lib/api.ts` — `apiFetch` (auto-attaches Bearer); BASE `/litigaforge`
+- `lib/auth-context.tsx` — AuthProvider, useAuth, TIER_LABELS, TIER_LIMITS
+
+### Backend (`artifacts/litigaforge-ai/`)
+
+- `main.py` — FastAPI app: lifespan, CORS, rate limits, table init, includes 10 routers
+- `routers/` — `auth`, `subscription` (Razorpay), `matching`, `chat`, `community` (Q&A, analyzer, judgment finder, directory, legal aid), `watch`, `alerts` (WhatsApp/reminders), `admin` (lawyer verification, user mgmt), `lawyer` (lawyer + client case CRUD), `judgments`
+- `database.py` — asyncpg pool (fetch/fetchrow/execute/executemany)
+- `auth.py` — bcrypt + JWT (cookie-first, Bearer fallback); `payments.py` — Razorpay; `rate_limit.py` — slowapi; `ai_brain.py` — multi-AI cascade; `alerts/whatsapp.py` — Twilio
+
+## Database schema (PostgreSQL)
 
 | Table | Purpose |
 |---|---|
@@ -126,9 +94,11 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 | `client_documents` | id, case_id FK, client_id FK, filename, file_type, file_size, file_path, file_url, created_at |
 | `chat_threads` | id, match_id FK, title, created_at |
 | `chat_messages` | id, thread_id FK, sender_id FK, sender_role, content, created_at |
-| `contact_messages` | id, name, email, subject, message, created_at — public Contact Us form submissions |
+| `contact_messages` | id, name, email, subject, message, created_at — public Contact Us submissions |
 
-## Auth & Subscription
+## API reference
+
+### Auth & subscription
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
@@ -140,7 +110,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 | `POST /subscription/verify` | Cookie / Bearer | Verify Razorpay payment, activate tier |
 | `POST /subscription/upgrade` | — | **Deprecated** — returns 410 Gone |
 
-### Client Dashboard (API)
+### Client dashboard
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
@@ -152,73 +122,60 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 | `GET /client/documents` | Bearer | List ALL documents across all cases |
 | `DELETE /client/documents/{id}` | Bearer | Delete a client's document |
 
-JWT stored in `localStorage` key `lf_token`; `AuthProvider` in `src/lib/auth-context.tsx`. All main routes protected via `ProtectedRoute`.
-
-## New Community Services (API)
+### Community services
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
-| `POST /contact` | None | Submit Contact Us message — saved to `contact_messages` (rate-limited 5/min, email validated, subject whitelisted) |
-| `POST /ask` | None | Ask legal question — AI answers instantly |
-| `GET /ask` | None | Browse past Q&As (optional `?category=` filter) |
+| `POST /contact` | None | Submit Contact Us message → `contact_messages` (rate-limited 5/min, validated) |
+| `POST /ask` / `GET /ask` | None | Ask legal question (AI answers) / browse past Q&As (`?category=`) |
 | `POST /document/analyze` | None | Document risk score, missing clauses, recommendations |
 | `POST /judgments/search` | None | Search case law — AI returns 5 precedents |
-| `GET /lawyers` | None | Search advocate directory |
-| `POST /lawyers/register` | Bearer | Register as an advocate |
+| `GET /lawyers` / `POST /lawyers/register` | None / Bearer | Search directory / register as advocate |
 | `GET /legal-aid/contacts` | None | NALSA helpline + all 8 TSLSA DLSA contacts |
-| `POST /cases/requirements` | Bearer | Post a new case requirement |
-| `GET /cases/requirements` | None | Browse all open requirements |
-| `GET /cases/requirements/mine` | Bearer | Client's own requirements |
+| `POST /cases/requirements` / `GET /cases/requirements` / `GET /cases/requirements/mine` | Bearer / None / Bearer | Post / browse / own case requirements |
 | `POST /match/find-lawyers` | Bearer | AI match: top 10 scored lawyers |
-| `GET /matches/client` | Bearer | Client match proposals |
-| `GET /matches/lawyer` | Bearer | Lawyer match proposals |
-| `POST /matches/{id}/accept` | Bearer | Accept a match |
-| `POST /matches/{id}/decline` | Bearer | Decline a match |
+| `GET /matches/client` / `GET /matches/lawyer` | Bearer | Client / lawyer match proposals |
+| `POST /matches/{id}/accept` / `POST /matches/{id}/decline` | Bearer | Accept / decline a match |
 | `POST /ai-legal-chat` | Bearer | AI legal drafting chat with disclaimer |
-| `GET /chat/threads` | Bearer | List chat threads |
-| `POST /chat/threads` | Bearer | Create new chat thread |
-| `GET /chat/messages/{id}` | Bearer | Get thread messages |
-| `POST /chat/messages/{id}` | Bearer | Send message to thread |
+| `GET /chat/threads` / `POST /chat/threads` | Bearer | List / create chat threads |
+| `GET /chat/messages/{id}` / `POST /chat/messages/{id}` | Bearer | Get / send thread messages |
 
-## Product (pages)
+## Environment variables & secrets
 
-- **Login** (`/login`): email + password sign-in
-- **Register** (`/register`): name + email + password, starts on Free tier
-- **Client Dashboard** (`/client-dashboard`): default landing for clients
-- **Lawyer Dashboard** (`/lawyer-dashboard`): default landing for lawyers
-- **Post a Case** (`/post-case`): client case posting with anonymous option, 9 case types, budget range
-- **My Cases** (`/my-cases`): client tracks posted cases and match proposals
-- **Matches** (`/matches`): AI match scores, accept/decline lawyer proposals
-- **AI Legal Chat** (`/legal-chat`): interactive drafting assistant with templates
-- **Legal Q&A** (`/ask`): ask any question, Claude AI answers instantly
-- **Document Analyzer** (`/review`): paste contract/FIR, AI flags risks
-- **Judgment Finder** (`/judgments`): search precedents + IndianKanoon links
-- **Lawyer Directory** (`/lawyers`): verified TG/AP advocates with badges, ratings, hourly rates
-- **Free Legal Aid** (`/legal-aid`): NALSA eligibility wizard + DLSA contacts
-- **Subscription** (`/subscription`): plan comparison, upgrade/downgrade
-- **About Us** (`/about`): company info, markets, features (AdSense-required)
-- **Contact Us** (`/contact`): working contact form saved to DB (AdSense-required)
-- **Privacy Policy** (`/privacy`, alias `/privacy-policy`) & **Terms** (`/terms`): AdSense-required legal pages; all four public pages render the shared footer with Company links + copyright line
-- **Blog** (`/blog`): redirects to `https://blog.litigaforge.com` — auto-publishes AI legal guides via Reddit pipeline
+Shared (set in Replit):
+
+| Variable | Value | Notes |
+|---|---|---|
+| `BASE_PATH` | `/litigaforge` | Backend route prefix |
+| `PORT` | `5000` | Backend port |
+| `DATABASE_URL` | (auto-set) | PostgreSQL connection string |
+| `SESSION_SECRET` | (Secret) | JWT signing |
+
+Optional secrets (enable extra features):
+
+| Secret | Enables |
+|---|---|
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (`whatsapp:+14155238886`), `ADVOCATE_WHATSAPP` | WhatsApp alerts |
+| `SMTP_HOST`, `SMTP_PORT` (587/465), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email notifications (defaults: port 587, FROM = SMTP_USER) |
 
 ## User preferences
 
 - Full mobile compatibility (Android + iOS)
 - Light/white UI with amber/gold accents and subtle particle animations
-- All work should be saved to GitHub: repo `arif806-cyber/litigaforge-ai`, branch `feature/arifbase`
+- Save all work to GitHub: repo `arif806-cyber/litigaforge-ai`, branch `feature/arifbase`
 
 ## Gotchas
 
-- Never nest `<Link>` inside `<a>` — wouter's Link renders as `<a>`
-- `BASE_PATH` is now a shared env var — do NOT add it inline to workflow commands
-- `data-testid` attributes must be preserved on all interactive elements
-- pnpm workspaces: run build/dev with `--filter @workspace/<name>`, never `pnpm dev` at root
-- WhatsApp sandbox: Twilio sandbox number is `whatsapp:+14155238886`; advocate must first send join message to activate
-- Judgment URLs: existing slugs are **NEVER renamed**. Tolerant **301-redirects** auto-forward truncated / wrong-court / stray-keyword links to the canonical URL — FastAPI `GET /judgments/resolve/{court}/{year}/{slug}` (`routers/judgments.py` `_resolve_canonical`, unique-match-only) is called by api-server `_judgmentRedirectTarget` (`app.ts`, real 301, 10-min cache, country-prefix preserved) and as a client-side net in `judgment-detail.tsx`. New ingested judgments get clean `party1-v-party2` slugs via `_case_slug` (`judgment_ingest.py`). Curated landmark judgments are upserted on **every** backend startup (`_ensure_sample_judgments` in `main.py`, `ON CONFLICT DO NOTHING`) so additions (e.g. Maneka Gandhi) reach already-populated dev + **prod** DBs on republish — prod can't be written out-of-band
-- GitHub push / repo edits: **the main agent is hard-blocked from local git writes** (`git add`/`commit`/`push` return "Destructive git operations are not allowed in the main agent"). To push to GitHub, create a **background Project Task** (in Plan mode) that runs `git push origin feature/arifbase` (clean fast-forward, **non-force**) — task agents can run git writes. As of 2026-06-13, `origin/feature/arifbase` was stale since **2026-05-24** because these pushes were silently blocked; the deployed app builds from the Replit workspace (not GitHub), so the live app is unaffected. The no-expiry classic PAT secret `GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE` (scopes `repo`+`workflow`, never expires) is still valid — read its VALUE via the bash tool env, NOT the code_execution sandbox; for the REST API use `Authorization: Bearer`, for git-over-HTTPS use Basic auth (token as password), not Bearer. The blog auto-publish pipeline does NOT use any user PAT — it uses the GitHub Actions built-in `secrets.GITHUB_TOKEN` (per-run, can't expire), so token expiry never breaks the blog.
+- Never nest `<Link>` inside `<a>` — wouter's Link renders as `<a>`.
+- `BASE_PATH`/`PORT` are shared env vars — never inline them in workflow commands.
+- Preserve `data-testid` on all interactive elements.
+- pnpm workspaces: build/dev with `--filter @workspace/<name>`, never `pnpm dev` at root.
+- WhatsApp sandbox number `whatsapp:+14155238886`; advocate must send the join message first.
+- **Judgment slugs are NEVER renamed.** Stale / truncated / wrong-court links 301-redirect to canonical (unique-match only) via FastAPI `GET /judgments/resolve/{court}/{year}/{slug}` + api-server `_judgmentRedirectTarget` (real 301, 10-min cache) + a client-side net in `judgment-detail.tsx`. New ingests get clean `party1-v-party2` slugs (`_case_slug`). Curated landmark judgments are upserted on **every** backend startup (`_ensure_sample_judgments`, `ON CONFLICT DO NOTHING`), so additions reach already-populated dev + **prod** DBs on republish.
+- **The main agent cannot run local git writes** (`git add`/`commit`/`push` are blocked). To push to GitHub, create a **background Project Task** (Plan mode) running `git push origin feature/arifbase` (clean fast-forward, non-force). PAT secret `GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE` (scopes `repo`+`workflow`, no expiry) — read its value via the **bash tool env**, NOT the code_execution sandbox; REST API uses `Authorization: Bearer`, git-over-HTTPS uses Basic auth (token as password). The blog pipeline uses the Actions built-in `GITHUB_TOKEN`, so user-PAT expiry never breaks it.
 
 ## Pointers
 
-- See `README.md` (root) for full project documentation including all env vars, API reference
-- See `deployable/README.md` for Docker deployment and mobile store submission guide
-- See the `pnpm-workspace` skill for workspace structure details
+- Root `README.md` — full project docs (all env vars, API reference)
+- `deployable/README.md` — Docker deploy + mobile store submission guide
+- `pnpm-workspace` skill — workspace structure details

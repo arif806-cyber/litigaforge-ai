@@ -85,7 +85,7 @@ export default function Judgments() {
   const digest = useQuery<DigestResponse>({
     queryKey: ["judgments-digest", digestCourt],
     queryFn: () =>
-      apiFetch(`/judgments${digestCourt ? `?court=${encodeURIComponent(digestCourt)}` : ""}`),
+      apiFetch(`/judgments?limit=100${digestCourt ? `&court=${encodeURIComponent(digestCourt)}` : ""}`),
   });
 
   const courtOptions = [

@@ -67,6 +67,15 @@ the client times out (`HTTP 000` after ~25s) while the new `background=true` pat
 only picks up code changes on **republish/Publish** (deploy builds from the Replit workspace,
 not GitHub).
 
+## Judgments digest UI under-render (frontend cap)
+The `/judgments` digest page renders the list from `GET /judgments`, but the badge
+shows `total`. Backend `list_judgments` defaults `limit=20` (cap `le=100`), so if the
+UI omits `limit` the page silently shows only 20 cards while the badge says e.g. "27".
+**Fix:** the digest query must request `limit=100` explicitly (court filter becomes
+`&court=...`). **Forward-looking:** once published judgments exceed 100 this recurs —
+add real pagination / "Load more" before the catalog passes 100, or the page again
+under-renders vs the total.
+
 ## Gotchas observed
 - AI summary cascade: Claude and OpenAI frequently time out at 15s and fall through
   to Gemini, so each doc takes ~30s. `skipped_no_summary` stays 0 when a fallback
