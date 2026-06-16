@@ -1,0 +1,167 @@
+Task 2 of 4: Install and configure portable LiteLLM 
+AI layer for LitigaForge.
+
+This is the AI brain for the entire platform. It must 
+be provider-agnostic so we can migrate to AWS Bedrock 
+or any other provider by changing one environment 
+variable only.
+
+STEP 1 — Install dependencies
+pip install litellm anthropic
+
+Do NOT install ollama — Replit doesn't support local 
+model servers. We will use Anthropic Claude as our 
+provider for now (we already have the API key).
+
+STEP 2 — Create backend/llm/config.py
+import os
+
+LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5-20251001")
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1000"))
+
+# Migration guide — change LLM_MODEL env var only:
+# Anthropic (current): claude-haiku-4-5-20251001
+# AWS Bedrock:         bedrock/meta.llama3-8b-instruct-v1:0
+# Together.ai:         together_ai/mistral-7b-instruct-v0.2
+# OpenAI:              gpt-4o-mini
+
+LEGAL_SYSTEM_PROMPT = """
+You are LexForge, an AI legal assistant specialized 
+in Indian law. You have deep knowledge of:
+- Indian Penal Code (IPC) and Bharatiya Nyaya Sanhita (BNS)
+- Code of Criminal Procedure (CrPC/BNSS)
+- Civil Procedure Code (CPC)
+- Constitution of India
+- Supreme Court and High Court judgments
+- Family law, property law, consumer law, labour law
+- Laws of USA, UK, UAE, Australia, Canada, Singapore, Germany
+
+Rules:
+- Always cite actual sections and real case names
+- Never hallucinate case names or section numbers
+- If unsure, say "I recommend verifying with a lawyer"
+- Respond in the same language the user writes in
+- Keep responses clear and accessible to non-lawyers
+"""
+
+STEP 3 — Create backend/llm/legal_llm.py
+from litellm import completion
+from backend.llm.config import (
+    LLM_MODEL, LLM_MAX_TOKENS, LEGAL_SYSTEM_PROMPT
+)
+
+def ask_legal_question(
+    question: str,
+    context: str = "",
+    language: str = "en"
+) -> str:
+    messages = [
+        {"role": "system", "content": LEGAL_SYSTEM_PROMPT}
+    ]
+    if context:
+        messages.append({
+            "role": "system",
+            "content": f"Relevant case context:\n{context}"
+        })
+    messages.append({"role": "user", "content": question})
+    
+    response = completion(
+        model=LLM_MODEL,
+        messages=messages,
+        max_tokens=LLM_MAX_TOKENS
+    )
+    return response.choices[0].message.content
+
+def summarize_judgment(judgment_text: str) -> dict:
+    prompt = """
+    Analyze this Indian court judgment and return a 
+    JSON object with exactly these keys:
+    {
+      "summary_en": "3 sentence plain English summary",
+      "summary_hi": "3 sentence plain Hindi summary",
+      "outcome": "one of: Upheld/Dismissed/Landmark/Remanded",
+      "acts_cited": ["list", "of", "acts", "and", "sections"],
+      "area_of_law": "primary legal area",
+      "key_principle": "the main legal principle in one sentence"
+    }
+    
+    Return ONLY the JSON object. No markdown, no backticks,
+    no explanation. Just the raw JSON.
+    
+    Judgment text:
+    """ + judgment_text[:4000]
+    
+    messages = [
+        {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt}
+    ]
+    response = completion(
+        model=LLM_MODEL,
+        messages=messages,
+        max_tokens=LLM_MAX_TOKENS
+    )
+    import json
+    raw = response.choices[0].message.content
+    clean = raw.replace("```json", "").replace("```", "").strip()
+    return json.loads(clean)
+
+def translate_to_hindi(text: str) -> str:
+    messages = [
+        {"role": "system", "content": 
+         "Translate this legal text to simple Hindi. "
+         "Keep legal terms in English but explain them "
+         "in brackets in Hindi."},
+        {"role": "user", "content": text}
+    ]
+    response = completion(
+        model=LLM_MODEL,
+        messages=messages,
+        max_tokens=LLM_MAX_TOKENS
+    )
+    return response.choices[0].message.content
+
+STEP 4 — Add to .env / Replit Secrets
+Confirm ANTHROPIC_API_KEY is already in Replit secrets.
+Add:
+LLM_MODEL=claude-haiku-4-5-20251001
+LLM_MAX_TOKENS=1000
+
+STEP 5 — Create test endpoint in main.py
+GET /llm/health
+Returns:
+{
+  "status": "ok",
+  "provider": current LLM_MODEL value,
+  "test_response": call ask_legal_question with 
+    "What is Article 21 of the Indian Constitution?" 
+    and return the answer
+}
+
+STEP 6 — Wire into existing judgment pages
+In routers/judgments.py, update the admin seed endpoint
+POST /admin/judgments/seed to:
+- After inserting a judgment, if summary_en is empty,
+  call summarize_judgment(full_text) automatically
+- Store the returned summary_en, summary_hi, 
+  acts_cited, outcome, key_principle back to DB
+
+STEP 7 — Wire into existing legal chat
+Find the existing legal chat endpoint (wherever 
+/ask or /chat is handled in main.py or routers/).
+Replace any existing AI call with ask_legal_question()
+from legal_llm.py so all AI calls go through 
+LiteLLM now.
+
+STEP 8 — Verify
+1. curl https://litigaforge.com/api/llm/health
+   → Should return status ok + Article 21 answer
+
+2. Call POST /admin/judgments/seed again
+   → Should auto-generate summaries for all 3 cases
+   → Check DB: SELECT summary_en FROM judgments LIMIT 3
+
+3. Confirm /in/judgments detail pages now show 
+   AI-generated summaries
+
+Show me each file created and the health endpoint 
+response before finishing.
