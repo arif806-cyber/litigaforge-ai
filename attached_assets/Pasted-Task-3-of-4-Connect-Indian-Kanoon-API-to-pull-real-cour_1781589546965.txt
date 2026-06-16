@@ -1,0 +1,273 @@
+Task 3 of 4: Connect Indian Kanoon API to pull real 
+court judgments automatically.
+
+We have an Indian Kanoon API token already in Replit 
+secrets as INDIANKANOON_TOKEN.
+
+STEP 1 — Create backend/ingest/indiankanoon.py
+
+import os
+import httpx
+import asyncio
+from typing import Optional
+
+IK_TOKEN = os.getenv("INDIANKANOON_TOKEN")
+IK_BASE = "https://api.indiankanoon.org"
+HEADERS = {"Authorization": f"Token {IK_TOKEN}"}
+
+# Cost tracker — log every API call
+# Search = ₹0.50, Document = ₹0.20, Fragment = ₹0.05
+
+async def search_judgments(
+    query: str,
+    pagenum: int = 0,
+    court: str = None
+) -> dict:
+    """Search Indian Kanoon. Cost: ₹0.50 per call."""
+    params = {"formInput": query, "pagenum": pagenum}
+    if court:
+        params["court"] = court
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            f"{IK_BASE}/search/",
+            data=params,
+            headers=HEADERS
+        )
+        r.raise_for_status()
+        return r.json()
+
+async def get_document(doc_id: str) -> dict:
+    """Fetch full judgment. Cost: ₹0.20 per call."""
+    await asyncio.sleep(2)  # Rate limit: 1 req/2 sec
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{IK_BASE}/doc/{doc_id}/",
+            headers=HEADERS
+        )
+        r.raise_for_status()
+        return r.json()
+
+async def get_doc_metadata(doc_id: str) -> dict:
+    """Fetch metadata only. Cost: ₹0.02 per call."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{IK_BASE}/docmeta/{doc_id}/",
+            headers=HEADERS
+        )
+        r.raise_for_status()
+        return r.json()
+
+STEP 2 — Create backend/ingest/pipeline.py
+
+This is the main ingestion pipeline:
+
+from backend.ingest.indiankanoon import (
+    search_judgments, get_document, get_doc_metadata
+)
+from backend.llm.legal_llm import acomplete
+from database import get_db_connection
+import re, json, logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+# Court slug mapping
+COURT_SLUGS = {
+    "Supreme Court of India": "supreme-court-of-india",
+    "High Court of Andhra Pradesh": "andhra-pradesh-hc",
+    "High Court of Telangana": "telangana-hc",
+    "High Court of Delhi": "delhi-hc",
+    "High Court of Bombay": "bombay-hc",
+    "High Court of Madras": "madras-hc",
+    "High Court of Calcutta": "calcutta-hc",
+    "High Court of Karnataka": "karnataka-hc",
+}
+
+def make_slug(case_name: str) -> str:
+    """Generate party1-v-party2 slug."""
+    name = re.sub(
+        r'\b(vs?\.?|versus)\b', 'v', 
+        case_name, flags=re.IGNORECASE
+    )
+    name = re.sub(r'[^a-zA-Z0-9\s-]', '', name)
+    name = re.sub(r'\s+', '-', name.strip()).lower()
+    # Keep only first 60 chars at word boundary
+    if len(name) > 60:
+        name = name[:60].rsplit('-', 1)[0]
+    return name
+
+async def ingest_search_results(
+    query: str,
+    court: str = None,
+    max_docs: int = 10
+) -> dict:
+    """
+    Search IK, fetch top results, 
+    AI-summarize, store in DB.
+    Returns: {ingested: N, skipped: N, errors: N}
+    """
+    stats = {"ingested": 0, "skipped": 0, "errors": 0}
+    
+    results = await search_judgments(query, court=court)
+    docs = results.get("docs", [])[:max_docs]
+    
+    for doc in docs:
+        try:
+            doc_id = str(doc.get("tid"))
+            
+            # Check if already exists
+            async with get_db_connection() as conn:
+                existing = await conn.fetchval(
+                    "SELECT id FROM judgments WHERE source_url LIKE $1",
+                    f"%{doc_id}%"
+                )
+                if existing:
+                    stats["skipped"] += 1
+                    continue
+            
+            # Fetch full document
+            full_doc = await get_document(doc_id)
+            
+            # Extract fields
+            case_name = full_doc.get("title", 
+                        doc.get("title", "Unknown"))
+            court_name = full_doc.get("court", "")
+            court_slug = COURT_SLUGS.get(
+                court_name, 
+                court_name.lower().replace(" ", "-")
+            )
+            
+            # Parse date
+            date_str = full_doc.get("publishdate", "")
+            try:
+                judgment_date = datetime.strptime(
+                    date_str, "%d-%m-%Y"
+                ).date()
+                year = judgment_date.year
+            except:
+                year = datetime.now().year
+                judgment_date = None
+            
+            full_text = full_doc.get("doc", "")
+            slug = make_slug(case_name)
+            source_url = (
+                f"https://indiankanoon.org/doc/{doc_id}/"
+            )
+            
+            # AI summarize
+            summary_data = {}
+            try:
+                prompt = f"""
+                Analyze this Indian court judgment.
+                Return ONLY a JSON object with keys:
+                summary_en, summary_hi, outcome, 
+                acts_cited (array), area_of_law, 
+                key_principle
+                
+                Judgment: {full_text[:3000]}
+                """
+                raw = await acomplete(prompt)
+                clean = raw.replace(
+                    "```json",""
+                ).replace("```","").strip()
+                summary_data = json.loads(clean)
+            except Exception as e:
+                logger.warning(f"AI summary failed: {e}")
+                summary_data = {
+                    "summary_en": doc.get("headline",""),
+                    "summary_hi": "",
+                    "outcome": "Unknown",
+                    "acts_cited": [],
+                    "area_of_law": "General",
+                    "key_principle": ""
+                }
+            
+            # Store in DB
+            async with get_db_connection() as conn:
+                await conn.execute("""
+                    INSERT INTO judgments (
+                        case_name, court, court_slug,
+                        year, judgment_date, slug,
+                        full_text, summary_en, summary_hi,
+                        acts_cited, outcome, area_of_law,
+                        key_principle, source_url,
+                        source_name, status
+                    ) VALUES (
+                        $1,$2,$3,$4,$5,$6,$7,$8,$9,
+                        $10,$11,$12,$13,$14,$15,$16
+                    )
+                    ON CONFLICT (court_slug, year, slug) 
+                    DO NOTHING
+                """,
+                    case_name, court_name, court_slug,
+                    year, judgment_date, slug,
+                    full_text,
+                    summary_data.get("summary_en",""),
+                    summary_data.get("summary_hi",""),
+                    summary_data.get("acts_cited",[]),
+                    summary_data.get("outcome","Unknown"),
+                    summary_data.get("area_of_law","General"),
+                    summary_data.get("key_principle",""),
+                    source_url, "indiankanoon", "published"
+                )
+                stats["ingested"] += 1
+                logger.info(f"Ingested: {case_name}")
+                
+        except Exception as e:
+            logger.error(f"Error ingesting {doc_id}: {e}")
+            stats["errors"] += 1
+    
+    return stats
+
+STEP 3 — Add admin endpoints to main.py
+
+POST /admin/ingest/search
+Body: {
+  "query": "constitutional law Article 21",
+  "court": "supremecourt",
+  "max_docs": 5
+}
+Calls ingest_search_results() and returns stats.
+Requires admin auth (check existing admin auth pattern).
+
+GET /admin/ingest/status
+Returns:
+{
+  "total_judgments": count from DB,
+  "latest_judgment": most recent case_name + date,
+  "api_balance_warning": true if balance < 100
+}
+
+STEP 4 — Add IKanoon attribution
+On every judgment page that has 
+source_name = "indiankanoon", show:
+"powered by IKanoon" logo at bottom of page.
+Use the mobile logo (small icon) on mobile,
+full logo on desktop.
+This is required by IKanoon Terms of Service.
+
+STEP 5 — Test the pipeline
+After building, run this test:
+
+POST /admin/ingest/search
+{
+  "query": "Article 21 right to life Supreme Court",
+  "court": "supremecourt", 
+  "max_docs": 3
+}
+
+This should:
+- Call IK search API (cost: ₹0.50)
+- Fetch 3 documents (cost: ₹0.60)
+- AI summarize each one
+- Store in DB
+- Return: {"ingested": 3, "skipped": 0, "errors": 0}
+
+Then verify:
+- GET /api/judgments returns more than 3 results
+- New judgment pages load with AI summaries
+- "Powered by IKanoon" logo visible on new pages
+
+Show me each file created and the test results.
+Do not run the ingestion automatically yet —
+manual trigger only for now.

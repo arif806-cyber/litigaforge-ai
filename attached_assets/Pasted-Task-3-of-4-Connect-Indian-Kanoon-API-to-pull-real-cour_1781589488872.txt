@@ -1,0 +1,86 @@
+Task 3 of 4: Connect Indian Kanoon API to pull real 
+court judgments automatically.
+
+We have an Indian Kanoon API token already in Replit 
+secrets as INDIANKANOON_TOKEN.
+
+STEP 1 — Create backend/ingest/indiankanoon.py
+
+import os
+import httpx
+import asyncio
+from typing import Optional
+
+IK_TOKEN = os.getenv("INDIANKANOON_TOKEN")
+IK_BASE = "https://api.indiankanoon.org"
+HEADERS = {"Authorization": f"Token {IK_TOKEN}"}
+
+# Cost tracker — log every API call
+# Search = ₹0.50, Document = ₹0.20, Fragment = ₹0.05
+
+async def search_judgments(
+    query: str,
+    pagenum: int = 0,
+    court: str = None
+) -> dict:
+    """Search Indian Kanoon. Cost: ₹0.50 per call."""
+    params = {"formInput": query, "pagenum": pagenum}
+    if court:
+        params["court"] = court
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            f"{IK_BASE}/search/",
+            data=params,
+            headers=HEADERS
+        )
+        r.raise_for_status()
+        return r.json()
+
+async def get_document(doc_id: str) -> dict:
+    """Fetch full judgment. Cost: ₹0.20 per call."""
+    await asyncio.sleep(2)  # Rate limit: 1 req/2 sec
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{IK_BASE}/doc/{doc_id}/",
+            headers=HEADERS
+        )
+        r.raise_for_status()
+        return r.json()
+
+async def get_doc_metadata(doc_id: str) -> dict:
+    """Fetch metadata only. Cost: ₹0.02 per call."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(
+            f"{IK_BASE}/docmeta/{doc_id}/",
+            headers=HEADERS
+        )
+        r.raise_for_status()
+        return r.json()
+
+STEP 2 — Create backend/ingest/pipeline.py
+
+This is the main ingestion pipeline:
+
+from backend.ingest.indiankanoon import (
+    search_judgments, get_document, get_doc_metadata
+)
+from backend.llm.legal_llm import acomplete
+from database import get_db_connection
+import re, json, logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+# Court slug mapping
+COURT_SLUGS = {
+    "Supreme Court of India": "supreme-court-of-india",
+    "High Court of Andhra Pradesh": "andhra-pradesh-hc",
+    "High Court of Telangana": "telangana-hc",
+    "High Court of Delhi": "delhi-hc",
+    "High Court of Bombay": "bombay-hc",
+    "High Court of Madras": "madras-hc",
+    "High Court of Calcutta": "calcutta-hc",
+    "High Court of Karnataka": "karnataka-hc",
+}
+
+def make_slug(case_name: str)
