@@ -16,6 +16,7 @@ from routers.passkeys     import router as passkeys_router
 from routers.push         import router as push_router
 from routers.judgments    import router as judgments_router
 from routers.research      import router as research_router
+from routers.llm           import router as llm_router
 
 __all__ = [
     "auth_router",
@@ -33,4 +34,5 @@ __all__ = [
     "push_router",
     "judgments_router",
     "research_router",
+    "llm_router",
 ]

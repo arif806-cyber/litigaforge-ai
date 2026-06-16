@@ -21,6 +21,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - Frontend: React 19, Vite, Tailwind CSS v4, Framer Motion, TanStack Query, wouter
 - Backend: Python 3.12, FastAPI, Uvicorn, LangGraph, LangChain
 - AI: Claude Sonnet 4-6 + Gemini 2.5 Flash + GPT-5 via Replit AI Integrations (all free, no key needed)
+- Portable AI layer: `litellm` (`artifacts/litigaforge-ai/llm/`) — provider-agnostic, switchable via the single env var `LLM_MODEL` (default `anthropic/claude-sonnet-4-6` through the free Replit proxy). Powers judgment summarization + `/ask`; `ai_brain.py` cascade stays as fallback
 - Database: PostgreSQL (Replit managed) — users, subscriptions, legal_questions, lawyers, case memory
 - Auth: bcrypt (direct) password hashing, JWT (python-jose), 30-day tokens
 - Mobile: Expo (React Native), Expo Router, NativeWind — in `deployable/mobile/`
@@ -105,6 +106,7 @@ Client-Lawyer Matching Platform + Legal AI for Telangana & AP. Clients post case
 - `BASE_PATH=/litigaforge`: backend router mounts all routes at this prefix; proxy routes `/litigaforge/*` to port 5000
 - AI layer: `ai_brain.py` calls all 3 providers (Claude, Gemini, GPT-5) via Replit's proxy. No API keys needed from user
 - Fallback chain: Claude → Gemini → GPT-5 → smart regex + data-driven templates. Never generic output
+- Portable LiteLLM layer (`llm/config.py` + `llm/legal_llm.py`): default `anthropic/claude-sonnet-4-6` via the free Replit proxy (auto-wires `AI_INTEGRATIONS_ANTHROPIC_*`; `openai/*` auto-wires the OpenAI proxy; other providers use ambient keys). Switch provider with `LLM_MODEL` alone (override creds with `LLM_API_BASE`/`LLM_API_KEY`). `LLM_TIMEOUT` defaults to 60s (long `/ask` answers need it). Used as the PRIMARY path for judgment summarization (`judgment_ingest._summarize`) and `/ask`, each falling back to the `ai_brain.py` cascade on error/empty. `GET {BASE_PATH}/llm/health` reports the active provider; `?probe=true` runs a cached (5 min), rate-limited live test. litellm is lazy-imported (heavy); pinned in `requirements.txt` (install with `pip`, not the `uv` packager which fails on Replit's read-only nix store)
 - Tailwind v4, light/white UI — no `@apply dark`
 - Mobile layout: sidebar hidden on mobile, replaced by hamburger drawer + fixed bottom tab bar (h-16); main content has `pb-16 md:pb-0`
 - Code splitting: vite.config.ts splits react-vendor, motion, query, ui into separate chunks

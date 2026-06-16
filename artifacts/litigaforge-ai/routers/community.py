@@ -23,6 +23,7 @@ from jurisdiction import (
     get_config, advisor_descriptor, jurisdiction_block,
     caselaw_provider, caselaw_link, normalize_code,
 )
+from llm import legal_llm
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
@@ -363,7 +364,18 @@ Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimer
         limit = TIER_LIMITS.get(current_user.get("subscription_tier", "free"), 5)
         raise HTTPException(403, f"Monthly limit reached ({limit} questions/month). Upgrade to continue.")
 
-    answer = _ai(wrap_user_prompt(prompt, req.country), 1800)
+    # Portable LiteLLM layer first; fall back to the multi-provider cascade (_ai).
+    answer = ""
+    if legal_llm.is_configured():
+        try:
+            answer = await legal_llm.acomplete(
+                None, wrap_user_prompt(prompt, req.country), None, 1800
+            )
+        except Exception as e:
+            logger.warning("[/ask] LiteLLM failed; falling back to cascade: %s", e)
+            answer = ""
+    if not (answer or "").strip():
+        answer = _ai(wrap_user_prompt(prompt, req.country), 1800)
     answer = validate_ai_response(answer)
     answer = add_disclaimer(answer)
     if not answer.strip():

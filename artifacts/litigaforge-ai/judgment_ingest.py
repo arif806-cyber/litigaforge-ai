@@ -377,7 +377,13 @@ async def _summarize(case_name: str, court: str, full_text: str) -> Optional[dic
         _call_claude_async, _call_openai_async,
         _call_groq_async, _call_gemini_async,
     )
+    from llm import legal_llm
+    # Portable LiteLLM layer is the PRIMARY summariser; the ai_brain
+    # multi-provider cascade stays as the fallback. legal_llm.acomplete shares
+    # the (system, user, temperature, max_tokens) signature, so it slots in.
     cascade = (_call_claude_async, _call_openai_async, _call_groq_async, _call_gemini_async)
+    if legal_llm.is_configured():
+        cascade = (legal_llm.acomplete,) + cascade
     for strict in (False, True):
         prompt = _build_summary_prompt(case_name, court, full_text, strict)
         for caller in cascade:

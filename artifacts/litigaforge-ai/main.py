@@ -955,6 +955,7 @@ from routers import (
     paid_documents_router,
     passkeys_router, push_router,
     judgments_router, research_router,
+    llm_router,
 )
 from country_router import router as country_router
 
@@ -978,6 +979,7 @@ app.include_router(push_router,        prefix=BASE_PATH)
 app.include_router(judgments_router,   prefix=BASE_PATH)
 app.include_router(research_router,    prefix=BASE_PATH)
 app.include_router(country_router,     prefix=BASE_PATH)
+app.include_router(llm_router,         prefix=BASE_PATH)
 
 @app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
 async def serve_sitemap():
