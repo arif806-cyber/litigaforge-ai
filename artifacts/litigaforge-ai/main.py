@@ -752,6 +752,13 @@ async def lifespan(app: FastAPI):
                     last_sent_at TIMESTAMPTZ
                 )
             """)
+            # `country` was added after the table's first release. CREATE TABLE
+            # IF NOT EXISTS never alters an existing table, so add it explicitly.
+            # Defaults to 'in' (India) — the digest is India-focused today; the
+            # column enables future per-country segmentation.
+            await conn.execute(
+                "ALTER TABLE digest_subscribers ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'in'"
+            )
             # ── Research Portfolio: per-user judgment bookmarks ───────────────
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS judgment_bookmarks (

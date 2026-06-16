@@ -23,11 +23,25 @@ const PERKS = [
   },
 ];
 
+const COUNTRIES = [
+  { code: "in", label: "India" },
+  { code: "us", label: "United States" },
+  { code: "uk", label: "United Kingdom" },
+  { code: "ae", label: "United Arab Emirates" },
+  { code: "de", label: "Germany" },
+  { code: "au", label: "Australia" },
+  { code: "ca", label: "Canada" },
+  { code: "sg", label: "Singapore" },
+];
+
 export default function Digest() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [country, setCountry] = useState("in");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,10 +53,12 @@ export default function Digest() {
     }
     setSubmitting(true);
     try {
-      await apiFetch("/digest/subscribe", {
+      const res = await apiFetch("/digest/subscribe", {
         method: "POST",
-        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), country }),
       });
+      setNeedsConfirm(res?.confirmed === false);
+      setSuccessMsg(typeof res?.message === "string" ? res.message : "");
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -86,12 +102,18 @@ export default function Digest() {
             className="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-6 flex items-start gap-3"
             data-testid="digest-success"
           >
-            <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+            {needsConfirm ? (
+              <Mail className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+            )}
             <div>
-              <p className="font-semibold text-emerald-900">You're subscribed</p>
+              <p className="font-semibold text-emerald-900">
+                {needsConfirm ? "Almost there — check your email" : "You're subscribed"}
+              </p>
               <p className="text-sm text-emerald-800 mt-1">
-                You'll receive the top 5 judgments every morning at 7 AM IST. Every email has a
-                one-click unsubscribe link.
+                {successMsg ||
+                  "You'll receive the top 5 judgments every morning at 7 AM IST. Every email has a one-click unsubscribe link."}
               </p>
             </div>
           </div>
@@ -126,6 +148,25 @@ export default function Digest() {
                 required
                 data-testid="input-email"
               />
+            </div>
+
+            <div>
+              <label htmlFor="digest-country" className="block text-sm font-medium text-foreground mb-1.5">
+                Country
+              </label>
+              <select
+                id="digest-country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className={inputClass}
+                data-testid="select-country"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {error && (

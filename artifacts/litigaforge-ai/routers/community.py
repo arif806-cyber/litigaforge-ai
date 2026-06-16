@@ -2,6 +2,7 @@
 LitigaForge AI — Community Router
 Legal Q&A, document analyzer, judgment finder, lawyer directory, legal aid.
 """
+import asyncio
 import json
 import logging
 import os
@@ -18,6 +19,7 @@ from auth import get_current_user, check_tier_usage
 from rate_limit import limiter
 from database import fetchrow, fetch, execute, fetchval
 from sanitizer import sanitize_text
+from alerts.email import smtp_configured, send_confirmation_email
 from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
 from jurisdiction import (
     get_config, advisor_descriptor, jurisdiction_block,
@@ -29,6 +31,7 @@ logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
 
 _SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com").rstrip("/")
+_BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 
 # ── AI helpers ──────────────────────────────────────────────────────────────────────
@@ -208,6 +211,13 @@ async def submit_contact(req: ContactRequest, request: Request):
 class DigestSubscribeRequest(BaseModel):
     name: str = ""
     email: str
+    country: str = "in"
+
+
+# Countries offered in the signup dropdown. The digest content is India-focused
+# today; the field is stored for future per-country segmentation. Unknown values
+# fall back to 'in'.
+_DIGEST_COUNTRIES = {"in", "us", "uk", "ae", "de", "au", "ca", "sg"}
 
 
 @router.post("/digest/subscribe")
@@ -215,8 +225,16 @@ class DigestSubscribeRequest(BaseModel):
 async def subscribe_digest(req: DigestSubscribeRequest, request: Request):
     """Public signup for the daily Top-5 judgment digest email. No auth.
 
-    Idempotent: re-subscribing an existing email reactivates it and preserves
-    the original unsubscribe token so links in older emails keep working.
+    Double opt-in when email can be delivered: a new/unconfirmed address gets an
+    UNCONFIRMED row plus a confirmation email and only starts receiving the
+    digest after clicking the link (GET /digest/confirm/{token}). When SMTP is
+    NOT configured we cannot send a confirmation email, so we fall back to
+    immediate (single) opt-in — signups never silently break, and the address
+    begins receiving the digest as soon as SMTP is configured.
+
+    Idempotent: re-subscribing reactivates the row and preserves the original
+    unsubscribe token so links in older emails keep working. An already-confirmed
+    address is reactivated without sending another confirmation email.
     """
     try:
         name = sanitize_text(req.name, max_length=120, field_name="name") if req.name else ""
@@ -227,21 +245,71 @@ async def subscribe_digest(req: DigestSubscribeRequest, request: Request):
     if not _EMAIL_RE.match(email) or len(email) > 320:
         raise HTTPException(status_code=422, detail="Please enter a valid email address.")
 
-    token = secrets.token_urlsafe(32)
+    country = (req.country or "in").strip().lower()
+    if country not in _DIGEST_COUNTRIES:
+        country = "in"
+
+    unsub_token = secrets.token_urlsafe(32)
+    confirm_token = secrets.token_urlsafe(32)
+
+    if smtp_configured():
+        # Double opt-in: create / refresh an UNCONFIRMED row, then email a link.
+        row = await fetchrow(
+            """
+            INSERT INTO digest_subscribers
+                (name, email, country, is_active, confirmed, confirm_token, unsubscribe_token)
+            VALUES ($1, $2, $3, TRUE, FALSE, $4, $5)
+            ON CONFLICT (email) DO UPDATE
+            SET is_active = TRUE,
+                name = COALESCE(NULLIF(EXCLUDED.name, ''), digest_subscribers.name),
+                country = EXCLUDED.country,
+                confirm_token = CASE WHEN digest_subscribers.confirmed
+                                     THEN digest_subscribers.confirm_token
+                                     ELSE EXCLUDED.confirm_token END,
+                unsubscribe_token = COALESCE(digest_subscribers.unsubscribe_token,
+                                             EXCLUDED.unsubscribe_token)
+            RETURNING confirmed, confirm_token
+            """,
+            (name.strip() or None), email, country, confirm_token, unsub_token,
+        )
+        if row and row["confirmed"]:
+            return {"ok": True, "confirmed": True,
+                    "message": "You're already subscribed — you'll keep getting the daily digest at 7 AM IST."}
+
+        link = f"{_SITE_URL}{_BASE_PATH}/digest/confirm/{row['confirm_token']}"
+        try:
+            res = await asyncio.wait_for(
+                asyncio.to_thread(send_confirmation_email, email, name.strip() or "", link),
+                timeout=25,
+            )
+            if not res.get("success"):
+                logger.warning("digest: confirmation email to %s failed: %s", email, res.get("error"))
+        except asyncio.TimeoutError:
+            logger.warning("digest: confirmation email to %s timed out", email)
+        except Exception as e:  # never let a mail hiccup 500 the signup
+            logger.warning("digest: confirmation email to %s errored: %s", email, e)
+
+        return {"ok": True, "confirmed": False,
+                "message": "Almost there! Check your email and click the confirmation link "
+                           "to start receiving the daily digest."}
+
+    # SMTP not configured → immediate (single) opt-in fallback.
     await execute(
         """
-        INSERT INTO digest_subscribers (name, email, is_active, confirmed, unsubscribe_token)
-        VALUES ($1, $2, TRUE, TRUE, $3)
+        INSERT INTO digest_subscribers
+            (name, email, country, is_active, confirmed, unsubscribe_token)
+        VALUES ($1, $2, $3, TRUE, TRUE, $4)
         ON CONFLICT (email) DO UPDATE
         SET is_active = TRUE,
             confirmed = TRUE,
             name = COALESCE(NULLIF(EXCLUDED.name, ''), digest_subscribers.name),
+            country = EXCLUDED.country,
             unsubscribe_token = COALESCE(digest_subscribers.unsubscribe_token,
                                          EXCLUDED.unsubscribe_token)
         """,
-        (name.strip() or None), email, token,
+        (name.strip() or None), email, country, unsub_token,
     )
-    return {"ok": True,
+    return {"ok": True, "confirmed": True,
             "message": "You're subscribed! You'll get the top 5 judgments every morning at 7 AM IST."}
 
 
@@ -309,6 +377,42 @@ async def unsubscribe_digest(token: str = ""):
         _unsub_page("You're unsubscribed",
                     "You will no longer receive the LitigaForge daily judgment digest. "
                     "Changed your mind? You can re-subscribe any time.",
+                    ok=True),
+    )
+
+
+@router.get("/digest/confirm/{token}")
+async def confirm_digest(token: str):
+    """Double opt-in confirmation. Marks the subscriber confirmed + active and
+    clears the one-time token. Returns a styled page so the link works directly
+    from any email client (no SPA / JS required)."""
+    token = (token or "").strip()
+    if not token:
+        return HTMLResponse(
+            _unsub_page("Invalid link",
+                        "This confirmation link is missing its token. Please use the "
+                        "link from your confirmation email.",
+                        ok=False),
+            status_code=400,
+        )
+    row = await fetchrow(
+        "UPDATE digest_subscribers "
+        "SET confirmed = TRUE, is_active = TRUE, confirm_token = NULL "
+        "WHERE confirm_token = $1 RETURNING email",
+        token,
+    )
+    if not row:
+        return HTMLResponse(
+            _unsub_page("Link not recognised",
+                        "This confirmation link is invalid or has already been used. "
+                        "If you've already confirmed, you're all set.",
+                        ok=False),
+            status_code=404,
+        )
+    return HTMLResponse(
+        _unsub_page("Subscription confirmed",
+                    "You're all set! You'll receive the top 5 judgments every morning at "
+                    "7 AM IST. Every email has a one-click unsubscribe link.",
                     ok=True),
     )
 

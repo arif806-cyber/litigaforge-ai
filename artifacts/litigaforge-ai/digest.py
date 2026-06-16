@@ -55,6 +55,12 @@ def unsubscribe_url(token: str) -> str:
     return f"{SITE_URL}{BASE_PATH}/digest/unsubscribe?token={token}"
 
 
+def confirm_url(token: str) -> str:
+    # Double opt-in confirmation link — resolves on the Python backend (under
+    # BASE_PATH via the proxy) so it works directly from any email client.
+    return f"{SITE_URL}{BASE_PATH}/digest/confirm/{token}"
+
+
 def _two_line_summary(text: Optional[str], limit: int = 220) -> str:
     s = " ".join((text or "").split())
     if not s:
@@ -108,7 +114,7 @@ async def send_daily_digest(trigger: str = "scheduler") -> dict:
     """
     items = await select_top_judgments(DIGEST_SIZE)
     active = await fetchval(
-        "SELECT COUNT(*) FROM digest_subscribers WHERE is_active = TRUE"
+        "SELECT COUNT(*) FROM digest_subscribers WHERE is_active = TRUE AND confirmed = TRUE"
     ) or 0
 
     if not smtp_configured():
@@ -135,7 +141,8 @@ async def send_daily_digest(trigger: str = "scheduler") -> dict:
                 "judgments": len(items), "reason": "no_subscribers"}
 
     subscribers = await fetch(
-        "SELECT id, name, email, unsubscribe_token FROM digest_subscribers WHERE is_active = TRUE"
+        "SELECT id, name, email, unsubscribe_token FROM digest_subscribers "
+        "WHERE is_active = TRUE AND confirmed = TRUE"
     )
     date_label = datetime.now(IST).strftime("%d %B %Y").lstrip("0")
     sent = failed = 0

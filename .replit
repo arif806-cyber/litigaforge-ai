@@ -56,6 +56,7 @@ PORT = "5000"
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = "587"
 ADMIN_EMAILS = "arif.806@gmail.com"
+SMTP_USER = "arif.806@gmail.com"
 
 [nix]
 channel = "stable-25_05"
