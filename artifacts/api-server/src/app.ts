@@ -138,6 +138,43 @@ app.get("/blog", _blogProxy);
 app.get("/blog/{*splat}", _blogProxy);
 app.get("/_astro/{*splat}", _blogProxy);
 
+// ── LLM health proxy ──────────────────────────────────────────────────────
+// The LiteLLM health/diagnostics endpoint lives in the Python (litigaforge-ai)
+// service at {BASE_PATH}/llm/health. Mirror it under the conventional /api/llm/*
+// namespace so /api/llm/health and /api/llm/health?probe=true behave exactly
+// like /litigaforge/llm/health. ?probe=true runs a live LLM call (~48s, cached
+// 5min server-side), hence the generous timeout. Registered after
+// app.use("/api", router), which falls through for the otherwise-unhandled
+// /api/llm/* paths.
+const _LLM_ORIGIN = process.env.LITIGAFORGE_API_ORIGIN ?? "http://localhost:5000";
+const _LLM_BASE =
+  (process.env.BASE_PATH ?? "/litigaforge").replace(/\/+$/, "") || "/litigaforge";
+const _llmProxy = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  const target =
+    _LLM_ORIGIN + req.originalUrl.replace(/^\/api\//, _LLM_BASE + "/");
+  try {
+    const upstream = await fetch(target, {
+      method: "GET",
+      headers: { accept: req.headers["accept"] ?? "application/json" },
+      signal: AbortSignal.timeout(90_000),
+    });
+    res.status(upstream.status);
+    const ct = upstream.headers.get("content-type");
+    if (ct) res.setHeader("content-type", ct);
+    res.send(Buffer.from(await upstream.arrayBuffer()));
+  } catch (err) {
+    logger.error({ err }, "llm proxy failed");
+    res
+      .status(502)
+      .json({ status: "error", detail: "LLM service temporarily unavailable" });
+  }
+};
+app.get("/api/llm/health", _llmProxy);
+app.get("/api/llm/{*splat}", _llmProxy);
+
 // ── Frontend serving (production only) ───────────────────────────────────
 // Node.js injects the correct meta tags so the CDN/static layer cannot
 // override them. Only active when NODE_ENV=production and dist exists.

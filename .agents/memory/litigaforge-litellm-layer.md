@@ -36,6 +36,14 @@ public `/ask`. The `ai_brain.py` multi-provider cascade stays as the fallback.
   `?probe=true`, cached 5 min, and rate-limited. **Why:** an unauthed live-LLM probe
   is a resource-exhaustion vector (monitors/bots tie up async workers for the whole
   timeout). Flagged as a must-fix in review.
+- **Two backends, two prefixes — easy to confuse.** The Python (litigaforge-ai)
+  FastAPI service is at `/litigaforge` (BASE_PATH); the Node api-server (Express) is
+  at `/api` + `/`. The LLM route is Python, so its canonical URL is
+  `/litigaforge/llm/health`. `/api/llm/health` only works because the api-server
+  reverse-proxies `/api/llm/*` → `localhost:5000/litigaforge/llm/*` (mirrors the
+  `/blog` proxy; server-to-service uses `LITIGAFORGE_API_ORIGIN`, default
+  `http://localhost:5000`, reached directly not via the shared proxy). **Why:** users
+  expect `/api/...`; the convenience proxy keeps both URLs working.
 - **`uv` packager fails on Replit** (read-only nix store permission error) and as a
   side effect `uv init` drops a stray root `main.py` + `pyproject.toml`
   (`name = repl-nix-workspace`). Install Python deps with `pip install` directly
