@@ -237,3 +237,19 @@ async def admin_run_judgment_ingest(
     except IndianKanoonError as e:
         raise HTTPException(status_code=502, detail=f"Compliant source unavailable: {e}")
     return {"success": True, "result": stats}
+
+
+@router.post("/admin/digest/send")
+async def admin_send_digest(current_user: dict = Depends(get_superuser)):
+    """Manually trigger the daily judgment digest send (ops + verification).
+
+    Mirrors the 07:00 IST scheduler but runs on demand. Reuses
+    ``digest.send_daily_digest`` so selection, SMTP fail-closed handling and
+    per-subscriber delivery stay identical to the scheduled run. When SMTP is
+    unconfigured it reports ``reason="smtp_unconfigured"`` and sends nothing —
+    it never mock-delivers to real subscribers.
+    """
+    from digest import send_daily_digest
+
+    result = await send_daily_digest(trigger="manual")
+    return {"success": True, "result": result}

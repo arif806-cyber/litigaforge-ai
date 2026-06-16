@@ -1,0 +1,488 @@
+Task 4 of 4: Build the Daily Judgment Email Digest.
+
+Every morning at 7 AM IST, send an email to all 
+subscribers with 5 new judgments from the DB.
+This is the daily retention engine for LitigaForge.
+
+STEP 1 — Verify digest_subscribers table exists
+Check if digest_subscribers table is already in DB.
+Show me the columns. If missing any of these, add them:
+- id, name, email (unique), country (default 'in')
+- is_active (default true)
+- confirmed (default false)
+- confirm_token (uuid)
+- unsubscribe_token (uuid)
+- created_at, last_sent_at
+
+STEP 2 — Create email templates
+Create artifacts/litigaforge-ai/templates/digest_email.html
+
+Full HTML email template:
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>LitigaForge Daily Digest</title>
+<style>
+  body { 
+    font-family: Arial, sans-serif; 
+    background: #f5f5f5; 
+    margin: 0; padding: 0; 
+  }
+  .container { 
+    max-width: 600px; 
+    margin: 0 auto; 
+    background: white; 
+  }
+  .header { 
+    background: #1a1a2e; 
+    padding: 24px; 
+    text-align: center; 
+  }
+  .header h1 { 
+    color: white; 
+    margin: 0; 
+    font-size: 24px; 
+  }
+  .header p { 
+    color: #a0a0b0; 
+    margin: 8px 0 0; 
+    font-size: 14px; 
+  }
+  .case-card { 
+    border-left: 4px solid #4f46e5; 
+    margin: 16px 24px; 
+    padding: 16px; 
+    background: #fafafa; 
+    border-radius: 0 8px 8px 0;
+  }
+  .case-title { 
+    font-size: 16px; 
+    font-weight: bold; 
+    color: #1a1a2e; 
+    margin: 0 0 8px; 
+  }
+  .case-meta { 
+    font-size: 12px; 
+    color: #666; 
+    margin: 0 0 8px; 
+  }
+  .outcome-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .outcome-landmark { background:#fef3c7; color:#92400e; }
+  .outcome-upheld { background:#d1fae5; color:#065f46; }
+  .outcome-dismissed { background:#fee2e2; color:#991b1b; }
+  .outcome-other { background:#e0e7ff; color:#3730a3; }
+  .case-summary { 
+    font-size: 14px; 
+    color: #444; 
+    line-height: 1.5;
+    margin: 0 0 12px;
+  }
+  .read-more { 
+    display: inline-block;
+    background: #4f46e5; 
+    color: white; 
+    padding: 8px 16px; 
+    text-decoration: none; 
+    border-radius: 6px; 
+    font-size: 13px; 
+    font-weight: bold;
+  }
+  .divider { 
+    border: none; 
+    border-top: 1px solid #eee; 
+    margin: 8px 24px; 
+  }
+  .footer { 
+    background: #f5f5f5; 
+    padding: 24px; 
+    text-align: center; 
+    font-size: 12px; 
+    color: #888; 
+  }
+  .footer a { color: #4f46e5; }
+  .ikanoon-credit {
+    font-size: 11px;
+    color: #999;
+    text-align: center;
+    padding: 8px 24px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚖️ LitigaForge Daily Digest</h1>
+    <p>{{ date }} — Top judgments explained in plain language</p>
+  </div>
+
+  {{ cases_html }}
+
+  <div class="ikanoon-credit">
+    Case data sourced from 
+    <a href="https://indiankanoon.org">IndianKanoon</a>
+  </div>
+
+  <div class="footer">
+    <p>You are receiving this because you subscribed 
+    to LitigaForge Daily Digest.</p>
+    <p>
+      <a href="{{ unsubscribe_url }}">Unsubscribe</a> · 
+      <a href="https://litigaforge.com">Visit LitigaForge</a>
+    </p>
+    <p>LitigaForge AI · T-Hub Hyderabad · India</p>
+  </div>
+</div>
+</body>
+</html>
+
+For each case card use this HTML block:
+<div class="case-card">
+  <div class="case-title">{{ case_name }}</div>
+  <div class="case-meta">
+    {{ court }} · {{ year }} · {{ area_of_law }}
+  </div>
+  <span class="outcome-badge outcome-{{ outcome_class }}">
+    {{ outcome }}
+  </span>
+  <div class="case-summary">{{ summary_en }}</div>
+  <a href="{{ case_url }}" class="read-more">
+    Read Full Analysis →
+  </a>
+</div>
+<hr class="divider">
+
+STEP 3 — Create digest sender service
+Create artifacts/litigaforge-ai/routers/digest.py
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, EmailStr
+from database import get_db_connection
+import uuid, smtplib, os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from datetime import datetime, date
+import logging
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+BASE_URL = "https://litigaforge.com"
+
+class SubscribeRequest(BaseModel):
+    name: str
+    email: EmailStr
+    country: str = "in"
+
+@router.post("/digest/subscribe")
+async def subscribe(req: SubscribeRequest):
+    confirm_token = str(uuid.uuid4())
+    unsubscribe_token = str(uuid.uuid4())
+    
+    async with get_db_connection() as conn:
+        existing = await conn.fetchval(
+            "SELECT id FROM digest_subscribers 
+             WHERE email=$1", req.email
+        )
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already subscribed"
+            )
+        await conn.execute("""
+            INSERT INTO digest_subscribers 
+            (name, email, country, confirm_token, 
+             unsubscribe_token)
+            VALUES ($1,$2,$3,$4,$5)
+        """, req.name, req.email, req.country,
+            confirm_token, unsubscribe_token)
+    
+    # Send confirmation email
+    confirm_url = (
+        f"{BASE_URL}/api/digest/confirm/"
+        f"{confirm_token}"
+    )
+    await send_confirmation_email(
+        req.email, req.name, confirm_url
+    )
+    
+    return {
+        "message": "Check your email to confirm 
+                    subscription"
+    }
+
+@router.get("/digest/confirm/{token}")
+async def confirm_subscription(token: str):
+    async with get_db_connection() as conn:
+        result = await conn.fetchrow(
+            """UPDATE digest_subscribers 
+               SET confirmed=true 
+               WHERE confirm_token=$1 
+               RETURNING email, name""",
+            token
+        )
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail="Invalid confirmation token"
+            )
+    return {
+        "message": f"Subscription confirmed for 
+                    {result['email']}"
+    }
+
+@router.get("/digest/unsubscribe/{token}")
+async def unsubscribe(token: str):
+    async with get_db_connection() as conn:
+        result = await conn.execute(
+            """UPDATE digest_subscribers 
+               SET is_active=false 
+               WHERE unsubscribe_token=$1""",
+            token
+        )
+    return {"message": "Successfully unsubscribed"}
+
+@router.post("/admin/digest/send")
+async def send_digest_now():
+    """Manual trigger to send digest immediately."""
+    result = await _send_daily_digest()
+    return result
+
+async def _send_daily_digest():
+    """Core digest sending function."""
+    async with get_db_connection() as conn:
+        # Get 5 most recent judgments
+        judgments = await conn.fetch("""
+            SELECT case_name, court, court_slug,
+                   year, area_of_law, outcome,
+                   summary_en, slug
+            FROM judgments
+            WHERE status='published'
+            ORDER BY created_at DESC
+            LIMIT 5
+        """)
+        
+        # Get active confirmed subscribers
+        subscribers = await conn.fetch("""
+            SELECT name, email, unsubscribe_token
+            FROM digest_subscribers
+            WHERE is_active=true AND confirmed=true
+        """)
+    
+    if not subscribers:
+        return {"sent": 0, "message": "No subscribers"}
+    
+    if not judgments:
+        return {"sent": 0, "message": "No judgments"}
+    
+    # Build cases HTML
+    today = date.today().strftime("%B %d, %Y")
+    cases_html = ""
+    
+    for j in judgments:
+        outcome = j['outcome'] or "Unknown"
+        outcome_lower = outcome.lower()
+        if "landmark" in outcome_lower:
+            outcome_class = "landmark"
+        elif "upheld" in outcome_lower or \
+             "allowed" in outcome_lower:
+            outcome_class = "upheld"
+        elif "dismissed" in outcome_lower:
+            outcome_class = "dismissed"
+        else:
+            outcome_class = "other"
+        
+        case_url = (
+            f"{BASE_URL}/in/judgments/"
+            f"{j['court_slug']}/{j['year']}/{j['slug']}"
+        )
+        summary = (j['summary_en'] or "")[:300]
+        if len(j['summary_en'] or "") > 300:
+            summary += "..."
+        
+        cases_html += f"""
+        <div class="case-card">
+          <div class="case-title">{j['case_name']}</div>
+          <div class="case-meta">
+            {j['court']} · {j['year']} · 
+            {j['area_of_law'] or 'General'}
+          </div>
+          <span class="outcome-badge 
+                outcome-{outcome_class}">
+            {outcome}
+          </span>
+          <div class="case-summary">{summary}</div>
+          <a href="{case_url}" class="read-more">
+            Read Full Analysis →
+          </a>
+        </div>
+        <hr class="divider">
+        """
+    
+    # Load template
+    template_path = os.path.join(
+        os.path.dirname(__file__),
+        "../templates/digest_email.html"
+    )
+    with open(template_path) as f:
+        template = f.read()
+    
+    html_body = template\
+        .replace("{{ date }}", today)\
+        .replace("{{ cases_html }}", cases_html)
+    
+    # Send to all subscribers
+    sent = 0
+    errors = 0
+    
+    for sub in subscribers:
+        try:
+            unsub_url = (
+                f"{BASE_URL}/api/digest/unsubscribe/"
+                f"{sub['unsubscribe_token']}"
+            )
+            personalized = html_body.replace(
+                "{{ unsubscribe_url }}", unsub_url
+            )
+            await _send_email(
+                to_email=sub['email'],
+                to_name=sub['name'],
+                subject=f"⚖️ Today's Top Judgments — "
+                        f"{today}",
+                html_body=personalized
+            )
+            sent += 1
+        except Exception as e:
+            logger.error(
+                f"Failed to send to {sub['email']}: {e}"
+            )
+            errors += 1
+    
+    # Update last_sent_at
+    async with get_db_connection() as conn:
+        await conn.execute(
+            """UPDATE digest_subscribers 
+               SET last_sent_at=NOW() 
+               WHERE is_active=true AND confirmed=true"""
+        )
+    
+    return {
+        "sent": sent, 
+        "errors": errors,
+        "judgments_included": len(judgments),
+        "date": today
+    }
+
+async def _send_email(
+    to_email: str, 
+    to_name: str,
+    subject: str, 
+    html_body: str
+):
+    """Send email using existing SMTP config."""
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv(
+        "SMTP_FROM", 
+        "digest@litigaforge.com"
+    )
+    
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"LitigaForge Digest <{from_email}>"
+    msg["To"] = f"{to_name} <{to_email}>"
+    msg.attach(MIMEText(html_body, "html"))
+    
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+
+async def send_confirmation_email(
+    email: str, name: str, confirm_url: str
+):
+    html = f"""
+    <div style="font-family:Arial;max-width:500px;
+                margin:0 auto;padding:24px;">
+      <h2>⚖️ Confirm your LitigaForge subscription</h2>
+      <p>Hi {name},</p>
+      <p>Click below to confirm your subscription to 
+      the Daily Judgment Digest — 5 new court cases 
+      explained every morning.</p>
+      <a href="{confirm_url}" 
+         style="background:#4f46e5;color:white;
+                padding:12px 24px;text-decoration:none;
+                border-radius:6px;display:inline-block;
+                margin:16px 0;">
+        Confirm Subscription
+      </a>
+      <p style="color:#888;font-size:12px;">
+        If you didn't subscribe, ignore this email.
+      </p>
+    </div>
+    """
+    await _send_email(
+        email, name,
+        "Confirm your LitigaForge Daily Digest",
+        html
+    )
+
+STEP 4 — Wire digest into cron scheduler
+Find the existing cron/scheduler in the codebase.
+Add digest job after the 6 AM ingestion job:
+
+# 7 AM IST daily digest send
+# (runs 1 hour after ingestion so new cases
+#  are included in same day's digest)
+schedule digest at 07:00 IST daily
+calling _send_daily_digest()
+
+STEP 5 — Add /digest signup page to frontend
+Check if /digest page already exists in React.
+If yes, just update the form to POST to 
+/api/digest/subscribe with name + email + country.
+If no, create a simple page with:
+- Headline: "Get 5 New Judgments Every Morning"
+- Subheadline: "Plain English + Hindi summaries 
+  delivered free to your inbox"
+- Form: Name, Email, Country dropdown
+- Submit button: "Subscribe Free"
+- Success message: "Check your email to confirm"
+
+STEP 6 — Wire router into main.py
+from routers.digest import router as digest_router
+app.include_router(digest_router, prefix=BASE_PATH)
+
+STEP 7 — Check SMTP config
+Show me which SMTP env vars are already set 
+in Replit secrets.
+If SMTP is not configured, use Gmail SMTP:
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_PASSWORD=gmail_app_password
+
+If no SMTP at all, flag it — we need to 
+configure this before emails can send.
+
+STEP 8 — Test
+1. POST /api/digest/subscribe 
+   with your own email to test signup
+2. GET /api/digest/confirm/[token] to confirm
+3. POST /admin/digest/send to trigger test send
+4. Show me the email that arrives
+
+Do not send to real subscribers yet —
+test with one email address only first.
+
+Show me each file created before finishing.
