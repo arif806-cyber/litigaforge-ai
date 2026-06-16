@@ -1,0 +1,53 @@
+You are building the most advanced and original legal AI system ever created, called "Forge Workspace" for LitigaForge. This should feel like a futuristic Legal Intelligence Operating System — something significantly more powerful and innovative than any existing legal technology in 2026.
+
+Focus: India First (using Indian Kanoon as the primary data source). The system must feel revolutionary and unlike anything currently available.
+
+Core Vision:
+Forge Workspace should not feel like a tool. It should feel like an intelligent, spatial, agentic co-pilot that helps lawyers think, simulate, strategize, and create at a much higher level. It should combine visual reasoning, multi-agent collaboration, prediction, and a self-improving knowledge system.
+
+Must-Have Advanced Features:
+
+1. **Spatial Semantic Canvas (Core Interface)**
+   - Build a highly interactive spatial canvas using React Flow.
+   - Nodes represent: Judgments (from Indian Kanoon), Facts, Legal Issues, Arguments, Risks, and Strategies.
+   - Nodes should be draggable, connectable with meaningful relationships, groupable, and visually rich.
+   - Nodes should dynamically update size, color, and information based on real-time impact analysis.
+   - The canvas should feel like a living thinking space.
+
+2. **Agent Society (Multi-Agent Collaboration)**
+   - Create a visible system of specialized AI agents that work together like a team of elite lawyers:
+     - Research Agent (deep Indian Kanoon analysis)
+     - Strategy Agent
+     - Risk & Counter Agent (plays devil’s advocate)
+     - Drafting Agent
+     - Predictive Agent (forecasts how courts or judges might respond)
+   - Agents should show their reasoning and can present both consensus and alternative views.
+
+3. **Proactive Intelligence Layer**
+   - The system should automatically surface high-value insights without the user asking.
+   - Examples: New relevant Indian Kanoon judgments, strategic suggestions, risk warnings, or better argument angles.
+
+4. **What-If Simulation Engine**
+   - Allow users to run sophisticated simulations (e.g., "What if this precedent is distinguished or narrowed?") and see live updates to the entire strategy, arguments, and risk scores.
+
+5. **Living Knowledge Fabric**
+   - Design the system so it can learn and improve from user interactions over time (personalization and compounding intelligence).
+
+6. **Indian Kanoon Integration**
+   - Smart, dynamic retrieval from Indian Kanoon API.
+   - Proper caching and structured handling of judgments.
+
+7. **Premium Experience**
+   - The UI must feel extremely modern, premium, and professional (dark theme with excellent teal/navy design).
+   - Focus on smooth interactions and high-quality visual experience.
+   - Strong support for Telugu and Hindi.
+
+Tech Stack:
+- Next.js 15 + TypeScript + Tailwind + shadcn/ui
+- React Flow for the spatial canvas
+- Supabase (Postgres + pgvector)
+- Multiple LLMs with structured agent orchestration
+
+Start building the most ambitious and original version possible. Prioritize creating a stunning Spatial Canvas + visible Agent Society as the foundation. Make the overall experience feel revolutionary and significantly ahead of anything currently available in legal AI.
+
+If anything is unclear, ask me before starting. Then begin building at the highest level of ambition.
