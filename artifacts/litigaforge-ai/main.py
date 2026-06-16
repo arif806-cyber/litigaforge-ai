@@ -808,6 +808,20 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS ikanoon_search_cache (
+                    id          SERIAL PRIMARY KEY,
+                    query_hash  TEXT UNIQUE NOT NULL,
+                    query_text  TEXT NOT NULL,
+                    results_json JSONB NOT NULL DEFAULT '[]',
+                    hit_count   INTEGER DEFAULT 0,
+                    fetched_at  TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_ikanoon_cache_fetched "
+                "ON ikanoon_search_cache (fetched_at DESC)"
+            )
             logger.info("workspace tables ready")
         except Exception as me:
             logger.warning("workspace tables init: %s", me)

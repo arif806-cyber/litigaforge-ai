@@ -14,10 +14,13 @@ Endpoints (all prefixed with BASE_PATH from main.py):
   POST   /workspace/sessions/{id}/search               — Indian Kanoon judgment search
 """
 import asyncio
+import hashlib
 import json
 import logging
 import os
+import re as _re
 import uuid as _uuid
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -52,6 +55,11 @@ class SaveCanvasBody(BaseModel):
 class SearchBody(BaseModel):
     query: str = Field(min_length=2, max_length=300)
     max_results: int = Field(default=5, le=10)
+
+class SmartSearchBody(BaseModel):
+    case_description: str = ""
+    nodes: list[dict] = Field(default_factory=list)
+    query: str = ""          # optional explicit override; empty = LLM extracts
 
 class AnalyzeBody(BaseModel):
     case_description: str = ""
@@ -152,11 +160,145 @@ async def delete_session(session_id: int, request: Request, user=Depends(require
     return {"ok": True}
 
 
-# ─── Indian Kanoon Search ───────────────────────────────────────────────────────
+# ─── Indian Kanoon — Ranking helpers ──────────────────────────────────────────
+
+_COURT_AUTHORITY: dict[str, int] = {
+    "supreme court of india": 100,
+    "supreme court":          100,
+    "high court":              72,
+    "national commission":     58,
+    "state commission":        46,
+    "tribunal":                48,
+    "district court":          32,
+    "consumer court":          36,
+}
+
+
+def _court_authority_score(doc: dict) -> int:
+    src = (doc.get("docsource") or "").lower()
+    for key, val in _COURT_AUTHORITY.items():
+        if key in src:
+            return val
+    return 40
+
+
+def _recency_score(doc: dict) -> int:
+    date_str = ((doc.get("publishdate") or doc.get("date") or ""))[:4]
+    try:
+        age = datetime.now(timezone.utc).year - int(date_str)
+        if age <= 1:  return 20
+        if age <= 3:  return 15
+        if age <= 5:  return 10
+        if age <= 10: return 5
+        if age > 40:  return -5
+        return 2
+    except ValueError:
+        return 0
+
+
+def _citation_score(doc: dict) -> int:
+    n = int(doc.get("numciting") or 0)
+    if n > 1000: return 20
+    if n > 500:  return 15
+    if n > 100:  return 10
+    if n > 20:   return 5
+    return 0
+
+
+def _compute_impact_score(doc: dict) -> int:
+    authority = _court_authority_score(doc)
+    authority_delta = (authority - 40) // 3        # 0-20
+    score = 50 + authority_delta + _recency_score(doc) + _citation_score(doc)
+    return max(30, min(98, score))
+
+
+async def _cached_ik_search(conn, query: str, max_results: int = 8) -> list[dict]:
+    """Search IK API with 24 h DB caching keyed by normalised query hash."""
+    qhash = hashlib.md5(query.lower().strip().encode()).hexdigest()
+
+    # Cache hit?
+    row = await conn.fetchrow(
+        "SELECT results_json, fetched_at FROM ikanoon_search_cache WHERE query_hash=$1",
+        qhash,
+    )
+    if row:
+        age = datetime.now(timezone.utc) - row["fetched_at"]
+        if age < timedelta(hours=24):
+            await conn.execute(
+                "UPDATE ikanoon_search_cache SET hit_count = hit_count + 1 WHERE query_hash=$1",
+                qhash,
+            )
+            return list(row["results_json"])[:max_results]
+
+    if not IK_TOKEN:
+        return []
+
+    # Live fetch
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(
+                f"{IK_BASE}/search/",
+                data={"formInput": query, "pagenum": 0},
+                headers={"Authorization": f"Token {IK_TOKEN}"},
+            )
+            resp.raise_for_status()
+            docs: list[dict] = resp.json().get("docs", [])[:10]
+    except Exception as exc:
+        logger.warning("IK API error for %r: %s", query, exc)
+        return []
+
+    # Upsert cache
+    try:
+        await conn.execute(
+            """
+            INSERT INTO ikanoon_search_cache (query_hash, query_text, results_json)
+            VALUES ($1, $2, $3::jsonb)
+            ON CONFLICT (query_hash) DO UPDATE
+                SET results_json = EXCLUDED.results_json,
+                    fetched_at   = NOW(),
+                    hit_count    = 0
+            """,
+            qhash, query, json.dumps(docs),
+        )
+    except Exception as exc:
+        logger.warning("IK cache write: %s", exc)
+
+    return docs[:max_results]
+
+
+def _doc_to_node(doc: dict, idx: int = 0, query: str = "") -> dict:
+    """Convert IK search result dict to canvas-ready judgment node."""
+    tid      = doc.get("tid") or doc.get("docid") or _uuid.uuid4().hex[:8]
+    score    = _compute_impact_score(doc)
+    date_str = (doc.get("publishdate") or doc.get("date") or "")
+    year     = date_str[:4] if date_str else ""
+    headline = _re.sub(r"<[^>]+>", "", doc.get("headline") or "")[:300]
+    return {
+        "id":       f"ik-{tid}",
+        "type":     "judgment",
+        "position": {"x": 200 + idx * 60, "y": 180 + idx * 50},
+        "data": {
+            "label":        (doc.get("title") or "Unknown Case")[:90],
+            "court":        doc.get("docsource") or "Court",
+            "citation":     doc.get("citation") or "",
+            "summary":      headline,
+            "year":         year,
+            "url":          f"https://indiankanoon.org/doc/{tid}/",
+            "impact_score": score,
+            "ik_tid":       tid,
+            "num_citing":   int(doc.get("numciting") or 0),
+            "search_query": query[:60] if query else "",
+        },
+    }
+
+
+# ─── Indian Kanoon — Manual Search ────────────────────────────────────────────
 
 @router.post("/workspace/sessions/{session_id}/search")
-async def search_judgments(session_id: int, body: SearchBody, request: Request, user=Depends(require_user)):
-    """Search Indian Kanoon and return canvas-ready judgment nodes."""
+async def search_judgments(
+    session_id: int, body: SearchBody, request: Request, user=Depends(require_user)
+):
+    """Search Indian Kanoon with caching + intelligent ranking."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         exists = await conn.fetchval(
@@ -166,42 +308,16 @@ async def search_judgments(session_id: int, body: SearchBody, request: Request, 
         if not exists:
             raise HTTPException(404, "Session not found")
 
-    if IK_TOKEN:
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.post(
-                    f"{IK_BASE}/search/",
-                    data={"formInput": body.query, "pagenum": 0},
-                    headers={"Authorization": f"Token {IK_TOKEN}"},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-            docs  = data.get("docs", [])[: body.max_results]
-            nodes = [
-                {
-                    "id":   f"ik-{doc.get('tid', _uuid.uuid4().hex[:8])}",
-                    "type": "judgment",
-                    "position": {"x": 200 + i * 60, "y": 180 + i * 50},
-                    "data": {
-                        "label":    doc.get("title", "Unknown Case"),
-                        "court":    doc.get("docsource", "Court"),
-                        "citation": doc.get("citation", ""),
-                        "summary":  (doc.get("headline", "") or "")[:300],
-                        "year":     (doc.get("publishdate", "") or "")[:4],
-                        "url":      f"https://indiankanoon.org/doc/{doc.get('tid', '')}",
-                        "impact_score": 72,
-                        "ik_tid":   doc.get("tid"),
-                    },
-                }
-                for i, doc in enumerate(docs)
-            ]
-            return {"nodes": nodes, "source": "indian_kanoon", "total": data.get("total", len(nodes))}
-        except Exception as e:
-            logger.warning("IK search error: %s", e)
+        if IK_TOKEN:
+            try:
+                docs  = await _cached_ik_search(conn, body.query, body.max_results)
+                ranked = sorted(docs, key=_compute_impact_score, reverse=True)
+                nodes  = [_doc_to_node(d, i, body.query) for i, d in enumerate(ranked)]
+                return {"nodes": nodes, "source": "indian_kanoon", "total": len(nodes)}
+            except Exception as exc:
+                logger.warning("IK search error: %s", exc)
 
-    # Fallback: local judgments table
-    pool = await get_pool()
-    async with pool.acquire() as conn:
+        # Fallback: local judgments table
         term = f"%{body.query}%"
         rows = await conn.fetch(
             "SELECT id, case_name, court, citation, summary_en, year, court_slug, slug "
@@ -212,22 +328,133 @@ async def search_judgments(session_id: int, body: SearchBody, request: Request, 
         )
     nodes = [
         {
-            "id":   f"judgment-{row['id']}",
-            "type": "judgment",
+            "id":       f"judgment-{row['id']}",
+            "type":     "judgment",
             "position": {"x": 200 + i * 60, "y": 180 + i * 50},
             "data": {
-                "label":    row["case_name"],
-                "court":    row["court"],
-                "citation": row["citation"] or "",
-                "summary":  (row["summary_en"] or "")[:300],
-                "year":     str(row["year"] or ""),
-                "url":      f"/judgments/{row['court_slug']}/{row['year']}/{row['slug']}",
+                "label":        row["case_name"],
+                "court":        row["court"],
+                "citation":     row["citation"] or "",
+                "summary":      (row["summary_en"] or "")[:300],
+                "year":         str(row["year"] or ""),
+                "url":          f"/judgments/{row['court_slug']}/{row['year']}/{row['slug']}",
                 "impact_score": 70,
+                "num_citing":   0,
             },
         }
         for i, row in enumerate(rows)
     ]
     return {"nodes": nodes, "source": "local_db", "total": len(nodes)}
+
+
+# ─── Indian Kanoon — Smart Search (SSE) ───────────────────────────────────────
+
+@router.post("/workspace/sessions/{session_id}/smart-search")
+async def workspace_smart_search(
+    session_id: int, body: SmartSearchBody, request: Request, user=Depends(require_user)
+):
+    """SSE streaming smart search — LLM extracts queries from canvas + ranks by authority/recency/citations."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+    if not exists:
+        raise HTTPException(404, "Session not found")
+
+    async def generate():
+        def sse(d: dict) -> str:
+            return f"data: {json.dumps(d, default=str)}\n\n"
+
+        # ── Step 1: Determine search queries ────────────────────────────────
+        if body.query.strip():
+            queries = [body.query.strip()]
+            yield sse({"type": "ss_queries", "queries": queries})
+        else:
+            yield sse({"type": "ss_phase", "message": "Extracting key legal issues from your canvas…"})
+
+            node_labels = [
+                n.get("data", {}).get("label", "")
+                for n in body.nodes[:8] if isinstance(n.get("data"), dict)
+            ]
+            node_types  = list({n.get("type", "") for n in body.nodes[:8]})
+            canvas_text = ", ".join(filter(None, node_labels)) or "not specified"
+
+            prompt = (
+                f"Case: {body.case_description or 'Not specified'}\n"
+                f"Canvas node types: {', '.join(node_types)}\n"
+                f"Canvas items: {canvas_text}\n\n"
+                "Generate exactly 2 targeted Indian Kanoon search queries for this legal matter.\n"
+                "Rules:\n"
+                "- One query per line, no numbering or punctuation\n"
+                "- Each query targets a different legal dimension (e.g. one for precedents, one for specific issue)\n"
+                "- Include court name when relevant (Supreme Court / High Court + state)\n"
+                "- Use precise legal terminology from Indian law\n"
+                "- Keep each query under 10 words\n"
+                "Examples:\n"
+                "Article 21 personal liberty arbitrary detention Supreme Court\n"
+                "property adverse possession title dispute Telangana High Court"
+            )
+            try:
+                raw     = (await legal_llm.aask_legal_question(prompt) or "").strip()
+                queries = [l.strip() for l in raw.splitlines() if l.strip()][:3]
+            except Exception:
+                queries = []
+
+            if not queries:
+                queries = [l for l in node_labels[:2] if l] or [
+                    (body.case_description or "Indian law Supreme Court")[:80]
+                ]
+
+            yield sse({"type": "ss_queries", "queries": queries})
+
+        # ── Step 2: Execute each query (cached) ─────────────────────────────
+        all_docs: list[dict] = []
+        seen_tids: set[str]  = set()
+
+        pool2 = await get_pool()
+        for q_idx, query in enumerate(queries):
+            yield sse({
+                "type":        "ss_searching",
+                "message":     f"Searching Indian Kanoon — '{query[:55]}'…",
+                "query_index": q_idx,
+                "query_total": len(queries),
+            })
+
+            async with pool2.acquire() as conn:
+                docs = await _cached_ik_search(conn, query, max_results=8)
+
+            new_docs = []
+            for doc in docs:
+                tid = str(doc.get("tid") or doc.get("docid") or "")
+                if tid and tid not in seen_tids:
+                    seen_tids.add(tid)
+                    doc["_query"] = query
+                    new_docs.append(doc)
+
+            all_docs.extend(new_docs)
+
+            # Stream these results immediately so UI can show them as they arrive
+            nodes_chunk = [_doc_to_node(d, i, d.get("_query", "")) for i, d in enumerate(new_docs)]
+            if nodes_chunk:
+                yield sse({"type": "ss_results", "nodes": nodes_chunk, "query": query})
+            await asyncio.sleep(0.05)
+
+        # ── Step 3: Re-rank all collected results ────────────────────────────
+        yield sse({"type": "ss_phase",
+                   "message": f"Ranking {len(all_docs)} judgments by authority, recency & citation count…"})
+
+        ranked  = sorted(all_docs, key=_compute_impact_score, reverse=True)
+        final   = [_doc_to_node(d, i, d.get("_query", "")) for i, d in enumerate(ranked[:10])]
+
+        yield sse({"type": "ss_complete", "nodes": final, "total": len(final)})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # ─── Agent Registry ────────────────────────────────────────────────────────────

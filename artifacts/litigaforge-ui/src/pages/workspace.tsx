@@ -13,6 +13,7 @@ import AgentPanel, { type AgentState, type CollabEvent } from "@/components/work
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
 import SimulationPanel, { type SimState, type SimulationResult, type NodeDelta } from "@/components/workspace/SimulationPanel";
+import SearchPanel from "@/components/workspace/SearchPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,9 +86,6 @@ export default function ForgeWorkspace() {
   const [agentStates, setAgentStates]       = useState<Record<string, AgentState>>(makeDefaultAgentStates);
   const [isAnalyzing, setIsAnalyzing]       = useState(false);
   const [isSaving, setIsSaving]             = useState(false);
-  const [searchQuery, setSearchQuery]       = useState("");
-  const [isSearching, setIsSearching]       = useState(false);
-  const [searchStatus, setSearchStatus]     = useState("");
   const [error, setError]                   = useState("");
   const [showAddMenu, setShowAddMenu]       = useState(false);
   const [showSessions, setShowSessions]     = useState(false);
@@ -316,38 +314,26 @@ export default function ForgeWorkspace() {
     setShowAddMenu(false);
   }
 
-  // ─── Indian Kanoon search ─────────────────────────────────────────────────────
+  // ─── Search panel callback ────────────────────────────────────────────────────
 
-  async function runSearch() {
-    if (!sessionId || !searchQuery.trim() || isSearching) return;
-    setIsSearching(true);
-    setSearchStatus("");
-    try {
-      const res = await api(`/workspace/sessions/${sessionId}/search`, {
-        method: "POST",
-        body: JSON.stringify({ query: searchQuery, max_results: 5 }),
-      });
-      const data = await res.json() as SearchResult;
-      // Spread new judgment nodes across the canvas
-      const newNodes: Node[] = data.nodes.map((n, i) => ({
-        ...n,
-        position: { x: 120 + i * 240, y: 120 + (i % 2) * 160 },
-      }));
-      setNodes(prev => {
-        const existingIds = new Set(prev.map(n => n.id));
-        return [...prev, ...newNodes.filter(n => !existingIds.has(n.id))];
-      });
-      setSearchStatus(
-        data.nodes.length > 0
-          ? `Added ${data.nodes.length} judgment(s) from ${data.source === "indian_kanoon" ? "Indian Kanoon" : "local database"}`
-          : "No matching judgments found."
-      );
-    } catch {
-      setSearchStatus("Search failed. Please try again.");
-    } finally {
-      setIsSearching(false);
-    }
-  }
+  const onSearchNodesAdded = useCallback((newNodes: Node[]) => {
+    if (!newNodes.length) return;
+    pushHistory([...nodes], [...edges]);
+    setNodes(prev => {
+      const existingIds = new Set(prev.map(n => n.id));
+      const deduped = newNodes
+        .filter(n => !existingIds.has(n.id))
+        .map((n, i) => ({
+          ...n,
+          position: {
+            x: 150 + (i % 3) * 260 + Math.round(Math.random() * 40),
+            y: 140 + Math.floor(i / 3) * 200 + Math.round(Math.random() * 30),
+          },
+        }));
+      return [...prev, ...deduped];
+    });
+    // Insights refresh happens naturally when user opens the Insights tab next time
+  }, [nodes, edges, setNodes]);
 
   // ─── Multi-agent analysis (SSE) ──────────────────────────────────────────────
 
@@ -945,68 +931,12 @@ export default function ForgeWorkspace() {
 
           {/* Search tab */}
           {rightPanelTab === "search" && (
-            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <div style={{ fontSize: 10, color: TEAL, fontWeight: 700, marginBottom: 8 }}>
-                  🔍 Indian Kanoon Search
-                </div>
-                <input
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && runSearch()}
-                  placeholder="Search case law, statutes…"
-                  style={{
-                    width: "100%",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 8,
-                    padding: "9px 11px",
-                    fontSize: 11,
-                    color: FG,
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                />
-                <button
-                  onClick={runSearch}
-                  disabled={isSearching || !searchQuery.trim()}
-                  style={{
-                    width: "100%",
-                    marginTop: 8,
-                    padding: "9px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: isSearching ? "rgba(20,184,166,0.08)" : `linear-gradient(135deg, #0d9488, #14b8a6)`,
-                    color: isSearching ? TEAL : "#fff",
-                    fontWeight: 700,
-                    fontSize: 11,
-                    cursor: isSearching ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {isSearching ? "Searching…" : "Search → Add to Canvas"}
-                </button>
-                {searchStatus && (
-                  <div style={{ fontSize: 10, color: searchStatus.includes("failed") ? "#ef4444" : "#22c55e", marginTop: 6 }}>
-                    {searchStatus}
-                  </div>
-                )}
-              </div>
-
-              {/* Search tips */}
-              <div style={{
-                padding: "10px 12px",
-                background: "rgba(20,184,166,0.05)",
-                border: "1px solid rgba(20,184,166,0.1)",
-                borderRadius: 8,
-              }}>
-                <div style={{ fontSize: 9.5, color: FGD, lineHeight: 1.6 }}>
-                  <strong style={{ color: TEAL }}>Tips:</strong><br />
-                  • Search by party name or legal principle<br />
-                  • Try "Article 21 right to life" or "specific relief"<br />
-                  • Judgment nodes are added automatically to canvas
-                </div>
-              </div>
-            </div>
+            <SearchPanel
+              sessionId={sessionId}
+              nodes={nodes}
+              caseDescription={caseDescription}
+              onNodesAdded={onSearchNodesAdded}
+            />
           )}
 
           {/* Proactive Intelligence tab */}

@@ -1,0 +1,43 @@
+You are now implementing a robust and intelligent Indian Kanoon integration layer inside Forge Workspace.
+
+Current State: We have the Spatial Canvas, Multi-Agent System, Proactive Intelligence, and What-If Simulation. Now we need to connect everything properly with real Indian Kanoon data.
+
+Requirements:
+
+1. **Smart Dynamic Retrieval**
+   - When a user uploads a document or adds issues on the canvas, the system should intelligently search Indian Kanoon for the most relevant judgments.
+   - The search should not be basic keyword search — it should understand legal context and extract key issues from the user’s matter.
+   - Retrieved judgments should automatically appear as nodes on the Spatial Canvas with proper metadata (citation, date, court, key holdings, etc.).
+
+2. **Structured Data Handling**
+   - Store Indian Kanoon judgments in a structured way (using Supabase/Postgres).
+   - Extract and store important fields: full text, headnotes, ratio decidendi, cited cases, judges, date, court, etc.
+   - Use embeddings (pgvector) so we can do semantic search in addition to keyword search.
+
+3. **Caching Strategy**
+   - Implement smart caching so we don’t hit Indian Kanoon API repeatedly for the same queries.
+   - Cached judgments should be reusable across different users and matters when relevant.
+
+4. **Intelligent Ranking**
+   - Judgments returned from Indian Kanoon should be ranked intelligently based on:
+     - Relevance to the current matter on the canvas
+     - Recency
+     - Citation count / authority
+     - How well they support or distinguish the user’s arguments
+
+5. **Seamless Integration**
+   - Retrieved judgments should flow naturally into the Spatial Canvas and Multi-Agent System.
+   - Agents (especially Research Agent) should be able to directly use and analyze judgments fetched from Indian Kanoon.
+   - When a new relevant judgment is found, it should trigger proactive suggestions.
+
+6. **Performance & Reliability**
+   - Make the integration fast and reliable.
+   - Handle API rate limits and errors gracefully.
+   - Show clear loading states when fetching from Indian Kanoon.
+
+7. **Future-Proof Design**
+   - Design the integration in a modular way so that adding judgment sources for other countries later becomes easier.
+
+Goal: Make the Indian Kanoon integration feel intelligent, fast, and deeply connected with the rest of Forge Workspace (Canvas + Agents + Simulation). It should be one of the strongest parts of the system.
+
+Focus on quality, performance, and deep integration with the existing features.
