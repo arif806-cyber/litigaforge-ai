@@ -22,6 +22,13 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 **Why / how to apply:** do NOT trust the in-workspace preview browser to reflect UI source changes — verify the change landed in the BUILT bundle instead (`grep` the minified `dist/public/assets/index-*.js` for the new logic), and run Lighthouse/PageSpeed in a clean/incognito profile (no prior SW). A real first-time visitor has no SW and gets fresh code immediately; returning users self-heal via `autoUpdate` + `cleanupOutdatedCaches` on the next deploy.
 
+# Every backend/proxied path prefix MUST be in `navigateFallbackDenylist`
+
+- The SW's navigation fallback serves the precached React `index.html` for ALL in-scope navigations EXCEPT denylisted ones. Any backend or reverse-proxied URL that a user might open directly in the browser must be denylisted, or the SW hands back the SPA shell, the app prepends the country prefix (e.g. `/api/llm/health` → `/in/api/llm/health`) and renders its own "404 - Not Found" — even though `curl` (no SW) returns the correct JSON. The denylist must cover `/blog`, `/_astro`, `/api`, AND `/litigaforge`.
+- Symptom signature: address bar shows the URL with a `/in/` (or other country) prefix it didn't have when typed, plus the in-app 404 card. That country-prefix reappearing is the tell that the React app loaded (SW served the shell) instead of the request reaching the backend.
+
+**Why:** the runtimeCaching `NetworkFirst` rule for `/litigaforge/` only governs fetch/XHR sub-resources, NOT top-level navigations — navigations are decided solely by the navigation route + its denylist. Fix is build-time only (SW is disabled in dev, `devOptions.enabled:false`), so it needs a republish; returning users self-heal via `autoUpdate` on next app open.
+
 # Admin = `is_superuser` flag; grant it on prod via a deploy-time bootstrap, not direct DB writes
 
 - There is no separate admin login and no seeded admin account. Admin access is a normal user row with `is_superuser = TRUE`; `get_superuser` (403 gate) protects every `/admin/*` endpoint and there is no self-promotion route. Passwords are bcrypt — never recoverable.

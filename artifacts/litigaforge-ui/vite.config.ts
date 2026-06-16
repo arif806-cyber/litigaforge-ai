@@ -43,11 +43,20 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,png,svg,woff2,html}"],
         cleanupOutdatedCaches: true,
-        // The blog (/blog) and its assets (/_astro) are reverse-proxied by the
-        // API server to the Cloudflare Worker. Exclude them from the SPA
-        // navigation fallback so the service worker never serves the React
-        // shell for blog URLs (which would cause an infinite redirect loop).
-        navigateFallbackDenylist: [/^\/blog/, /^\/_astro/],
+        // Exclude backend/proxied paths from the SPA navigation fallback so the
+        // service worker never serves the React shell for non-app URLs:
+        //  - /blog + /_astro: reverse-proxied to the Cloudflare Worker (serving
+        //    the shell here would cause an infinite redirect loop).
+        //  - /api + /litigaforge: backend endpoints (e.g. /api/llm/health). If
+        //    the SW served the React shell, the app would prepend the country
+        //    prefix (e.g. /in/api/...) and render its own 404 instead of the
+        //    JSON response.
+        navigateFallbackDenylist: [
+          /^\/blog/,
+          /^\/_astro/,
+          /^\/api/,
+          /^\/litigaforge/,
+        ],
         runtimeCaching: [
           {
             urlPattern: /\/litigaforge\//,
