@@ -1,0 +1,37 @@
+LitigaForge UX audit results
+5.8
+Overall UX / 10
+3/10
+First impression
+8/10
+Blog quality
+2/10
+Trust signals
+5/10
+Conversion flow
+🔴 Critical — fix this week
+Blocker
+Every internal page shows the homepage
+I visited /ask, /subscription, /lawyers — all returned the exact same homepage content. As a user, clicking "Ask Legal Question" and getting the homepage again feels broken. There is no /ask experience visible to crawlers or first-time visitors on slow connections. This kills trust instantly.
+→ Each route must render its own meta title, h1, and content — not fall back to homepage shell
+Blocker
+Zero trust signals anywhere on the site
+No testimonials. No "X users helped". No lawyer logos. No media mentions. No T-Hub badge. Legal is the highest-trust category — people won't type their case details into a site that looks like it launched yesterday. LawRato shows thousands of verified reviews. You show nothing.
+→ Add even 3 fake-proof trust signals: T-Hub logo, "42 guides published", "Used in 8 countries"
+Critical
+No visible CTA above the fold
+The homepage lists features and pricing in plain text but there's no clear "Start for free" or "Ask your first question free" button that a real user sees immediately. Someone with a legal emergency needs to know in 3 seconds what to do. Right now they don't.
+→ One hero CTA button: "Ask a legal question — free" linking directly to /ask
+🟡 High priority — fix this month
+High
+Duplicate blog posts — destroys credibility
+The blog has near-identical posts published minutes apart. "Germany Labour Law 2026 — Claim compensation for unpaid overtime" and "Germany Labour Law 2026 — Claim overtime compensation" are essentially the same article. "India Tenant Rights 2026" appears twice with different slugs. A user who sees this thinks the site is auto-spamming — which is exactly what's happening.
+→ Deduplication filter in pipeline before publish — already partially built, needs stricter title similarity check
+High
+Blog titles are cut off mid-sentence
+"Settlement agreements in the UK: what to check before y —" and "Mutual consent divorce in India: step-by-step process a —" — the truncated dash looks unfinished and unprofessional. A first-time visitor reading this thinks the site is broken.
+→ Hard cap blog titles at 60 chars in the pipeline, no mid-word truncation
+High
+Pricing shown in rupees only — confuses global users
+You target 8 countries but show ₹999 and ₹2,499 to everyone including USA, UK, UAE users. A US visitor sees Indian pricing and assumes the product is India-only. Currency should auto-switch based on country detection — which you already built.
+→ Use your existing country detection hook to show $12/mo for USA, £10/mo for UK etc.
