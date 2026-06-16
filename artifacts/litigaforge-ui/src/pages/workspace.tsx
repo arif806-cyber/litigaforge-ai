@@ -11,6 +11,8 @@ import { motion } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
 import AgentPanel, { type AgentState, type CollabEvent } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
+import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
+import SimulationPanel, { type SimState, type SimulationResult, type NodeDelta } from "@/components/workspace/SimulationPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,10 +91,11 @@ export default function ForgeWorkspace() {
   const [error, setError]                   = useState("");
   const [showAddMenu, setShowAddMenu]       = useState(false);
   const [showSessions, setShowSessions]     = useState(false);
-  const [rightPanelTab, setRightPanelTab]   = useState<"sessions" | "search" | "simulate">("sessions");
-  const [simPrompt, setSimPrompt]           = useState("");
-  const [simResult, setSimResult]           = useState("");
-  const [isSimulating, setIsSimulating]     = useState(false);
+  const [rightPanelTab, setRightPanelTab]   = useState<"sessions" | "search" | "simulate" | "insights">("sessions");
+  const [simState, setSimState]             = useState<SimState>({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
+  const [simHistory, setSimHistory]         = useState<SimulationResult[]>([]);
+  const [suggestions, setSuggestions]       = useState<Suggestion[]>([]);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [collabFeed, setCollabFeed]         = useState<CollabEvent[]>([]);
   const [synthesisScore, setSynthesisScore] = useState<number | null>(null);
 
@@ -445,31 +448,122 @@ export default function ForgeWorkspace() {
     }
   }, [sessionId, isAnalyzing, caseDescription]);
 
-  // ─── What-if simulation ──────────────────────────────────────────────────────
+  // ─── What-If Simulation (SSE) ────────────────────────────────────────────────
 
-  async function runSimulation() {
-    if (!simPrompt.trim() || isSimulating) return;
-    setIsSimulating(true);
-    setSimResult("");
+  const runSimulation = useCallback(async (assumption: string) => {
+    if (!sessionId || !assumption.trim() || simState.phase === "running") return;
+    setSimState({ phase: "running", scenario: assumption, before: null, after: null, deltas: [], analysis: "", agents: [] });
     try {
-      const prompt =
-        `What-If Simulation for legal case: ${caseDescription || "general case"}\n\n` +
-        `Scenario: ${simPrompt}\n\n` +
-        `Current strategy nodes on canvas: ${nodes.filter(n => n.type === "strategy").map(n => (n.data as Record<string, unknown>).label).join(", ") || "none"}\n\n` +
-        `Analyze how this scenario changes the legal strategy, arguments, risk profile, and predicted outcome. Be specific.`;
-
-      const res = await api("/ask", {
+      const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/simulate`, {
         method: "POST",
-        body: JSON.stringify({ question: prompt, category: "general" }),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ assumption, case_description: caseDescription, nodes }),
       });
-      const data = await res.json() as { ai_answer?: string };
-      setSimResult(data.ai_answer || "Simulation complete.");
+      if (!res.ok || !res.body) throw new Error("Stream failed");
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const blocks = buf.split("\n\n");
+        buf = blocks.pop() ?? "";
+        for (const block of blocks) {
+          const line = block.split("\n").find(l => l.startsWith("data: "));
+          if (!line) continue;
+          try {
+            const ev    = JSON.parse(line.slice(6)) as Record<string, unknown>;
+            const etype = ev.type as string;
+            if (etype === "sim_before") {
+              setSimState(p => ({ ...p, before: { avgScore: ev.avg_score as number, riskLevel: ev.risk_level as string, nodeCount: ev.node_count as number } }));
+            } else if (etype === "sim_agent") {
+              setSimState(p => ({ ...p, agents: [...new Set([...p.agents, ev.agent as string])] }));
+            } else if (etype === "sim_token") {
+              setSimState(p => ({ ...p, analysis: p.analysis + (ev.token as string) }));
+            } else if (etype === "sim_delta") {
+              setSimState(p => ({ ...p, deltas: ev.deltas as NodeDelta[] }));
+            } else if (etype === "sim_after") {
+              setSimState(p => ({
+                ...p,
+                after: {
+                  avgScore:        ev.avg_score      as number,
+                  riskLevel:       ev.risk_level     as string,
+                  scoreChange:     ev.score_change   as number,
+                  summary:         ev.summary        as string,
+                  recommendation:  ev.recommendation as string,
+                },
+              }));
+            } else if (etype === "sim_complete") {
+              setSimState(p => ({ ...p, phase: "complete" }));
+            }
+          } catch { /* malformed */ }
+        }
+      }
     } catch {
-      setSimResult("Simulation failed. Please try again.");
-    } finally {
-      setIsSimulating(false);
+      setSimState(p => ({ ...p, phase: "complete" }));
     }
-  }
+  }, [sessionId, caseDescription, nodes, simState.phase]);
+
+  const onSaveSimulation = useCallback(() => {
+    setSimState(prev => {
+      if (!prev.before || !prev.after) return prev;
+      const result: SimulationResult = {
+        id:        Date.now().toString(),
+        scenario:  prev.scenario,
+        timestamp: Date.now(),
+        before:    prev.before,
+        after:     prev.after,
+        deltas:    prev.deltas,
+      };
+      setSimHistory(h => [...h.slice(-4), result]);
+      return prev;
+    });
+  }, []);
+
+  const onApplyToCanvas = useCallback((result: SimulationResult) => {
+    setNodes(prev => prev.map(n => {
+      const delta = result.deltas.find(d => (n.data as Record<string, unknown>).label === d.nodeLabel);
+      if (!delta) return n;
+      return { ...n, data: { ...(n.data as Record<string, unknown>), impact_score: delta.newScore } };
+    }));
+  }, [setNodes]);
+
+  // ─── Proactive Insights ───────────────────────────────────────────────────────
+
+  const fetchInsights = useCallback(async () => {
+    if (!sessionId || isLoadingInsights) return;
+    setIsLoadingInsights(true);
+    try {
+      const res = await api(`/workspace/sessions/${sessionId}/insights`, {
+        method: "POST",
+        body: JSON.stringify({ case_description: caseDescription, nodes }),
+      });
+      const data = await res.json() as { suggestions: Suggestion[] };
+      setSuggestions(data.suggestions ?? []);
+    } catch { /* keep existing */ } finally {
+      setIsLoadingInsights(false);
+    }
+  }, [sessionId, caseDescription, nodes, isLoadingInsights]);
+
+  const onAcceptSuggestion = useCallback((s: Suggestion) => {
+    const typeMap: Record<string, string> = { opportunity: "strategy", risk: "risk", precedent: "judgment", pattern: "argument", warning: "fact" };
+    const nodeType = typeMap[s.type] ?? "strategy";
+    const preset   = NODE_PRESETS[nodeType];
+    if (!preset) return;
+    pushHistory([...nodes], [...edges]);
+    setNodes(prev => [...prev, {
+      id:       `insight-${Date.now()}`,
+      type:     nodeType,
+      position: { x: 200 + Math.random() * 400, y: 180 + Math.random() * 300 },
+      data:     { ...preset.data, label: s.text.slice(0, 50), description: s.detail ?? s.text, impact_score: 75 },
+    } as Node]);
+    setSuggestions(prev => prev.filter(x => x.id !== s.id));
+  }, [nodes, edges, setNodes]);
+
+  const onDismissSuggestion = useCallback((id: string) => {
+    setSuggestions(prev => prev.filter(s => s.id !== id));
+  }, []);
 
   // ─── Direct agent Q&A (SSE) ───────────────────────────────────────────────────
 
@@ -533,6 +627,15 @@ export default function ForgeWorkspace() {
       },
     }));
   }, []);
+
+  // ─── Auto-fetch insights when switching to insights tab ───────────────────────
+
+  useEffect(() => {
+    if (rightPanelTab === "insights" && sessionId && suggestions.length === 0 && !isLoadingInsights) {
+      void fetchInsights();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rightPanelTab, sessionId]);
 
   // ─── Close add menu on outside click ──────────────────────────────────────────
 
@@ -769,26 +872,24 @@ export default function ForgeWorkspace() {
             borderBottom: `1px solid ${BORDER}`,
             flexShrink: 0,
           }}>
-            {(["sessions", "search", "simulate"] as const).map(tab => (
+            {(["sessions", "search", "insights", "simulate"] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setRightPanelTab(tab)}
                 style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  fontSize: 9.5,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  background: "transparent",
-                  border: "none",
+                  flex: 1, padding: "9px 0",
+                  fontSize: 8.5, fontWeight: 700,
+                  textTransform: "uppercase" as const, letterSpacing: "0.05em",
+                  background: "transparent", border: "none",
                   borderBottom: rightPanelTab === tab ? `2px solid ${TEAL}` : "2px solid transparent",
                   color: rightPanelTab === tab ? TEAL : FGD,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
+                  cursor: "pointer", transition: "all 0.15s",
                 }}
               >
-                {tab === "sessions" ? "📁 Sessions" : tab === "search" ? "🔍 Search" : "🔮 What-If"}
+                {tab === "sessions" ? "📁 Files"
+                  : tab === "search" ? "🔍 Search"
+                  : tab === "insights" ? "✦ Intel"
+                  : "⚡ Sim"}
               </button>
             ))}
           </div>
@@ -908,72 +1009,29 @@ export default function ForgeWorkspace() {
             </div>
           )}
 
+          {/* Proactive Intelligence tab */}
+          {rightPanelTab === "insights" && (
+            <ProactivePanel
+              suggestions={suggestions}
+              isLoading={isLoadingInsights}
+              canvasHasNodes={nodes.length >= 2}
+              sessionReady={!!sessionId}
+              onRefresh={fetchInsights}
+              onAccept={onAcceptSuggestion}
+              onDismiss={onDismissSuggestion}
+            />
+          )}
+
           {/* What-If Simulation tab */}
           {rightPanelTab === "simulate" && (
-            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 10, color: TEAL, fontWeight: 700 }}>
-                🔮 What-If Simulation Engine
-              </div>
-              <p style={{ fontSize: 10, color: FGD, lineHeight: 1.6, margin: 0 }}>
-                Describe a hypothetical scenario and see how it changes your legal strategy, arguments, and risk profile.
-              </p>
-              <textarea
-                value={simPrompt}
-                onChange={e => setSimPrompt(e.target.value)}
-                placeholder="e.g. What if the key precedent is distinguished? What if new evidence emerges? What if we change the jurisdiction?"
-                rows={4}
-                style={{
-                  width: "100%",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 8,
-                  padding: "9px 11px",
-                  fontSize: 10.5,
-                  color: FG,
-                  resize: "vertical",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  fontFamily: "inherit",
-                  lineHeight: 1.6,
-                }}
-              />
-              <button
-                onClick={runSimulation}
-                disabled={isSimulating || !simPrompt.trim()}
-                style={{
-                  width: "100%",
-                  padding: "9px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: isSimulating ? "rgba(245,158,11,0.1)" : "linear-gradient(135deg, #d97706, #f59e0b)",
-                  color: isSimulating ? "#f59e0b" : "#fff",
-                  fontWeight: 700,
-                  fontSize: 11,
-                  cursor: isSimulating ? "not-allowed" : "pointer",
-                }}
-              >
-                {isSimulating ? "Simulating…" : "▶ Run Simulation"}
-              </button>
-              {simResult && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{
-                    padding: "10px 12px",
-                    background: "rgba(245,158,11,0.06)",
-                    border: "1px solid rgba(245,158,11,0.15)",
-                    borderRadius: 8,
-                    fontSize: 10.5,
-                    color: FGD,
-                    lineHeight: 1.7,
-                    maxHeight: 280,
-                    overflowY: "auto",
-                  }}
-                >
-                  {simResult}
-                </motion.div>
-              )}
-            </div>
+            <SimulationPanel
+              nodes={nodes}
+              simState={simState}
+              simHistory={simHistory}
+              onRunSimulation={runSimulation}
+              onSaveSimulation={onSaveSimulation}
+              onApplyToCanvas={onApplyToCanvas}
+            />
           )}
 
           {/* Canvas stats footer */}

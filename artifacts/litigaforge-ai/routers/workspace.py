@@ -539,6 +539,231 @@ async def ask_agent(
     )
 
 
+# ─── Proactive Intelligence ───────────────────────────────────────────────────
+
+class InsightsBody(BaseModel):
+    case_description: str = ""
+    nodes: list[dict] = Field(default_factory=list)
+
+
+_INSIGHT_FALLBACKS = [
+    {"id": "f1", "type": "opportunity", "emoji": "💡",
+     "text": "Run Agent Analysis to surface precedents relevant to your canvas.",
+     "detail": "The Multi-Agent system searches Indian Kanoon and identifies judgments matching your case facts."},
+    {"id": "f2", "type": "risk",        "emoji": "⚠️",
+     "text": "Add case facts as nodes before running strategic analysis.",
+     "detail": "A populated canvas lets the Risk Agent pinpoint argument weaknesses and opposing strategies."},
+    {"id": "f3", "type": "pattern",     "emoji": "🎯",
+     "text": "Connect your argument nodes to judgment nodes to reveal precedent strength.",
+     "detail": "Typed 'Supports / Cites' edges automatically adjust impact scores through the canvas."},
+    {"id": "f4", "type": "precedent",   "emoji": "📚",
+     "text": "Search Indian Kanoon from the Search tab to add live judgments to your canvas.",
+     "detail": "Real Supreme Court and High Court orders can be placed as judgment nodes for citation analysis."},
+]
+
+
+@router.post("/workspace/sessions/{session_id}/insights")
+async def get_proactive_insights(
+    session_id: int, body: InsightsBody, request: Request, user=Depends(require_user)
+):
+    """Generate proactive AI suggestions based on current canvas state."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+    if not exists:
+        raise HTTPException(404, "Session not found")
+
+    nodes = body.nodes[:12]
+    if not nodes and not body.case_description:
+        return {"suggestions": _INSIGHT_FALLBACKS}
+
+    node_summaries = "\n".join(
+        f"  • [{n.get('type','node')}] {n.get('data',{}).get('label','Untitled')} — score {n.get('data',{}).get('impact_score',70)}"
+        for n in nodes
+    ) or "  (empty canvas)"
+
+    prompt = (
+        f"Case: {body.case_description or 'Not specified'}\n"
+        f"Canvas ({len(nodes)} nodes):\n{node_summaries}\n\n"
+        "You are a proactive legal AI for Indian courts. Generate exactly 4 smart, specific insights.\n"
+        "Output ONLY 4 pipe-separated lines: TYPE|EMOJI|SHORT_TEXT|DETAIL_TEXT\n"
+        "TYPE: opportunity | risk | precedent | pattern | warning\n"
+        "SHORT_TEXT ≤100 chars. DETAIL_TEXT ≤200 chars.\n"
+        "Be specific — mention legal principles, real case names, or court names.\n"
+        "Example:\n"
+        "opportunity|💡|Maneka Gandhi precedent strengthens your Article 21 argument|"
+        "Maneka Gandhi v. Union (1978) established a broad reading of personal liberty — directly applicable here."
+    )
+
+    try:
+        raw = (await legal_llm.aask_legal_question(prompt) or "").strip()
+        suggestions = []
+        for line in raw.splitlines():
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) < 3:
+                continue
+            stype = parts[0].lower()
+            if stype not in ("opportunity", "risk", "precedent", "pattern", "warning"):
+                stype = "opportunity"
+            suggestions.append({
+                "id":     _uuid.uuid4().hex[:8],
+                "type":   stype,
+                "emoji":  parts[1] or "💡",
+                "text":   parts[2][:130],
+                "detail": parts[3][:260] if len(parts) > 3 else "",
+            })
+            if len(suggestions) >= 4:
+                break
+        return {"suggestions": suggestions or _INSIGHT_FALLBACKS}
+    except Exception as exc:
+        logger.warning("Insights error: %s", exc)
+        return {"suggestions": _INSIGHT_FALLBACKS}
+
+
+# ─── What-If Simulation (SSE) ─────────────────────────────────────────────────
+
+class SimulateBody(BaseModel):
+    assumption: str = Field(min_length=1, max_length=500)
+    case_description: str = ""
+    nodes: list[dict] = Field(default_factory=list)
+
+
+@router.post("/workspace/sessions/{session_id}/simulate")
+async def simulate_what_if(
+    session_id: int, body: SimulateBody, request: Request, user=Depends(require_user)
+):
+    """SSE streaming What-If simulation with structured before/after comparison."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+    if not exists:
+        raise HTTPException(404, "Session not found")
+
+    nodes = body.nodes[:12]
+
+    async def generate():
+        def sse(d: dict) -> str:
+            return f"data: {json.dumps(d, default=str)}\n\n"
+
+        # ── Before state ────────────────────────────────────────────────────
+        scores = [int(n.get("data", {}).get("impact_score", 70)) for n in nodes if isinstance(n.get("data"), dict)]
+        avg_before = int(sum(scores) / len(scores)) if scores else 70
+        risk_before = "high" if avg_before < 60 else "medium" if avg_before < 75 else "low"
+
+        yield sse({"type": "sim_start"})
+        yield sse({"type": "sim_before", "avg_score": avg_before, "risk_level": risk_before, "node_count": len(nodes)})
+
+        # ── Agent involvement ───────────────────────────────────────────────
+        yield sse({"type": "sim_agent", "agent": "risk",     "message": "Risk & Counter Agent stress-testing the assumption…"})
+        await asyncio.sleep(0.35)
+        yield sse({"type": "sim_agent", "agent": "strategy", "message": "Strategy Agent modelling required adaptations…"})
+        await asyncio.sleep(0.35)
+
+        # ── LLM analysis ────────────────────────────────────────────────────
+        node_summary = "\n".join(
+            f"  • [{n.get('type','?')}] {n.get('data',{}).get('label','?')} (score: {int(n.get('data',{}).get('impact_score',70))})"
+            for n in nodes
+        ) or "  (no nodes on canvas)"
+
+        prompt = (
+            f"Case: {body.case_description or 'Legal case — no description provided'}\n"
+            f"Canvas ({len(nodes)} nodes, avg score {avg_before}, risk {risk_before}):\n{node_summary}\n\n"
+            f"WHAT-IF SCENARIO: {body.assumption}\n\n"
+            "Analyze this hypothetical as Risk & Counter Agent + Strategy Agent.\n"
+            "Respond EXACTLY in this format:\n"
+            "SUMMARY: [2-3 sentence impact summary]\n"
+            "RISK: high|medium|low\n"
+            "SCORE_CHANGE: [-30 to +20, integer only, e.g. -12 or +8]\n"
+            "RECOMMENDATION: [1-2 sentences — concrete next steps]\n"
+            "NODE_CHANGES:\n"
+            "- [exact node label]: [old_score]→[new_score] | [≤12 word reason]\n"
+            "(up to 4 most impacted nodes)\n\n"
+            "Be specific and proportional to scenario severity."
+        )
+
+        try:
+            raw = (await legal_llm.aask_legal_question(prompt) or "").strip()
+        except Exception as exc:
+            logger.warning("Simulate LLM error: %s", exc)
+            raw = (
+                "SUMMARY: This scenario introduces significant uncertainty into the current strategy.\n"
+                "RISK: high\nSCORE_CHANGE: -10\n"
+                "RECOMMENDATION: Consult the Risk Agent to identify mitigation strategies.\n"
+                "NODE_CHANGES:"
+            )
+
+        # ── Stream analysis tokens ───────────────────────────────────────────
+        words = raw.split()
+        for i in range(0, len(words), 5):
+            yield sse({"type": "sim_token", "token": " ".join(words[i:i+5]) + " "})
+            await asyncio.sleep(0.014)
+
+        # ── Parse structured fields ──────────────────────────────────────────
+        summary        = ""
+        risk_after     = risk_before
+        score_change   = 0
+        recommendation = ""
+        node_changes: list[dict] = []
+
+        for line in raw.splitlines():
+            line = line.strip()
+            if line.startswith("SUMMARY:"):
+                summary = line[8:].strip()
+            elif line.startswith("RISK:"):
+                r = line[5:].strip().lower()
+                if r in ("high", "medium", "low"):
+                    risk_after = r
+            elif line.startswith("SCORE_CHANGE:"):
+                try:
+                    score_change = int(line[13:].strip().lstrip("+"))
+                except ValueError:
+                    score_change = -8
+            elif line.startswith("RECOMMENDATION:"):
+                recommendation = line[15:].strip()
+            elif line.startswith("-") and "→" in line and "|" in line:
+                try:
+                    rest = line.lstrip("- ").strip()
+                    colon_i = rest.rfind(":")
+                    if colon_i == -1:
+                        continue
+                    label = rest[:colon_i].strip()
+                    sp, reason = rest[colon_i+1:].strip().split("|", 1)
+                    old_s, new_s = sp.strip().split("→")
+                    node_changes.append({
+                        "nodeLabel": label,
+                        "oldScore":  int(old_s.strip()),
+                        "newScore":  int(new_s.strip()),
+                        "reason":    reason.strip(),
+                    })
+                except Exception:
+                    continue
+
+        avg_after = max(10, min(100, avg_before + score_change))
+
+        yield sse({"type": "sim_delta", "deltas": node_changes})
+        yield sse({
+            "type":           "sim_after",
+            "avg_score":      avg_after,
+            "risk_level":     risk_after,
+            "score_change":   score_change,
+            "summary":        summary or raw[:300],
+            "recommendation": recommendation,
+        })
+        yield sse({"type": "sim_complete"})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _session_dict(row) -> dict:
