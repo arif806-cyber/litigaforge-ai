@@ -17,6 +17,7 @@ from routers.push         import router as push_router
 from routers.judgments    import router as judgments_router
 from routers.research      import router as research_router
 from routers.llm           import router as llm_router
+from routers.workspace     import router as workspace_router
 
 __all__ = [
     "auth_router",
@@ -35,4 +36,5 @@ __all__ = [
     "judgments_router",
     "research_router",
     "llm_router",
+    "workspace_router",
 ]

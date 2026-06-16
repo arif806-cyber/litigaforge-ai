@@ -76,6 +76,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@xyflow/react": "^12.11.0",
     "react-helmet-async": "^3.0.0",
     "vite-plugin-compression2": "^2.5.3"
   }

@@ -780,6 +780,38 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("judgment digest init: %s", me)
 
+        # ── Forge Workspace ───────────────────────────────────────────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS workspace_sessions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    title TEXT NOT NULL DEFAULT 'Untitled Workspace',
+                    case_description TEXT DEFAULT '',
+                    nodes_json JSONB NOT NULL DEFAULT '[]',
+                    edges_json JSONB NOT NULL DEFAULT '[]',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_workspace_sessions_user "
+                "ON workspace_sessions (user_id, updated_at DESC)"
+            )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS workspace_insights (
+                    id SERIAL PRIMARY KEY,
+                    session_id INTEGER REFERENCES workspace_sessions(id) ON DELETE CASCADE,
+                    agent TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    insight_type TEXT DEFAULT 'analysis',
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            logger.info("workspace tables ready")
+        except Exception as me:
+            logger.warning("workspace tables init: %s", me)
+
         logger.info("Database tables initialized")
 
         # ── Admin bootstrap ──────────────────────────────────────────────────
@@ -962,7 +994,7 @@ from routers import (
     paid_documents_router,
     passkeys_router, push_router,
     judgments_router, research_router,
-    llm_router,
+    llm_router, workspace_router,
 )
 from country_router import router as country_router
 
@@ -987,6 +1019,7 @@ app.include_router(judgments_router,   prefix=BASE_PATH)
 app.include_router(research_router,    prefix=BASE_PATH)
 app.include_router(country_router,     prefix=BASE_PATH)
 app.include_router(llm_router,         prefix=BASE_PATH)
+app.include_router(workspace_router,   prefix=BASE_PATH)
 
 @app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
 async def serve_sitemap():

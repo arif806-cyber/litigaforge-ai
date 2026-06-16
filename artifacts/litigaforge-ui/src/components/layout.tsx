@@ -5,7 +5,7 @@ import {
   Scale, FileText, Menu, X,
   Crown, LogOut, User as UserIcon,
   Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper,
-  Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users
+  Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users, Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,6 +40,7 @@ const lawyerNav: NavEntry[] = [
 ];
 
 const commonNav: NavEntry[] = [
+  { href: "/workspace",      label: "Forge Workspace", icon: Zap },
   { href: "/legal-chat",     label: "AI Legal Chat",   icon: MessageSquareText, tKey: "legal_chat" },
   { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare,     tKey: "legal_qa" },
   { href: "/review",         label: "Doc Analyzer",    icon: FileSearch,        tKey: "doc_analyzer" },
