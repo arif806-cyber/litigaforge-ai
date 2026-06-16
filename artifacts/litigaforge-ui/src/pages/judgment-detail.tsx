@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SaveToResearch } from "@/components/research";
+import { IKanoonAttribution } from "@/components/IKanoonAttribution";
 
 interface RelatedItem {
   case_name: string;
@@ -381,6 +382,11 @@ export default function JudgmentDetail() {
         This summary is provided for general information only and is AI-assisted. It is not legal advice.
         Always verify the judgment with the official reporter or {j.source_name ?? "the source"} before relying on or citing it in court.
       </p>
+
+      {/* IndianKanoon attribution (required by their API Terms of Service) */}
+      <div className="flex justify-start">
+        <IKanoonAttribution sourceName={j.source_name} sourceUrl={j.source_url} />
+      </div>
     </article>
   </>);
 }

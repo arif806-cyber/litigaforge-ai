@@ -15,6 +15,7 @@ import { useCountry } from "@/hooks/useCountry";
 import { JUDGMENTS_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
 import { MyResearchButton } from "@/components/research";
+import { IKanoonAttribution, isIndianKanoon } from "@/components/IKanoonAttribution";
 
 interface Judgment {
   case_name: string;
@@ -39,6 +40,7 @@ interface DigestItem {
   outcome: string;
   citation: string;
   path: string;
+  source_name?: string;
 }
 
 interface CourtFacet {
@@ -247,6 +249,11 @@ export default function Judgments() {
               </motion.div>
             ))}
           </div>
+          {digestItems.some((j) => isIndianKanoon(j.source_name)) && (
+            <div className="flex justify-center pt-2">
+              <IKanoonAttribution sourceName="IndianKanoon" />
+            </div>
+          )}
         </section>
 
         {/* ── AI case-law search (secondary) ───────────────────────── */}
@@ -443,9 +450,12 @@ export default function Judgments() {
               ))}
             </div>
 
-            <p className="text-xs text-center text-muted-foreground font-mono pt-4">
-              Citations are AI-generated. Verify on {sourceName} before citing in court.
-            </p>
+            <div className="flex flex-col items-center gap-3 pt-4">
+              <IKanoonAttribution sourceName={(search.data as { source_name?: string } | undefined)?.source_name} />
+              <p className="text-xs text-center text-muted-foreground font-mono">
+                Citations are AI-generated. Verify on {sourceName} before citing in court.
+              </p>
+            </div>
           </motion.div>
         )}
         </section>
