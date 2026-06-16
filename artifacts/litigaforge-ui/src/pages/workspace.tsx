@@ -14,6 +14,8 @@ import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTyp
 import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
 import SimulationPanel, { type SimState, type SimulationResult, type NodeDelta } from "@/components/workspace/SimulationPanel";
 import SearchPanel from "@/components/workspace/SearchPanel";
+import { LangToggle, STRINGS, getInitialLang, type Lang } from "@/components/workspace/WorkspaceLang";
+import { NoSessionWelcome, EmptyCanvasGuide } from "@/components/workspace/ForgeWelcome";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,13 +61,13 @@ async function api(path: string, opts: RequestInit = {}) {
 
 // ─── Node presets for manual "Add Node" ───────────────────────────────────────
 
-const NODE_PRESETS: Record<string, { type: string; label: string; emoji: string; data: Record<string, unknown> }> = {
-  judgment: { type: "judgment", label: "New Judgment",  emoji: "⚖️", data: { label: "New Judgment",   court: "Court",  summary: "",  impact_score: 75, citation: "" } },
-  fact:     { type: "fact",     label: "New Fact",      emoji: "📋", data: { label: "New Fact",        content: "",     impact_score: 70 } },
-  issue:    { type: "issue",    label: "Legal Issue",   emoji: "🏛️", data: { label: "Legal Issue",     description: "", impact_score: 80 } },
-  argument: { type: "argument", label: "Argument",      emoji: "🗣️", data: { label: "New Argument",    content: "",     strength: 75, impact_score: 75 } },
-  risk:     { type: "risk",     label: "Risk Factor",   emoji: "⚠️", data: { label: "Risk Factor",     description: "", severity: 5,  impact_score: 50 } },
-  strategy: { type: "strategy", label: "Strategy",      emoji: "💡", data: { label: "New Strategy",    description: "", confidence: 75, impact_score: 75 } },
+const NODE_PRESETS: Record<string, { type: string; emoji: string; data: Record<string, unknown> }> = {
+  judgment: { type: "judgment", emoji: "⚖️", data: { label: "New Judgment",   court: "Court",  summary: "",  impact_score: 75, citation: "" } },
+  fact:     { type: "fact",     emoji: "📋", data: { label: "New Fact",        content: "",     impact_score: 70 } },
+  issue:    { type: "issue",    emoji: "🏛️", data: { label: "Legal Issue",     description: "", impact_score: 80 } },
+  argument: { type: "argument", emoji: "🗣️", data: { label: "New Argument",    content: "",     strength: 75, impact_score: 75 } },
+  risk:     { type: "risk",     emoji: "⚠️", data: { label: "Risk Factor",     description: "", severity: 5,  impact_score: 50 } },
+  strategy: { type: "strategy", emoji: "💡", data: { label: "New Strategy",    description: "", confidence: 75, impact_score: 75 } },
 };
 
 const AGENT_IDS = ["research", "strategy", "risk", "drafting", "predictive"];
@@ -96,6 +98,8 @@ export default function ForgeWorkspace() {
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [collabFeed, setCollabFeed]         = useState<CollabEvent[]>([]);
   const [synthesisScore, setSynthesisScore] = useState<number | null>(null);
+  const [lang, setLang]                     = useState<Lang>(getInitialLang);
+  const t = STRINGS[lang];
 
   const saveTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addMenuRef     = useRef<HTMLDivElement>(null);
@@ -681,14 +685,28 @@ export default function ForgeWorkspace() {
         zIndex: 10,
       }}>
         {/* Brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginRight: 8 }}>
-          <span style={{ fontSize: 18 }}>⚡</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 6 }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 8,
+            background: "linear-gradient(135deg, rgba(20,184,166,0.2), rgba(14,116,144,0.12))",
+            border: "1px solid rgba(20,184,166,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 15,
+            boxShadow: "0 0 12px rgba(20,184,166,0.15)",
+          }}>
+            ⚡
+          </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 12, color: TEAL, letterSpacing: "0.03em" }}>
-              FORGE
+            <div style={{
+              fontWeight: 900, fontSize: 11.5, letterSpacing: "0.06em",
+              background: "linear-gradient(90deg, #14b8a6, #22d3ee)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}>
+              {t.brand}
             </div>
-            <div style={{ fontSize: 8.5, color: FGD, letterSpacing: "0.05em", marginTop: -1 }}>
-              WORKSPACE
+            <div style={{ fontSize: 7.5, color: "#334155", letterSpacing: "0.08em", marginTop: -1, fontWeight: 700 }}>
+              {t.brandSub}
             </div>
           </div>
         </div>
@@ -721,7 +739,7 @@ export default function ForgeWorkspace() {
             data-testid="forge-add-node"
             style={toolbarBtn(showAddMenu)}
           >
-            + Add Node ▾
+            {t.addNode}
           </button>
           {showAddMenu && (
             <div style={{
@@ -760,7 +778,12 @@ export default function ForgeWorkspace() {
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = FGD; }}
                 >
                   <span>{preset.emoji}</span>
-                  {preset.label}
+                  {type === "judgment" ? t.nodeJudgment
+                  : type === "fact"    ? t.nodeFact
+                  : type === "issue"   ? t.nodeIssue
+                  : type === "argument"? t.nodeArgument
+                  : type === "risk"    ? t.nodeRisk
+                  :                     t.nodeStrategy}
                 </button>
               ))}
             </div>
@@ -774,7 +797,7 @@ export default function ForgeWorkspace() {
           title="Undo (Ctrl+Z)"
           style={{ ...toolbarBtn(false), opacity: canUndo ? 1 : 0.35 }}
         >
-          ↩ Undo
+          {t.undo}
         </button>
         <button
           onClick={redo}
@@ -782,7 +805,7 @@ export default function ForgeWorkspace() {
           title="Redo (Ctrl+Y)"
           style={{ ...toolbarBtn(false), opacity: canRedo ? 1 : 0.35 }}
         >
-          ↪ Redo
+          {t.redo}
         </button>
 
         {/* Save */}
@@ -791,24 +814,29 @@ export default function ForgeWorkspace() {
           data-testid="forge-save"
           style={toolbarBtn(false)}
         >
-          {isSaving ? "Saving…" : "💾 Save"}
+          {isSaving ? t.saving : t.save}
         </button>
 
         {/* Node count badge */}
         {nodes.length > 0 && (
           <div style={{
-            fontSize: 10, color: TEAL, background: "rgba(20,184,166,0.12)",
-            padding: "3px 8px", borderRadius: 12, fontWeight: 700,
+            fontSize: 9.5, color: TEAL,
+            background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))",
+            border: "1px solid rgba(20,184,166,0.2)",
+            padding: "3px 10px", borderRadius: 12, fontWeight: 800,
           }}>
-            {nodes.length} nodes
+            {t.nodesBadge(nodes.length)}
           </div>
         )}
 
         {error && (
-          <div style={{ fontSize: 10, color: "#ef4444", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 10, color: "#ef4444", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             ⚠ {error}
           </div>
         )}
+
+        {/* Language toggle */}
+        <LangToggle lang={lang} setLang={setLang} />
       </div>
 
       {/* ── Main area ── */}
@@ -828,19 +856,34 @@ export default function ForgeWorkspace() {
         />
 
         {/* Center: Canvas */}
-        <ForgeCanvas
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnectTyped={onConnectTyped}
-          onEdgeTypeChange={onEdgeTypeChange}
-          onUndo={undo}
-          onRedo={redo}
-          onDeleteSelected={deleteSelectedNodes}
-          canUndo={canUndo}
-          canRedo={canRedo}
-        />
+        <div style={{ flex: 1, position: "relative", minWidth: 0, overflow: "hidden" }}>
+          <ForgeCanvas
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnectTyped={onConnectTyped}
+            onEdgeTypeChange={onEdgeTypeChange}
+            onUndo={undo}
+            onRedo={redo}
+            onDeleteSelected={deleteSelectedNodes}
+            canUndo={canUndo}
+            canRedo={canRedo}
+          />
+          {/* Welcome overlays */}
+          {!sessionId && (
+            <NoSessionWelcome t={t} onCreate={() => void createSession()} />
+          )}
+          {sessionId && nodes.length === 0 && (
+            <EmptyCanvasGuide
+              t={t}
+              onSearch={() => setRightPanelTab("search")}
+              onAnalyze={() => void runAnalysis()}
+              onAddNode={() => setShowAddMenu(true)}
+              isAnalyzing={isAnalyzing}
+            />
+          )}
+        </div>
 
         {/* Right: Sessions + Search + Simulation */}
         <div style={{
@@ -858,74 +901,146 @@ export default function ForgeWorkspace() {
             borderBottom: `1px solid ${BORDER}`,
             flexShrink: 0,
           }}>
-            {(["sessions", "search", "insights", "simulate"] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setRightPanelTab(tab)}
-                style={{
-                  flex: 1, padding: "9px 0",
-                  fontSize: 8.5, fontWeight: 700,
-                  textTransform: "uppercase" as const, letterSpacing: "0.05em",
-                  background: "transparent", border: "none",
-                  borderBottom: rightPanelTab === tab ? `2px solid ${TEAL}` : "2px solid transparent",
-                  color: rightPanelTab === tab ? TEAL : FGD,
-                  cursor: "pointer", transition: "all 0.15s",
-                }}
-              >
-                {tab === "sessions" ? "📁 Files"
-                  : tab === "search" ? "🔍 Search"
-                  : tab === "insights" ? "✦ Intel"
-                  : "⚡ Sim"}
-              </button>
-            ))}
+            {(["sessions", "search", "insights", "simulate"] as const).map(tab => {
+              const label =
+                tab === "sessions" ? t.tabFiles :
+                tab === "search"   ? t.tabSearch :
+                tab === "insights" ? t.tabIntel  : t.tabSim;
+              const active = rightPanelTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setRightPanelTab(tab)}
+                  style={{
+                    flex: 1, padding: "10px 0",
+                    fontSize: 9, fontWeight: 800,
+                    letterSpacing: "0.02em",
+                    background: active ? "rgba(20,184,166,0.08)" : "transparent",
+                    border: "none",
+                    borderBottom: active ? `2px solid ${TEAL}` : "2px solid transparent",
+                    color: active ? TEAL : FGD,
+                    cursor: "pointer", transition: "all 0.15s",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Sessions tab */}
           {rightPanelTab === "sessions" && (
             <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => createSession()}
                 style={{
                   width: "100%",
-                  padding: "9px",
-                  background: "rgba(20,184,166,0.1)",
-                  border: `1px solid rgba(20,184,166,0.2)`,
-                  borderRadius: 8,
+                  padding: "10px",
+                  background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))",
+                  border: `1px solid rgba(20,184,166,0.25)`,
+                  borderRadius: 9,
                   color: TEAL,
                   fontSize: 11,
-                  fontWeight: 700,
+                  fontWeight: 800,
                   cursor: "pointer",
+                  letterSpacing: "0.01em",
                 }}
               >
-                + New Workspace
-              </button>
-              {sessions.map(s => (
-                <div
-                  key={s.id}
-                  onClick={() => openSession(s)}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    background: s.id === sessionId ? "rgba(20,184,166,0.08)" : "rgba(255,255,255,0.02)",
-                    border: `1px solid ${s.id === sessionId ? "rgba(20,184,166,0.25)" : "rgba(255,255,255,0.05)"}`,
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ fontWeight: 700, fontSize: 11.5, color: s.id === sessionId ? TEAL : FG, flex: 1, minWidth: 0 }}>
-                      {s.title}
-                    </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); deleteSession(s.id); }}
-                      style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 11, padding: "0 0 0 4px", flexShrink: 0 }}
-                    >✕</button>
-                  </div>
-                  <div style={{ fontSize: 9.5, color: "#475569", marginTop: 3 }}>
-                    {new Date(s.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                  </div>
+                {t.newWorkspace}
+              </motion.button>
+
+              {sessions.length === 0 && (
+                <div style={{
+                  textAlign: "center", padding: "28px 12px",
+                  color: "#334155", fontSize: 10.5, lineHeight: 1.7,
+                }}>
+                  <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.4 }}>🗂️</div>
+                  {t.noSessions}
+                  <br/>
+                  <span style={{ fontSize: 9.5, color: "#1e293b" }}>
+                    Click above to get started
+                  </span>
                 </div>
-              ))}
+              )}
+
+              {sessions.map(s => {
+                const active = s.id === sessionId;
+                const nodeCount = Array.isArray(s.nodes_json) ? s.nodes_json.length : 0;
+                const updated = new Date(s.updated_at);
+                const now = new Date();
+                const diffH = (now.getTime() - updated.getTime()) / 36e5;
+                const timeLabel = diffH < 1 ? "Just now"
+                  : diffH < 24 ? `${Math.round(diffH)}h ago`
+                  : updated.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+                return (
+                  <motion.div
+                    key={s.id}
+                    whileHover={{ scale: 1.01 }}
+                    onClick={() => openSession(s)}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 9,
+                      background: active
+                        ? "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(14,116,144,0.06))"
+                        : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${active ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.05)"}`,
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                      boxShadow: active ? "0 2px 12px rgba(20,184,166,0.08)" : "none",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
+                      <div style={{
+                        fontWeight: 700, fontSize: 11,
+                        color: active ? TEAL : FG,
+                        flex: 1, minWidth: 0,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {active && <span style={{ marginRight: 5, fontSize: 8 }}>●</span>}
+                        {s.title}
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteSession(s.id); }}
+                        style={{
+                          background: "none", border: "none",
+                          color: "#334155", cursor: "pointer",
+                          fontSize: 10, padding: "0 0 0 4px", flexShrink: 0,
+                          lineHeight: 1,
+                        }}
+                      >✕</button>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
+                      <div style={{ fontSize: 9, color: "#334155" }}>{timeLabel}</div>
+                      {nodeCount > 0 && (
+                        <div style={{
+                          fontSize: 8.5, color: active ? TEAL : "#475569",
+                          background: active ? "rgba(20,184,166,0.1)" : "rgba(255,255,255,0.04)",
+                          padding: "2px 7px", borderRadius: 8, fontWeight: 700,
+                        }}>
+                          {t.nodesBadge(nodeCount)}
+                        </div>
+                      )}
+                    </div>
+
+                    {s.case_description && (
+                      <div style={{
+                        fontSize: 9.5, color: "#334155", marginTop: 5,
+                        lineHeight: 1.5, overflow: "hidden",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                      } as React.CSSProperties}>
+                        {s.case_description}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
 

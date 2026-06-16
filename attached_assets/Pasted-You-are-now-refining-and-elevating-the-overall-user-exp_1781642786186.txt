@@ -1,0 +1,40 @@
+You are now refining and elevating the overall user experience of Forge Workspace to make it feel truly premium, modern, and professional.
+
+Current State: The core functionality (Spatial Canvas, Multi-Agent System, Proactive Intelligence, Simulation, and Indian Kanoon integration) is in place. Now we need to significantly improve the polish, usability, and multilingual experience.
+
+Requirements:
+
+1. **Premium Visual Design**
+   - Improve the overall look and feel to match a high-end legal AI product.
+   - Use a clean, modern dark theme with excellent teal/navy color accents.
+   - Improve typography, spacing, shadows, and visual hierarchy across the entire interface.
+   - Make every component (canvas, agent panel, suggestion cards, simulation results) feel polished and cohesive.
+
+2. **Smooth Interactions & Animations**
+   - Add high-quality micro-interactions and smooth animations throughout the app.
+   - Improve loading states, transitions between views, and feedback when agents are working or simulations are running.
+   - Make the Spatial Canvas interactions feel fluid and responsive.
+
+3. **Multilingual Support (Telugu Priority)**
+   - Add strong support for **Telugu** and **Hindi** alongside English.
+   - Key parts of the interface (especially summaries, agent outputs, proactive suggestions, and generated drafts) should be easily translatable.
+   - Add a clear language toggle (English / తెలుగు / हिंदी).
+   - Ensure that Telugu translations feel natural and professional, not just literal.
+
+4. **Usability Improvements**
+   - Improve overall user flow and reduce friction.
+   - Make important actions (like running simulations, accepting agent suggestions, or exporting drafts) more intuitive and accessible.
+   - Add helpful onboarding/tooltips for first-time users on key features like the Spatial Canvas and Agent Society.
+
+5. **Responsive & Professional Layout**
+   - Ensure the interface works well on different screen sizes (especially laptops).
+   - Maintain a clean and organized layout even when multiple panels (Canvas, Agents, Proactive Insights, Simulation) are open.
+
+6. **Overall Quality**
+   - Fix any UI inconsistencies.
+   - Improve error handling and empty states.
+   - Make the entire experience feel thoughtful, modern, and significantly more advanced than typical legal tools.
+
+Goal: Transform Forge Workspace from a functional advanced prototype into a polished, premium, and delightful product that lawyers would genuinely enjoy using.
+
+Focus heavily on visual quality, smooth experience, and strong Telugu support.
