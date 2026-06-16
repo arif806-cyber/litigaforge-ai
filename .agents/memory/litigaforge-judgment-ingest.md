@@ -27,12 +27,16 @@ is live.
   "run now" endpoint against production.
 
 ## Triggering prod ingestion over HTTP — ONE doc per request
-> NOTE: a **background bulk path** now exists in the repo (admin endpoint accepts
-> `background=true`, `queries=` semicolon-sep, `per_query_max=`; `background=true`
-> spawns a detached `asyncio.create_task` and returns `{"started":true}` instantly,
-> beating the gateway timeout). It SUPERSEDES the one-doc workaround below — but
-> **only after a republish.** Until prod is republished, the synchronous behavior
-> below is what runs.
+> NOTE: a **background bulk path** exists (admin endpoint accepts `background=true`,
+> `queries=` semicolon-sep, `per_query_max=`; `background=true` spawns a detached
+> `asyncio.create_task` and returns `{"started":true}` instantly, beating the gateway
+> timeout). It SUPERSEDES the one-doc workaround below. **Confirmed LIVE & working in
+> prod 2026-06-16:** one `background=true` call with 3 SC queries + `per_query_max=5`
+> ingested 15 docs in ~5 min (count climbed 12→27), all clean `party-v-party` slugs.
+> The synchronous one-doc behavior below only applies to deploys predating this path.
+> GOTCHA: the JSON response's `queries` field echoes the per-query **label** (capped
+> at 60 chars in `admin.py`), NOT the query sent to IK — a truncated-looking echo
+> (e.g. `... sortby: most`) is cosmetic; the FULL query string still reaches IK.
 
 The admin endpoint `POST {BASE_PATH}/admin/judgments/ingest/run?max_docs=N` runs
 `run_ingestion` **synchronously** inside the request. Each doc's AI summary takes
