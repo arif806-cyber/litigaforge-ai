@@ -2,16 +2,25 @@
 LitigaForge AI — Admin Router
 Superuser-only lawyer verification and user management.
 """
+import asyncio
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth import get_superuser
 from database import fetch, fetchrow, execute
+from logger import get_logger
 from sanitizer import sanitize_text
 from alerts.whatsapp import send_whatsapp_alert
 from alerts.email import send_verification_email, send_rejection_email
 
+logger = get_logger("litigaforge.admin")
+
 router = APIRouter(tags=["admin"])
+
+# Background judgment-ingestion tasks. Kept referenced so the event loop does not
+# garbage-collect an in-flight task (asyncio holds only a weak reference to it).
+_INGEST_BG_TASKS: set = set()
 
 
 class RejectRequest(BaseModel):
@@ -153,6 +162,9 @@ async def admin_reset_usage(user_id: int, current_user: dict = Depends(get_super
 @router.post("/admin/judgments/ingest/run")
 async def admin_run_judgment_ingest(
     max_docs: int = 0,
+    queries: str = "",
+    per_query_max: int = 0,
+    background: bool = False,
     current_user: dict = Depends(get_superuser),
 ):
     """Manually trigger one judgment-ingestion pass (ops + verification).
@@ -162,11 +174,66 @@ async def admin_run_judgment_ingest(
     "no_source_configured" result when no compliant API token is set; returns
     HTTP 502 when a *configured* source is unavailable — it never falls back to
     scraping or fabricated data.
+
+    Optional params:
+
+    - ``queries``: semicolon-separated IndianKanoon ``formInput`` strings to use
+      instead of the configured defaults (e.g.
+      ``"Article 21 right to life doctypes: supremecourt; consumer rights doctypes: supremecourt"``).
+      Leave empty to use ``JUDGMENT_INGEST_QUERIES`` / built-in defaults.
+    - ``per_query_max``: cap the number of NEW judgments ingested per query
+      (best-effort; dedup/out-of-scope docs do not count). ``0`` = no per-query cap.
+    - ``background``: when true, run the pass as a detached server-side task and
+      return immediately with ``{"started": true}``. Required for large batches —
+      each judgment's AI summary takes ~30-45s and a synchronous request would be
+      killed by the ~60s gateway timeout before anything is inserted.
     """
     from judgment_ingest import run_ingestion, IndianKanoonError
 
+    # Parse optional custom queries (mirrors judgment_ingest._queries() labelling).
+    parsed_queries: list[tuple[str, str]] | None = None
+    raw = (queries or "").strip()
+    if raw:
+        parsed_queries = [
+            (part.strip()[:60], part.strip())
+            for part in raw.split(";")
+            if part.strip()
+        ] or None
+
+    pqm = per_query_max if per_query_max > 0 else None
+
+    if background:
+        async def _bg_ingest() -> None:
+            try:
+                result = await run_ingestion(
+                    max_docs=max_docs or None,
+                    trigger="manual-bg",
+                    queries=parsed_queries,
+                    per_query_max=pqm,
+                )
+                logger.info("[admin] background judgment ingest finished: %s", result)
+            except Exception as e:  # log loud, never let a bg task die silently
+                logger.error("[admin] background judgment ingest failed: %s", e, exc_info=True)
+
+        task = asyncio.create_task(_bg_ingest())
+        _INGEST_BG_TASKS.add(task)
+        task.add_done_callback(_INGEST_BG_TASKS.discard)
+        return {
+            "success": True,
+            "started": True,
+            "background": True,
+            "max_docs": max_docs or None,
+            "per_query_max": pqm,
+            "queries": [label for label, _ in (parsed_queries or [])],
+        }
+
     try:
-        stats = await run_ingestion(max_docs=max_docs or None, trigger="manual")
+        stats = await run_ingestion(
+            max_docs=max_docs or None,
+            trigger="manual",
+            queries=parsed_queries,
+            per_query_max=pqm,
+        )
     except IndianKanoonError as e:
         raise HTTPException(status_code=502, detail=f"Compliant source unavailable: {e}")
     return {"success": True, "result": stats}

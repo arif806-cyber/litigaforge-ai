@@ -452,10 +452,16 @@ def _new_stats() -> dict:
     }
 
 
-async def _do_run(stats: dict, max_docs: int) -> None:
+async def _do_run(
+    stats: dict,
+    max_docs: int,
+    *,
+    queries: Optional[list[tuple[str, str]]] = None,
+    per_query_max: Optional[int] = None,
+) -> None:
     client = IndianKanoonClient(_token())
     remaining = max_docs
-    for label, form_input in _queries():
+    for label, form_input in (queries or _queries()):
         if remaining <= 0:
             break
         qstat = {"query": label, "found": 0, "inserted": 0}
@@ -464,6 +470,8 @@ async def _do_run(stats: dict, max_docs: int) -> None:
         stats["fetched"] += len(docs)
         for d in docs:
             if remaining <= 0:
+                break
+            if per_query_max is not None and qstat["inserted"] >= per_query_max:
                 break
             tid = d.get("tid")
             if tid is None:
@@ -510,7 +518,13 @@ async def _do_run(stats: dict, max_docs: int) -> None:
         stats["queries"].append(qstat)
 
 
-async def run_ingestion(max_docs: Optional[int] = None, *, trigger: str = "scheduler") -> dict:
+async def run_ingestion(
+    max_docs: Optional[int] = None,
+    *,
+    trigger: str = "scheduler",
+    queries: Optional[list[tuple[str, str]]] = None,
+    per_query_max: Optional[int] = None,
+) -> dict:
     """Run one ingestion pass.
 
     Returns a stats dict. Benign no-op (no error) when no compliant source is
@@ -539,8 +553,11 @@ async def run_ingestion(max_docs: Optional[int] = None, *, trigger: str = "sched
             stats["status"] = "locked"
             return stats
         try:
-            logger.info("judgment-ingest [%s]: starting (max_docs=%d)", trigger, cap)
-            await _do_run(stats, cap)
+            logger.info(
+                "judgment-ingest [%s]: starting (max_docs=%d, per_query_max=%s, custom_queries=%d)",
+                trigger, cap, per_query_max, len(queries) if queries else 0,
+            )
+            await _do_run(stats, cap, queries=queries, per_query_max=per_query_max)
             stats["status"] = "ok"
             logger.info("judgment-ingest [%s]: done — %s", trigger, stats)
         finally:
