@@ -10,6 +10,7 @@ import {
 import { motion } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
 import AgentPanel, { type AgentState } from "@/components/workspace/AgentPanel";
+import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,10 @@ export default function ForgeWorkspace() {
 
   const saveTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addMenuRef     = useRef<HTMLDivElement>(null);
+  const historyRef     = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
+  const histIdxRef     = useRef<number>(-1);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   // ─── Bootstrap ──────────────────────────────────────────────────────────────
 
@@ -196,15 +201,98 @@ export default function ForgeWorkspace() {
     }
   }
 
-  // ─── Canvas connection ────────────────────────────────────────────────────────
+  // ─── History (undo / redo) ────────────────────────────────────────────────────
 
-  const onConnect = useCallback((connection: Connection) => {
-    setEdges(eds => addEdge({
-      ...connection,
-      style: { stroke: "#0d9488", strokeWidth: 1.5 },
-      animated: true,
-    }, eds));
-  }, [setEdges]);
+  function pushHistory(ns: Node[], es: Edge[]) {
+    const h = historyRef.current.slice(0, histIdxRef.current + 1);
+    h.push({ nodes: ns, edges: es });
+    historyRef.current = h.slice(-50);
+    histIdxRef.current = historyRef.current.length - 1;
+    setCanUndo(histIdxRef.current > 0);
+    setCanRedo(false);
+  }
+
+  function undo() {
+    if (histIdxRef.current <= 0) return;
+    histIdxRef.current--;
+    const snap = historyRef.current[histIdxRef.current];
+    setNodes(snap.nodes);
+    setEdges(snap.edges);
+    setCanUndo(histIdxRef.current > 0);
+    setCanRedo(true);
+  }
+
+  function redo() {
+    if (histIdxRef.current >= historyRef.current.length - 1) return;
+    histIdxRef.current++;
+    const snap = historyRef.current[histIdxRef.current];
+    setNodes(snap.nodes);
+    setEdges(snap.edges);
+    setCanUndo(true);
+    setCanRedo(histIdxRef.current < historyRef.current.length - 1);
+  }
+
+  function deleteSelectedNodes() {
+    pushHistory([...nodes], [...edges]);
+    const removedIds = new Set(nodes.filter(n => n.selected).map(n => n.id));
+    setNodes(ns => ns.filter(n => !n.selected));
+    setEdges(es => es.filter(e => !e.selected && !removedIds.has(e.source) && !removedIds.has(e.target)));
+  }
+
+  function propagateImpact(currentEdges: Edge[]) {
+    setNodes(ns => {
+      const updated = ns.map(n => ({ ...n, data: { ...(n.data as Record<string, unknown>) } }));
+      const idxMap  = new Map(updated.map((n, i) => [n.id, i]));
+      for (const e of currentEdges) {
+        const si = idxMap.get(e.source);
+        const ti = idxMap.get(e.target);
+        if (si === undefined || ti === undefined) continue;
+        const srcScore = Number((updated[si].data as Record<string, unknown>).impact_score ?? 70);
+        const d = updated[ti].data as Record<string, unknown>;
+        const tgtScore = Number(d.impact_score ?? 70);
+        const rel = ((e.data as Record<string, unknown>)?.relType as string) ?? "";
+        let delta = 0;
+        if (rel === "supports")     delta =  Math.round(srcScore * 0.08);
+        else if (rel === "cites")   delta =  5;
+        else if (rel === "contradicts") delta = -10;
+        if (delta !== 0) {
+          updated[ti] = { ...updated[ti], data: { ...d, impact_score: Math.min(100, Math.max(5, tgtScore + delta)) } };
+        }
+      }
+      return updated;
+    });
+  }
+
+  // ─── Canvas connection (typed) ────────────────────────────────────────────────
+
+  const onConnectTyped = useCallback((connection: Connection, relType: string) => {
+    const rel = RELATIONSHIP_TYPES[relType as RelType] ?? RELATIONSHIP_TYPES.cites;
+    const newEdge: Edge = {
+      id: `e-${connection.source}-${connection.target}-${Date.now()}`,
+      source:       connection.source ?? "",
+      target:       connection.target ?? "",
+      sourceHandle: connection.sourceHandle ?? null,
+      targetHandle: connection.targetHandle ?? null,
+      type: "labeled",
+      data: { relType, label: rel.label, color: rel.color },
+      style: { stroke: rel.color, strokeWidth: 1.5, strokeDasharray: rel.dash ? "6 3" : undefined },
+      animated: !rel.dash,
+    };
+    pushHistory([...nodes], [...edges]);
+    setEdges(eds => addEdge(newEdge, eds));
+    setTimeout(() => propagateImpact([...edges, newEdge]), 80);
+  }, [nodes, edges, setEdges]);
+
+  const onEdgeTypeChange = useCallback((edgeId: string, relType: string) => {
+    const rel = RELATIONSHIP_TYPES[relType as RelType] ?? RELATIONSHIP_TYPES.cites;
+    pushHistory([...nodes], [...edges]);
+    setEdges(eds => eds.map(e => e.id !== edgeId ? e : {
+      ...e,
+      data:  { relType, label: rel.label, color: rel.color },
+      style: { stroke: rel.color, strokeWidth: 1.5, strokeDasharray: rel.dash ? "6 3" : undefined },
+      animated: !rel.dash,
+    }));
+  }, [nodes, edges, setEdges]);
 
   // ─── Add node manually ────────────────────────────────────────────────────────
 
@@ -218,6 +306,7 @@ export default function ForgeWorkspace() {
       position: { x: 200 + Math.random() * 300, y: 200 + Math.random() * 200 },
       data: { ...preset.data },
     };
+    pushHistory([...nodes], [...edges]);
     setNodes(prev => [...prev, newNode]);
     setShowAddMenu(false);
   }
@@ -497,6 +586,24 @@ export default function ForgeWorkspace() {
           )}
         </div>
 
+        {/* Undo / Redo */}
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+          style={{ ...toolbarBtn(false), opacity: canUndo ? 1 : 0.35 }}
+        >
+          ↩ Undo
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Y)"
+          style={{ ...toolbarBtn(false), opacity: canRedo ? 1 : 0.35 }}
+        >
+          ↪ Redo
+        </button>
+
         {/* Save */}
         <button
           onClick={() => saveCanvas(false)}
@@ -541,7 +648,13 @@ export default function ForgeWorkspace() {
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
+          onConnectTyped={onConnectTyped}
+          onEdgeTypeChange={onEdgeTypeChange}
+          onUndo={undo}
+          onRedo={redo}
+          onDeleteSelected={deleteSelectedNodes}
+          canUndo={canUndo}
+          canRedo={canRedo}
         />
 
         {/* Right: Sessions + Search + Simulation */}

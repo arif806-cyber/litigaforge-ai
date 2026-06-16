@@ -1,0 +1,35 @@
+You are improving the Spatial Canvas in Forge Workspace to make it significantly more advanced and innovative than anything currently available in legal AI tools.
+
+Current State: We already have a basic spatial canvas using React Flow with nodes for Judgments, Facts, Arguments, and Risks.
+
+Your task is to elevate the Spatial Canvas to the next level with the following advanced features:
+
+1. **Smart Node Behavior**
+   - Nodes should be highly interactive and rich.
+   - When a node is selected or connected, it should automatically show relevant information, impact scores, and suggested connections.
+   - Nodes should visually react based on their importance and relationships (size, color intensity, glow effects).
+
+2. **Intelligent Relationship System**
+   - Allow users to create different types of connections between nodes (Supports, Distinguishes, Cites, Procedural Link, Contradicts, etc.).
+   - The system should suggest possible relationships automatically when two nodes are brought close to each other.
+
+3. **Impact Propagation**
+   - When the user changes something (e.g., adds a new argument or marks a judgment as important), the impact should visually propagate across connected nodes in real time.
+   - Risk scores and support scores should update dynamically across the canvas.
+
+4. **Clustering & Organization**
+   - Add smart clustering features so related nodes can be grouped automatically or manually.
+   - Users should be able to collapse/expand clusters for better focus.
+
+5. **Visual Polish & Futuristic Feel**
+   - Improve the visual design to feel premium and modern.
+   - Add smooth animations, better node cards, subtle effects, and professional styling that matches a high-end legal AI product.
+   - Make the canvas feel alive and intelligent.
+
+6. **Usability Features**
+   - Add zoom, pan, mini-map, search within canvas, and undo/redo functionality.
+   - Allow users to save different views/layouts of the canvas.
+
+Focus heavily on making the Spatial Canvas feel revolutionary and unlike traditional legal research interfaces. It should feel like a powerful thinking and strategy space.
+
+Improve the existing canvas implementation with these advanced capabilities. Prioritize quality and innovation.
