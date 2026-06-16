@@ -27,6 +27,7 @@ from logger import get_logger
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
 from database import get_pool, close_pool, fetchrow as db_fetchrow
 from auth import require_user as _require_user
+from asyncpg.exceptions import UniqueViolationError as _UniqueViolation
 
 logger = get_logger("litigaforge.main")
 
@@ -84,11 +85,17 @@ BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 # These are genuine, well-documented Supreme Court / High Court precedents seeded so
 # the digest UI, URL structure and SEO can be reviewed before any real ingestion is
 # wired up. No fabricated holdings. Replaced/augmented by later ingestion phases.
-async def _seed_sample_judgments(conn) -> None:
+async def _ensure_sample_judgments(conn) -> None:
+    """Idempotently ensure the curated landmark judgments exist.
+
+    Runs on EVERY startup (not gated on an empty table) and upserts via
+    ``ON CONFLICT (court_slug, year, slug) DO NOTHING``. This is how a
+    newly-added curated judgment (e.g. Maneka Gandhi) reaches an
+    already-populated database — including the production primary, which we
+    cannot write to out-of-band — on the next deploy/restart. Existing rows are
+    never modified, and any non-curated (ingested) judgments are left untouched.
+    """
     from datetime import date
-    existing = await conn.fetchval("SELECT COUNT(*) FROM judgments")
-    if existing and int(existing) > 0:
-        return
 
     samples = [
         {
@@ -279,24 +286,91 @@ async def _seed_sample_judgments(conn) -> None:
             "source_name": "IndianKanoon",
             "source_url": "https://indiankanoon.org/search/?formInput=faheema%20shirin",
         },
+        {
+            "case_name": "Maneka Gandhi v. Union of India",
+            "court": "Supreme Court of India",
+            "court_slug": "supreme-court-of-india",
+            "bench": "7-Judge Constitution Bench",
+            "judgment_date": date(1978, 1, 25),
+            "year": 1978,
+            "slug": "maneka-gandhi-v-union-of-india",
+            "citation": "(1978) 1 SCC 248",
+            "outcome": "Article 21 'procedure established by law' must be fair, just and reasonable",
+            "acts_cited": [
+                "Constitution of India, Article 21",
+                "Constitution of India, Article 14",
+                "Constitution of India, Article 19",
+                "Passports Act, 1967",
+            ],
+            "summary_en": (
+                "A 7-judge bench dramatically widened the scope of Article 21, holding "
+                "that the 'procedure established by law' for depriving a person of life "
+                "or personal liberty must be fair, just and reasonable — not arbitrary, "
+                "oppressive or fanciful. The Court held that Articles 14, 19 and 21 are "
+                "not water-tight compartments but form a 'golden triangle': a law "
+                "affecting personal liberty must also satisfy the guarantees of equality "
+                "(Article 14) and the freedoms under Article 19. The narrow view in "
+                "A.K. Gopalan was overruled."
+            ),
+            "summary_hi": (
+                "7 न्यायाधीशों की पीठ ने अनुच्छेद 21 के दायरे का व्यापक विस्तार किया और माना "
+                "कि किसी व्यक्ति को जीवन या व्यक्तिगत स्वतंत्रता से वंचित करने की 'विधि द्वारा "
+                "स्थापित प्रक्रिया' उचित, न्यायसंगत और तर्कसंगत होनी चाहिए — मनमानी, दमनकारी या "
+                "काल्पनिक नहीं। न्यायालय ने माना कि अनुच्छेद 14, 19 और 21 अलग-अलग कोष्ठक नहीं "
+                "बल्कि एक 'स्वर्णिम त्रिकोण' बनाते हैं: व्यक्तिगत स्वतंत्रता को प्रभावित करने वाले "
+                "किसी भी कानून को समानता (अनुच्छेद 14) और अनुच्छेद 19 की स्वतंत्रताओं की कसौटी "
+                "पर भी खरा उतरना होगा। ए.के. गोपालन का संकीर्ण दृष्टिकोण निरस्त कर दिया गया।"
+            ),
+            "full_text": (
+                "Facts: The petitioner's passport was impounded by the Government of "
+                "India 'in the interests of the general public' under the Passports Act, "
+                "1967, and the authorities declined to furnish any reasons for the order. "
+                "She challenged it as violating her fundamental rights.\n\n"
+                "Issue: Whether the right to travel abroad falls within the 'personal "
+                "liberty' guaranteed by Article 21, and whether the 'procedure "
+                "established by law' under Article 21 must be fair and reasonable or "
+                "merely any procedure enacted by the legislature.\n\n"
+                "Held: The Court held that personal liberty under Article 21 is of the "
+                "widest amplitude and that any procedure depriving a person of it must be "
+                "right, just and fair, and not arbitrary or oppressive — reading "
+                "principles of natural justice and reasonableness into Article 21. "
+                "Articles 14, 19 and 21 were held to be mutually complementary (the "
+                "'golden triangle'), so such a law must withstand the scrutiny of all "
+                "three. The restrictive interpretation in A.K. Gopalan was disapproved.\n\n"
+                "Significance: Maneka Gandhi transformed Article 21 from a narrow "
+                "guarantee against executive action into a robust source of substantive "
+                "due process, underpinning much of modern Indian fundamental-rights "
+                "jurisprudence."
+            ),
+            "source_name": "IndianKanoon",
+            "source_url": "https://indiankanoon.org/doc/1766147/",
+        },
     ]
 
     for s in samples:
-        await conn.execute(
-            """
-            INSERT INTO judgments
-                (case_name, court, court_slug, bench, judgment_date, year, slug,
-                 full_text, summary_en, summary_hi, acts_cited, outcome,
-                 source_url, source_name, citation, status)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'published')
-            ON CONFLICT (court_slug, year, slug) DO NOTHING
-            """,
-            s["case_name"], s["court"], s["court_slug"], s["bench"],
-            s["judgment_date"], s["year"], s["slug"], s["full_text"],
-            s["summary_en"], s["summary_hi"], s["acts_cited"], s["outcome"],
-            s["source_url"], s["source_name"], s["citation"],
-        )
-    logger.info("Seeded %d sample judgments", len(samples))
+        try:
+            await conn.execute(
+                """
+                INSERT INTO judgments
+                    (case_name, court, court_slug, bench, judgment_date, year, slug,
+                     full_text, summary_en, summary_hi, acts_cited, outcome,
+                     source_url, source_name, citation, status)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'published')
+                ON CONFLICT (court_slug, year, slug) DO NOTHING
+                """,
+                s["case_name"], s["court"], s["court_slug"], s["bench"],
+                s["judgment_date"], s["year"], s["slug"], s["full_text"],
+                s["summary_en"], s["summary_hi"], s["acts_cited"], s["outcome"],
+                s["source_url"], s["source_name"], s["citation"],
+            )
+        except _UniqueViolation:
+            # The (court_slug, year, slug) conflict is handled by ON CONFLICT, but a
+            # row may collide on the partial unique source_url index (e.g. prod
+            # already ingested this case under a different slug). Treat as already
+            # present — never let one row abort the ensure pass or startup.
+            logger.info("Curated judgment already present (source_url) — skipping: %s",
+                        s.get("source_url"))
+    logger.info("Ensured %d curated landmark judgments present", len(samples))
 
 
 @asynccontextmanager
@@ -695,7 +769,7 @@ async def lifespan(app: FastAPI):
                 "ON judgment_bookmarks (user_id, created_at DESC)"
             )
             logger.info("judgments + digest_subscribers + judgment_bookmarks tables ready")
-            await _seed_sample_judgments(conn)
+            await _ensure_sample_judgments(conn)
         except Exception as me:
             logger.warning("judgment digest init: %s", me)
 

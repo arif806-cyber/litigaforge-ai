@@ -213,6 +213,33 @@ def _disambiguate(slug: str, tid: Any) -> str:
     return f"{base}{suffix}"
 
 
+# Stripped from the *slug only* (never the display case_name) to keep slugs in
+# clean party1-v-party2 form.
+_HONORIFIC_RE = re.compile(
+    r"\b(?:justice|hon'?ble|dr|smt|sri|shri|kum|km|mr|mrs|ms|m/s)\.?\b",
+    re.IGNORECASE,
+)
+_VERSUS_RE = re.compile(r"\s+(?:v\.?|vs\.?|versus)\s+", re.IGNORECASE)
+_PAREN_RE = re.compile(r"\([^)]*\)")
+
+
+def _case_slug(case_name: str, maxlen: int = 70) -> str:
+    """Build a clean ``party1-v-party2`` slug from a case name.
+
+    GOING-FORWARD SLUG RULE for all newly ingested judgments: the slug is
+    derived only from the parties — the version separator (v / vs / versus) is
+    folded to ``-v-``, honorifics (Justice, Dr., Smt., Sri, M/s …) and
+    parenthetical qualifiers (e.g. ``(Retd.)``, ``(Dead)``) are stripped, and no
+    descriptive keyword is ever appended. The display ``case_name`` is left
+    untouched.
+    """
+    t = _PAREN_RE.sub(" ", case_name or "")
+    t = _HONORIFIC_RE.sub(" ", t)
+    t = _VERSUS_RE.sub(" v ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return _slugify(t, maxlen=maxlen)
+
+
 def _clean_case_name(title: str) -> str:
     t = (title or "").strip()
     t = _ON_DATE_RE.sub("", t).strip()
@@ -462,7 +489,7 @@ async def _do_run(stats: dict, max_docs: int) -> None:
                 "case_name": case_name, "court": court, "court_slug": court_slug,
                 "bench": (doc.get("bench") or "").strip() or None,
                 "judgment_date": jdate, "year": year,
-                "slug": _slugify(case_name), "full_text": full_text,
+                "slug": _case_slug(case_name), "full_text": full_text,
                 "summary_en": summary["summary_en"], "summary_hi": summary["summary_hi"],
                 "acts_cited": summary["acts_cited"], "outcome": summary["outcome"],
                 "source_url": source_url,

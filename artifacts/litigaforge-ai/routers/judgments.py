@@ -9,6 +9,7 @@ ingestion is a later phase.
 import io
 import logging
 import os
+import re
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -50,6 +51,62 @@ def _serialize(row: dict) -> dict:
     d["path"] = _page_path(d["court_slug"], d["year"], d["slug"])
     d["url"] = f"{SITE_URL}{d['path']}"
     return d
+
+
+# ── tolerant canonical resolution ─────────────────────────────────────────────
+# Existing judgment slugs are NEVER renamed. Instead, truncated / wrong-court /
+# stray-keyword URLs are resolved to their canonical form so old, shared or
+# typo'd links keep working (the api-server then issues a real 301).
+
+_SLUG_SEP_RE = re.compile(r"[^a-z0-9]+")
+_SLUG_V_RE = re.compile(r"-(?:vs|versus|v)-")
+
+
+def _norm_slug(s: str) -> str:
+    """Normalise a slug for tolerant matching: lowercase, collapse non-alnum to
+    '-', and fold the version separator (vs / versus / v) to a single 'v'."""
+    s = _SLUG_SEP_RE.sub("-", (s or "").lower()).strip("-")
+    s = _SLUG_V_RE.sub("-v-", s)
+    return s
+
+
+async def _resolve_canonical(court_slug: str, year: int, slug: str) -> Optional[dict]:
+    """Resolve a (possibly wrong / truncated) judgment URL to its canonical row.
+
+    Returns ``{court_slug, year, slug, exact}`` for a confident match, else
+    ``None``. A non-exact match is only offered when EXACTLY ONE published
+    judgment matches, so we never guess between two cases. The court_slug is
+    intentionally ignored on the tolerant pass (e.g. ``supreme-court`` vs the
+    canonical ``supreme-court-of-india``); year is preferred but not required.
+    """
+    exact = await fetchrow(
+        """SELECT court_slug, year, slug FROM judgments
+           WHERE court_slug = $1 AND year = $2 AND slug = $3 AND status = 'published'""",
+        court_slug, year, slug,
+    )
+    if exact:
+        return {"court_slug": exact["court_slug"], "year": exact["year"],
+                "slug": exact["slug"], "exact": True}
+
+    req = _norm_slug(slug)
+    if not req:
+        return None
+    rows = await fetch(
+        "SELECT court_slug, year, slug FROM judgments WHERE status = 'published'"
+    )
+
+    def _matches(cand_slug: str) -> bool:
+        c = _norm_slug(cand_slug)
+        return c == req or c.startswith(req + "-") or req.startswith(c + "-")
+
+    same_year = [r for r in rows if r["year"] == year and _matches(r["slug"])]
+    cands = same_year or [r for r in rows if _matches(r["slug"])]
+    uniq = {(r["court_slug"], r["year"], r["slug"]) for r in cands}
+    if len(uniq) != 1:
+        return None
+    r = cands[0]
+    return {"court_slug": r["court_slug"], "year": r["year"],
+            "slug": r["slug"], "exact": False}
 
 
 # ── list ─────────────────────────────────────────────────────────────────────
@@ -141,6 +198,20 @@ async def get_judgment(request: Request, court_slug: str, year: int, slug: str):
     )
     data["related"] = [_serialize(r) for r in related]
     return data
+
+
+@router.get("/judgments/resolve/{court_slug}/{year}/{slug}")
+@limiter.limit("240/minute")
+async def resolve_judgment(request: Request, court_slug: str, year: int, slug: str):
+    """Lightweight canonical resolver powering tolerant judgment URLs. The
+    api-server calls this to issue a real 301 (and the SPA uses it as a
+    client-side net) so truncated / wrong-court / stray-keyword links forward to
+    the canonical URL. 404 when no confident match exists."""
+    res = await _resolve_canonical(court_slug, year, slug)
+    if not res:
+        raise HTTPException(status_code=404, detail="Judgment not found")
+    res["path"] = _page_path(res["court_slug"], res["year"], res["slug"])
+    return res
 
 
 # ── OG share-card image (Pillow) ──────────────────────────────────────────────

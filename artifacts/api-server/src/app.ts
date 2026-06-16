@@ -761,10 +761,68 @@ if (true) { // serve frontend in both dev and production when dist exists
       // from the Python service; humans get the SPA shell (react-helmet sets
       // meta client-side). Registered BEFORE the SPA catch-all. Matches both the
       // bare and country-prefixed (/in/judgments/...) forms.
+      // Tolerant judgment URLs: truncated, wrong-court or stray-keyword slugs
+      // 301 → the canonical judgment URL. Existing slugs are NEVER renamed —
+      // resolution is delegated to the Python service and cached briefly so an
+      // already-canonical URL (the common case) costs nothing after the first
+      // hit. Any country prefix on the request is preserved on the redirect.
+      const _JUDG_REDIR_TTL_MS = 10 * 60 * 1000;
+      const _judgRedirCache = new Map<string, { to: string | null; at: number }>();
+      const _judgmentRedirectTarget = async (
+        reqPath: string,
+      ): Promise<string | null> => {
+        let bare = _stripCountry(reqPath);
+        if (bare.length > 1) bare = bare.replace(/\/+$/, "");
+        const m = bare.match(/^\/judgments\/([^/]+)\/(\d{4})\/([^/]+)$/);
+        if (!m) return null;
+        const [, court, year, slug] = m;
+        const prefix =
+          _stripCountry(reqPath) === reqPath
+            ? ""
+            : `/${reqPath.replace(/^\/+/, "").split("/")[0]?.toLowerCase() ?? ""}`;
+
+        const now = Date.now();
+        const cached = _judgRedirCache.get(bare);
+        let to: string | null;
+        if (cached && now - cached.at < _JUDG_REDIR_TTL_MS) {
+          to = cached.to;
+        } else {
+          to = null;
+          try {
+            const r = await fetch(
+              `${LF_API_ORIGIN}${LF_API_BASE}/judgments/resolve/${court}/${year}/${slug}`,
+              {
+                headers: { accept: "application/json" },
+                signal: AbortSignal.timeout(4000),
+              },
+            );
+            if (r.ok) {
+              const data = (await r.json()) as { exact?: boolean; path?: string };
+              if (data && data.exact === false && data.path && data.path !== bare) {
+                to = data.path;
+              }
+            }
+          } catch {
+            to = null;
+          }
+          _judgRedirCache.set(bare, { to, at: now });
+        }
+        return to ? `${prefix}${to}` : null;
+      };
+
       const _judgmentRoute = async (
         req: express.Request,
         res: express.Response,
       ): Promise<void> => {
+        try {
+          const redirectTo = await _judgmentRedirectTarget(req.path);
+          if (redirectTo) {
+            res.redirect(301, redirectTo);
+            return;
+          }
+        } catch (err) {
+          logger.error({ err }, "judgment redirect resolve failed");
+        }
         const ua = req.headers["user-agent"] ?? "";
         if (_staticBotHtml && _botPattern.test(ua)) {
           try {

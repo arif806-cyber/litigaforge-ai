@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "wouter";
+import { Link, useLocation, useParams } from "wouter";
 import { apiFetch } from "@/lib/api";
 import {
   ArrowLeft, ArrowRight, Loader2, ExternalLink, ChevronDown,
@@ -82,6 +82,31 @@ export default function JudgmentDetail() {
     retry: false,
   });
 
+  // Tolerant fallback: if the exact URL is missing, ask the API for the
+  // canonical one and auto-forward (truncated / wrong-court / stray-keyword
+  // links keep working). The api-server already 301s most full-page loads;
+  // this also covers in-app navigation to a stale link.
+  const [, setLocation] = useLocation();
+  const [redirecting, setRedirecting] = useState(false);
+  useEffect(() => {
+    if (!isError || !court || !year || !slug) return;
+    let cancelled = false;
+    setRedirecting(true);
+    apiFetch(`/judgments/resolve/${court}/${year}/${slug}`)
+      .then((res: { path?: string }) => {
+        if (cancelled) return;
+        const here = `/judgments/${court}/${year}/${slug}`;
+        if (res?.path && res.path !== here) setLocation(res.path, { replace: true });
+        else setRedirecting(false);
+      })
+      .catch(() => {
+        if (!cancelled) setRedirecting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isError, court, year, slug, setLocation]);
+
   const shareUrl = j?.url ?? "";
   const shareText = j ? `${j.case_name} — ${j.outcome || "Judgment summary"} | LitigaForge` : "";
 
@@ -106,7 +131,7 @@ export default function JudgmentDetail() {
     } catch { /* clipboard unavailable */ }
   };
 
-  if (isLoading) {
+  if (isLoading || redirecting) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
