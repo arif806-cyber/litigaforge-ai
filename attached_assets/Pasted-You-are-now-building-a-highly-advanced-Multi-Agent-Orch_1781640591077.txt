@@ -1,0 +1,42 @@
+You are now building a highly advanced Multi-Agent Orchestration system inside Forge Workspace. This should feel like a true "Agent Society" — multiple specialized AI agents that collaborate intelligently, similar to a team of senior lawyers working together.
+
+Current State: We have a basic structure. Now elevate it significantly.
+
+Requirements:
+
+1. **Visible Agent Panel**
+   - Create a clean, professional panel that shows all active agents.
+   - Each agent should have a clear name, role, status (Thinking / Working / Completed), and a short description of what they are doing in real time.
+
+2. **Specialized Agents**
+   Create at least these 5 agents that work together:
+   - **Research Agent**: Deeply analyzes Indian Kanoon judgments and extracts relevant information.
+   - **Strategy Agent**: Builds strong legal arguments and overall case strategy.
+   - **Risk & Counter Agent**: Acts as the devil’s advocate. Identifies weaknesses and suggests counter-arguments.
+   - **Drafting Agent**: Generates high-quality, court-ready written content (affidavits, submissions, etc.).
+   - **Predictive Agent**: Forecasts how courts, judges, or opposing counsel might respond based on patterns.
+
+3. **Agent Collaboration & Reasoning**
+   - Agents should be able to communicate with each other.
+   - Show when agents agree or disagree.
+   - Display the reasoning process of each agent (not just final output).
+   - Allow the user to see how different agents contributed to the final suggestion or draft.
+
+4. **User Interaction with Agents**
+   - Users should be able to:
+     - Ask a specific agent a question directly.
+     - Request a particular agent to re-analyze something.
+     - Give feedback on an agent’s output (thumbs up/down) so the system can learn over time.
+
+5. **Visual & UX Quality**
+   - Make the agent interface clean, modern, and professional.
+   - Use subtle animations when agents are working.
+   - Show the flow of information between agents when they collaborate.
+
+6. **Integration with Spatial Canvas**
+   - When agents generate arguments, facts, or risks, they should appear as nodes on the Spatial Canvas.
+   - Changes made by agents should reflect visually on the canvas in real time.
+
+Goal: Make the Multi-Agent system feel alive, intelligent, and significantly more advanced than simple single-prompt AI tools. It should genuinely feel like the user has a team of expert legal minds working for them.
+
+Focus on making the agent collaboration visible, useful, and impressive.

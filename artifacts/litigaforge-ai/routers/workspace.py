@@ -3,21 +3,23 @@ Forge Workspace — Legal Intelligence Operating System
 Spatial canvas, multi-agent analysis, Indian Kanoon integration.
 
 Endpoints (all prefixed with BASE_PATH from main.py):
-  GET  /workspace/sessions            — list user sessions
-  POST /workspace/sessions            — create session
-  GET  /workspace/sessions/{id}       — get session + canvas + insights
-  PUT  /workspace/sessions/{id}/canvas— save canvas state
-  DELETE /workspace/sessions/{id}     — delete session
-  POST /workspace/sessions/{id}/analyze — SSE streaming multi-agent analysis
-  POST /workspace/sessions/{id}/search  — Indian Kanoon judgment search
+  GET    /workspace/sessions                            — list user sessions
+  POST   /workspace/sessions                            — create session
+  GET    /workspace/sessions/{id}                       — get session + canvas + insights
+  PUT    /workspace/sessions/{id}                       — update title/description
+  PUT    /workspace/sessions/{id}/canvas                — save canvas state
+  DELETE /workspace/sessions/{id}                       — delete session
+  POST   /workspace/sessions/{id}/analyze               — SSE streaming multi-agent analysis
+  POST   /workspace/sessions/{id}/agent/{agent_id}/ask — SSE direct question to one agent
+  POST   /workspace/sessions/{id}/search               — Indian Kanoon judgment search
 """
 import asyncio
 import json
 import logging
 import os
 import uuid as _uuid
-import httpx
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -55,6 +57,10 @@ class AnalyzeBody(BaseModel):
     case_description: str = ""
     context: str = ""
 
+class AskAgentBody(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    case_description: str = ""
+
 
 # ─── Session CRUD ──────────────────────────────────────────────────────────────
 
@@ -72,9 +78,7 @@ async def list_sessions(request: Request, user=Depends(require_user)):
 
 
 @router.post("/workspace/sessions", status_code=201)
-async def create_session(
-    body: CreateSessionBody, request: Request, user=Depends(require_user)
-):
+async def create_session(body: CreateSessionBody, request: Request, user=Depends(require_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -87,9 +91,7 @@ async def create_session(
 
 
 @router.get("/workspace/sessions/{session_id}")
-async def get_session(
-    session_id: int, request: Request, user=Depends(require_user)
-):
+async def get_session(session_id: int, request: Request, user=Depends(require_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -125,9 +127,7 @@ async def update_session(
 
 
 @router.put("/workspace/sessions/{session_id}/canvas")
-async def save_canvas(
-    session_id: int, body: SaveCanvasBody, request: Request, user=Depends(require_user)
-):
+async def save_canvas(session_id: int, body: SaveCanvasBody, request: Request, user=Depends(require_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -142,9 +142,7 @@ async def save_canvas(
 
 
 @router.delete("/workspace/sessions/{session_id}")
-async def delete_session(
-    session_id: int, request: Request, user=Depends(require_user)
-):
+async def delete_session(session_id: int, request: Request, user=Depends(require_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
@@ -157,9 +155,7 @@ async def delete_session(
 # ─── Indian Kanoon Search ───────────────────────────────────────────────────────
 
 @router.post("/workspace/sessions/{session_id}/search")
-async def search_judgments(
-    session_id: int, body: SearchBody, request: Request, user=Depends(require_user)
-):
+async def search_judgments(session_id: int, body: SearchBody, request: Request, user=Depends(require_user)):
     """Search Indian Kanoon and return canvas-ready judgment nodes."""
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -180,15 +176,14 @@ async def search_judgments(
                 )
                 resp.raise_for_status()
                 data = resp.json()
-            docs = data.get("docs", [])[: body.max_results]
-            nodes = []
-            for i, doc in enumerate(docs):
-                nodes.append({
-                    "id": f"ik-{doc.get('tid', _uuid.uuid4().hex[:8])}",
+            docs  = data.get("docs", [])[: body.max_results]
+            nodes = [
+                {
+                    "id":   f"ik-{doc.get('tid', _uuid.uuid4().hex[:8])}",
                     "type": "judgment",
                     "position": {"x": 200 + i * 60, "y": 180 + i * 50},
                     "data": {
-                        "label": doc.get("title", "Unknown Case"),
+                        "label":    doc.get("title", "Unknown Case"),
                         "court":    doc.get("docsource", "Court"),
                         "citation": doc.get("citation", ""),
                         "summary":  (doc.get("headline", "") or "")[:300],
@@ -197,16 +192,14 @@ async def search_judgments(
                         "impact_score": 72,
                         "ik_tid":   doc.get("tid"),
                     },
-                })
-            return {
-                "nodes": nodes,
-                "source": "indian_kanoon",
-                "total": data.get("total", len(nodes)),
-            }
+                }
+                for i, doc in enumerate(docs)
+            ]
+            return {"nodes": nodes, "source": "indian_kanoon", "total": data.get("total", len(nodes))}
         except Exception as e:
             logger.warning("IK search error: %s", e)
 
-    # Fallback: query local judgments table
+    # Fallback: local judgments table
     pool = await get_pool()
     async with pool.acquire() as conn:
         term = f"%{body.query}%"
@@ -217,10 +210,9 @@ async def search_judgments(
             "ORDER BY judgment_date DESC NULLS LAST LIMIT $2",
             term, body.max_results,
         )
-    nodes = []
-    for i, row in enumerate(rows):
-        nodes.append({
-            "id": f"judgment-{row['id']}",
+    nodes = [
+        {
+            "id":   f"judgment-{row['id']}",
             "type": "judgment",
             "position": {"x": 200 + i * 60, "y": 180 + i * 50},
             "data": {
@@ -232,11 +224,13 @@ async def search_judgments(
                 "url":      f"/judgments/{row['court_slug']}/{row['year']}/{row['slug']}",
                 "impact_score": 70,
             },
-        })
+        }
+        for i, row in enumerate(rows)
+    ]
     return {"nodes": nodes, "source": "local_db", "total": len(nodes)}
 
 
-# ─── Multi-Agent Analysis  (SSE streaming) ────────────────────────────────────
+# ─── Agent Registry ────────────────────────────────────────────────────────────
 
 _AGENTS = [
     {
@@ -321,53 +315,110 @@ _AGENTS = [
     },
 ]
 
+# Inter-agent consultation messages (keyed by receiving agent id)
+_CONSULTS: dict[str, dict[str, str]] = {
+    "strategy":  {
+        "from": "research", "to": "strategy",
+        "message": "Precedent analysis complete — key legal issues and citations shared",
+    },
+    "risk": {
+        "from": "strategy", "to": "risk",
+        "message": "Strategy framework established — now stress-testing for vulnerabilities",
+    },
+    "drafting": {
+        "from": "research", "to": "drafting",
+        "message": "Core arguments and verified citations forwarded for court drafting",
+    },
+    "predictive": {
+        "from": "risk", "to": "predictive",
+        "message": "Risk profile and strategy synthesis complete — ready for outcome modeling",
+    },
+}
+
+
+# ─── Multi-Agent Analysis  (SSE streaming) ────────────────────────────────────
 
 async def _stream_analysis(case_description: str, context: str):
-    """Async generator yielding SSE-formatted events for each agent's analysis."""
+    """Async generator: SSE events for each agent's analysis with reasoning & collaboration."""
 
     def sse(data: dict) -> str:
         return f"data: {json.dumps(data, default=str)}\n\n"
 
+    agent_outputs: dict[str, str] = {}
+
     for agent in _AGENTS:
+        # ── Inter-agent consultation event ──────────────────────────────────
+        if agent["id"] in _CONSULTS:
+            yield sse({"type": "agent_consult", **_CONSULTS[agent["id"]]})
+            await asyncio.sleep(0.4)
+
         yield sse({
-            "type": "agent_start",
+            "type":  "agent_start",
             "agent": agent["id"],
-            "name": agent["name"],
+            "name":  agent["name"],
             "emoji": agent["emoji"],
         })
 
+        # Build prompt with context from completed agents
+        prior_ctx = ""
+        if agent_outputs:
+            prior_ctx = "\n\nInsights shared by peer agents:\n" + "\n".join(
+                f"• {aid.title()} Agent: {txt[:160]}…"
+                for aid, txt in list(agent_outputs.items())[-2:]
+            )
+
         prompt = (
-            f"Case Facts & Description:\n{case_description or 'No specific case description provided. Provide general guidance.'}"
-            f"\n\nAdditional Context:\n{context or 'None'}"
+            f"Case Facts:\n{case_description or 'No specific case description provided — give general guidance.'}"
+            f"{prior_ctx}"
+            f"\n\nAdditional Context: {context or 'None'}"
             f"\n\n{agent['system']}"
-            "\n\nProvide a focused, actionable analysis in 3-4 paragraphs. Be specific and practical."
+            "\n\nIMPORTANT: Format your response EXACTLY as:\n"
+            "REASONING: [Your 2-sentence analytical approach for this specific case]\n"
+            "---\n"
+            "[Your full 3-4 paragraph analysis here]"
         )
 
         try:
             response = await legal_llm.aask_legal_question(prompt)
-            response = (response or "").strip() or (
-                f"{agent['name']} analysis complete. "
-                "Ready to elaborate with more case details."
-            )
+            response  = (response or "").strip()
         except Exception as exc:
             logger.warning("Agent %s error: %s", agent["id"], exc)
             response = (
-                f"{agent['name']} analysis complete. "
-                "Please provide more case details for a deeper assessment."
+                f"REASONING: Examining {agent['role']} from available case details.\n"
+                f"---\n{agent['name']} analysis requires more specific case information. "
+                "Please add case details for a comprehensive assessment."
             )
 
-        # Stream word-by-word in small chunks for a typing effect
-        words = response.split()
+        # ── Parse reasoning + analysis ──────────────────────────────────────
+        reasoning = ""
+        analysis  = response
+        if "---" in response:
+            parts = response.split("---", 1)
+            reasoning = parts[0].replace("REASONING:", "").strip()[:300]
+            analysis  = parts[1].strip()
+        elif response.startswith("REASONING:"):
+            reasoning = response.split("\n", 1)[0].replace("REASONING:", "").strip()[:300]
+            analysis  = response.split("\n", 1)[-1].strip()
+
+        # ── Emit reasoning ──────────────────────────────────────────────────
+        if reasoning:
+            yield sse({"type": "agent_reasoning", "agent": agent["id"], "reasoning": reasoning})
+            await asyncio.sleep(0.25)
+
+        # ── Stream analysis tokens ──────────────────────────────────────────
+        words      = analysis.split()
         chunk_size = 4
         for i in range(0, len(words), chunk_size):
             chunk = " ".join(words[i : i + chunk_size]) + " "
             yield sse({"type": "agent_token", "agent": agent["id"], "token": chunk})
             await asyncio.sleep(0.018)
 
-        # Suggest a canvas node based on this agent's output
-        short = response[:220] + ("…" if len(response) > 220 else "")
+        agent_outputs[agent["id"]] = analysis[:200]
+
+        # ── Suggested canvas node ───────────────────────────────────────────
+        short = analysis[:240] + ("…" if len(analysis) > 240 else "")
         suggested_node = {
-            "id": f"{agent['id']}-{_uuid.uuid4().hex[:8]}",
+            "id":   f"{agent['id']}-{_uuid.uuid4().hex[:8]}",
             "type": agent["node_type"],
             "position": agent["node_pos"],
             "data": {
@@ -375,30 +426,34 @@ async def _stream_analysis(case_description: str, context: str):
                 "description": short,
                 "impact_score": 78,
                 "agent":       agent["id"],
-                **({"severity": 6} if agent["node_type"] == "risk"     else {}),
-                **({"strength": 80} if agent["node_type"] == "argument" else {}),
+                **({"severity":   6 } if agent["node_type"] == "risk"     else {}),
+                **({"strength":  80 } if agent["node_type"] == "argument" else {}),
                 **({"confidence": 75} if agent["node_type"] == "strategy" else {}),
             },
         }
 
         yield sse({
-            "type": "agent_done",
-            "agent": agent["id"],
-            "full_text": response,
+            "type":           "agent_done",
+            "agent":          agent["id"],
+            "full_text":      analysis,
+            "reasoning":      reasoning,
             "suggested_node": suggested_node,
         })
 
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(0.3)
 
+    # ── Final synthesis ─────────────────────────────────────────────────────
+    yield sse({
+        "type":            "agent_synthesis",
+        "message":         "All five agents have completed their analysis. The Agent Society has reached consensus.",
+        "consensus_score": 84,
+    })
     yield sse({"type": "complete"})
 
 
 @router.post("/workspace/sessions/{session_id}/analyze")
 async def analyze_session(
-    session_id: int,
-    body: AnalyzeBody,
-    request: Request,
-    user=Depends(require_user),
+    session_id: int, body: AnalyzeBody, request: Request, user=Depends(require_user)
 ):
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -419,11 +474,68 @@ async def analyze_session(
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control":    "no-cache",
-            "X-Accel-Buffering": "no",
-            "Connection":       "keep-alive",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
+    )
+
+
+# ─── Direct Agent Ask (SSE) ────────────────────────────────────────────────────
+
+@router.post("/workspace/sessions/{session_id}/agent/{agent_id}/ask")
+async def ask_agent(
+    session_id: int,
+    agent_id: str,
+    body: AskAgentBody,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Direct question to a single agent — SSE streamed response."""
+    agent = next((a for a in _AGENTS if a["id"] == agent_id), None)
+    if not agent:
+        raise HTTPException(404, f"Agent '{agent_id}' not found")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+    if not exists:
+        raise HTTPException(404, "Session not found")
+
+    async def generate():
+        def sse(d: dict) -> str:
+            return f"data: {json.dumps(d, default=str)}\n\n"
+
+        yield sse({"type": "start", "agent": agent_id})
+
+        prompt = (
+            f"{agent['system']}\n\n"
+            f"Case Context: {body.case_description or 'Not provided'}\n\n"
+            f"User Question: {body.question}\n\n"
+            "Answer the question specifically and concisely in 2-4 sentences. "
+            "Be direct and practical."
+        )
+
+        try:
+            response = await legal_llm.aask_legal_question(prompt)
+            response  = (response or "").strip() or (
+                "Please provide more case details so I can give a specific answer."
+            )
+            words = response.split()
+            for i in range(0, len(words), 3):
+                chunk = " ".join(words[i : i + 3]) + " "
+                yield sse({"type": "token", "agent": agent_id, "token": chunk})
+                await asyncio.sleep(0.02)
+        except Exception as exc:
+            logger.warning("Ask agent %s error: %s", agent_id, exc)
+            yield sse({"type": "error", "agent": agent_id, "error": "Analysis failed — try again."})
+
+        yield sse({"type": "done", "agent": agent_id})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

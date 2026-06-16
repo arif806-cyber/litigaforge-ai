@@ -9,7 +9,7 @@ import {
 } from "@xyflow/react";
 import { motion } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
-import AgentPanel, { type AgentState } from "@/components/workspace/AgentPanel";
+import AgentPanel, { type AgentState, type CollabEvent } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -93,6 +93,8 @@ export default function ForgeWorkspace() {
   const [simPrompt, setSimPrompt]           = useState("");
   const [simResult, setSimResult]           = useState("");
   const [isSimulating, setIsSimulating]     = useState(false);
+  const [collabFeed, setCollabFeed]         = useState<CollabEvent[]>([]);
+  const [synthesisScore, setSynthesisScore] = useState<number | null>(null);
 
   const saveTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addMenuRef     = useRef<HTMLDivElement>(null);
@@ -350,6 +352,8 @@ export default function ForgeWorkspace() {
     if (!sessionId || isAnalyzing) return;
     setIsAnalyzing(true);
     setAgentStates(makeDefaultAgentStates());
+    setCollabFeed([]);
+    setSynthesisScore(null);
 
     try {
       const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/analyze`, {
@@ -384,27 +388,52 @@ export default function ForgeWorkspace() {
             const agentId = event.agent as string;
 
             if (type === "agent_start") {
-              setAgentStates(prev => ({ ...prev, [agentId]: { status: "thinking", text: "" } }));
+              setAgentStates(prev => ({
+                ...prev,
+                [agentId]: { status: "thinking", text: "", reasoning: undefined, canvasNodeAdded: false },
+              }));
+            } else if (type === "agent_reasoning") {
+              setAgentStates(prev => ({
+                ...prev,
+                [agentId]: { ...(prev[agentId] ?? { status: "thinking", text: "" }), reasoning: event.reasoning as string },
+              }));
             } else if (type === "agent_token") {
               setAgentStates(prev => ({
                 ...prev,
                 [agentId]: {
+                  ...(prev[agentId] ?? { status: "thinking", text: "" }),
                   status: "thinking",
                   text: (prev[agentId]?.text ?? "") + (event.token as string),
                 },
               }));
             } else if (type === "agent_done") {
+              const sn = event.suggested_node as Node | undefined;
               setAgentStates(prev => ({
                 ...prev,
-                [agentId]: { status: "done", text: event.full_text as string },
+                [agentId]: {
+                  ...(prev[agentId] ?? { status: "thinking", text: "" }),
+                  status: "done",
+                  text:            event.full_text as string,
+                  reasoning:       (event.reasoning as string | undefined) || prev[agentId]?.reasoning,
+                  canvasNodeAdded: !!sn,
+                },
               }));
-              const sn = event.suggested_node as Node | undefined;
               if (sn) {
                 setNodes(prev => {
                   if (prev.find(n => n.id === sn.id)) return prev;
-                  return [...prev, sn];
+                  const placed = { ...sn, position: { x: 200 + Math.random() * 500, y: 150 + Math.random() * 350 } };
+                  return [...prev, placed as Node];
                 });
               }
+            } else if (type === "agent_consult") {
+              setCollabFeed(prev => [...prev, {
+                from:      event.from as string,
+                to:        event.to as string,
+                message:   event.message as string,
+                timestamp: Date.now(),
+              }]);
+            } else if (type === "agent_synthesis") {
+              setSynthesisScore(event.consensus_score as number);
             }
           } catch { /* malformed event */ }
         }
@@ -441,6 +470,69 @@ export default function ForgeWorkspace() {
       setIsSimulating(false);
     }
   }
+
+  // ─── Direct agent Q&A (SSE) ───────────────────────────────────────────────────
+
+  const onAskAgent = useCallback(async (agentId: string, question: string) => {
+    if (!sessionId) return;
+    setAgentStates(prev => ({
+      ...prev,
+      [agentId]: {
+        ...(prev[agentId] ?? { status: "done", text: "" }),
+        askQuestion:  question,
+        askResponse:  "",
+        askStreaming:  true,
+      },
+    }));
+    try {
+      const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/agent/${agentId}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ question, case_description: caseDescription }),
+      });
+      if (!res.ok || !res.body) throw new Error("Stream failed");
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const blocks = buf.split("\n\n");
+        buf = blocks.pop() ?? "";
+        for (const block of blocks) {
+          const line = block.split("\n").find(l => l.startsWith("data: "));
+          if (!line) continue;
+          try {
+            const ev = JSON.parse(line.slice(6)) as Record<string, unknown>;
+            if (ev.type === "token") {
+              setAgentStates(prev => ({
+                ...prev,
+                [agentId]: {
+                  ...(prev[agentId] ?? { status: "done", text: "" }),
+                  askResponse: (prev[agentId]?.askResponse ?? "") + (ev.token as string),
+                },
+              }));
+            }
+          } catch { /* malformed */ }
+        }
+      }
+    } catch { /* stream error — leave askStreaming: false */ }
+    setAgentStates(prev => ({
+      ...prev,
+      [agentId]: { ...(prev[agentId] ?? { status: "done", text: "" }), askStreaming: false },
+    }));
+  }, [sessionId, caseDescription]);
+
+  const onFeedback = useCallback((agentId: string, vote: "up" | "down") => {
+    setAgentStates(prev => ({
+      ...prev,
+      [agentId]: {
+        ...(prev[agentId] ?? { status: "done", text: "" }),
+        feedback: prev[agentId]?.feedback === vote ? null : vote,
+      },
+    }));
+  }, []);
 
   // ─── Close add menu on outside click ──────────────────────────────────────────
 
@@ -640,6 +732,10 @@ export default function ForgeWorkspace() {
           onAnalyze={runAnalysis}
           caseDescription={caseDescription}
           onCaseDescriptionChange={setCaseDescription}
+          collabFeed={collabFeed}
+          onAskAgent={onAskAgent}
+          onFeedback={onFeedback}
+          synthesisScore={synthesisScore ?? undefined}
         />
 
         {/* Center: Canvas */}
