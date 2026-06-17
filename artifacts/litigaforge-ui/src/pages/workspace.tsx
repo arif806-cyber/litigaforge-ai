@@ -159,6 +159,10 @@ export default function ForgeWorkspace() {
   const [sessionSearch, setSessionSearch]   = useState("");
   const t = STRINGS[lang];
 
+  const [isMobile, setIsMobile]           = useState(() => window.innerWidth < 768);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [mobileSheet, setMobileSheet]     = useState<"agent" | "sessions" | "search" | "insights" | "simulate" | "twin" | null>(null);
+
   function addToast(item: Omit<ForgeToastItem, "id">) {
     const id = `t-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setToasts(prev => [...prev.slice(-5), { ...item, id }]);
@@ -180,6 +184,12 @@ export default function ForgeWorkspace() {
 
   useEffect(() => {
     loadSessions();
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   async function loadSessions() {
@@ -947,16 +957,28 @@ export default function ForgeWorkspace() {
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: 8,
-        padding: "0 14px",
+        gap: isMobile ? 6 : 8,
+        padding: isMobile ? "0 10px" : "0 14px",
         height: 52,
         flexShrink: 0,
+        overflow: "hidden",
         background: PANEL,
         borderBottom: `1px solid ${BORDER}`,
         zIndex: 10,
       }}>
+        {/* Desktop: collapse agent panel */}
+        {!isMobile && (
+          <button
+            onClick={() => setLeftCollapsed(v => !v)}
+            title={leftCollapsed ? "Expand agent panel" : "Collapse agent panel"}
+            style={{ ...toolbarBtn(false), padding: "5px 8px", fontSize: 12, flexShrink: 0 }}
+          >
+            {leftCollapsed ? "▶" : "◀"}
+          </button>
+        )}
+
         {/* Brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: isMobile ? 0 : 6, flexShrink: 0 }}>
           <div style={{
             width: 30, height: 30, borderRadius: 8,
             background: "linear-gradient(135deg, rgba(20,184,166,0.2), rgba(14,116,144,0.12))",
@@ -967,19 +989,21 @@ export default function ForgeWorkspace() {
           }}>
             ⚡
           </div>
-          <div>
-            <div style={{
-              fontWeight: 900, fontSize: 11.5, letterSpacing: "0.06em",
-              background: "linear-gradient(90deg, #14b8a6, #22d3ee)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}>
-              {t.brand}
+          {!isMobile && (
+            <div>
+              <div style={{
+                fontWeight: 900, fontSize: 11.5, letterSpacing: "0.06em",
+                background: "linear-gradient(90deg, #14b8a6, #22d3ee)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}>
+                {t.brand}
+              </div>
+              <div style={{ fontSize: 7.5, color: "#64748b", letterSpacing: "0.08em", marginTop: -1, fontWeight: 700 }}>
+                {t.brandSub}
+              </div>
             </div>
-            <div style={{ fontSize: 7.5, color: "#64748b", letterSpacing: "0.08em", marginTop: -1, fontWeight: 700 }}>
-              {t.brandSub}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Session title */}
@@ -993,17 +1017,20 @@ export default function ForgeWorkspace() {
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 7,
             padding: "5px 10px",
-            fontSize: 12,
+            fontSize: isMobile ? 11 : 12,
             color: FG,
             fontWeight: 600,
             outline: "none",
-            width: 200,
+            width: isMobile ? 100 : 200,
+            minWidth: 0,
+            flexShrink: 1,
           }}
         />
 
         <div style={{ flex: 1 }} />
 
-        {/* Add node */}
+        {/* Add node — desktop only */}
+        {!isMobile && (
         <div ref={addMenuRef} style={{ position: "relative" }}>
           <button
             onClick={() => setShowAddMenu(v => !v)}
@@ -1060,36 +1087,37 @@ export default function ForgeWorkspace() {
             </div>
           )}
         </div>
+        )}
 
-        {/* Undo / Redo */}
-        <button
-          onClick={undo}
-          disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
-          style={{ ...toolbarBtn(false), opacity: canUndo ? 1 : 0.35 }}
-        >
-          {t.undo}
-        </button>
-        <button
-          onClick={redo}
-          disabled={!canRedo}
-          title="Redo (Ctrl+Y)"
-          style={{ ...toolbarBtn(false), opacity: canRedo ? 1 : 0.35 }}
-        >
-          {t.redo}
-        </button>
+        {/* Desktop: Undo / Redo */}
+        {!isMobile && (
+          <>
+            <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)"
+              style={{ ...toolbarBtn(false), opacity: canUndo ? 1 : 0.35 }}
+            >{t.undo}</button>
+            <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)"
+              style={{ ...toolbarBtn(false), opacity: canRedo ? 1 : 0.35 }}
+            >{t.redo}</button>
+          </>
+        )}
 
         {/* Save */}
         <button
           onClick={() => saveCanvas(false)}
           data-testid="forge-save"
-          style={toolbarBtn(false)}
+          style={isMobile ? {
+            width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+            border: "1px solid rgba(20,184,166,0.25)",
+            background: "rgba(20,184,166,0.08)",
+            color: TEAL, fontSize: 15, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          } : toolbarBtn(false)}
         >
-          {isSaving ? t.saving : t.save}
+          {isMobile ? "💾" : (isSaving ? t.saving : t.save)}
         </button>
 
-        {/* Node count badge */}
-        {nodes.length > 0 && (
+        {/* Desktop: node count badge */}
+        {!isMobile && nodes.length > 0 && (
           <div style={{
             fontSize: 9.5, color: TEAL,
             background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))",
@@ -1100,11 +1128,11 @@ export default function ForgeWorkspace() {
           </div>
         )}
 
-        {/* Language toggle */}
-        <LangToggle lang={lang} setLang={setLang} />
+        {/* Desktop: language toggle */}
+        {!isMobile && <LangToggle lang={lang} setLang={setLang} />}
 
-        {/* User avatar + logout */}
-        {user && (
+        {/* Desktop: user avatar + logout */}
+        {!isMobile && user && (
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginLeft: 4, flexShrink: 0 }}>
             <div style={{
               width: 27, height: 27, borderRadius: "50%",
@@ -1130,23 +1158,92 @@ export default function ForgeWorkspace() {
             </button>
           </div>
         )}
+
+        {/* Mobile: quick analyze */}
+        {isMobile && (
+          <button
+            onClick={() => void runAnalysis()}
+            disabled={isAnalyzing || !sessionId}
+            title="Run AI Analysis"
+            style={{
+              width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+              border: isAnalyzing ? "1px solid rgba(20,184,166,0.15)" : "1px solid rgba(168,85,247,0.35)",
+              background: isAnalyzing ? "rgba(20,184,166,0.06)" : "rgba(168,85,247,0.12)",
+              color: isAnalyzing ? TEAL : "#a855f7",
+              fontSize: 15, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: isAnalyzing || !sessionId ? 0.5 : 1,
+              transition: "all 0.15s",
+            }}
+          >
+            {isAnalyzing ? "⏳" : "⚡"}
+          </button>
+        )}
+
+        {/* Mobile: workspaces menu */}
+        {isMobile && (
+          <button
+            onClick={() => setMobileSheet(v => v === "sessions" ? null : "sessions")}
+            title="Workspaces"
+            style={{
+              width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+              border: mobileSheet === "sessions" ? "1px solid rgba(20,184,166,0.4)" : "1px solid rgba(255,255,255,0.1)",
+              background: mobileSheet === "sessions" ? "rgba(20,184,166,0.12)" : "rgba(255,255,255,0.04)",
+              color: mobileSheet === "sessions" ? TEAL : "#94a3b8",
+              fontSize: 17, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "all 0.15s",
+            }}
+          >
+            ☰
+          </button>
+        )}
       </div>
 
       {/* ── Main area ── */}
       <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
 
-        {/* Left: Agent Panel */}
-        <AgentPanel
-          agentStates={agentStates}
-          isAnalyzing={isAnalyzing}
-          onAnalyze={runAnalysis}
-          caseDescription={caseDescription}
-          onCaseDescriptionChange={setCaseDescription}
-          collabFeed={collabFeed}
-          onAskAgent={onAskAgent}
-          onFeedback={onFeedback}
-          synthesisScore={synthesisScore ?? undefined}
-        />
+        {/* Left: Agent Panel — desktop, expanded */}
+        {!isMobile && !leftCollapsed && (
+          <AgentPanel
+            agentStates={agentStates}
+            isAnalyzing={isAnalyzing}
+            onAnalyze={runAnalysis}
+            caseDescription={caseDescription}
+            onCaseDescriptionChange={setCaseDescription}
+            collabFeed={collabFeed}
+            onAskAgent={onAskAgent}
+            onFeedback={onFeedback}
+            synthesisScore={synthesisScore ?? undefined}
+          />
+        )}
+        {/* Left: collapsed strip — desktop only */}
+        {!isMobile && leftCollapsed && (
+          <div style={{
+            width: 36, flexShrink: 0,
+            display: "flex", flexDirection: "column", alignItems: "center",
+            paddingTop: 12, gap: 10,
+            background: "rgba(8,16,36,0.97)",
+            borderRight: "1px solid rgba(20,184,166,0.1)",
+          }}>
+            <button
+              onClick={() => setLeftCollapsed(false)}
+              title="Expand agent panel"
+              style={{
+                width: 26, height: 26, borderRadius: 7,
+                border: "1px solid rgba(20,184,166,0.25)",
+                background: "rgba(20,184,166,0.08)",
+                color: TEAL, fontSize: 11, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >▶</button>
+            <div style={{
+              fontSize: 8, color: "#475569",
+              writingMode: "vertical-rl", transform: "rotate(180deg)",
+              letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase",
+            }}>Agents</div>
+          </div>
+        )}
 
         {/* Center: Canvas */}
         <div style={{ flex: 1, position: "relative", minWidth: 0, overflow: "hidden" }}>
@@ -1174,9 +1271,9 @@ export default function ForgeWorkspace() {
           {sessionId && nodes.length === 0 && (
             <EmptyCanvasGuide
               t={t}
-              onSearch={() => setRightPanelTab("search")}
+              onSearch={() => { if (isMobile) setMobileSheet("search"); else setRightPanelTab("search"); }}
               onAnalyze={() => void runAnalysis()}
-              onAddNode={() => setShowAddMenu(true)}
+              onAddNode={() => { if (isMobile) setMobileSheet("agent"); else setShowAddMenu(true); }}
               isAnalyzing={isAnalyzing}
             />
           )}
@@ -1186,13 +1283,33 @@ export default function ForgeWorkspace() {
               <ForgeTour onDismiss={() => setShowTour(false)} />
             )}
           </AnimatePresence>
+          {/* Mobile: floating "Agents" pill FAB */}
+          {isMobile && sessionId && nodes.length > 0 && (
+            <motion.button
+              whileTap={{ scale: 0.93 }}
+              onClick={() => setMobileSheet(v => v === "agent" ? null : "agent")}
+              style={{
+                position: "absolute", bottom: 12, left: 12, zIndex: 20,
+                height: 38, borderRadius: 19, padding: "0 16px",
+                border: mobileSheet === "agent" ? "1px solid rgba(20,184,166,0.5)" : "1px solid rgba(168,85,247,0.4)",
+                background: mobileSheet === "agent" ? "rgba(20,184,166,0.18)" : "rgba(8,14,32,0.88)",
+                color: mobileSheet === "agent" ? TEAL : "#a855f7",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+                backdropFilter: "blur(8px)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+              }}
+            >
+              🤖 {mobileSheet === "agent" ? "Close" : "Agents"}
+            </motion.button>
+          )}
         </div>
 
-        {/* Right: Sessions + Search + Simulation */}
+        {/* Right: Sessions + Search + Simulation — desktop only */}
         <div style={{
           width: 292,
           flexShrink: 0,
-          display: "flex",
+          display: isMobile ? "none" : "flex",
           flexDirection: "column",
           background: PANEL,
           borderLeft: `1px solid ${BORDER}`,
@@ -1469,6 +1586,210 @@ export default function ForgeWorkspace() {
         </div>
       </div>
     </div>
+
+    {/* ── Mobile: fixed bottom tab bar ── */}
+    {isMobile && (
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: 56,
+        background: "rgba(6,12,28,0.97)",
+        borderTop: "1px solid rgba(20,184,166,0.15)",
+        display: "flex", zIndex: 110,
+        backdropFilter: "blur(12px)",
+      }}>
+        {([
+          { id: "agent" as const,    emoji: "🤖", label: "Agents"  },
+          { id: "sessions" as const, emoji: "📁", label: "Files"   },
+          { id: "search" as const,   emoji: "🔍", label: "Search"  },
+          { id: "insights" as const, emoji: "✦",  label: "Intel"   },
+          { id: "simulate" as const, emoji: "⚡",  label: "Sim"     },
+          { id: "twin" as const,     emoji: "🧬", label: "Twin"    },
+        ]).map(tab => {
+          const active = mobileSheet === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setMobileSheet(v => v === tab.id ? null : tab.id)}
+              style={{
+                flex: 1, border: "none",
+                background: active ? "rgba(20,184,166,0.1)" : "transparent",
+                borderTop: active ? "2px solid #14b8a6" : "2px solid transparent",
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: 2,
+                cursor: "pointer", transition: "all 0.15s", padding: "4px 0",
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{tab.emoji}</span>
+              <span style={{ fontSize: 8, fontWeight: 700, color: active ? "#14b8a6" : "#64748b", letterSpacing: "0.04em" }}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    )}
+
+    {/* ── Mobile: slide-up sheet ── */}
+    <AnimatePresence>
+      {isMobile && mobileSheet && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileSheet(null)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 105,
+              background: "rgba(0,0,0,0.5)",
+            }}
+          />
+          {/* Sheet */}
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 350 }}
+            style={{
+              position: "fixed", bottom: 56, left: 0, right: 0,
+              height: "65vh",
+              background: "rgba(7,13,28,0.99)",
+              border: "1px solid rgba(20,184,166,0.18)",
+              borderRadius: "16px 16px 0 0",
+              zIndex: 106,
+              display: "flex", flexDirection: "column",
+              overflow: "hidden",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.6)",
+            }}
+          >
+            {/* Sheet header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px 8px",
+              borderBottom: "1px solid rgba(20,184,166,0.1)",
+              flexShrink: 0,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#14b8a6", letterSpacing: "0.04em" }}>
+                {mobileSheet === "agent"    ? "🤖 AI Agents"
+                : mobileSheet === "sessions" ? "📁 Workspaces"
+                : mobileSheet === "search"   ? "🔍 Case Law Search"
+                : mobileSheet === "insights" ? "✦ Proactive Intel"
+                : mobileSheet === "simulate" ? "⚡ What-If Simulation"
+                :                              "🧬 Personal Legal Twin"}
+              </div>
+              <button
+                onClick={() => setMobileSheet(null)}
+                style={{ background: "none", border: "none", color: "#64748b", fontSize: 16, cursor: "pointer", padding: "0 4px" }}
+              >✕</button>
+            </div>
+
+            {/* Sheet content */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {mobileSheet === "agent" && (
+                <AgentPanel
+                  agentStates={agentStates}
+                  isAnalyzing={isAnalyzing}
+                  onAnalyze={runAnalysis}
+                  caseDescription={caseDescription}
+                  onCaseDescriptionChange={setCaseDescription}
+                  collabFeed={collabFeed}
+                  onAskAgent={onAskAgent}
+                  onFeedback={onFeedback}
+                  synthesisScore={synthesisScore ?? undefined}
+                />
+              )}
+              {mobileSheet === "sessions" && (
+                <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => { void createSession(); setMobileSheet(null); }}
+                    style={{
+                      width: "100%", padding: "11px",
+                      background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))",
+                      border: "1px solid rgba(20,184,166,0.25)",
+                      borderRadius: 9, color: "#14b8a6", fontSize: 12, fontWeight: 800, cursor: "pointer",
+                    }}
+                  >
+                    {t.newWorkspace}
+                  </motion.button>
+                  {sessions.map(s => {
+                    const active = s.id === sessionId;
+                    const nodeCount = Array.isArray(s.nodes_json) ? s.nodes_json.length : 0;
+                    return (
+                      <motion.div
+                        key={s.id}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { void openSession(s); setMobileSheet(null); }}
+                        style={{
+                          padding: "11px 13px", borderRadius: 9,
+                          background: active ? "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(14,116,144,0.06))" : "rgba(255,255,255,0.02)",
+                          border: active ? "1px solid rgba(20,184,166,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: 12, color: active ? "#14b8a6" : "#e2e8f0", marginBottom: 4 }}>
+                          {active && <span style={{ marginRight: 5, fontSize: 9 }}>●</span>}
+                          {s.title}
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ fontSize: 9.5, color: "#64748b" }}>
+                            {new Date(s.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </div>
+                          {nodeCount > 0 && (
+                            <div style={{ fontSize: 9, color: active ? "#14b8a6" : "#475569", fontWeight: 700 }}>
+                              {t.nodesBadge(nodeCount)}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+              {mobileSheet === "search" && (
+                <SearchPanel
+                  sessionId={sessionId}
+                  nodes={nodes}
+                  caseDescription={caseDescription}
+                  onNodesAdded={onSearchNodesAdded}
+                />
+              )}
+              {mobileSheet === "insights" && (
+                <ProactivePanel
+                  suggestions={suggestions}
+                  isLoading={isLoadingInsights}
+                  canvasHasNodes={nodes.length >= 2}
+                  sessionReady={!!sessionId}
+                  onRefresh={fetchInsights}
+                  onAccept={onAcceptSuggestion}
+                  onDismiss={onDismissSuggestion}
+                />
+              )}
+              {mobileSheet === "simulate" && (
+                <SimulationPanel
+                  nodes={nodes}
+                  simState={simState}
+                  simHistory={simHistory}
+                  onRunSimulation={runSimulation}
+                  onSaveSimulation={onSaveSimulation}
+                  onApplyToCanvas={onApplyToCanvas}
+                />
+              )}
+              {mobileSheet === "twin" && (
+                <PersonalTwinPanel
+                  profile={twinProfile}
+                  crossMatter={crossMatter}
+                  isLoading={isLoadingTwin}
+                  sessionReady={!!sessionId}
+                  onToggleLearning={onToggleLearning}
+                  onReset={onResetProfile}
+                  onRefresh={fetchTwinData}
+                />
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
 
     {/* Toast notifications */}
     <ToastStack toasts={toasts} onDismiss={dismissToast} />

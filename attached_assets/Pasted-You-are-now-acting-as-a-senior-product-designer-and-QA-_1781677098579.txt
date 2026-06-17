@@ -1,0 +1,44 @@
+You are now acting as a senior product designer and QA engineer. Your task is to thoroughly test Forge Workspace from a real user’s perspective and improve the overall experience.
+
+Current State: All major features are built, including Login, Spatial Canvas, Multi-Agent System, Proactive Intelligence, What-If Simulation, Indian Kanoon Integration, Data Persistence, and Self-Improving features.
+
+Requirements:
+
+1. **Act Like a Real User**
+   - Simulate a realistic lawyer workflow from start to finish.
+   - Use case: A lawyer working on a **family pension matter** (similar to recent Supreme Court cases).
+   - Go through the full flow like a real user would:
+     - Login
+     - Create or open a matter
+     - Upload a document
+     - Work with Indian Kanoon results on the Spatial Canvas
+     - Use the Agent Society
+     - Interact with Proactive suggestions
+     - Run What-If Simulations
+     - Save and reload the workspace
+
+2. **User Experience Evaluation**
+   - Carefully evaluate the user experience across **all features and tabs**.
+   - Identify friction points, confusing flows, or areas that feel incomplete.
+   - Check how intuitive the Spatial Canvas, Agent panel, Simulation mode, and Proactive Insights are.
+
+3. **Mobile + Desktop Responsiveness**
+   - Test and improve the experience on both **desktop** and **mobile**.
+   - Ensure the layout adapts well on smaller screens.
+   - Fix any responsiveness issues (especially with the Spatial Canvas and multi-panel views).
+   - Make sure the most important actions are easily accessible on mobile.
+
+4. **Innovation Suggestions**
+   - After testing, suggest innovative improvements that can make Forge Workspace more powerful and unique.
+   - Focus on ideas that feel futuristic and have not been commonly seen in legal AI tools.
+   - Prioritize ideas that enhance the Spatial Canvas, Agent collaboration, simulation, or personalization.
+
+5. **Prioritization**
+   - Categorize your findings and suggestions into:
+     - Critical UX issues (must fix)
+     - Important improvements
+     - Innovative ideas for future versions
+
+Goal: Make Forge Workspace feel smooth, intuitive, and delightful to use on both desktop and mobile, while identifying opportunities to make it even more advanced and differentiated.
+
+Be thorough and honest in your evaluation.
