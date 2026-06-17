@@ -42,11 +42,11 @@ export function Scene3() {
         </div>
         
         <h3 className="text-[2.2vw] font-display font-bold text-primary leading-tight mb-4">
-          Tenant Eviction, Hyderabad
+          Tenant Eviction Case
         </h3>
         
         <p className="text-[1.2vw] text-text-secondary font-mono leading-relaxed mb-8 border-l-4 border-primary/20 pl-4">
-          "Tenant refuses to vacate property after lease expiry. Non-payment of rent for 4 months. Need immediate legal action under Transfer of Property Act."
+          "Tenant refuses to vacate property after lease expiry. Non-payment of rent for 4 months. Need immediate legal action under applicable tenancy law."
         </p>
 
         <motion.div 
@@ -56,7 +56,7 @@ export function Scene3() {
         >
           <div>
             <p className="text-[0.9vw] text-text-muted font-bold uppercase mb-1">Estimated Budget</p>
-            <p className="text-[1.5vw] font-mono text-primary font-bold">₹50,000 – ₹1,00,000</p>
+            <p className="text-[1.5vw] font-mono text-primary font-bold">$2,000 – $5,000</p>
           </div>
           
           <motion.div 

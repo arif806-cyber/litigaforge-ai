@@ -15,8 +15,8 @@ export const SCENE_DURATIONS: Record<string, number> = {
   problem: 10000,
   case: 8000,
   matching: 10000,
-  forge: 14000,
-  synthesis: 10000,
+  forge: 16000,
+  synthesis: 12000,
   carousel: 15000,
   closing: 8000,
 };

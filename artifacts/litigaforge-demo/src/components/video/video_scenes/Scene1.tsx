@@ -53,7 +53,7 @@ export function Scene1() {
           animate={phase >= 3 ? { opacity: 1, filter: 'blur(0px)' } : { opacity: 0, filter: 'blur(5px)' }}
           transition={{ duration: 1 }}
         >
-          Legal Intelligence for Telangana & AP
+          Legal Intelligence for the Modern Advocate
         </motion.p>
       </div>
     </motion.div>

@@ -44,7 +44,7 @@ export function Scene2() {
           animate={phase >= 2 ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.8 }}
         >
-          Navigating the Indian legal system often feels like entering a labyrinth.
+          Navigating the legal system often feels like entering a labyrinth.
         </motion.p>
       </div>
 
