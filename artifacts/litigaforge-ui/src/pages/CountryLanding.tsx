@@ -283,7 +283,46 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
       </section>
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-14 md:py-16 space-y-16">
-        {/* ── 2. HOW IT WORKS (before pricing) ── */}
+
+        {/* ── 2. PRODUCT DEMO VIDEO ── */}
+        <section data-testid="section-demo-video">
+          <div className="text-center mb-8">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/70 text-xs font-semibold cfos-mono mb-4">
+              <span className="cfos-live-dot" /> Live product demo
+            </span>
+            <h2 className="text-2xl md:text-3xl font-bold">See LitigaForge in action</h2>
+            <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
+              Watch how advocates turn a case brief into a court-ready package — strategy, precedents, and client memo — in under a minute.
+            </p>
+          </div>
+
+          {/* 16:9 iframe wrapper */}
+          <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-border shadow-2xl bg-slate-950">
+            <iframe
+              src="/litigaforge-demo/"
+              className="absolute inset-0 w-full h-full border-0"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              title="LitigaForge AI — Product Demo"
+            />
+          </div>
+
+          <div className="flex items-center justify-center gap-6 mt-4">
+            <p className="text-xs text-muted-foreground">
+              Tap <strong>🔊</strong> inside the video to enable narration
+            </p>
+            <a
+              href="/litigaforge-demo/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
+            >
+              Open full screen <ArrowRight className="w-3 h-3" />
+            </a>
+          </div>
+        </section>
+
+        {/* ── 3. HOW IT WORKS (before pricing) ── */}
         <section data-testid="section-how-it-works">
           <div className="text-center mb-8">
             <h2 className="text-2xl md:text-3xl font-bold" data-testid="how-it-works-heading">{tr("how_heading")}</h2>
