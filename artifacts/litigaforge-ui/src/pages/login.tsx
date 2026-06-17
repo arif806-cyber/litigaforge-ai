@@ -307,6 +307,7 @@ export default function Login() {
           <div className="flex items-center justify-center gap-1 mb-6">
             <button
               type="button"
+              data-testid="tab-login"
               onClick={() => toggleMode("signin")}
               className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition-all ${
                 isSignIn ? "text-primary bg-muted" : "text-muted-foreground hover:text-foreground"
@@ -316,6 +317,7 @@ export default function Login() {
             </button>
             <button
               type="button"
+              data-testid="tab-register"
               onClick={() => toggleMode("signup")}
               className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition-all ${
                 !isSignIn ? "text-primary bg-muted" : "text-muted-foreground hover:text-foreground"
@@ -553,6 +555,7 @@ export default function Login() {
 
               <button
                 type="submit"
+                data-testid="create-account-btn"
                 disabled={loading || !email || !password || (!isSignIn && !name) || (!isSignIn && !consent)}
                 className="w-full h-12 rounded-xl font-semibold tracking-wide flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md bg-primary text-white"
               >
