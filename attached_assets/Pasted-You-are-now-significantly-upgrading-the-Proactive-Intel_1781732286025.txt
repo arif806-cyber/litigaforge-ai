@@ -1,0 +1,44 @@
+You are now significantly upgrading the Proactive Intelligence and What-If Simulation features in Forge Workspace to make them feel much more intelligent and powerful.
+
+Current State: Basic versions of Proactive suggestions and What-If Simulation already exist. Now we need to elevate them to a much higher level.
+
+Requirements:
+
+1. **Advanced Proactive Intelligence**
+   - The system should continuously analyze the current matter on the Spatial Canvas and proactively give high-value suggestions without the user asking.
+   - Suggestions should include:
+     - New relevant Indian Kanoon judgments that can strengthen or weaken the current strategy.
+     - Strategic recommendations based on patterns from similar cases.
+     - Risk warnings and missing elements in the current argument structure.
+     - Agent recommendations (e.g., “You should consult the Risk Agent on this point”).
+   - Suggestions should appear in a clean, organized “Proactive Insights” panel.
+   - Users should be able to accept, reject, or ask for more details on any suggestion.
+
+2. **Powerful What-If Simulation Engine**
+   - Make the simulation feature much more advanced and useful.
+   - Users should be able to run simulations like:
+     - “What if this judgment is distinguished or overruled?”
+     - “What if this argument is rejected by the court?”
+     - “What if a new precedent comes in the next 6 months?”
+     - “What if we take a more aggressive vs conservative approach?”
+   - The simulation should show:
+     - Updated risk scores
+     - How the strategy and arguments would need to change
+     - Visual updates on the Spatial Canvas
+     - New proactive suggestions based on the simulation results
+
+3. **Before & After Comparison**
+   - When running a simulation, show a clear before-and-after view so users can easily compare the original strategy with the simulated one.
+
+4. **Integration with Other Features**
+   - Proactive suggestions and simulation results should work seamlessly with the Spatial Canvas and Multi-Agent System.
+   - When a simulation runs, relevant agents should automatically analyze and contribute their views.
+
+5. **User Experience**
+   - Make both Proactive Intelligence and What-If Simulation feel smooth, fast, and impressive.
+   - Add clear loading states and good visual feedback when simulations are running.
+   - Ensure the features feel intelligent and genuinely helpful rather than generic.
+
+Goal: Make the Proactive Intelligence and What-If Simulation feel like a true superpower — something that helps lawyers think several steps ahead and test different strategies quickly. This should be one of the most impressive parts of Forge Workspace.
+
+Focus on making these features smart, visual, and highly useful.

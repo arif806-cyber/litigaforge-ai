@@ -1,0 +1,40 @@
+You are now significantly upgrading the Multi-Agent System in Forge Workspace to make it feel like a real "Agent Society" that collaborates intelligently.
+
+Current State: We already have a basic version of multiple agents. Now we need to make them much more advanced, visible, and useful.
+
+Requirements:
+
+1. **Visible & Professional Agent Panel**
+   - Create a clean, modern panel that clearly shows all active agents.
+   - Each agent should display: Name, Role, Current Status (Idle / Thinking / Working / Completed), and a short real-time update of what they are doing.
+   - Use subtle animations when an agent is thinking or working.
+
+2. **Specialized Agents**
+   Improve and expand the following agents:
+   - **Research Agent**: Should deeply analyze Indian Kanoon judgments and extract key holdings, ratios, and relevant paragraphs.
+   - **Strategy Agent**: Should build strong, structured legal strategies and arguments.
+   - **Risk & Counter Agent**: Should actively play devil’s advocate, find weaknesses, and suggest counter-arguments.
+   - **Drafting Agent**: Should generate high-quality, professional legal drafts (affidavits, written submissions, etc.).
+   - **Predictive Agent**: Should analyze patterns and give predictions (e.g., success rate, how a judge might respond).
+
+3. **Agent Collaboration**
+   - Agents should be able to communicate with each other.
+   - Show when agents agree or disagree on a point.
+   - Display the flow of information between agents (e.g., Research Agent shares findings with Strategy Agent).
+
+4. **User Interaction with Agents**
+   - Allow users to directly interact with specific agents (ask questions, request re-analysis, or give feedback).
+   - Add simple feedback options (thumbs up/down) so the system can learn from user preferences over time.
+
+5. **Integration with Spatial Canvas**
+   - When agents generate arguments, facts, risks, or suggestions, they should automatically appear as nodes on the Spatial Canvas.
+   - Changes made by agents should reflect visually on the canvas.
+
+6. **Visual & UX Quality**
+   - Make the agent interface look premium and professional.
+   - Show clear reasoning steps when agents work (not just final answers).
+   - Make the overall experience feel like the user has a team of expert legal minds assisting them.
+
+Goal: Transform the Multi-Agent System from basic agents into a visible, collaborative, and intelligent "Agent Society" that feels significantly more advanced than normal AI legal tools.
+
+Focus on making agent collaboration visible, useful, and impressive.

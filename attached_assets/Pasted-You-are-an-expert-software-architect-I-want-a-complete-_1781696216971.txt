@@ -1,0 +1,98 @@
+You are an expert software architect. I want a complete, honest, and detailed technical inventory of everything that has actually been built in this Replit project right now.
+
+Please thoroughly explore the entire workspace. Do not guess — read actual files, check folder structure, configuration files, .replit, workflows, code, etc.
+
+Generate a single, well-structured Markdown document titled:
+
+# LitigaForge AI - Current Project Inventory (Replit Deployment)
+
+Structure the output exactly like this (use these sections):
+
+## 1. Project Overview
+- What this project actually is right now
+- Main deployed application URL(s)
+- High-level architecture (what runs where)
+
+## 2. Technology Stack
+- Frontend (framework, build tool, key libraries)
+- Backend (frameworks, languages)
+- AI / Agent components (LangGraph, agents, tools, etc.)
+- Database (type, how it's set up, connection details)
+- Other services/integrations
+
+## 3. Project Structure
+Provide a clean tree of the most important folders and files (focus on source code, not node_modules).
+
+## 4. Frontend Application
+- Where the main web app lives
+- Key routes/pages that are implemented
+- How it talks to the backend
+- State management and major components
+
+## 5. Backend Services & APIs
+- All backend code locations
+- Main entry points
+- List of important API routes/endpoints (especially anything under `/litigaforge`, `/auth`, `/client`, `/document`, `/ask`, `/cases`, etc.)
+- What each major endpoint does
+
+## 6. Database & Data Models
+- Database technology used
+- Schema / models (tables, collections, or ORM models)
+- Key data structures (User, Case/Requirement, Document, Match, etc.)
+- How data is stored and accessed
+
+## 7. AI / Forge Components
+- Any LangGraph graphs, agents, or tools that exist
+- Memory system (if any)
+- API chaining logic (API Setu, eCourts, etc.)
+- Current state of the "Self-Evolving Legal API Forge"
+
+## 8. Authentication & User System
+- How login/register works
+- Token handling (JWT, lf_token, etc.)
+- Protected routes and role-based access (client vs lawyer)
+- Current test users or seeding
+
+## 9. Key Features & Implementation Status
+For each major feature, clearly state:
+- Feature name
+- Current implementation status (Fully working / Partially working / UI only / Backend only / Not started)
+- Main files involved
+- Known limitations
+
+Main features to cover:
+- AI Legal Guidance / Ask
+- Document Analyzer
+- Lawyer Matching + Post Case
+- My Cases / Requirements
+- Matches
+- Judgments
+- Legal Aid
+- Subscription / Quotas
+- Any other important features
+
+## 10. Deployment & Infrastructure (Replit)
+- How the app is currently deployed and running on Replit
+- Replit-specific configuration (.replit file, workflows, secrets)
+- Database setup on Replit
+- Any other services (email, WhatsApp, etc.)
+
+## 11. Environment Variables & Configuration
+- List all required environment variables / secrets
+- What each one is used for
+
+## 12. How to Run Locally
+- Step-by-step instructions to run the project locally (if possible)
+
+## 13. Current Gaps & Observations
+- What looks incomplete or inconsistent
+- Any hardcoded values, mock data, or TODOs
+- Technical debt you notice
+
+Be extremely thorough and accurate. Read multiple files if needed. If something is only in the frontend (SPA) or only exists in the deployed version, clearly note that.
+
+Output everything in clean Markdown. At the end, add the date and time when this inventory was generated.
+
+───
+
+How to Use It

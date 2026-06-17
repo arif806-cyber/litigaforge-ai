@@ -1,0 +1,39 @@
+You are now significantly upgrading the Spatial Canvas in Forge Workspace to make it much more advanced, intelligent, and visually powerful.
+
+Current State: We already have a basic spatial canvas using React Flow. Now we need to elevate it to the next level so it feels truly innovative and unlike most existing legal tools.
+
+Requirements:
+
+1. **Smart & Intelligent Canvas**
+   - When a user drags or adds a node (especially Indian Kanoon judgments), the canvas should automatically suggest relevant connections or related nodes.
+   - Add **impact propagation**: When a user changes something (like marking a judgment as important or weak), the impact should visually reflect across connected nodes in real time (color, size, glow, or labels).
+
+2. **Advanced Node Behavior**
+   - Make nodes much richer and interactive.
+   - Each node should show key information at a glance (citation, impact score, short summary).
+   - Users should be able to expand/collapse nodes for more details.
+   - Add subtle animations when nodes are updated or connected.
+
+3. **Intelligent Relationship System**
+   - Improve how users create connections between nodes.
+   - The system should suggest possible relationship types (Supports, Distinguishes, Cites, Contradicts, Procedural Link, etc.) when two nodes are brought close together.
+   - Allow users to easily change relationship types later.
+
+4. **Clustering & Organization Features**
+   - Add the ability to group related nodes into clusters.
+   - Users should be able to collapse and expand clusters for better focus.
+   - Add a smart auto-layout option that organizes the canvas neatly when it gets messy.
+
+5. **Visual Polish & Futuristic Feel**
+   - Significantly improve the visual design of the canvas.
+   - Use better colors, shadows, hover effects, and smooth animations.
+   - Make the overall experience feel premium and modern (dark theme with strong teal accents).
+
+6. **Usability Improvements**
+   - Improve zoom, pan, and navigation on the canvas.
+   - Add a mini-map for better navigation when the canvas becomes large.
+   - Add search functionality inside the canvas (search nodes by text).
+
+Goal: Transform the Spatial Canvas from a basic draggable area into a powerful, intelligent thinking space that lawyers actually enjoy using. It should feel significantly more advanced than normal legal research interfaces.
+
+Focus on making the canvas smart, visually impressive, and highly usable.
