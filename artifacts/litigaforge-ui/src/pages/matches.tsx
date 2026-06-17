@@ -151,7 +151,7 @@ export default function Matches() {
       });
       refetch();
     } catch (e) {
-      console.error(e);
+      void e;
     } finally {
       setIsFinding(false);
     }

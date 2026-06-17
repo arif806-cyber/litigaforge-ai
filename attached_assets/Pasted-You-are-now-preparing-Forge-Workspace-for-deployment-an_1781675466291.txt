@@ -1,0 +1,47 @@
+You are now preparing Forge Workspace for deployment and making it ready for real usage and sharing.
+
+Current State: All major features are built, including the Spatial Canvas, Multi-Agent System, Proactive Intelligence, What-If Simulation, Indian Kanoon Integration, UI Polish, Performance improvements, Data Persistence, and Self-Improving System.
+
+Your task is to finalize the project:
+
+1. **Deployment Readiness on Replit**
+   - Ensure the project builds and runs successfully without errors.
+   - Configure environment variables properly (especially for Supabase, LLM APIs, and Indian Kanoon).
+   - Optimize the app for Replit’s environment (performance, memory usage, and startup time).
+   - Make sure the deployed version works smoothly.
+
+2. **Final Testing**
+   - Perform a complete end-to-end test of the main user flow:
+     - Upload a document
+     - Retrieve relevant Indian Kanoon judgments
+     - Work on the Spatial Canvas
+     - Use the Agent Society
+     - Run What-If Simulations
+     - Use Proactive suggestions
+     - Save and reload a matter
+   - Fix any remaining bugs or issues found during testing.
+
+3. **Code Quality & Cleanup**
+   - Remove any debug code, console logs, or temporary comments.
+   - Improve code organization and add clear comments where needed.
+   - Ensure the project structure is clean and professional.
+
+4. **Documentation**
+   - Create a clear `README.md` file that explains:
+     - What Forge Workspace is
+     - How to run the project locally
+     - How to deploy it on Replit
+     - Key features and how to use them
+     - Environment variables required
+
+5. **User Onboarding**
+   - Add a simple onboarding experience or helpful tooltips for first-time users (especially for the Spatial Canvas and Agent features).
+   - Make it easy for new users to understand the value of Forge Workspace quickly.
+
+6. **Final Polish**
+   - Do a final review of the overall experience to ensure it feels complete, stable, and premium.
+   - Fix any minor UI/UX issues that remain.
+
+Goal: Take Forge Workspace from a strong advanced prototype to a clean, stable, well-documented, and deployment-ready product that can be shared with others or used in production.
+
+Focus on making the project professional, reliable, and ready to launch.

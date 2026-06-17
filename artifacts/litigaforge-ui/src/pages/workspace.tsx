@@ -7,8 +7,9 @@ import {
   type Edge,
   type Connection,
 } from "@xyflow/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
+import ForgeTour, { checkForgeToured } from "@/components/workspace/ForgeTour";
 import AgentPanel, { type AgentState, type CollabEvent } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
@@ -121,6 +122,7 @@ export default function ForgeWorkspace() {
   const [twinProfile, setTwinProfile]       = useState<TwinProfile | null>(null);
   const [crossMatter, setCrossMatter]       = useState<CrossMatterData | null>(null);
   const [isLoadingTwin, setIsLoadingTwin]   = useState(false);
+  const [showTour, setShowTour]             = useState(false);
   const [lang, setLang]                     = useState<Lang>(getInitialLang);
   const [toasts, setToasts]                 = useState<ForgeToastItem[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
@@ -803,6 +805,18 @@ export default function ForgeWorkspace() {
     }
   }, []);
 
+  // ─── Show first-visit tour when a session is first loaded ────────────────────
+
+  const tourShownRef = useRef(false);
+  useEffect(() => {
+    if (sessionId && !tourShownRef.current && !checkForgeToured()) {
+      tourShownRef.current = true;
+      const tid = setTimeout(() => setShowTour(true), 1200);
+      return () => clearTimeout(tid);
+    }
+    return undefined;
+  }, [sessionId]);
+
   // ─── Close add menu on outside click ──────────────────────────────────────────
 
   useEffect(() => {
@@ -1075,6 +1089,12 @@ export default function ForgeWorkspace() {
               isAnalyzing={isAnalyzing}
             />
           )}
+          {/* First-visit guided tour */}
+          <AnimatePresence>
+            {showTour && (
+              <ForgeTour onDismiss={() => setShowTour(false)} />
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Right: Sessions + Search + Simulation */}
