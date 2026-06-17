@@ -16,6 +16,7 @@ import SimulationPanel, { type SimState, type SimulationResult, type NodeDelta }
 import SearchPanel from "@/components/workspace/SearchPanel";
 import { LangToggle, STRINGS, getInitialLang, type Lang } from "@/components/workspace/WorkspaceLang";
 import { NoSessionWelcome, EmptyCanvasGuide } from "@/components/workspace/ForgeWelcome";
+import { ToastStack, type ForgeToastItem } from "@/components/workspace/ForgeToast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ export default function ForgeWorkspace() {
   const [agentStates, setAgentStates]       = useState<Record<string, AgentState>>(makeDefaultAgentStates);
   const [isAnalyzing, setIsAnalyzing]       = useState(false);
   const [isSaving, setIsSaving]             = useState(false);
-  const [error, setError]                   = useState("");
+  const [_unused]                            = useState<null>(null); // placeholder kept for stable hook order
   const [showAddMenu, setShowAddMenu]       = useState(false);
   const [showSessions, setShowSessions]     = useState(false);
   const [rightPanelTab, setRightPanelTab]   = useState<"sessions" | "search" | "simulate" | "insights">("sessions");
@@ -99,7 +100,18 @@ export default function ForgeWorkspace() {
   const [collabFeed, setCollabFeed]         = useState<CollabEvent[]>([]);
   const [synthesisScore, setSynthesisScore] = useState<number | null>(null);
   const [lang, setLang]                     = useState<Lang>(getInitialLang);
+  const [toasts, setToasts]                 = useState<ForgeToastItem[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [sessionSearch, setSessionSearch]   = useState("");
   const t = STRINGS[lang];
+
+  function addToast(item: Omit<ForgeToastItem, "id">) {
+    const id = `t-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setToasts(prev => [...prev.slice(-5), { ...item, id }]);
+  }
+  function dismissToast(id: string) {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }
 
   const saveTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addMenuRef     = useRef<HTMLDivElement>(null);
@@ -115,6 +127,7 @@ export default function ForgeWorkspace() {
   }, []);
 
   async function loadSessions() {
+    setIsLoadingSessions(true);
     try {
       const res  = await api("/workspace/sessions");
       const list = await res.json() as WorkspaceSession[];
@@ -124,8 +137,10 @@ export default function ForgeWorkspace() {
       } else {
         await createSession("My First Workspace");
       }
-    } catch (e) {
-      setError("Failed to load workspaces.");
+    } catch {
+      addToast({ type: "error", message: "Failed to load workspaces", detail: "Check your connection and refresh." });
+    } finally {
+      setIsLoadingSessions(false);
     }
   }
 
@@ -155,7 +170,7 @@ export default function ForgeWorkspace() {
       setEdges((full.edges_json as Edge[]) || []);
       setAgentStates(makeDefaultAgentStates());
     } catch {
-      setError("Failed to open workspace.");
+      addToast({ type: "error", message: "Failed to open workspace", detail: "The session may have been deleted." });
     }
   }
 
@@ -181,7 +196,7 @@ export default function ForgeWorkspace() {
         body: JSON.stringify({ nodes, edges }),
       });
     } catch {
-      if (!silent) setError("Save failed.");
+      if (!silent) addToast({ type: "error", message: "Save failed", detail: "Changes are queued — will retry on next edit." });
     } finally {
       if (!silent) setIsSaving(false);
     }
@@ -431,12 +446,25 @@ export default function ForgeWorkspace() {
           } catch { /* malformed event */ }
         }
       }
-    } catch (err) {
-      setError("Analysis stream failed. Please try again.");
+      // Analysis completed successfully — surface synthesis score
+      const doneCount = Object.values(agentStates).filter(s => s.status === "done").length;
+      addToast({
+        type: "success",
+        message: `Analysis complete — ${doneCount + 1}/5 agents`,
+        detail: synthesisScore !== null ? `Consensus score: ${synthesisScore}/100` : "Canvas nodes updated.",
+        duration: 5000,
+      });
+    } catch {
+      addToast({
+        type: "error",
+        message: "Analysis stream interrupted",
+        detail: "LLM provider may be busy. Wait a moment and try again.",
+        duration: 7000,
+      });
     } finally {
       setIsAnalyzing(false);
     }
-  }, [sessionId, isAnalyzing, caseDescription]);
+  }, [sessionId, isAnalyzing, caseDescription, agentStates, synthesisScore]);
 
   // ─── What-If Simulation (SSE) ────────────────────────────────────────────────
 
@@ -659,6 +687,7 @@ export default function ForgeWorkspace() {
   const TEAL  = "#14b8a6";
 
   return (
+    <>
     <div
       data-testid="forge-workspace"
       style={{
@@ -829,12 +858,6 @@ export default function ForgeWorkspace() {
           </div>
         )}
 
-        {error && (
-          <div style={{ fontSize: 10, color: "#ef4444", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            ⚠ {error}
-          </div>
-        )}
-
         {/* Language toggle */}
         <LangToggle lang={lang} setLang={setLang} />
       </div>
@@ -931,8 +954,10 @@ export default function ForgeWorkspace() {
 
           {/* Sessions tab */}
           {rightPanelTab === "sessions" && (
-            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-              <motion.button
+            <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+              {/* Search + new workspace */}
+              <div style={{ padding: "10px 12px 0", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+                <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => createSession()}
@@ -952,96 +977,137 @@ export default function ForgeWorkspace() {
                 {t.newWorkspace}
               </motion.button>
 
-              {sessions.length === 0 && (
-                <div style={{
-                  textAlign: "center", padding: "28px 12px",
-                  color: "#334155", fontSize: 10.5, lineHeight: 1.7,
+              {/* Search input */}
+              {sessions.length > 2 && (
+                <input
+                  value={sessionSearch}
+                  onChange={e => setSessionSearch(e.target.value)}
+                  placeholder="Search workspaces…"
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "7px 10px",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 7,
+                    color: FG, fontSize: 10.5,
+                    outline: "none",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Scrollable sessions list */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "4px 12px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+
+              {/* Skeleton while loading */}
+              {isLoadingSessions && Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} style={{
+                  padding: "12px",
+                  borderRadius: 9,
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.04)",
+                  animation: "forge-pulse 1.6s ease-in-out infinite",
+                  animationDelay: `${i * 0.18}s`,
                 }}>
-                  <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.4 }}>🗂️</div>
-                  {t.noSessions}
-                  <br/>
-                  <span style={{ fontSize: 9.5, color: "#1e293b" }}>
-                    Click above to get started
-                  </span>
+                  <div style={{ height: 10, borderRadius: 4, background: "rgba(255,255,255,0.07)", marginBottom: 8, width: `${70 + i * 10}%` }} />
+                  <div style={{ height: 8,  borderRadius: 4, background: "rgba(255,255,255,0.04)", width: "45%" }} />
+                </div>
+              ))}
+
+              {/* Empty state */}
+              {!isLoadingSessions && sessions.filter(s =>
+                !sessionSearch.trim() ||
+                s.title.toLowerCase().includes(sessionSearch.toLowerCase()) ||
+                (s.case_description ?? "").toLowerCase().includes(sessionSearch.toLowerCase())
+              ).length === 0 && (
+                <div style={{ textAlign: "center", padding: "28px 12px", color: "#334155", fontSize: 10.5, lineHeight: 1.7 }}>
+                  <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.4 }}>
+                    {sessionSearch.trim() ? "🔍" : "🗂️"}
+                  </div>
+                  {sessionSearch.trim() ? "No matching workspaces" : t.noSessions}
                 </div>
               )}
 
-              {sessions.map(s => {
-                const active = s.id === sessionId;
-                const nodeCount = Array.isArray(s.nodes_json) ? s.nodes_json.length : 0;
-                const updated = new Date(s.updated_at);
-                const now = new Date();
-                const diffH = (now.getTime() - updated.getTime()) / 36e5;
-                const timeLabel = diffH < 1 ? "Just now"
-                  : diffH < 24 ? `${Math.round(diffH)}h ago`
-                  : updated.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+              {/* Session cards */}
+              {!isLoadingSessions && sessions
+                .filter(s =>
+                  !sessionSearch.trim() ||
+                  s.title.toLowerCase().includes(sessionSearch.toLowerCase()) ||
+                  (s.case_description ?? "").toLowerCase().includes(sessionSearch.toLowerCase())
+                )
+                .map(s => {
+                  const active = s.id === sessionId;
+                  const nodeCount = Array.isArray(s.nodes_json) ? s.nodes_json.length : 0;
+                  const updated = new Date(s.updated_at);
+                  const diffH = (Date.now() - updated.getTime()) / 36e5;
+                  const timeLabel = diffH < 1 ? "Just now"
+                    : diffH < 24 ? `${Math.round(diffH)}h ago`
+                    : updated.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
-                return (
-                  <motion.div
-                    key={s.id}
-                    whileHover={{ scale: 1.01 }}
-                    onClick={() => openSession(s)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 9,
-                      background: active
-                        ? "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(14,116,144,0.06))"
-                        : "rgba(255,255,255,0.02)",
-                      border: `1px solid ${active ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.05)"}`,
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                      boxShadow: active ? "0 2px 12px rgba(20,184,166,0.08)" : "none",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
-                      <div style={{
-                        fontWeight: 700, fontSize: 11,
-                        color: active ? TEAL : FG,
-                        flex: 1, minWidth: 0,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {active && <span style={{ marginRight: 5, fontSize: 8 }}>●</span>}
-                        {s.title}
-                      </div>
-                      <button
-                        onClick={e => { e.stopPropagation(); deleteSession(s.id); }}
-                        style={{
-                          background: "none", border: "none",
-                          color: "#334155", cursor: "pointer",
-                          fontSize: 10, padding: "0 0 0 4px", flexShrink: 0,
-                          lineHeight: 1,
-                        }}
-                      >✕</button>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
-                      <div style={{ fontSize: 9, color: "#334155" }}>{timeLabel}</div>
-                      {nodeCount > 0 && (
+                  return (
+                    <motion.div
+                      key={s.id}
+                      whileHover={{ scale: 1.01 }}
+                      onClick={() => openSession(s)}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 9,
+                        background: active
+                          ? "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(14,116,144,0.06))"
+                          : "rgba(255,255,255,0.02)",
+                        border: `1px solid ${active ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.05)"}`,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        boxShadow: active ? "0 2px 12px rgba(20,184,166,0.08)" : "none",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
                         <div style={{
-                          fontSize: 8.5, color: active ? TEAL : "#475569",
-                          background: active ? "rgba(20,184,166,0.1)" : "rgba(255,255,255,0.04)",
-                          padding: "2px 7px", borderRadius: 8, fontWeight: 700,
+                          fontWeight: 700, fontSize: 11,
+                          color: active ? TEAL : FG,
+                          flex: 1, minWidth: 0,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
-                          {t.nodesBadge(nodeCount)}
+                          {active && <span style={{ marginRight: 5, fontSize: 8, color: TEAL }}>●</span>}
+                          {s.title}
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); deleteSession(s.id); }}
+                          style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 10, padding: "0 0 0 4px", flexShrink: 0, lineHeight: 1 }}
+                        >✕</button>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
+                        <div style={{ fontSize: 9, color: "#334155" }}>{timeLabel}</div>
+                        {nodeCount > 0 && (
+                          <div style={{
+                            fontSize: 8.5, color: active ? TEAL : "#475569",
+                            background: active ? "rgba(20,184,166,0.1)" : "rgba(255,255,255,0.04)",
+                            padding: "2px 7px", borderRadius: 8, fontWeight: 700,
+                          }}>
+                            {t.nodesBadge(nodeCount)}
+                          </div>
+                        )}
+                      </div>
+
+                      {s.case_description && (
+                        <div style={{
+                          fontSize: 9.5, color: "#334155", marginTop: 5,
+                          lineHeight: 1.5, overflow: "hidden",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                        } as React.CSSProperties}>
+                          {s.case_description}
                         </div>
                       )}
-                    </div>
-
-                    {s.case_description && (
-                      <div style={{
-                        fontSize: 9.5, color: "#334155", marginTop: 5,
-                        lineHeight: 1.5, overflow: "hidden",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                      } as React.CSSProperties}>
-                        {s.case_description}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
+                    </motion.div>
+                  );
+                })
+              }
             </div>
+          </div>
           )}
 
           {/* Search tab */}
@@ -1088,9 +1154,9 @@ export default function ForgeWorkspace() {
           }}>
             <div style={{ display: "flex", gap: 12 }}>
               {[
-                { label: "Nodes", value: nodes.length },
-                { label: "Edges", value: edges.length },
-                { label: "Agents", value: Object.values(agentStates).filter(s => s.status === "done").length + "/5" },
+                { label: t.statNodes,  value: nodes.length },
+                { label: t.statEdges,  value: edges.length },
+                { label: t.statAgents, value: `${Object.values(agentStates).filter(s => s.status === "done").length}/5` },
               ].map(({ label, value }) => (
                 <div key={label} style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 14, fontWeight: 800, color: TEAL }}>{value}</div>
@@ -1102,6 +1168,13 @@ export default function ForgeWorkspace() {
         </div>
       </div>
     </div>
+
+    {/* Toast notifications */}
+    <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
+    {/* Keyframes for skeleton pulse */}
+    <style>{`@keyframes forge-pulse { 0%,100% { opacity:.65 } 50% { opacity:.25 } }`}</style>
+    </>
   );
 }
 

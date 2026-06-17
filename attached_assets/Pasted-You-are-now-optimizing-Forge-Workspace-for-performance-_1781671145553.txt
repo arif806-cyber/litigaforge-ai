@@ -1,0 +1,41 @@
+You are now optimizing Forge Workspace for performance, adding proper data persistence, and preparing the system for future growth.
+
+Current State: The core features (Spatial Canvas, Multi-Agent System, Proactive Intelligence, Simulation, Indian Kanoon integration, and polished UI) are working. Now we need to make the application reliable, fast, and scalable.
+
+Requirements:
+
+1. **Data Persistence (Save & Load Matters)**
+   - Users should be able to **save** their current workspace (including the Spatial Canvas state, nodes, connections, agent outputs, and simulations).
+   - Users should be able to **load** previously saved matters easily.
+   - Create a clean "My Matters" or "Saved Workspaces" section where users can see and manage their previous work.
+   - Use Supabase to store user data securely.
+
+2. **Performance Optimization**
+   - Optimize the Spatial Canvas for better performance, especially when there are many nodes and connections.
+   - Improve loading speed of the application.
+   - Optimize LLM calls and agent orchestration to reduce unnecessary API usage and improve response time.
+   - Add proper loading states and progress indicators for heavy operations (like running simulations or fetching many judgments).
+
+3. **State Management Improvements**
+   - Improve how the application manages complex state across the Canvas, Agents, and Simulation features.
+   - Ensure that changes in one part of the app (e.g., adding a node) are properly reflected everywhere else without bugs or lag.
+
+4. **Error Handling & Reliability**
+   - Improve error handling across the application (especially during Indian Kanoon API calls and LLM requests).
+   - Add clear and user-friendly error messages.
+   - Make the system more resilient when external services (like Indian Kanoon or LLM providers) are slow or unavailable.
+
+5. **Future Scalability Preparation**
+   - Structure the codebase cleanly so that adding new features later becomes easier. This includes:
+     - Support for multiple countries/jurisdictions in the future.
+     - Potential multi-user collaboration on the same workspace.
+     - Better organization of agents and tools.
+   - Use modular and clean code architecture.
+
+6. **User Experience with Persistence**
+   - When a user returns to Forge Workspace, they should be able to quickly resume their previous work.
+   - Add features like auto-save (optional) and clear naming of saved matters.
+
+Goal: Make Forge Workspace not just advanced in features, but also reliable, fast, and ready for real usage and future expansion.
+
+Focus on performance, data saving/loading, and clean architecture.
