@@ -112,8 +112,7 @@ export function NoSessionWelcome({ t, onCreate, onCreateDemo }: NoSessionProps) 
                 gap: 7,
               }}
             >
-              <span style={{ fontSize: 15 }}>⚖️</span>
-              Try Demo: Family Pension Matter
+              {t.demoBtn}
             </motion.button>
           )}
         </div>

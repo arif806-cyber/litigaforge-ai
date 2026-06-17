@@ -6,6 +6,12 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 
 ---
 
+## Recent Changes — June 2026
+
+| Date | Change |
+|---|---|
+| Jun 17 | **Forge Workspace — shareable & complete** — Personal Legal Twin (🧬 self-learning advocate profile personalises all 5 AI agents from your case history; cross-matter connection analysis); auth `returnTo` redirect (visiting `/workspace` while logged out saves the destination, login/Google/Apple/passkey all redirect back instead of to the dashboard); user avatar + Sign Out in workspace toolbar; no-session welcome screen with **Create Your First Workspace** vs **⚖️ Try Demo: Family Pension Matter** (9-node pre-built canvas: 2 facts, 1 issue, 2 arguments, 1 risk, 1 strategy, 2 Supreme Court judgments — D.S. Nakara 1983 + Jitendra Kumar Srivastava 2013); multilingual demo button (EN / Telugu / Hindi); demo matter persisted to PostgreSQL on creation |
+
 ## Recent Changes — May 2026
 
 | Date | Change |
@@ -110,6 +116,7 @@ litigaforge-ai/
 │   ├── litigaforge-ui/              # React + Vite web frontend
 │   │   └── src/
 │   │       ├── pages/
+│   │       │   ├── workspace.tsx      # Forge Workspace — spatial AI canvas, 5-agent SSE, sessions, What-If, Personal Twin
 │   │       │   ├── login.tsx          # Sign-in page
 │   │       │   ├── register.tsx       # Registration page
 │   │       │   ├── subscription.tsx   # Plan comparison & upgrade
@@ -135,6 +142,19 @@ litigaforge-ai/
 │   │       │   ├── client-dashboard.tsx # Client Dashboard — cases, matches, messages, quick actions
 │   │       │   └── admin.tsx          # Admin panel — lawyer verification, user management
 │   │       ├── components/
+│   │       │   ├── workspace/            # Forge Workspace UI (11 components)
+│   │       │   │   ├── AgentPanel.tsx    # 5 AI agent cards with SSE streaming + thumbs feedback
+│   │       │   │   ├── ForgeCanvas.tsx   # React Flow canvas — drag, connect, zoom, minimap
+│   │       │   │   ├── NodeTypes.tsx     # 6 custom node renderers (fact/issue/argument/risk/strategy/judgment)
+│   │       │   │   ├── EdgeTypes.tsx     # Relationship-typed edges (supports/opposes/cites/contradicts/qualifies)
+│   │       │   │   ├── SearchPanel.tsx   # Indian Kanoon search → add judgment nodes to canvas
+│   │       │   │   ├── SimulationPanel.tsx # What-If simulation (change a key fact, re-run agents)
+│   │       │   │   ├── ProactivePanel.tsx  # AI-surfaced risks & opportunities
+│   │       │   │   ├── PersonalTwinPanel.tsx # 🧬 Legal Twin — learning profile + cross-matter analysis
+│   │       │   │   ├── ForgeWelcome.tsx  # No-session welcome (Create Matter / Try Demo), empty-canvas guide
+│   │       │   │   ├── ForgeTour.tsx     # 5-step interactive first-visit tour
+│   │       │   │   ├── ForgeToast.tsx    # Dark-theme toast notifications
+│   │       │   │   └── WorkspaceLang.tsx # EN / Telugu / Hindi string map + LangToggle component
 │   │       │   ├── layout.tsx            # Sidebar, topbar, mobile drawer, 6-item tab bar, user panel
 │   │       │   ├── PageHeader.tsx        # Shared mobile top-bar (logo + role badge + theme toggle + hamburger)
 │   │       │   ├── legal-disclaimer.tsx  # Footer disclaimer on every page
@@ -153,7 +173,7 @@ litigaforge-ai/
 │   │       │   └── articles.ts          # 5 long-form SEO articles (ContentBlock[] structure for clean rendering)
 │   │       └── lib/
 │   │           ├── api.ts                # apiFetch (auto-attaches Bearer token); improved error parsing
-│   │           ├── auth-context.tsx      # AuthProvider, useAuth hook; loading state prevents login flash
+│   │           ├── auth-context.tsx      # AuthProvider, useAuth hook; navigateAfterAuth (honours sessionStorage returnTo); cookie-first + Bearer fallback
 │   │           └── utils.ts
 │   │
 │   └── litigaforge-ai/              # Python FastAPI backend
@@ -169,8 +189,8 @@ litigaforge-ai/
 │       ├── models.py                # Pydantic v2 request validators with field-level injection checks
 │       ├── logger.py                # Structured JSON logging (production) + readable format (dev)
 │       ├── requirements.txt
-│       ├── routers/                 # 10 modular FastAPI routers
-│       │   ├── auth.py              # Register, login, logout, me — role-based
+│       ├── routers/                 # 12 modular FastAPI routers
+│       │   ├── auth.py              # Register, login, logout, me — bcrypt + JWT; Google/Apple/passkey
 │       │   ├── forge.py             # The Forge, cases, memory, chains, healthz
 │       │   ├── subscription.py      # Plans, Razorpay create-order, verify
 │       │   ├── matching.py          # Post requirements, AI find-lawyers, match management
@@ -179,7 +199,9 @@ litigaforge-ai/
 │       │   ├── watch.py             # Watch mode start/stop/add/list/remove
 │       │   ├── alerts.py            # WhatsApp alerts, hearing reminders
 │       │   ├── admin.py             # Pending lawyer verification, approve/reject, user management
-│       │   └── lawyer.py            # Lawyer case/document CRUD, CNR tracking, AI analysis, notes
+│       │   ├── lawyer.py            # Lawyer case/document CRUD, CNR tracking, AI analysis, notes
+│       │   ├── workspace.py         # Forge Workspace: sessions CRUD, canvas PUT, SSE analyze, What-If, Proactive Intel, IKanoon search
+│       │   └── personalization.py   # Personal Legal Twin: learning events, profile GET/PUT/DELETE, cross-matter analysis
 │       ├── api_chains/              # 16 government API chain modules
 │       │   ├── gstin.py             # GST Network
 │       │   ├── pan.py               # PAN verification

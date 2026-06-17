@@ -35,6 +35,7 @@ export interface WS {
   welcomeTitle:     string;
   welcomeSub:       string;
   createFirst:      string;
+  demoBtn:          string;
   // Welcome — empty canvas
   emptyTitle:       string;
   emptySub:         string;
@@ -79,6 +80,7 @@ export const STRINGS: Record<Lang, WS> = {
     welcomeTitle:    "Welcome to Forge Workspace",
     welcomeSub:      "Legal Intelligence Operating System for Telangana & AP",
     createFirst:     "Create Your First Workspace",
+    demoBtn:         "⚖️ Try Demo: Family Pension Matter",
     emptyTitle:      "Your canvas is empty",
     emptySub:        "Build your case strategy, visually",
     step1:           "Describe Case",
@@ -120,6 +122,7 @@ export const STRINGS: Record<Lang, WS> = {
     welcomeTitle:    "ఫోర్జ్ వర్క్‌స్పేస్‌కు స్వాగతం",
     welcomeSub:      "తెలంగాణ & ఆంధ్రప్రదేశ్ కోసం న్యాయ AI వ్యవస్థ",
     createFirst:     "మొదటి వర్క్‌స్పేస్ సృష్టించు",
+    demoBtn:         "⚖️ డెమో చూడండి: కుటుంబ పెన్షన్ కేసు",
     emptyTitle:      "మీ కాన్వాస్ ఖాళీగా ఉంది",
     emptySub:        "మీ కేసు వ్యూహాన్ని దృశ్యంగా నిర్మించండి",
     step1:           "కేసు వివరించు",
@@ -161,6 +164,7 @@ export const STRINGS: Record<Lang, WS> = {
     welcomeTitle:    "फोर्ज वर्कस्पेस में आपका स्वागत है",
     welcomeSub:      "तेलंगाना और आंध्र प्रदेश के लिए कानूनी AI प्रणाली",
     createFirst:     "पहला वर्कस्पेस बनाएं",
+    demoBtn:         "⚖️ डेमो: परिवार पेंशन मामला",
     emptyTitle:      "आपका कैनवास खाली है",
     emptySub:        "अपनी केस रणनीति को दृश्य रूप से बनाएं",
     step1:           "मामला बताएं",

@@ -1,0 +1,52 @@
+You are now doing the final round of work on Forge Workspace to make it stable, deployable, and ready to be shared or used by others.
+
+Current State: All major features are complete, including:
+- Spatial Canvas
+- Multi-Agent System
+- Proactive Intelligence + What-If Simulation
+- Indian Kanoon Integration
+- Login/Authentication
+- Data Persistence (Save & Load)
+- Self-Improving & Personalization features
+- Complete use case flow
+- UI Polish and Multilingual support
+
+Your task is to finalize the project:
+
+1. **Deployment on Replit**
+   - Ensure the project builds and runs successfully on Replit without errors.
+   - Configure all environment variables properly (Supabase, LLM APIs, Indian Kanoon, etc.).
+   - Optimize the app for Replit deployment (performance, startup time, and stability).
+   - Make sure the deployed version works smoothly for logged-in users.
+
+2. **Final Testing & Bug Fixes**
+   - Perform complete end-to-end testing of the main flow:
+     - Login → Create/Open Matter → Upload Document → Get Indian Kanoon results → Work on Canvas → Use Agents → Run Simulations → Save & Reload
+   - Fix any remaining bugs, crashes, or broken flows.
+
+3. **Code Cleanup**
+   - Remove debug code, console logs, and temporary comments.
+   - Improve code organization and add clear comments where helpful.
+   - Ensure the project structure is clean and professional.
+
+4. **Documentation**
+   - Update or create a clear `README.md` that includes:
+     - What Forge Workspace is
+     - How to run it locally
+     - How to deploy it on Replit
+     - Required environment variables
+     - Key features and how to use them
+     - The main use case flow
+
+5. **Demo & Sharing Readiness**
+   - Make sure the app is in a state where it can be easily shared and demonstrated.
+   - Improve any remaining rough edges in the user experience.
+   - Ensure the login flow is smooth and the main use case is easy to follow.
+
+6. **Final Quality Check**
+   - Do a final review to ensure the overall experience feels stable, professional, and impressive.
+   - The app should feel complete and ready for real usage or further development.
+
+Goal: Take Forge Workspace from a strong advanced prototype to a clean, stable, well-documented, and deployment-ready product that can be shared with others or used as a serious tool.
+
+Focus on stability, deployment, documentation, and final polish.
