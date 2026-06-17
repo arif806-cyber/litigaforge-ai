@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { apiFetch } from "@/lib/api";
 import {
   BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale,
-  Gavel, ArrowRight, CalendarDays, Landmark,
+  Gavel, ArrowRight, CalendarDays, Landmark, Zap,
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
@@ -135,6 +135,41 @@ export default function Judgments() {
       icon={<Gavel className="w-6 h-6 text-primary" />}
     >
       <div className="space-y-10">
+        {/* ── Forge Workspace promo banner ─────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl"
+          style={{
+            background: "linear-gradient(135deg, rgba(20,184,166,0.08), rgba(14,116,144,0.05))",
+            border: "1px solid rgba(20,184,166,0.22)",
+          }}
+        >
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
+              style={{ background: "rgba(20,184,166,0.15)", border: "1px solid rgba(20,184,166,0.3)" }}>
+              <Zap className="w-4.5 h-4.5 text-teal-400" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
+                Want a more powerful experience?
+                <span className="text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded"
+                  style={{ background: "rgba(20,184,166,0.18)", color: "#2dd4bf" }}>NEW</span>
+              </div>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: "#64748b" }}>
+                Forge Workspace lets you map case law visually, run what-if simulations, and synthesise legal strategy with Claude, Gemini &amp; GPT-5 working in parallel.
+              </p>
+            </div>
+          </div>
+          <Link href="/workspace"
+            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 hover:scale-[1.02] whitespace-nowrap"
+            style={{ background: "linear-gradient(135deg, #0f766e, #14b8a6)", boxShadow: "0 4px 16px rgba(20,184,166,0.3)" }}>
+            <Zap className="w-3.5 h-3.5" />
+            Open Forge Workspace →
+          </Link>
+        </motion.div>
+
         {/* ── Daily Digest ─────────────────────────────────────────── */}
         <section className="space-y-5" data-testid="section-digest">
           <div className="flex items-center justify-between gap-3 flex-wrap">

@@ -60,6 +60,12 @@ function Navbar() {
               {l.label}
             </a>
           ))}
+          <Link href="/workspace"
+            style={{ color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.3)", background: "rgba(20,184,166,0.08)" }}
+            className="text-sm font-bold px-3.5 py-1.5 rounded-lg hover:bg-teal-500/15 transition-all flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5" />
+            Forge Workspace
+          </Link>
         </div>
 
         {/* CTA buttons */}
@@ -94,6 +100,12 @@ function Navbar() {
                   {l.label}
                 </a>
               ))}
+              <Link href="/workspace" onClick={() => setOpen(false)}
+                style={{ color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)", background: "rgba(20,184,166,0.08)" }}
+                className="text-sm font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5">
+                <Zap className="w-4 h-4" />
+                Forge Workspace
+              </Link>
               <div className="flex flex-col gap-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <Link href="/login" style={{ color: "#94a3b8" }} className="text-sm font-medium py-2 text-center">Login</Link>
                 <Link href="/login"
@@ -1081,6 +1093,120 @@ function StatsBanner() {
 }
 
 /* ══════════════════════════════════════════════════════════
+   FORGE WORKSPACE PROMO
+══════════════════════════════════════════════════════════ */
+function ForgeWorkspacePromo() {
+  const { ref, inView } = useSection();
+  const features = [
+    { emoji: "🗺️", label: "Spatial Strategy Canvas" },
+    { emoji: "🤖", label: "Multi-AI Agent Panel" },
+    { emoji: "⚖️", label: "Legal Strategy Synthesis" },
+    { emoji: "🧬", label: "Personal Legal Twin" },
+    { emoji: "⚡", label: "What-If Simulation" },
+  ];
+  return (
+    <motion.section ref={ref} initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
+      className="relative py-24 px-5 overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 opacity-[0.04]" style={{ background: "radial-gradient(ellipse at 60% 50%, #14b8a6, transparent 65%)" }} />
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.35), transparent)" }} />
+        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.15), transparent)" }} />
+      </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+          {/* Left: copy */}
+          <div className="flex-1 text-center lg:text-left">
+            <motion.div variants={fadeUp}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5"
+              style={{ background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.3)" }}>
+              <Zap className="w-3.5 h-3.5" style={{ color: "#2dd4bf" }} />
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#2dd4bf" }}>Advanced AI Experience</span>
+            </motion.div>
+
+            <motion.h2 variants={fadeUp} className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
+              Experience the Future<br />
+              <span style={{ background: "linear-gradient(135deg, #14b8a6, #0891b2)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                of Legal Work
+              </span>
+            </motion.h2>
+
+            <motion.p variants={fadeUp} className="mt-5 text-base leading-relaxed max-w-lg" style={{ color: "#94a3b8" }}>
+              Forge Workspace is an intelligent, spatial, and agent-powered environment where you map your entire legal strategy visually — with Claude, Gemini, and GPT-5 working as your personal legal team in real time.
+            </motion.p>
+
+            {/* Feature pills */}
+            <motion.div variants={fadeUp} className="mt-6 flex flex-wrap gap-2.5 justify-center lg:justify-start">
+              {features.map(f => (
+                <div key={f.label}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{ background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)", color: "#94a3b8" }}>
+                  <span>{f.emoji}</span>
+                  {f.label}
+                </div>
+              ))}
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="mt-8 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+              <Link href="/workspace"
+                className="group flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-bold text-[14px] text-white hover:opacity-90 transition-all hover:scale-[1.02] w-full sm:w-auto justify-center"
+                style={{ background: "linear-gradient(135deg, #0f766e, #14b8a6)", boxShadow: "0 0 32px rgba(20,184,166,0.35), 0 8px 24px rgba(0,0,0,0.35)" }}>
+                <Zap className="w-4 h-4" />
+                Open Forge Workspace
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <span className="text-xs font-medium" style={{ color: "#475569" }}>No setup · Instant access</span>
+            </motion.div>
+          </div>
+
+          {/* Right: visual card */}
+          <motion.div variants={fadeUp} className="flex-shrink-0 w-full lg:w-80">
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "rgba(7,13,28,0.95)", border: "1px solid rgba(20,184,166,0.2)", boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(20,184,166,0.05)" }}>
+              {/* Toolbar bar */}
+              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid rgba(20,184,166,0.12)", background: "rgba(8,16,36,0.98)" }}>
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+                </div>
+                <div className="flex-1 text-center text-[10px] font-bold tracking-widest uppercase" style={{ color: "#14b8a6" }}>
+                  ⚡ Forge Workspace
+                </div>
+              </div>
+              {/* Agent panel rows */}
+              <div className="p-4 space-y-2.5">
+                {[
+                  { agent: "Claude Sonnet", status: "Analyzing precedents…", color: "#f59e0b", dot: "#f59e0b" },
+                  { agent: "Gemini Flash",  status: "Cross-referencing acts…", color: "#60a5fa", dot: "#60a5fa" },
+                  { agent: "GPT-5",         status: "Drafting strategy…",     color: "#a78bfa", dot: "#a78bfa" },
+                ].map(a => (
+                  <div key={a.agent} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="w-2 h-2 rounded-full flex-shrink-0 animate-pulse" style={{ background: a.dot }} />
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-bold" style={{ color: a.color }}>{a.agent}</div>
+                      <div className="text-[10px] truncate" style={{ color: "#475569" }}>{a.status}</div>
+                    </div>
+                  </div>
+                ))}
+                {/* Score badge */}
+                <div className="mt-3 flex items-center justify-between px-3 py-2.5 rounded-xl"
+                  style={{ background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))", border: "1px solid rgba(20,184,166,0.25)" }}>
+                  <span className="text-[11px] font-bold" style={{ color: "#94a3b8" }}>Synthesis Score</span>
+                  <span className="text-lg font-black" style={{ color: "#14b8a6" }}>87<span className="text-xs font-semibold text-teal-600">/100</span></span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
    FINAL CTA
 ══════════════════════════════════════════════════════════ */
 function CTASection() {
@@ -1214,6 +1340,7 @@ export default function LandingPage() {
       <Features />
       <WhyLitigaForge />
       <StatsBanner />
+      <ForgeWorkspacePromo />
       <CTASection />
       <Footer />
     </div>

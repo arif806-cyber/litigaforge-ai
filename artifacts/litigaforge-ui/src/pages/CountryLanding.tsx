@@ -11,6 +11,7 @@ import {
   Handshake,
   MapPin,
   Check,
+  Zap,
 } from "lucide-react";
 import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -98,6 +99,7 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
     { href: "/lawyers", label: tr("nav_find_lawyer"), testid: "link-nav-find-lawyer" },
     { href: "/register?role=lawyer", label: tr("nav_for_lawyers"), testid: "link-nav-for-lawyers" },
   ];
+  const forgeLink = { href: "/workspace", label: "Forge Workspace", testid: "link-nav-forge" };
 
   return (
     <div
@@ -127,6 +129,15 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
                 {l.label}
               </Link>
             ))}
+            <Link
+              href={forgeLink.href}
+              data-testid={forgeLink.testid}
+              className="ml-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all hover:opacity-90"
+              style={{ background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.3)", color: "#0d9488" }}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              {forgeLink.label}
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -166,6 +177,15 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
                 {l.label}
               </Link>
             ))}
+            <Link
+              href={forgeLink.href}
+              data-testid={`${forgeLink.testid}-mobile`}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full font-bold transition-all"
+              style={{ background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.3)", color: "#0d9488" }}
+            >
+              <Zap className="w-3 h-3" />
+              {forgeLink.label}
+            </Link>
           </div>
         </div>
       </header>
@@ -373,6 +393,59 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
                 </li>
               ))}
             </ul>
+          </div>
+        </section>
+
+        {/* ── 7b. FORGE WORKSPACE PROMO ── */}
+        <section
+          className="rounded-3xl overflow-hidden relative"
+          data-testid="section-forge-promo"
+          style={{ background: "linear-gradient(135deg, rgba(20,184,166,0.07), rgba(14,116,144,0.04))", border: "1px solid rgba(20,184,166,0.2)" }}
+        >
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 opacity-[0.03]" style={{ background: "radial-gradient(ellipse at 70% 50%, #14b8a6, transparent 65%)" }} />
+          </div>
+          <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-start md:items-center gap-8">
+            {/* Left copy */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(20,184,166,0.15)", border: "1px solid rgba(20,184,166,0.3)" }}>
+                  <Zap className="w-5 h-5" style={{ color: "#14b8a6" }} />
+                </div>
+                <span className="text-xs font-black tracking-widest uppercase px-2.5 py-1 rounded"
+                  style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf" }}>Advanced AI Experience</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">
+                Experience the Future<br />
+                <span style={{ color: "#0d9488" }}>of Legal Work</span>
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground max-w-lg">
+                Forge Workspace is an intelligent, spatial, and agent-powered environment — map your entire legal strategy visually with Claude, Gemini, and GPT-5 working as your personal legal team.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {["🗺️ Spatial Canvas", "🤖 Multi-AI Agents", "⚖️ Strategy Synthesis", "🧬 Legal Twin", "⚡ What-If Sim"].map(pill => (
+                  <span key={pill} className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                    style={{ background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.18)", color: "#64748b" }}>
+                    {pill}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {/* Right CTA */}
+            <div className="flex flex-col items-start md:items-center gap-3 flex-shrink-0">
+              <Link
+                href="/workspace"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold text-white hover:opacity-90 transition-all hover:scale-[1.02]"
+                style={{ background: "linear-gradient(135deg, #0f766e, #14b8a6)", boxShadow: "0 6px 20px rgba(20,184,166,0.3)" }}
+                data-testid="button-forge-workspace"
+              >
+                <Zap className="w-4 h-4" />
+                Open Forge Workspace
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <span className="text-xs text-muted-foreground">No setup · Instant access</span>
+            </div>
           </div>
         </section>
 

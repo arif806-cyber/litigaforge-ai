@@ -22,6 +22,7 @@ interface NavEntry {
   label: string;
   icon: React.ElementType;
   tKey?: keyof Translation;
+  highlight?: boolean;
 }
 
 const clientNav: NavEntry[] = [
@@ -40,11 +41,11 @@ const lawyerNav: NavEntry[] = [
 ];
 
 const commonNav: NavEntry[] = [
-  { href: "/workspace",      label: "Forge Workspace", icon: Zap },
   { href: "/legal-chat",     label: "AI Legal Chat",   icon: MessageSquareText, tKey: "legal_chat" },
   { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare,     tKey: "legal_qa" },
   { href: "/review",         label: "Doc Analyzer",    icon: FileSearch,        tKey: "doc_analyzer" },
   { href: "/judgments",      label: "Judgments",       icon: BookOpen,          tKey: "judgments" },
+  { href: "/workspace",      label: "Forge Workspace", icon: Zap,               highlight: true },
   { href: "/free-documents", label: "Free Documents",  icon: FileCheck,         tKey: "free_documents" },
   { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart,             tKey: "free_aid" },
   { href: "/blog",           label: "Legal Guides",    icon: Newspaper,         tKey: "legal_guides" },
@@ -58,9 +59,9 @@ function navLabel(item: NavEntry, t: Translation): string {
 
 /* ─── Nav Item ─── */
 function NavItem({
-  href, label, icon: Icon, location, onClick, testId,
+  href, label, icon: Icon, location, onClick, testId, highlight,
 }: {
-  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string;
+  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string; highlight?: boolean;
 }) {
   const active = href === "/" ? location === "/" : location.startsWith(href);
   return (
@@ -68,15 +69,33 @@ function NavItem({
       href={href}
       data-testid={testId ?? `nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
       onClick={onClick}
-      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+      style={{
+        touchAction: "manipulation",
+        WebkitTapHighlightColor: "transparent",
+        ...(highlight && !active ? {
+          background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))",
+          border: "1px solid rgba(20,184,166,0.25)",
+        } : {}),
+      }}
       className={cn(
-        "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
+        "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] transition-all duration-200 cursor-pointer relative group",
         active
-          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm active:opacity-80"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
+          ? "bg-sidebar-primary text-sidebar-primary-foreground font-bold shadow-sm active:opacity-80"
+          : highlight
+            ? "font-bold hover:bg-teal-500/10 active:bg-teal-500/10"
+            : "font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
       )}>
-      <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "group-hover:text-sidebar-foreground")} />
-      <span className="tracking-wide">{label}</span>
+      <Icon className={cn(
+        "w-4 h-4 flex-shrink-0",
+        active ? "text-sidebar-primary-foreground" : highlight ? "text-teal-400" : "group-hover:text-sidebar-foreground"
+      )} />
+      <span className={cn("tracking-wide", highlight && !active ? "text-teal-400" : "")}>{label}</span>
+      {highlight && !active && (
+        <span className="ml-auto text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded"
+          style={{ background: "rgba(20,184,166,0.18)", color: "#2dd4bf" }}>
+          NEW
+        </span>
+      )}
     </Link>
   );
 }
