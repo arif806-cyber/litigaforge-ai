@@ -29,3 +29,9 @@ id = "euQMo-OHawKm6TgR6-8qY"
 uri = "file://attached_assets/generated_audio/music_litigaforge_bg_music.mp3"
 type = "audio"
 title = "litigaforge_bg_music"
+
+[[outputs]]
+id = "yKCITxO4VfI3ugI_ZO5d7"
+uri = "file://artifacts/litigaforge-demo/public/audio/bg_music.mp3"
+type = "audio"
+title = "LitigaForge cinematic background music"

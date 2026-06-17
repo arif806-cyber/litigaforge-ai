@@ -49,7 +49,7 @@ export function Scene1() {
 
         <motion.p 
           className="text-[2vw] text-secondary mt-6 font-medium tracking-wide uppercase"
-          initial={{ opacity: 0, opacity: 0, filter: 'blur(5px)' }}
+          initial={{ opacity: 0, filter: 'blur(5px)' }}
           animate={phase >= 3 ? { opacity: 1, filter: 'blur(0px)' } : { opacity: 0, filter: 'blur(5px)' }}
           transition={{ duration: 1 }}
         >
