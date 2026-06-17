@@ -12,6 +12,19 @@ function dashboardUrl(role: string): string {
   return buildCountryUrl(country, page);
 }
 
+// Navigate after a successful auth — honors any pre-login saved destination.
+function navigateAfterAuth(role: string) {
+  try {
+    const returnTo = sessionStorage.getItem("lf_return_to");
+    if (returnTo && returnTo !== "/login" && returnTo !== "/register") {
+      sessionStorage.removeItem("lf_return_to");
+      window.location.href = returnTo;
+      return;
+    }
+  } catch { /* sessionStorage unavailable (private browsing edge case) */ }
+  window.location.href = dashboardUrl(role);
+}
+
 const BASE = "/litigaforge";
 
 export interface User {
@@ -124,9 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
     }
     setUser(data.user);
-    // Redirect based on role — preserve country prefix
-    const role = data.user?.role ?? "client";
-    window.location.href = dashboardUrl(role);
+    navigateAfterAuth(data.user?.role ?? "client");
   };
 
   const register = async (name: string, email: string, password: string, role: string = "client", recaptchaToken?: string) => {
@@ -151,8 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
     }
     setUser(data.user);
-    const userRole = data.user?.role ?? "client";
-    window.location.href = dashboardUrl(userRole);
+    navigateAfterAuth(data.user?.role ?? "client");
   };
 
   const appleLogin = async (idToken: string, firstName?: string, lastName?: string, role: string = "client") => {
@@ -165,16 +175,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.token);
     }
     setUser(data.user);
-    const userRole = data.user?.role ?? "client";
-    window.location.href = dashboardUrl(userRole);
+    navigateAfterAuth(data.user?.role ?? "client");
   };
 
   const passkeyLogin = (jwtToken: string, userData: User) => {
     localStorage.setItem("lf_token", jwtToken);
     setToken(jwtToken);
     setUser(userData);
-    const userRole = userData.role ?? "client";
-    window.location.href = dashboardUrl(userRole);
+    navigateAfterAuth(userData.role ?? "client");
   };
 
   const logout = async () => {

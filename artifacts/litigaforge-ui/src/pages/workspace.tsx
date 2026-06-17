@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
 import ForgeTour, { checkForgeToured } from "@/components/workspace/ForgeTour";
+import { useAuth } from "@/lib/auth-context";
 import AgentPanel, { type AgentState, type CollabEvent } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
@@ -95,6 +96,35 @@ const NODE_PRESETS: Record<string, { type: string; emoji: string; data: Record<s
 
 const AGENT_IDS = ["research", "strategy", "risk", "drafting", "predictive"];
 
+// ─── Demo matter: Family Pension Claim (Lalitha Devi v. State of Telangana) ──
+
+const DEMO_CASE_DESCRIPTION = "Family pension claim for the widow of a deceased Telangana State government employee (35 years' service). Pension rejected on procedural grounds — Form-5 filed 7 days beyond the 90-day window. Seeking quashing of the rejection order and direction to release pension with arrears before CAT Hyderabad Bench under Rule 54, CCS (Pension) Rules 1972.";
+
+const DEMO_NODES: Node[] = [
+  { id: "df1", type: "fact",     position: { x: 120,  y: 110 }, data: { label: "Deceased Employee — 35 Yrs Service", content: "Mr. Ramu Reddy, Section Officer, Telangana Revenue Dept. Died in service Aug 2023. Wife Lalitha Devi nominated as family pension beneficiary in his service records (Form-2).", impact_score: 85 } },
+  { id: "df2", type: "fact",     position: { x: 390,  y: 110 }, data: { label: "Pension Rejected — Procedural Delay", content: "Dept. rejected Form-5 (family pension claim) because it was filed 97 days after the date of death — 7 days beyond the prescribed 90-day window under Rule 80(5) CCS (Pension) Rules.", impact_score: 80 } },
+  { id: "di1", type: "issue",    position: { x: 660,  y: 110 }, data: { label: "Core Legal Issue — Rule 54 vs. Procedural Bar", description: "Whether a 7-day procedural delay in filing Form-5 can extinguish the statutory right to family pension vested under Rule 54 of CCS (Pension) Rules, 1972 read with Article 300-A of the Constitution of India.", impact_score: 93 } },
+  { id: "da1", type: "argument", position: { x: 120,  y: 290 }, data: { label: "Pension Is Property — Cannot Be Forfeited", content: "Under Art. 300-A, pension is property. A procedural delay of 7 days does not justify forfeiture of a substantive constitutional right. Supported by D.S. Nakara v. Union of India (1983).", strength: 88, impact_score: 90 } },
+  { id: "da2", type: "argument", position: { x: 390,  y: 290 }, data: { label: "No SCN Issued — Natural Justice Violated", content: "Department denied pension without issuing a Show Cause Notice or any opportunity to explain the 7-day delay. Rejection ex-parte squarely violates the audi alteram partem principle.", strength: 79, impact_score: 81 } },
+  { id: "dr1", type: "risk",     position: { x: 660,  y: 290 }, data: { label: "Limitation Risk — OA May Be Time-Barred", description: "If the formal rejection letter was issued more than 3 years ago, the Original Application before CAT may face a limitation objection under Section 21 of the Administrative Tribunals Act, 1985.", severity: 6, impact_score: 50 } },
+  { id: "ds1", type: "strategy", position: { x: 120,  y: 470 }, data: { label: "File OA Before CAT Hyderabad Bench", description: "File Original Application under Section 19 of the Administrative Tribunals Act. Primary prayer: quash the rejection order. Alternative prayer: direct release of pension with 6% p.a. interest on arrears. Annex PPO, Form-2 nomination, and rejection letter.", confidence: 82, impact_score: 85 } },
+  { id: "dj1", type: "judgment", position: { x: 390,  y: 470 }, data: { label: "State of Jharkhand v. Jitendra Kumar Srivastava", court: "Supreme Court of India", summary: "Pension is not a bounty — it is a hard-earned statutory right. Procedural lapses cannot defeat it. Courts must adopt a liberal construction in favour of the pensioner.", impact_score: 94, citation: "(2013) 2 SCC 114" } },
+  { id: "dj2", type: "judgment", position: { x: 660,  y: 470 }, data: { label: "D.S. Nakara v. Union of India", court: "Supreme Court of India", summary: "Pension is earned by years of service; it is a property right under Art. 300-A. Rules arbitrarily curtailing it are constitutionally suspect.", impact_score: 89, citation: "(1983) 1 SCC 305" } },
+];
+
+const DEMO_EDGES: Edge[] = [
+  { id: "de-f1-i1", source: "df1", target: "di1", type: "default", animated: true },
+  { id: "de-f2-i1", source: "df2", target: "di1", type: "default", animated: true },
+  { id: "de-i1-a1", source: "di1", target: "da1", type: "default", animated: false },
+  { id: "de-i1-a2", source: "di1", target: "da2", type: "default", animated: false },
+  { id: "de-i1-r1", source: "di1", target: "dr1", type: "default", animated: false },
+  { id: "de-a1-j1", source: "da1", target: "dj1", type: "default", animated: false },
+  { id: "de-a1-j2", source: "da1", target: "dj2", type: "default", animated: false },
+  { id: "de-a1-s1", source: "da1", target: "ds1", type: "default", animated: false },
+  { id: "de-a2-s1", source: "da2", target: "ds1", type: "default", animated: false },
+  { id: "de-j1-s1", source: "dj1", target: "ds1", type: "default", animated: false },
+];
+
 function makeDefaultAgentStates(): Record<string, AgentState> {
   return Object.fromEntries(AGENT_IDS.map(id => [id, { status: "idle" as const, text: "" }]));
 }
@@ -137,6 +167,8 @@ export default function ForgeWorkspace() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }
 
+  const { user, logout } = useAuth();
+
   const saveTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addMenuRef     = useRef<HTMLDivElement>(null);
   const historyRef     = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
@@ -158,9 +190,8 @@ export default function ForgeWorkspace() {
       setSessions(list);
       if (list.length > 0) {
         await openSession(list[0]);
-      } else {
-        await createSession("My First Workspace");
       }
+      // If no sessions, stay on welcome screen so user can choose blank or demo
     } catch {
       addToast({ type: "error", message: "Failed to load workspaces", detail: "Check your connection and refresh." });
     } finally {
@@ -181,6 +212,34 @@ export default function ForgeWorkspace() {
     setNodes([]);
     setEdges([]);
     setAgentStates(makeDefaultAgentStates());
+  }
+
+  async function createDemoSession() {
+    const res = await api("/workspace/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Family Pension Claim — Lalitha Devi v. State of Telangana",
+        case_description: DEMO_CASE_DESCRIPTION,
+      }),
+    });
+    const s = await res.json() as WorkspaceSession;
+    // Persist demo canvas immediately so it survives a reload
+    void api(`/workspace/sessions/${s.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ nodes_json: DEMO_NODES, edges_json: DEMO_EDGES, case_description: DEMO_CASE_DESCRIPTION }),
+    }).catch(() => {});
+    setSessions(prev => [s, ...prev]);
+    setSessionId(s.id);
+    setSessionTitle(s.title);
+    setCaseDescription(DEMO_CASE_DESCRIPTION);
+    setNodes(DEMO_NODES);
+    setEdges(DEMO_EDGES);
+    setAgentStates(makeDefaultAgentStates());
+    addToast({
+      type: "success",
+      message: "Demo matter loaded!",
+      detail: "Family Pension canvas is ready. Click ⚡ Analyze to run the 5 AI agents.",
+    });
   }
 
   async function openSession(s: WorkspaceSession) {
@@ -1043,6 +1102,34 @@ export default function ForgeWorkspace() {
 
         {/* Language toggle */}
         <LangToggle lang={lang} setLang={setLang} />
+
+        {/* User avatar + logout */}
+        {user && (
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginLeft: 4, flexShrink: 0 }}>
+            <div style={{
+              width: 27, height: 27, borderRadius: "50%",
+              background: "linear-gradient(135deg, #0d9488, #14b8a6)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0,
+              boxShadow: "0 0 8px rgba(20,184,166,0.3)",
+            }}>
+              {(user.name || user.email).charAt(0).toUpperCase()}
+            </div>
+            <div style={{
+              fontSize: 10.5, color: "#64748b", maxWidth: 80,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }} title={user.email}>
+              {user.name || user.email.split("@")[0]}
+            </div>
+            <button
+              onClick={() => void logout()}
+              title="Sign out"
+              style={{ ...toolbarBtn(false), fontSize: 10, padding: "4px 9px", opacity: 0.75 }}
+            >
+              Sign Out
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Main area ── */}
@@ -1078,7 +1165,11 @@ export default function ForgeWorkspace() {
           />
           {/* Welcome overlays */}
           {!sessionId && (
-            <NoSessionWelcome t={t} onCreate={() => void createSession()} />
+            <NoSessionWelcome
+              t={t}
+              onCreate={() => void createSession()}
+              onCreateDemo={() => void createDemoSession()}
+            />
           )}
           {sessionId && nodes.length === 0 && (
             <EmptyCanvasGuide

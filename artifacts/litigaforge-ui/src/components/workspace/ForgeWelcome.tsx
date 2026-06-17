@@ -10,11 +10,12 @@ const FGD    = "#64748b";
 // ─── No-session welcome ────────────────────────────────────────────────────────
 
 interface NoSessionProps {
-  t:          WS;
-  onCreate:   () => void;
+  t:             WS;
+  onCreate:      () => void;
+  onCreateDemo?: () => void;
 }
 
-export function NoSessionWelcome({ t, onCreate }: NoSessionProps) {
+export function NoSessionWelcome({ t, onCreate, onCreateDemo }: NoSessionProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -54,7 +55,7 @@ export function NoSessionWelcome({ t, onCreate }: NoSessionProps) {
         ⚡
       </motion.div>
 
-      <div style={{ textAlign: "center", maxWidth: 380 }}>
+      <div style={{ textAlign: "center", maxWidth: 420 }}>
         <div style={{
           fontSize: 22,
           fontWeight: 800,
@@ -65,29 +66,69 @@ export function NoSessionWelcome({ t, onCreate }: NoSessionProps) {
         }}>
           {t.welcomeTitle}
         </div>
-        <div style={{ fontSize: 12, color: FGD, marginBottom: 36, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12, color: FGD, marginBottom: 32, lineHeight: 1.6 }}>
           {t.welcomeSub}
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.03, boxShadow: "0 8px 30px rgba(20,184,166,0.35)" }}
-          whileTap={{ scale: 0.97 }}
-          onClick={onCreate}
-          style={{
-            padding: "13px 32px",
-            borderRadius: 10,
-            border: "none",
-            background: "linear-gradient(135deg, #0d9488, #14b8a6)",
-            color: "#fff",
-            fontWeight: 800,
-            fontSize: 13,
-            cursor: "pointer",
-            boxShadow: "0 4px 20px rgba(20,184,166,0.3)",
-            letterSpacing: "0.01em",
-          }}
-        >
-          {t.createFirst}
-        </motion.button>
+        {/* Primary CTAs */}
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" as const }}>
+          <motion.button
+            whileHover={{ scale: 1.03, boxShadow: "0 8px 30px rgba(20,184,166,0.35)" }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onCreate}
+            style={{
+              padding: "12px 28px",
+              borderRadius: 10,
+              border: "none",
+              background: "linear-gradient(135deg, #0d9488, #14b8a6)",
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: 12.5,
+              cursor: "pointer",
+              boxShadow: "0 4px 20px rgba(20,184,166,0.3)",
+              letterSpacing: "0.01em",
+            }}
+          >
+            {t.createFirst}
+          </motion.button>
+
+          {onCreateDemo && (
+            <motion.button
+              whileHover={{ scale: 1.03, boxShadow: "0 8px 30px rgba(168,85,247,0.25)" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onCreateDemo}
+              style={{
+                padding: "12px 22px",
+                borderRadius: 10,
+                border: "1.5px solid rgba(168,85,247,0.35)",
+                background: "rgba(168,85,247,0.08)",
+                color: "#a855f7",
+                fontWeight: 700,
+                fontSize: 12.5,
+                cursor: "pointer",
+                letterSpacing: "0.01em",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+              }}
+            >
+              <span style={{ fontSize: 15 }}>⚖️</span>
+              Try Demo: Family Pension Matter
+            </motion.button>
+          )}
+        </div>
+
+        {/* Demo context hint */}
+        {onCreateDemo && (
+          <div style={{
+            marginTop: 10,
+            fontSize: 9.5,
+            color: "rgba(100,116,139,0.55)",
+            letterSpacing: "0.02em",
+          }}>
+            Pre-loaded canvas · SC & CAT judgments · 9-node argument map
+          </div>
+        )}
 
         {/* Feature pills */}
         <div style={{
@@ -95,13 +136,13 @@ export function NoSessionWelcome({ t, onCreate }: NoSessionProps) {
           flexWrap: "wrap" as const,
           gap: 8,
           justifyContent: "center",
-          marginTop: 32,
+          marginTop: 28,
         }}>
           {[
             { icon: "🔍", text: "Indian Kanoon" },
             { icon: "🤖", text: "5 AI Agents" },
             { icon: "⚡", text: "What-If Simulation" },
-            { icon: "✦", text: "Proactive Intel" },
+            { icon: "🧬", text: "Legal Twin" },
           ].map(({ icon, text }) => (
             <div key={text} style={{
               display: "flex",

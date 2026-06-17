@@ -1,0 +1,43 @@
+You are now adding authentication (Login) to Forge Workspace and building a complete, realistic end-to-end use case flow.
+
+Current State: All core features of Forge Workspace are built (Spatial Canvas, Multi-Agent System, Proactive Intelligence, What-If Simulation, Indian Kanoon Integration, Data Persistence, Self-Improving features, and polished UI).
+
+Requirements:
+
+1. **Add Login / Authentication**
+   - Integrate **Supabase Auth** for user login and signup.
+   - Create a clean and professional Login / Signup page.
+   - After login, users should land directly on their Forge Workspace.
+   - Protect the main workspace so that only logged-in users can access it.
+   - Show the user’s name or email after login (simple user profile display).
+
+2. **Complete Realistic Use Case Flow**
+   Build the following end-to-end flow that a lawyer would actually use:
+
+   **Use Case: Family Pension Matter (Inspired by recent Supreme Court judgments)**
+
+   Step-by-step flow the system should support:
+
+   a. User logs in.
+   b. User creates a new matter or opens an existing one.
+   c. User uploads a petition or document related to a family pension claim.
+   d. System extracts key issues and intelligently fetches relevant judgments from Indian Kanoon.
+   e. Retrieved judgments appear as nodes on the Spatial Canvas.
+   f. User works on the canvas — connects nodes, adds arguments, and uses the Agent Society.
+   g. User receives proactive suggestions from the system.
+   h. User runs a What-If Simulation (e.g., “What if this argument is rejected?”).
+   i. User saves the matter.
+   j. User logs out and logs back in — the saved matter should load with all previous work intact.
+
+3. **Seamless Experience**
+   - Make the entire flow smooth and logical.
+   - Ensure that after login, the user can quickly start working without confusion.
+   - Improve any friction points in the current flow.
+
+4. **Data Association**
+   - All saved matters, canvas states, and simulations should be linked to the logged-in user.
+   - Each user should only see their own matters and data.
+
+Goal: Make Forge Workspace feel like a complete, professional product with proper login and a realistic, valuable use case that demonstrates its power from start to finish.
+
+Focus on making the login experience clean and the overall use case flow intuitive and impressive.

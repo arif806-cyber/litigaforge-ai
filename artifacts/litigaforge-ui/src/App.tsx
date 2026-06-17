@@ -89,7 +89,16 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!loading && !user) setLocation("/login");
+    if (!loading && !user) {
+      // Persist the intended destination so login can redirect back after auth
+      try {
+        const dest = window.location.pathname;
+        if (dest && dest !== "/login" && dest !== "/register") {
+          sessionStorage.setItem("lf_return_to", dest);
+        }
+      } catch { /* ignore */ }
+      setLocation("/login");
+    }
   }, [user, loading, setLocation]);
 
   if (loading) {
