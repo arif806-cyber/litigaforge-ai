@@ -4,6 +4,18 @@ import VideoTemplate, { SCENE_DURATIONS } from './VideoTemplate';
 import { useSceneControls } from './useSceneControls';
 
 const PROGRESS_TICK_MS = 60;
+const AUDIO_SEEK_EPSILON_SEC = 0.18;
+const AUDIO_VOLUME = 0.45;
+
+const SCENE_START_SEC: Record<string, number> = (() => {
+  const out: Record<string, number> = {};
+  let cumulativeMs = 0;
+  for (const [key, ms] of Object.entries(SCENE_DURATIONS)) {
+    out[key] = cumulativeMs / 1000;
+    cumulativeMs += ms;
+  }
+  return out;
+})();
 
 interface ControlBarProps {
   visible: boolean;
@@ -170,6 +182,49 @@ export default function VideoWithControls() {
   const [tapPinned, setTapPinned] = useState(false);
   const sensorRef = useRef<HTMLDivElement | null>(null);
 
+  // Audio lives here so .play() can be called directly in the tap handler (mobile requirement).
+  // iOS/Android block audio.play() called from useEffect — it must be in a synchronous
+  // user-gesture handler. Moving <audio> out of VideoTemplate solves this.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Seek audio to the correct position when the scene changes.
+  const handleSceneChange = useCallback(
+    (sceneKey: string) => {
+      onSceneChange(sceneKey);
+      const audio = audioRef.current;
+      if (!audio) return;
+      const base = sceneKey.replace(/_r[12]$/, '');
+      const target = SCENE_START_SEC[base] ?? 0;
+      if (Math.abs(audio.currentTime - target) > AUDIO_SEEK_EPSILON_SEC) {
+        audio.currentTime = target;
+      }
+    },
+    [onSceneChange],
+  );
+
+  // Set volume once on mount.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.volume = AUDIO_VOLUME;
+  }, []);
+
+  // Mute toggle — must call audio methods SYNCHRONOUSLY inside this handler.
+  // React's declarative `muted` prop doesn't reliably update the DOM property on
+  // iOS/Android. Imperative assignment + play() inside the gesture handler is the
+  // only reliable path to unlock audio on mobile.
+  const handleToggleMute = useCallback(() => {
+    const audio = audioRef.current;
+    const newMuted = !muted;
+    setMuted(newMuted);
+    if (audio) {
+      audio.muted = newMuted;
+      if (!newMuted) {
+        // First unmute tap: this IS a user gesture — iOS allows play() here.
+        audio.play().catch(() => {});
+      }
+    }
+  }, [muted]);
+
   const handlePointerEnter = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse') setHovering(true);
   }, []);
@@ -210,12 +265,26 @@ export default function VideoWithControls() {
 
   return (
     <div className="relative w-full h-screen">
+      {/*
+        Audio element lives here (not in VideoTemplate) so the mute-button click
+        can call audio.play() in the same synchronous user-gesture frame.
+        `muted` is a static HTML attribute (not a React-controlled prop) to guarantee
+        mobile muted-autoplay. Runtime mute changes go through audio.muted imperatively.
+      */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio
+        ref={audioRef}
+        src={`${import.meta.env.BASE_URL}audio/bg_music.mp3`}
+        preload="auto"
+        autoPlay
+        muted
+      />
+
       <VideoTemplate
         key={mountKey}
         durations={durations}
         loop
-        muted={muted}
-        onSceneChange={onSceneChange}
+        onSceneChange={handleSceneChange}
       />
       <div
         ref={sensorRef}
@@ -236,7 +305,7 @@ export default function VideoWithControls() {
           activeDuration={activeDuration}
           tick={tick}
           onToggleLock={toggleLock}
-          onToggleMute={() => setMuted((m) => !m)}
+          onToggleMute={handleToggleMute}
           onJumpTo={jumpTo}
           onToggleCollapsed={handleToggleCollapsed}
         />
