@@ -35,3 +35,51 @@ id = "yKCITxO4VfI3ugI_ZO5d7"
 uri = "file://artifacts/litigaforge-demo/public/audio/bg_music.mp3"
 type = "audio"
 title = "LitigaForge global cinematic background music"
+
+[[outputs]]
+id = "ILQPJjwNvk252S3yDwM29"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_intro.mp3"
+type = "audio"
+title = "VO intro"
+
+[[outputs]]
+id = "V5O5oGdb-LQXYJFVbxAwR"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_case.mp3"
+type = "audio"
+title = "VO case"
+
+[[outputs]]
+id = "jWrSMVwYoxrv6pZdZz5n8"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_problem.mp3"
+type = "audio"
+title = "VO problem"
+
+[[outputs]]
+id = "iRKnphXClvMwTOxjFDXbV"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_matching.mp3"
+type = "audio"
+title = "VO matching"
+
+[[outputs]]
+id = "bDeJj6Ireg7Yp0osVhEWo"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_synthesis.mp3"
+type = "audio"
+title = "VO synthesis"
+
+[[outputs]]
+id = "PCxXIo2t24YtSqcHL7uw4"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_forge.mp3"
+type = "audio"
+title = "VO forge"
+
+[[outputs]]
+id = "tpFfrHAitKOXTYEijVMhD"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_closing.mp3"
+type = "audio"
+title = "VO closing"
+
+[[outputs]]
+id = "mskmJAj5fe8gwiSs8s-6I"
+uri = "file://artifacts/litigaforge-demo/public/audio/vo_carousel.mp3"
+type = "audio"
+title = "VO carousel"

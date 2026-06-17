@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, Repeat, Volume2, VolumeX } from 'lucide-react';
 import VideoTemplate, { SCENE_DURATIONS } from './VideoTemplate';
 import { useSceneControls } from './useSceneControls';
 
 const PROGRESS_TICK_MS = 60;
 const AUDIO_SEEK_EPSILON_SEC = 0.18;
-const AUDIO_VOLUME = 0.45;
+const AUDIO_VOLUME = 0.55;
 
 const SCENE_START_SEC: Record<string, number> = (() => {
   const out: Record<string, number> = {};
-  let cumulativeMs = 0;
-  for (const [key, ms] of Object.entries(SCENE_DURATIONS)) {
-    out[key] = cumulativeMs / 1000;
-    cumulativeMs += ms;
+  let ms = 0;
+  for (const [key, dur] of Object.entries(SCENE_DURATIONS)) {
+    out[key] = ms / 1000;
+    ms += dur;
   }
   return out;
 })();
@@ -22,6 +23,7 @@ interface ControlBarProps {
   collapsed: boolean;
   locked: boolean;
   muted: boolean;
+  neverUnmuted: boolean;
   sceneKeys: string[];
   activeIndex: number;
   activeDuration: number;
@@ -50,9 +52,7 @@ function ProgressSegments({
   useEffect(() => {
     setElapsed(0);
     const start = performance.now();
-    const id = window.setInterval(() => {
-      setElapsed(performance.now() - start);
-    }, PROGRESS_TICK_MS);
+    const id = window.setInterval(() => setElapsed(performance.now() - start), PROGRESS_TICK_MS);
     return () => window.clearInterval(id);
   }, [tick]);
 
@@ -62,7 +62,6 @@ function ProgressSegments({
     <div className="flex-1 flex items-center gap-1.5">
       {sceneKeys.map((key, i) => {
         const isActive = i === activeIndex;
-        const fill = isActive ? progress * 100 : 0;
         return (
           <button
             key={key}
@@ -73,7 +72,7 @@ function ProgressSegments({
           >
             <div
               className="absolute inset-y-0 left-0 bg-white/90 rounded-full transition-[width] duration-100"
-              style={{ width: `${fill}%` }}
+              style={{ width: `${isActive ? progress * 100 : 0}%` }}
             />
           </button>
         );
@@ -87,6 +86,7 @@ function ControlBar({
   collapsed,
   locked,
   muted,
+  neverUnmuted,
   sceneKeys,
   activeIndex,
   activeDuration,
@@ -108,9 +108,7 @@ function ControlBar({
       <button
         onClick={onToggleLock}
         className={`w-14 h-14 flex items-center justify-center transition-colors rounded-lg shrink-0 ${
-          locked
-            ? 'text-white bg-white/15 hover:bg-white/25'
-            : 'text-white/60 hover:text-white hover:bg-white/10'
+          locked ? 'text-white bg-white/15 hover:bg-white/25' : 'text-white/60 hover:text-white hover:bg-white/10'
         }`}
         title={locked ? 'Loop current scene: on' : 'Loop current scene: off'}
         aria-label={locked ? 'Loop current scene: on' : 'Loop current scene: off'}
@@ -119,19 +117,25 @@ function ControlBar({
         <Repeat className="w-8 h-8" />
       </button>
 
-      <button
+      {/* Volume button — pulses when muted and never tapped */}
+      <motion.button
         onClick={onToggleMute}
-        className={`w-14 h-14 flex items-center justify-center transition-colors rounded-lg shrink-0 ${
-          muted
-            ? 'text-white/60 hover:text-white hover:bg-white/10'
-            : 'text-white bg-white/15 hover:bg-white/25'
+        className={`w-14 h-14 flex items-center justify-center transition-colors rounded-lg shrink-0 relative ${
+          muted ? 'text-white/60 hover:text-white hover:bg-white/10' : 'text-white bg-white/15 hover:bg-white/25'
         }`}
+        animate={
+          muted && neverUnmuted
+            ? { boxShadow: ['0 0 0px #fff0', '0 0 16px #ffffff60', '0 0 0px #fff0'] }
+            : {}
+        }
+        transition={{ duration: 1.6, repeat: Infinity }}
+        style={{ borderRadius: 8 }}
         title={muted ? 'Unmute audio' : 'Mute audio'}
         aria-label={muted ? 'Unmute audio' : 'Mute audio'}
         aria-pressed={!muted}
       >
         {muted ? <VolumeX className="w-8 h-8" /> : <Volume2 className="w-8 h-8" />}
-      </button>
+      </motion.button>
 
       <div className="w-px self-stretch bg-white/15" aria-hidden="true" />
 
@@ -161,8 +165,6 @@ function ControlBar({
 }
 
 export default function VideoWithControls() {
-  const isIframed = typeof window !== 'undefined' && window.self !== window.top;
-
   const {
     sceneKeys,
     activeIndex,
@@ -176,18 +178,30 @@ export default function VideoWithControls() {
     toggleLock,
   } = useSceneControls(SCENE_DURATIONS);
 
+  // Start muted (required for mobile autoplay). Imperative audio.muted + audio.play()
+  // in the tap handler unlocks audio on iOS/Android — this MUST happen synchronously
+  // inside the user-gesture handler, not in a useEffect.
   const [muted, setMuted] = useState(true);
+  const [neverUnmuted, setNeverUnmuted] = useState(true);
+  const [showHint, setShowHint] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [tapPinned, setTapPinned] = useState(false);
   const sensorRef = useRef<HTMLDivElement | null>(null);
-
-  // Audio lives here so .play() can be called directly in the tap handler (mobile requirement).
-  // iOS/Android block audio.play() called from useEffect — it must be in a synchronous
-  // user-gesture handler. Moving <audio> out of VideoTemplate solves this.
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Seek audio to the correct position when the scene changes.
+  // Auto-hide the tap-hint after 6s
+  useEffect(() => {
+    const id = setTimeout(() => setShowHint(false), 6000);
+    return () => clearTimeout(id);
+  }, []);
+
+  // Set volume on mount
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = AUDIO_VOLUME;
+  }, []);
+
+  // Seek audio to match the current scene when it changes
   const handleSceneChange = useCallback(
     (sceneKey: string) => {
       onSceneChange(sceneKey);
@@ -202,25 +216,21 @@ export default function VideoWithControls() {
     [onSceneChange],
   );
 
-  // Set volume once on mount.
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) audio.volume = AUDIO_VOLUME;
-  }, []);
-
-  // Mute toggle — must call audio methods SYNCHRONOUSLY inside this handler.
-  // React's declarative `muted` prop doesn't reliably update the DOM property on
-  // iOS/Android. Imperative assignment + play() inside the gesture handler is the
-  // only reliable path to unlock audio on mobile.
+  // Mute toggle: imperative audio.muted + audio.play() MUST run synchronously in
+  // the click handler — this is what iOS/Android treat as a user gesture, allowing
+  // audio playback. setMuted() triggers React re-render with muted={newMuted}.
   const handleToggleMute = useCallback(() => {
     const audio = audioRef.current;
     const newMuted = !muted;
     setMuted(newMuted);
+    if (!newMuted) {
+      setNeverUnmuted(false);
+      setShowHint(false);
+    }
     if (audio) {
-      audio.muted = newMuted;
+      audio.muted = newMuted; // imperative: sync DOM before React reconciles
       if (!newMuted) {
-        // First unmute tap: this IS a user gesture — iOS allows play() here.
-        audio.play().catch(() => {});
+        audio.play().catch(() => {}); // user-gesture frame → iOS unlocks audio here
       }
     }
   }, [muted]);
@@ -240,10 +250,7 @@ export default function VideoWithControls() {
   );
   const handleToggleCollapsed = useCallback(() => {
     setCollapsed((c) => {
-      if (!c) {
-        setHovering(false);
-        setTapPinned(false);
-      }
+      if (!c) { setHovering(false); setTapPinned(false); }
       return !c;
     });
   }, []);
@@ -261,23 +268,20 @@ export default function VideoWithControls() {
 
   const barVisible = !collapsed || hovering || tapPinned;
 
-  if (!isIframed) return <VideoTemplate />;
-
   return (
     <div className="relative w-full h-screen">
       {/*
-        Audio element lives here (not in VideoTemplate) so the mute-button click
-        can call audio.play() in the same synchronous user-gesture frame.
-        `muted` is a static HTML attribute (not a React-controlled prop) to guarantee
-        mobile muted-autoplay. Runtime mute changes go through audio.muted imperatively.
+        Audio element: starts with muted={true} so mobile browsers allow autoPlay.
+        Runtime unmute is done imperatively in handleToggleMute (user-gesture frame).
+        muted={muted} keeps React's virtual DOM in sync after the imperative change.
       */}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
-        src={`${import.meta.env.BASE_URL}audio/bg_music.mp3`}
+        src={`${import.meta.env.BASE_URL}audio/composite_audio.mp3`}
         preload="auto"
         autoPlay
-        muted
+        muted={muted}
       />
 
       <VideoTemplate
@@ -286,6 +290,29 @@ export default function VideoWithControls() {
         loop
         onSceneChange={handleSceneChange}
       />
+
+      {/* "Tap for audio" hint — visible for 6s when never yet unmuted */}
+      <AnimatePresence>
+        {muted && showHint && (
+          <motion.div
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.4 }}
+          >
+            <motion.div
+              className="bg-black/70 backdrop-blur-sm text-white text-[13px] font-mono px-4 py-2 rounded-full flex items-center gap-2 border border-white/20 whitespace-nowrap"
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <Volume2 className="w-4 h-4 shrink-0" />
+              Tap <span className="font-bold">🔊</span> below for audio
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div
         ref={sensorRef}
         className="absolute bottom-0 left-0 right-0 z-50 flex flex-col justify-end"
@@ -300,6 +327,7 @@ export default function VideoWithControls() {
           collapsed={collapsed}
           locked={locked}
           muted={muted}
+          neverUnmuted={neverUnmuted}
           sceneKeys={sceneKeys}
           activeIndex={activeIndex}
           activeDuration={activeDuration}
