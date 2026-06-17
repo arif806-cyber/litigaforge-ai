@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -130,11 +130,13 @@ function AgentCard({
   state,
   onAskAgent,
   onFeedback,
+  forceAskOpen,
 }: {
   def: AgentDef;
   state: AgentState;
   onAskAgent: (agentId: string, question: string) => void;
   onFeedback: (agentId: string, vote: "up" | "down") => void;
+  forceAskOpen?: boolean;
 }) {
   const isThinking   = state.status === "thinking";
   const isDone       = state.status === "done";
@@ -143,6 +145,11 @@ function AgentCard({
   const [showReasoning, setShowReasoning] = useState(false);
   const [askOpen,       setAskOpen]       = useState(false);
   const [askText,       setAskText]       = useState("");
+
+  // When forceAskOpen becomes true, open the inline ask UI
+  useEffect(() => {
+    if (forceAskOpen) setAskOpen(true);
+  }, [forceAskOpen]);
 
   function submitAsk() {
     const q = askText.trim();
@@ -320,9 +327,9 @@ function AgentCard({
         </div>
       )}
 
-      {/* Inline ask interface */}
+      {/* Inline ask interface — shown when done+askOpen, OR when externally force-opened */}
       <AnimatePresence>
-        {isDone && askOpen && (
+        {(isDone || forceAskOpen) && askOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -483,6 +490,7 @@ interface AgentPanelProps {
   onAskAgent:             (agentId: string, question: string) => void;
   onFeedback:             (agentId: string, vote: "up" | "down") => void;
   synthesisScore?:        number;
+  openAskFor?:            string;
 }
 
 const AgentPanel = memo(({
@@ -495,6 +503,7 @@ const AgentPanel = memo(({
   onAskAgent,
   onFeedback,
   synthesisScore,
+  openAskFor,
 }: AgentPanelProps) => {
   const doneCount = Object.values(agentStates).filter(s => s.status === "done").length;
   const allDone   = doneCount === AGENT_DEFS.length;
@@ -595,6 +604,7 @@ const AgentPanel = memo(({
             state={agentStates[def.id] ?? { status: "idle", text: "" }}
             onAskAgent={onAskAgent}
             onFeedback={onFeedback}
+            forceAskOpen={openAskFor === def.id}
           />
         ))}
       </div>

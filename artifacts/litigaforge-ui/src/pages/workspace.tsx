@@ -146,8 +146,9 @@ export default function ForgeWorkspace() {
   const [simState, setSimState]             = useState<SimState>({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
   const [simHistory, setSimHistory]         = useState<SimulationResult[]>([]);
   const [suggestions, setSuggestions]       = useState<Suggestion[]>([]);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-  const [autoInsightCtx, setAutoInsightCtx]       = useState<string | null>(null);
+  const [isLoadingInsights, setIsLoadingInsights]   = useState(false);
+  const [autoInsightCtx, setAutoInsightCtx]         = useState<string | null>(null);
+  const [openAskForAgentId, setOpenAskForAgentId]   = useState<string | null>(null);
   const [collabFeed, setCollabFeed]         = useState<CollabEvent[]>([]);
   const [synthesisScore, setSynthesisScore] = useState<number | null>(null);
   const [twinProfile, setTwinProfile]       = useState<TwinProfile | null>(null);
@@ -875,6 +876,10 @@ export default function ForgeWorkspace() {
   useEffect(() => {
     function handleLaunchAgent(e: Event) {
       const { agentId, question } = (e as CustomEvent<{ agentId: string; question?: string }>).detail;
+      // Open the ask UI for this agent immediately (force-open)
+      setOpenAskForAgentId(agentId);
+      // Clear the force-open flag after 2s so the agent card returns to normal control
+      setTimeout(() => setOpenAskForAgentId(null), 2000);
       if (question) {
         void onAskAgent(agentId, question);
       }
@@ -1273,6 +1278,7 @@ export default function ForgeWorkspace() {
             onAskAgent={onAskAgent}
             onFeedback={onFeedback}
             synthesisScore={synthesisScore ?? undefined}
+            openAskFor={openAskForAgentId ?? undefined}
           />
         )}
         {/* Left: collapsed strip — desktop only */}
@@ -1753,6 +1759,7 @@ export default function ForgeWorkspace() {
                   onAskAgent={onAskAgent}
                   onFeedback={onFeedback}
                   synthesisScore={synthesisScore ?? undefined}
+                  openAskFor={openAskForAgentId ?? undefined}
                 />
               )}
               {mobileSheet === "sessions" && (
