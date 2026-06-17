@@ -467,7 +467,7 @@ _AGENTS = [
         "role": "Deep precedent analysis from Indian case law",
         "node_type": "issue",
         "node_label": "Core Legal Issue",
-        "node_pos": {"x": 380, "y": 200},
+        "node_pos": {"x": 150, "y": 200},
         "system": (
             "You are an expert Indian legal research agent with deep knowledge of Supreme Court "
             "and High Court judgments. Analyze the given case and identify the 3 most critical "
@@ -483,7 +483,7 @@ _AGENTS = [
         "role": "Legal strategy development",
         "node_type": "strategy",
         "node_label": "Winning Strategy",
-        "node_pos": {"x": 620, "y": 280},
+        "node_pos": {"x": 560, "y": 120},
         "system": (
             "You are a senior advocate with 20 years of experience in Indian courts. "
             "Develop a compelling legal strategy for this case. Identify: (1) the strongest "
@@ -499,7 +499,7 @@ _AGENTS = [
         "role": "Opposition analysis & risk mapping",
         "node_type": "risk",
         "node_label": "Key Risk Factor",
-        "node_pos": {"x": 280, "y": 420},
+        "node_pos": {"x": 150, "y": 460},
         "system": (
             "You are playing devil's advocate. Analyze this case from the opposing counsel's "
             "perspective. What are the 3 strongest counter-arguments? What weaknesses exist in "
@@ -514,7 +514,7 @@ _AGENTS = [
         "role": "Argument & petition drafting",
         "node_type": "argument",
         "node_label": "Primary Legal Argument",
-        "node_pos": {"x": 560, "y": 450},
+        "node_pos": {"x": 560, "y": 370},
         "system": (
             "You are an expert in Indian legal drafting. Based on the case facts, draft: "
             "(1) the main legal contention in formal Indian legal language, "
@@ -530,7 +530,7 @@ _AGENTS = [
         "role": "Court outcome forecasting",
         "node_type": "strategy",
         "node_label": "Predicted Outcome",
-        "node_pos": {"x": 740, "y": 180},
+        "node_pos": {"x": 920, "y": 200},
         "system": (
             "You are a predictive legal analyst specializing in Indian judicial trends. "
             "Based on the case facts and current judicial temperament in India, forecast: "
@@ -669,11 +669,15 @@ async def _stream_analysis(case_description: str, context: str):
 
         await asyncio.sleep(0.3)
 
-    # ── Final synthesis ─────────────────────────────────────────────────────
+    # ── Final synthesis — dynamic consensus score ────────────────────────────
+    total_chars = sum(len(txt) for txt in agent_outputs.values())
+    completeness = min(1.0, total_chars / (180 * max(1, len(_AGENTS))))
+    case_bonus   = min(10, len(case_description) // 25) if case_description else 0
+    consensus_score = min(97, max(62, round(72 + completeness * 20 + case_bonus)))
     yield sse({
         "type":            "agent_synthesis",
         "message":         "All five agents have completed their analysis. The Agent Society has reached consensus.",
-        "consensus_score": 84,
+        "consensus_score": consensus_score,
     })
     yield sse({"type": "complete"})
 

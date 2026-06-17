@@ -53,11 +53,31 @@ async function api(path: string, opts: RequestInit = {}) {
       ...(opts.headers as Record<string, string> | undefined),
     },
   });
+  if (res.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = "/login";
+    throw new Error("Session expired — please sign in again.");
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(text || `HTTP ${res.status}`);
   }
   return res;
+}
+
+// ─── Smart node placement — avoids stacking on existing nodes ─────────────────
+
+function findOpenPosition(existing: { position: { x: number; y: number } }[]): { x: number; y: number } {
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 5; col++) {
+      const x = 120 + col * 270;
+      const y = 110 + row * 180;
+      const blocked = existing.some(n => Math.abs(n.position.x - x) < 230 && Math.abs(n.position.y - y) < 155);
+      if (!blocked) return { x, y };
+    }
+  }
+  const last = existing[existing.length - 1];
+  return last ? { x: last.position.x + 290, y: last.position.y } : { x: 200, y: 200 };
 }
 
 // ─── Node presets for manual "Add Node" ───────────────────────────────────────
@@ -89,9 +109,7 @@ export default function ForgeWorkspace() {
   const [agentStates, setAgentStates]       = useState<Record<string, AgentState>>(makeDefaultAgentStates);
   const [isAnalyzing, setIsAnalyzing]       = useState(false);
   const [isSaving, setIsSaving]             = useState(false);
-  const [_unused]                            = useState<null>(null); // placeholder kept for stable hook order
   const [showAddMenu, setShowAddMenu]       = useState(false);
-  const [showSessions, setShowSessions]     = useState(false);
   const [rightPanelTab, setRightPanelTab]   = useState<"sessions" | "search" | "simulate" | "insights">("sessions");
   const [simState, setSimState]             = useState<SimState>({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
   const [simHistory, setSimHistory]         = useState<SimulationResult[]>([]);
@@ -169,6 +187,11 @@ export default function ForgeWorkspace() {
       setNodes((full.nodes_json as Node[]) || []);
       setEdges((full.edges_json as Edge[]) || []);
       setAgentStates(makeDefaultAgentStates());
+      // Reset session-scoped state so stale data from previous session doesn't bleed through
+      setCollabFeed([]);
+      setSynthesisScore(null);
+      setSuggestions([]);
+      setSimState({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
     } catch {
       addToast({ type: "error", message: "Failed to open workspace", detail: "The session may have been deleted." });
     }
@@ -204,10 +227,18 @@ export default function ForgeWorkspace() {
 
   async function saveTitle() {
     if (!sessionId) return;
-    await api(`/workspace/sessions/${sessionId}`, {
-      method: "PUT",
-      body: JSON.stringify({ title: sessionTitle, case_description: caseDescription }),
-    }).catch(() => {});
+    try {
+      await api(`/workspace/sessions/${sessionId}`, {
+        method: "PUT",
+        body: JSON.stringify({ title: sessionTitle, case_description: caseDescription }),
+      });
+      // Reflect title change immediately in the session list card
+      setSessions(prev => prev.map(s =>
+        s.id === sessionId ? { ...s, title: sessionTitle, case_description: caseDescription } : s
+      ));
+    } catch {
+      addToast({ type: "warning", message: "Workspace name not saved", detail: "Title changes may not persist." });
+    }
   }
 
   async function deleteSession(id: number) {
@@ -215,10 +246,15 @@ export default function ForgeWorkspace() {
     const remaining = sessions.filter(s => s.id !== id);
     setSessions(remaining);
     if (id === sessionId) {
+      // Clear all session-scoped state before switching
+      setSimState({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
+      setSuggestions([]);
+      setCollabFeed([]);
+      setSynthesisScore(null);
       if (remaining.length > 0) {
-        openSession(remaining[0]);
+        void openSession(remaining[0]);
       } else {
-        createSession();
+        void createSession();
       }
     }
   }
@@ -325,7 +361,7 @@ export default function ForgeWorkspace() {
     const newNode: Node = {
       id,
       type,
-      position: { x: 200 + Math.random() * 300, y: 200 + Math.random() * 200 },
+      position: findOpenPosition(nodes),
       data: { ...preset.data },
     };
     pushHistory([...nodes], [...edges]);
@@ -362,6 +398,10 @@ export default function ForgeWorkspace() {
     setAgentStates(makeDefaultAgentStates());
     setCollabFeed([]);
     setSynthesisScore(null);
+
+    // Local counters — avoids stale closure from captured state values
+    let localDoneCount    = 0;
+    let localSynthesisScore: number | null = null;
 
     try {
       const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/analyze`, {
@@ -429,10 +469,12 @@ export default function ForgeWorkspace() {
               if (sn) {
                 setNodes(prev => {
                   if (prev.find(n => n.id === sn.id)) return prev;
-                  const placed = { ...sn, position: { x: 200 + Math.random() * 500, y: 150 + Math.random() * 350 } };
+                  // Place using grid layout to avoid overlap
+                  const placed = { ...sn, position: findOpenPosition(prev) };
                   return [...prev, placed as Node];
                 });
               }
+              localDoneCount++;
             } else if (type === "agent_consult") {
               setCollabFeed(prev => [...prev, {
                 from:      event.from as string,
@@ -441,17 +483,18 @@ export default function ForgeWorkspace() {
                 timestamp: Date.now(),
               }]);
             } else if (type === "agent_synthesis") {
-              setSynthesisScore(event.consensus_score as number);
+              const score = event.consensus_score as number;
+              setSynthesisScore(score);
+              localSynthesisScore = score;
             }
           } catch { /* malformed event */ }
         }
       }
-      // Analysis completed successfully — surface synthesis score
-      const doneCount = Object.values(agentStates).filter(s => s.status === "done").length;
+      // Use locally tracked counters — avoids stale closure reading idle state
       addToast({
         type: "success",
-        message: `Analysis complete — ${doneCount + 1}/5 agents`,
-        detail: synthesisScore !== null ? `Consensus score: ${synthesisScore}/100` : "Canvas nodes updated.",
+        message: `Analysis complete — ${localDoneCount}/5 agents`,
+        detail: localSynthesisScore !== null ? `Consensus score: ${localSynthesisScore}/100` : "Canvas nodes updated.",
         duration: 5000,
       });
     } catch {
@@ -464,7 +507,9 @@ export default function ForgeWorkspace() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [sessionId, isAnalyzing, caseDescription, agentStates, synthesisScore]);
+  // agentStates / synthesisScore intentionally excluded — local counters track them during the stream
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, isAnalyzing, caseDescription]);
 
   // ─── What-If Simulation (SSE) ────────────────────────────────────────────────
 
@@ -667,6 +712,27 @@ export default function ForgeWorkspace() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // ─── Flush canvas on tab close (avoids losing 2-s debounce window) ──────────
+
+  useEffect(() => {
+    function handleUnload() {
+      if (!sessionId) return;
+      const token = localStorage.getItem(TOKEN_KEY) || "";
+      // keepalive: true allows the request to outlive the page
+      fetch(`${BASE}/workspace/sessions/${sessionId}/canvas`, {
+        method: "PUT",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ nodes, edges }),
+      }).catch(() => {});
+    }
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [sessionId, nodes, edges]);
+
   // ─── Dark theme CSS vars override ────────────────────────────────────────────
 
   useEffect(() => {
@@ -734,7 +800,7 @@ export default function ForgeWorkspace() {
             }}>
               {t.brand}
             </div>
-            <div style={{ fontSize: 7.5, color: "#334155", letterSpacing: "0.08em", marginTop: -1, fontWeight: 700 }}>
+            <div style={{ fontSize: 7.5, color: "#64748b", letterSpacing: "0.08em", marginTop: -1, fontWeight: 700 }}>
               {t.brandSub}
             </div>
           </div>
@@ -916,7 +982,7 @@ export default function ForgeWorkspace() {
           flexDirection: "column",
           background: PANEL,
           borderLeft: `1px solid ${BORDER}`,
-          overflowY: "auto",
+          overflow: "hidden",
         }}>
           {/* Tabs */}
           <div style={{
@@ -954,7 +1020,7 @@ export default function ForgeWorkspace() {
 
           {/* Sessions tab */}
           {rightPanelTab === "sessions" && (
-            <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               {/* Search + new workspace */}
               <div style={{ padding: "10px 12px 0", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
                 <motion.button
@@ -1020,7 +1086,7 @@ export default function ForgeWorkspace() {
                 s.title.toLowerCase().includes(sessionSearch.toLowerCase()) ||
                 (s.case_description ?? "").toLowerCase().includes(sessionSearch.toLowerCase())
               ).length === 0 && (
-                <div style={{ textAlign: "center", padding: "28px 12px", color: "#334155", fontSize: 10.5, lineHeight: 1.7 }}>
+                <div style={{ textAlign: "center", padding: "28px 12px", color: "#64748b", fontSize: 10.5, lineHeight: 1.7 }}>
                   <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.4 }}>
                     {sessionSearch.trim() ? "🔍" : "🗂️"}
                   </div>
@@ -1074,12 +1140,12 @@ export default function ForgeWorkspace() {
                         </div>
                         <button
                           onClick={e => { e.stopPropagation(); deleteSession(s.id); }}
-                          style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 10, padding: "0 0 0 4px", flexShrink: 0, lineHeight: 1 }}
+                          style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 10, padding: "0 0 0 4px", flexShrink: 0, lineHeight: 1 }}
                         >✕</button>
                       </div>
 
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
-                        <div style={{ fontSize: 9, color: "#334155" }}>{timeLabel}</div>
+                        <div style={{ fontSize: 9, color: "#64748b" }}>{timeLabel}</div>
                         {nodeCount > 0 && (
                           <div style={{
                             fontSize: 8.5, color: active ? TEAL : "#475569",
@@ -1093,7 +1159,7 @@ export default function ForgeWorkspace() {
 
                       {s.case_description && (
                         <div style={{
-                          fontSize: 9.5, color: "#334155", marginTop: 5,
+                          fontSize: 9.5, color: "#64748b", marginTop: 5,
                           lineHeight: 1.5, overflow: "hidden",
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
@@ -1110,44 +1176,49 @@ export default function ForgeWorkspace() {
           </div>
           )}
 
-          {/* Search tab */}
+          {/* Search tab — scrollable */}
           {rightPanelTab === "search" && (
-            <SearchPanel
-              sessionId={sessionId}
-              nodes={nodes}
-              caseDescription={caseDescription}
-              onNodesAdded={onSearchNodesAdded}
-            />
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              <SearchPanel
+                sessionId={sessionId}
+                nodes={nodes}
+                caseDescription={caseDescription}
+                onNodesAdded={onSearchNodesAdded}
+              />
+            </div>
           )}
 
-          {/* Proactive Intelligence tab */}
+          {/* Proactive Intelligence tab — scrollable */}
           {rightPanelTab === "insights" && (
-            <ProactivePanel
-              suggestions={suggestions}
-              isLoading={isLoadingInsights}
-              canvasHasNodes={nodes.length >= 2}
-              sessionReady={!!sessionId}
-              onRefresh={fetchInsights}
-              onAccept={onAcceptSuggestion}
-              onDismiss={onDismissSuggestion}
-            />
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              <ProactivePanel
+                suggestions={suggestions}
+                isLoading={isLoadingInsights}
+                canvasHasNodes={nodes.length >= 2}
+                sessionReady={!!sessionId}
+                onRefresh={fetchInsights}
+                onAccept={onAcceptSuggestion}
+                onDismiss={onDismissSuggestion}
+              />
+            </div>
           )}
 
-          {/* What-If Simulation tab */}
+          {/* What-If Simulation tab — scrollable */}
           {rightPanelTab === "simulate" && (
-            <SimulationPanel
-              nodes={nodes}
-              simState={simState}
-              simHistory={simHistory}
-              onRunSimulation={runSimulation}
-              onSaveSimulation={onSaveSimulation}
-              onApplyToCanvas={onApplyToCanvas}
-            />
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              <SimulationPanel
+                nodes={nodes}
+                simState={simState}
+                simHistory={simHistory}
+                onRunSimulation={runSimulation}
+                onSaveSimulation={onSaveSimulation}
+                onApplyToCanvas={onApplyToCanvas}
+              />
+            </div>
           )}
 
-          {/* Canvas stats footer */}
+          {/* Canvas stats footer — always pinned to bottom, never scrolled away */}
           <div style={{
-            marginTop: "auto",
             padding: "10px 14px",
             borderTop: `1px solid ${BORDER}`,
             flexShrink: 0,
