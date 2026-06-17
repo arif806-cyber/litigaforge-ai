@@ -59,6 +59,8 @@ const QUICK_SCENARIOS = [
   "Assume the key judgment is distinguished by the court",
   "Assume this main argument is rejected and alternatives needed",
   "What if a contradictory precedent emerges in next 6 months?",
+  "What if we adopt a more aggressive, confrontational litigation strategy?",
+  "What if the matter is resolved through negotiated settlement instead?",
 ];
 
 const RISK_COLORS: Record<string, string> = {

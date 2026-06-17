@@ -800,6 +800,7 @@ async def ask_agent(
 class InsightsBody(BaseModel):
     case_description: str = ""
     nodes: list[dict] = Field(default_factory=list)
+    context: str = ""
 
 
 _INSIGHT_FALLBACKS = [
@@ -841,17 +842,26 @@ async def get_proactive_insights(
         for n in nodes
     ) or "  (empty canvas)"
 
+    context_line = f"Recent context: {body.context}\n" if body.context else ""
+
     prompt = (
         f"Case: {body.case_description or 'Not specified'}\n"
-        f"Canvas ({len(nodes)} nodes):\n{node_summaries}\n\n"
+        f"Canvas ({len(nodes)} nodes):\n{node_summaries}\n"
+        f"{context_line}\n"
         "You are a proactive legal AI for Indian courts. Generate exactly 4 smart, specific insights.\n"
         "Output ONLY 4 pipe-separated lines: TYPE|EMOJI|SHORT_TEXT|DETAIL_TEXT\n"
-        "TYPE: opportunity | risk | precedent | pattern | warning\n"
+        "TYPE: opportunity | risk | precedent | pattern | warning | agent_rec\n"
+        "For agent_rec, EMOJI must be the agent emoji + space + agent_id. "
+        "Agent IDs: research, strategy, risk, drafting, predictive. "
+        "Example: 🔍 research\n"
         "SHORT_TEXT ≤100 chars. DETAIL_TEXT ≤200 chars.\n"
         "Be specific — mention legal principles, real case names, or court names.\n"
-        "Example:\n"
+        "When context mentions a simulation or what-if, include at least 1 agent_rec insight.\n"
+        "Example lines:\n"
         "opportunity|💡|Maneka Gandhi precedent strengthens your Article 21 argument|"
-        "Maneka Gandhi v. Union (1978) established a broad reading of personal liberty — directly applicable here."
+        "Maneka Gandhi v. Union (1978) established a broad reading of personal liberty.\n"
+        "agent_rec|🛡️ risk|Ask the Risk Agent to map opposition counter-arguments|"
+        "The Risk Agent can enumerate likely objections and mitigation strategies."
     )
 
     try:
@@ -862,7 +872,7 @@ async def get_proactive_insights(
             if len(parts) < 3:
                 continue
             stype = parts[0].lower()
-            if stype not in ("opportunity", "risk", "precedent", "pattern", "warning"):
+            if stype not in ("opportunity", "risk", "precedent", "pattern", "warning", "agent_rec"):
                 stype = "opportunity"
             suggestions.append({
                 "id":     _uuid.uuid4().hex[:8],

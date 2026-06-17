@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export interface Suggestion {
   id: string;
-  type: "opportunity" | "risk" | "precedent" | "pattern" | "warning";
+  type: "opportunity" | "risk" | "precedent" | "pattern" | "warning" | "agent_rec";
   emoji: string;
   text: string;
   detail?: string;
@@ -23,12 +23,13 @@ interface ProactivePanelProps {
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
-const TYPE_META: Record<string, { color: string; label: string }> = {
+const TYPE_META: Record<string, { color: string; label: string; acceptLabel?: string }> = {
   opportunity: { color: "#14b8a6", label: "Opportunity"    },
   risk:        { color: "#ef4444", label: "Risk Detected"  },
   precedent:   { color: "#3b82f6", label: "Precedent Match"},
   pattern:     { color: "#a855f7", label: "Pattern Found"  },
   warning:     { color: "#f59e0b", label: "Warning"        },
+  agent_rec:   { color: "#f97316", label: "Ask an Agent",  acceptLabel: "→ Ask Agent" },
 };
 
 // ─── Skeleton card ─────────────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ function SuggestionCard({
               color: meta.color, fontSize: 9.5, fontWeight: 700,
               transition: "background 0.15s",
             }}
-          >✓ Accept</button>
+          >{meta.acceptLabel ?? "✓ Accept"}</button>
           {s.detail && (
             <button
               onClick={() => setExpanded(v => !v)}

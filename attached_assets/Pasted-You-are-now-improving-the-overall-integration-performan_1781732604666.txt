@@ -1,0 +1,36 @@
+You are now improving the overall integration, performance, and cohesion of Forge Workspace so that all components work together smoothly and efficiently.
+
+Current State: We have an advanced Spatial Canvas, Multi-Agent System, Proactive Intelligence, and What-If Simulation. However, these features may still feel somewhat disconnected or slow in some areas.
+
+Requirements:
+
+1. **Better Integration Between Features**
+   - Ensure the Spatial Canvas, Multi-Agent System, Proactive Intelligence, and What-If Simulation are deeply connected.
+   - When a user makes changes on the canvas, agents should automatically react and update their analysis.
+   - When a simulation runs, the results should clearly reflect on the canvas and agent outputs.
+   - Proactive suggestions should consider the current state of both the canvas and active agents.
+
+2. **Performance Optimization**
+   - Improve the overall speed and responsiveness of the application.
+   - Optimize the Spatial Canvas (especially when there are many nodes and connections).
+   - Reduce delays when agents are working or when running simulations.
+   - Improve loading times when fetching data from Indian Kanoon.
+
+3. **Data Flow & State Management**
+   - Improve how data flows between different parts of the application.
+   - Make sure that changes in one section (e.g., adding a new judgment on the canvas) are instantly reflected in other sections (agents, proactive suggestions, simulation).
+   - Reduce bugs caused by inconsistent or outdated data.
+
+4. **User Experience Consistency**
+   - Make the overall experience feel unified and professional across all features.
+   - Ensure consistent design language, loading states, and feedback across the canvas, agents, and simulation panels.
+   - Improve how information is presented so users don’t feel overwhelmed.
+
+5. **Error Handling & Stability**
+   - Improve error handling, especially during Indian Kanoon API calls and LLM requests.
+   - Add better fallback messages when something goes wrong.
+   - Make the system more stable and reliable during complex operations (like running simulations with many nodes).
+
+Goal: Make Forge Workspace feel like one cohesive, intelligent system rather than separate features working independently. Focus on smooth performance, tight integration, and a polished overall experience.
+
+Prioritize making the system feel fast, connected, and reliable.

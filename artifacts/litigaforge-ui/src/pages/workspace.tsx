@@ -147,6 +147,7 @@ export default function ForgeWorkspace() {
   const [simHistory, setSimHistory]         = useState<SimulationResult[]>([]);
   const [suggestions, setSuggestions]       = useState<Suggestion[]>([]);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const [autoInsightCtx, setAutoInsightCtx]       = useState<string | null>(null);
   const [collabFeed, setCollabFeed]         = useState<CollabEvent[]>([]);
   const [synthesisScore, setSynthesisScore] = useState<number | null>(null);
   const [twinProfile, setTwinProfile]       = useState<TwinProfile | null>(null);
@@ -173,10 +174,11 @@ export default function ForgeWorkspace() {
 
   const { user, logout } = useAuth();
 
-  const saveTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const addMenuRef     = useRef<HTMLDivElement>(null);
-  const historyRef     = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
-  const histIdxRef     = useRef<number>(-1);
+  const saveTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addMenuRef          = useRef<HTMLDivElement>(null);
+  const historyRef          = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
+  const histIdxRef          = useRef<number>(-1);
+  const simAfterSummaryRef  = useRef<string>("");
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -580,6 +582,8 @@ export default function ForgeWorkspace() {
               const score = event.consensus_score as number;
               setSynthesisScore(score);
               localSynthesisScore = score;
+              // Auto-trigger proactive insights 1.5s after synthesis completes
+              setTimeout(() => setAutoInsightCtx("agent_synthesis"), 1500);
             }
           } catch { /* malformed event */ }
         }
@@ -639,20 +643,40 @@ export default function ForgeWorkspace() {
             } else if (etype === "sim_token") {
               setSimState(p => ({ ...p, analysis: p.analysis + (ev.token as string) }));
             } else if (etype === "sim_delta") {
-              setSimState(p => ({ ...p, deltas: ev.deltas as NodeDelta[] }));
+              const deltas = ev.deltas as NodeDelta[];
+              setSimState(p => ({ ...p, deltas }));
+              // Amber-highlight affected nodes, auto-clear after 2 s
+              setNodes(prev => prev.map(n => {
+                const lbl = String((n.data as Record<string, unknown>).label ?? "");
+                const hit = deltas.some(d => d.nodeLabel.toLowerCase() === lbl.toLowerCase());
+                return hit ? { ...n, data: { ...(n.data as Record<string, unknown>), simHighlight: true } } : n;
+              }));
+              setTimeout(() => {
+                setNodes(prev => prev.map(n => {
+                  const d = n.data as Record<string, unknown>;
+                  if (!d.simHighlight) return n;
+                  const { simHighlight: _sh, ...rest } = d;
+                  return { ...n, data: rest };
+                }));
+              }, 2000);
             } else if (etype === "sim_after") {
+              const afterSummary = ev.summary as string;
+              simAfterSummaryRef.current = afterSummary;
               setSimState(p => ({
                 ...p,
                 after: {
                   avgScore:        ev.avg_score      as number,
                   riskLevel:       ev.risk_level     as string,
                   scoreChange:     ev.score_change   as number,
-                  summary:         ev.summary        as string,
+                  summary:         afterSummary,
                   recommendation:  ev.recommendation as string,
                 },
               }));
             } else if (etype === "sim_complete") {
               setSimState(p => ({ ...p, phase: "complete" }));
+              // Auto-trigger proactive insights with sim context after 1.5 s
+              const ctx = assumption + (simAfterSummaryRef.current ? ` → ${simAfterSummaryRef.current}` : "");
+              setTimeout(() => setAutoInsightCtx(ctx.slice(0, 400)), 1500);
             }
           } catch { /* malformed */ }
         }
@@ -688,13 +712,13 @@ export default function ForgeWorkspace() {
 
   // ─── Proactive Insights ───────────────────────────────────────────────────────
 
-  const fetchInsights = useCallback(async () => {
+  const fetchInsights = useCallback(async (ctx = "") => {
     if (!sessionId || isLoadingInsights) return;
     setIsLoadingInsights(true);
     try {
       const res = await api(`/workspace/sessions/${sessionId}/insights`, {
         method: "POST",
-        body: JSON.stringify({ case_description: caseDescription, nodes }),
+        body: JSON.stringify({ case_description: caseDescription, nodes, context: ctx }),
       });
       const data = await res.json() as { suggestions: Suggestion[] };
       setSuggestions(data.suggestions ?? []);
@@ -704,6 +728,15 @@ export default function ForgeWorkspace() {
   }, [sessionId, caseDescription, nodes, isLoadingInsights]);
 
   const onAcceptSuggestion = useCallback((s: Suggestion) => {
+    // agent_rec type: dispatch a custom event to launch the agent ask panel
+    if (s.type === "agent_rec") {
+      const parts   = s.emoji.trim().split(/\s+/);
+      const agentId = parts[parts.length - 1] || "research";
+      window.dispatchEvent(new CustomEvent("lf-launch-agent-ask", { detail: { agentId, question: s.text } }));
+      setSuggestions(prev => prev.filter(x => x.id !== s.id));
+      if (isMobile) setMobileSheet("agent");
+      return;
+    }
     const typeMap: Record<string, string> = { opportunity: "strategy", risk: "risk", precedent: "judgment", pattern: "argument", warning: "fact" };
     const nodeType = typeMap[s.type] ?? "strategy";
     const preset   = NODE_PRESETS[nodeType];
@@ -727,7 +760,7 @@ export default function ForgeWorkspace() {
         }),
       }).catch(() => {});
     }
-  }, [nodes, edges, setNodes, sessionId]);
+  }, [nodes, edges, setNodes, sessionId, isMobile]);
 
   const onDismissSuggestion = useCallback((id: string) => {
     const s = suggestions.find(x => x.id === id);
@@ -826,6 +859,30 @@ export default function ForgeWorkspace() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rightPanelTab, sessionId]);
+
+  // ─── Auto-trigger insights (after synthesis / simulation) ────────────────────
+
+  useEffect(() => {
+    if (autoInsightCtx === null) return;
+    const ctx = autoInsightCtx;
+    setAutoInsightCtx(null);
+    void fetchInsights(ctx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoInsightCtx]);
+
+  // ─── lf-launch-agent-ask custom event listener ───────────────────────────────
+
+  useEffect(() => {
+    function handleLaunchAgent(e: Event) {
+      const { agentId, question } = (e as CustomEvent<{ agentId: string; question?: string }>).detail;
+      if (question) {
+        void onAskAgent(agentId, question);
+      }
+    }
+    window.addEventListener("lf-launch-agent-ask", handleLaunchAgent);
+    return () => window.removeEventListener("lf-launch-agent-ask", handleLaunchAgent);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onAskAgent]);
 
   // ─── Personal Legal Twin — fetch profile + cross-matter ───────────────────────
 

@@ -53,6 +53,8 @@ function GradientHeader({ color, label }: { color: string; label: string }) {
   );
 }
 
+const SIM_HIGHLIGHT_GLOW = "0 0 0 2px #f59e0b88, 0 0 20px #f59e0b44";
+
 interface NodeShellProps {
   children: React.ReactNode;
   borderColor: string;
@@ -63,6 +65,7 @@ interface NodeShellProps {
   score?: number;
   collapsed?: boolean;
   onToggleCollapse?: (e: React.MouseEvent) => void;
+  simHighlight?: boolean;
 }
 
 function NodeShell({
@@ -75,8 +78,11 @@ function NodeShell({
   score = 70,
   collapsed,
   onToggleCollapse,
+  simHighlight,
 }: NodeShellProps) {
-  const glow    = selected ? selectedGlow(accentColor) : scoreGlow(score, accentColor);
+  const glow    = simHighlight
+    ? SIM_HIGHLIGHT_GLOW
+    : selected ? selectedGlow(accentColor) : scoreGlow(score, accentColor);
   const hStyle  = (pos: "top" | "right" | "bottom" | "left"): React.CSSProperties => ({
     background: accentColor,
     border: `1.5px solid rgba(7,13,26,0.8)`,
@@ -207,6 +213,7 @@ export const JudgmentNode = memo(({ id, data, selected, isConnectable }: NodePro
   return (
     <NodeShell bgColor="#081c38" borderColor="#0d9488" accentColor="#14b8a6"
       selected={selected} isConnectable={isConnectable} score={score}
+      simHighlight={Boolean(d.simHighlight)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="⚖️" label={String(d.label || "Judgment")} typeLabel="Precedent" color="#14b8a6"
         badge={d.url ? (
@@ -249,6 +256,7 @@ export const FactNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
   return (
     <NodeShell bgColor="#050e22" borderColor="#2563eb" accentColor="#60a5fa"
       selected={selected} isConnectable={isConnectable} score={score}
+      simHighlight={Boolean(d.simHighlight)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="📋" label={String(d.label || "Fact")} typeLabel="Key Fact" color="#60a5fa" />
       {!collapsed && (
@@ -278,6 +286,7 @@ export const IssueNode = memo(({ id, data, selected, isConnectable }: NodeProps)
   return (
     <NodeShell bgColor="#13082e" borderColor="#9333ea" accentColor="#c084fc"
       selected={selected} isConnectable={isConnectable} score={score}
+      simHighlight={Boolean(d.simHighlight)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="🏛️" label={String(d.label || "Legal Issue")} typeLabel="Legal Issue" color="#c084fc" />
       {!collapsed && (
@@ -303,6 +312,7 @@ export const ArgumentNode = memo(({ id, data, selected, isConnectable }: NodePro
   return (
     <NodeShell bgColor="#051f1c" borderColor="#0d9488" accentColor="#2dd4bf"
       selected={selected} isConnectable={isConnectable} score={score}
+      simHighlight={Boolean(d.simHighlight)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="🗣️" label={String(d.label || "Argument")} typeLabel="Argument" color="#2dd4bf"
         badge={
@@ -335,6 +345,7 @@ export const RiskNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
   return (
     <NodeShell bgColor="#200a0a" borderColor={sevColor} accentColor={sevColor}
       selected={selected} isConnectable={isConnectable} score={score}
+      simHighlight={Boolean(d.simHighlight)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="⚠️" label={String(d.label || "Risk")} typeLabel="Risk Factor" color={sevColor}
         badge={
@@ -375,6 +386,7 @@ export const StrategyNode = memo(({ id, data, selected, isConnectable }: NodePro
   return (
     <NodeShell bgColor="#1c1100" borderColor="#d97706" accentColor="#fbbf24"
       selected={selected} isConnectable={isConnectable} score={score}
+      simHighlight={Boolean(d.simHighlight)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="💡" label={String(d.label || "Strategy")} typeLabel="Strategy" color="#fbbf24"
         badge={
