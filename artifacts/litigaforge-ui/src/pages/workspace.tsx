@@ -12,6 +12,7 @@ import ForgeCanvas from "@/components/workspace/ForgeCanvas";
 import AgentPanel, { type AgentState, type CollabEvent } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
+import PersonalTwinPanel, { type TwinProfile, type CrossMatterData } from "@/components/workspace/PersonalTwinPanel";
 import SimulationPanel, { type SimState, type SimulationResult, type NodeDelta } from "@/components/workspace/SimulationPanel";
 import SearchPanel from "@/components/workspace/SearchPanel";
 import { LangToggle, STRINGS, getInitialLang, type Lang } from "@/components/workspace/WorkspaceLang";
@@ -110,13 +111,16 @@ export default function ForgeWorkspace() {
   const [isAnalyzing, setIsAnalyzing]       = useState(false);
   const [isSaving, setIsSaving]             = useState(false);
   const [showAddMenu, setShowAddMenu]       = useState(false);
-  const [rightPanelTab, setRightPanelTab]   = useState<"sessions" | "search" | "simulate" | "insights">("sessions");
+  const [rightPanelTab, setRightPanelTab]   = useState<"sessions" | "search" | "simulate" | "insights" | "twin">("sessions");
   const [simState, setSimState]             = useState<SimState>({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
   const [simHistory, setSimHistory]         = useState<SimulationResult[]>([]);
   const [suggestions, setSuggestions]       = useState<Suggestion[]>([]);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [collabFeed, setCollabFeed]         = useState<CollabEvent[]>([]);
   const [synthesisScore, setSynthesisScore] = useState<number | null>(null);
+  const [twinProfile, setTwinProfile]       = useState<TwinProfile | null>(null);
+  const [crossMatter, setCrossMatter]       = useState<CrossMatterData | null>(null);
+  const [isLoadingTwin, setIsLoadingTwin]   = useState(false);
   const [lang, setLang]                     = useState<Lang>(getInitialLang);
   const [toasts, setToasts]                 = useState<ForgeToastItem[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
@@ -367,6 +371,13 @@ export default function ForgeWorkspace() {
     pushHistory([...nodes], [...edges]);
     setNodes(prev => [...prev, newNode]);
     setShowAddMenu(false);
+    // Fire learning event (fire-and-forget)
+    if (sessionId) {
+      void api("/workspace/profile/event", {
+        method: "POST",
+        body: JSON.stringify({ event_type: "node_add", session_id: sessionId, data: { node_type: type } }),
+      }).catch(() => {});
+    }
   }
 
   // ─── Search panel callback ────────────────────────────────────────────────────
@@ -376,19 +387,31 @@ export default function ForgeWorkspace() {
     pushHistory([...nodes], [...edges]);
     setNodes(prev => {
       const existingIds = new Set(prev.map(n => n.id));
+      let placed = [...prev];
       const deduped = newNodes
         .filter(n => !existingIds.has(n.id))
-        .map((n, i) => ({
-          ...n,
-          position: {
-            x: 150 + (i % 3) * 260 + Math.round(Math.random() * 40),
-            y: 140 + Math.floor(i / 3) * 200 + Math.round(Math.random() * 30),
-          },
-        }));
+        .map(n => {
+          const pos = findOpenPosition(placed);
+          placed = [...placed, { ...n, position: pos }];
+          return { ...n, position: pos };
+        });
       return [...prev, ...deduped];
     });
-    // Insights refresh happens naturally when user opens the Insights tab next time
-  }, [nodes, edges, setNodes]);
+    // Fire judgment_add learning events for each added judgment node
+    if (sessionId) {
+      newNodes.filter(n => n.type === "judgment").forEach(n => {
+        const d = n.data as Record<string, unknown>;
+        void api("/workspace/profile/event", {
+          method: "POST",
+          body: JSON.stringify({
+            event_type: "judgment_add",
+            session_id: sessionId,
+            data: { court: d.court ?? "", title: (d.label ?? "").toString().slice(0, 80) },
+          }),
+        }).catch(() => {});
+      });
+    }
+  }, [nodes, edges, setNodes, sessionId]);
 
   // ─── Multi-agent analysis (SSE) ──────────────────────────────────────────────
 
@@ -618,15 +641,37 @@ export default function ForgeWorkspace() {
     setNodes(prev => [...prev, {
       id:       `insight-${Date.now()}`,
       type:     nodeType,
-      position: { x: 200 + Math.random() * 400, y: 180 + Math.random() * 300 },
+      position: findOpenPosition(nodes),
       data:     { ...preset.data, label: s.text.slice(0, 50), description: s.detail ?? s.text, impact_score: 75 },
     } as Node]);
     setSuggestions(prev => prev.filter(x => x.id !== s.id));
-  }, [nodes, edges, setNodes]);
+    // Fire learning event
+    if (sessionId) {
+      void api("/workspace/profile/event", {
+        method: "POST",
+        body: JSON.stringify({
+          event_type: "suggestion_accept",
+          session_id: sessionId,
+          data: { suggestion_type: s.type, suggestion_text: s.text.slice(0, 100) },
+        }),
+      }).catch(() => {});
+    }
+  }, [nodes, edges, setNodes, sessionId]);
 
   const onDismissSuggestion = useCallback((id: string) => {
-    setSuggestions(prev => prev.filter(s => s.id !== id));
-  }, []);
+    const s = suggestions.find(x => x.id === id);
+    setSuggestions(prev => prev.filter(x => x.id !== id));
+    if (sessionId && s) {
+      void api("/workspace/profile/event", {
+        method: "POST",
+        body: JSON.stringify({
+          event_type: "suggestion_dismiss",
+          session_id: sessionId,
+          data: { suggestion_type: s.type },
+        }),
+      }).catch(() => {});
+    }
+  }, [suggestions, sessionId]);
 
   // ─── Direct agent Q&A (SSE) ───────────────────────────────────────────────────
 
@@ -689,7 +734,18 @@ export default function ForgeWorkspace() {
         feedback: prev[agentId]?.feedback === vote ? null : vote,
       },
     }));
-  }, []);
+    // Persist feedback to backend for twin learning
+    if (sessionId) {
+      void api("/workspace/profile/event", {
+        method: "POST",
+        body: JSON.stringify({
+          event_type: "agent_feedback",
+          session_id: sessionId,
+          data: { agent_id: agentId, vote },
+        }),
+      }).catch(() => {});
+    }
+  }, [sessionId]);
 
   // ─── Auto-fetch insights when switching to insights tab ───────────────────────
 
@@ -699,6 +755,53 @@ export default function ForgeWorkspace() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rightPanelTab, sessionId]);
+
+  // ─── Personal Legal Twin — fetch profile + cross-matter ───────────────────────
+
+  const fetchTwinData = useCallback(async () => {
+    if (!sessionId || isLoadingTwin) return;
+    setIsLoadingTwin(true);
+    try {
+      const [profRes, crossRes] = await Promise.all([
+        api("/workspace/profile"),
+        api(`/workspace/sessions/${sessionId}/cross-matter`),
+      ]);
+      setTwinProfile(await profRes.json() as TwinProfile);
+      setCrossMatter(await crossRes.json() as CrossMatterData);
+    } catch { /* keep existing profile */ } finally {
+      setIsLoadingTwin(false);
+    }
+  }, [sessionId, isLoadingTwin]);
+
+  useEffect(() => {
+    if (rightPanelTab === "twin" && sessionId && !twinProfile && !isLoadingTwin) {
+      void fetchTwinData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rightPanelTab, sessionId]);
+
+  const onToggleLearning = useCallback(async (enabled: boolean) => {
+    try {
+      await api("/workspace/profile/settings", {
+        method: "PUT",
+        body: JSON.stringify({ learning_enabled: enabled }),
+      });
+      setTwinProfile(prev => prev ? { ...prev, learning_enabled: enabled } : prev);
+    } catch {
+      addToast({ type: "error", message: "Could not update learning settings." });
+    }
+  }, []);
+
+  const onResetProfile = useCallback(async () => {
+    try {
+      await api("/workspace/profile/reset", { method: "DELETE" });
+      setTwinProfile(null);
+      setCrossMatter(null);
+      addToast({ type: "success", message: "Learning data reset." });
+    } catch {
+      addToast({ type: "error", message: "Could not reset learning data." });
+    }
+  }, []);
 
   // ─── Close add menu on outside click ──────────────────────────────────────────
 
@@ -990,11 +1093,12 @@ export default function ForgeWorkspace() {
             borderBottom: `1px solid ${BORDER}`,
             flexShrink: 0,
           }}>
-            {(["sessions", "search", "insights", "simulate"] as const).map(tab => {
+            {(["sessions", "search", "insights", "simulate", "twin"] as const).map(tab => {
               const label =
                 tab === "sessions" ? t.tabFiles :
                 tab === "search"   ? t.tabSearch :
-                tab === "insights" ? t.tabIntel  : t.tabSim;
+                tab === "insights" ? t.tabIntel  :
+                tab === "twin"     ? t.tabTwin   : t.tabSim;
               const active = rightPanelTab === tab;
               return (
                 <button
@@ -1199,6 +1303,21 @@ export default function ForgeWorkspace() {
                 onRefresh={fetchInsights}
                 onAccept={onAcceptSuggestion}
                 onDismiss={onDismissSuggestion}
+              />
+            </div>
+          )}
+
+          {/* Personal Legal Twin tab — scrollable */}
+          {rightPanelTab === "twin" && (
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              <PersonalTwinPanel
+                profile={twinProfile}
+                crossMatter={crossMatter}
+                isLoading={isLoadingTwin}
+                sessionReady={!!sessionId}
+                onToggleLearning={onToggleLearning}
+                onReset={onResetProfile}
+                onRefresh={fetchTwinData}
               />
             </div>
           )}

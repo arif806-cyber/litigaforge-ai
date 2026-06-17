@@ -17,6 +17,7 @@ export interface WS {
   tabSearch:        string;
   tabIntel:         string;
   tabSim:           string;
+  tabTwin:          string;
   // Node presets
   nodeJudgment:     string;
   nodeFact:         string;
@@ -64,6 +65,7 @@ export const STRINGS: Record<Lang, WS> = {
     tabSearch:       "🔍 Search",
     tabIntel:        "✦ Intel",
     tabSim:          "⚡ Sim",
+    tabTwin:         "🧬 Twin",
     nodeJudgment:    "New Judgment",
     nodeFact:        "New Fact",
     nodeIssue:       "Legal Issue",
@@ -104,6 +106,7 @@ export const STRINGS: Record<Lang, WS> = {
     tabSearch:       "🔍 వెతుకు",
     tabIntel:        "✦ విశ్లేషణ",
     tabSim:          "⚡ అనుకరణ",
+    tabTwin:         "🧬 ట్విన్",
     nodeJudgment:    "కొత్త తీర్పు",
     nodeFact:        "కొత్త వాస్తవం",
     nodeIssue:       "న్యాయ సమస్య",
@@ -144,6 +147,7 @@ export const STRINGS: Record<Lang, WS> = {
     tabSearch:       "🔍 खोजें",
     tabIntel:        "✦ विश्लेषण",
     tabSim:          "⚡ सिमुलेशन",
+    tabTwin:         "🧬 ट्विन",
     nodeJudgment:    "नया निर्णय",
     nodeFact:        "नया तथ्य",
     nodeIssue:       "कानूनी मुद्दा",

@@ -826,6 +826,34 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("workspace tables init: %s", me)
 
+        # ── Personalization / Legal Twin ──────────────────────────────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_learning_events (
+                    id          SERIAL PRIMARY KEY,
+                    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    session_id  INTEGER REFERENCES workspace_sessions(id) ON DELETE SET NULL,
+                    event_type  VARCHAR(64) NOT NULL,
+                    event_data  JSONB DEFAULT '{}',
+                    created_at  TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_learning_events_user "
+                "ON user_learning_events (user_id, created_at DESC)"
+            )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_profile (
+                    id               SERIAL PRIMARY KEY,
+                    user_id          INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    learning_enabled BOOLEAN DEFAULT TRUE,
+                    updated_at       TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            logger.info("personalization tables ready")
+        except Exception as me:
+            logger.warning("personalization tables init: %s", me)
+
         logger.info("Database tables initialized")
 
         # ── Admin bootstrap ──────────────────────────────────────────────────
@@ -1008,7 +1036,7 @@ from routers import (
     paid_documents_router,
     passkeys_router, push_router,
     judgments_router, research_router,
-    llm_router, workspace_router,
+    llm_router, workspace_router, personalization_router,
 )
 from country_router import router as country_router
 
@@ -1033,7 +1061,8 @@ app.include_router(judgments_router,   prefix=BASE_PATH)
 app.include_router(research_router,    prefix=BASE_PATH)
 app.include_router(country_router,     prefix=BASE_PATH)
 app.include_router(llm_router,         prefix=BASE_PATH)
-app.include_router(workspace_router,   prefix=BASE_PATH)
+app.include_router(workspace_router,        prefix=BASE_PATH)
+app.include_router(personalization_router,  prefix=BASE_PATH)
 
 @app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
 async def serve_sitemap():

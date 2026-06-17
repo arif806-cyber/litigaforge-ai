@@ -565,7 +565,7 @@ _CONSULTS: dict[str, dict[str, str]] = {
 
 # ─── Multi-Agent Analysis  (SSE streaming) ────────────────────────────────────
 
-async def _stream_analysis(case_description: str, context: str):
+async def _stream_analysis(case_description: str, context: str, profile_ctx: str = ""):
     """Async generator: SSE events for each agent's analysis with reasoning & collaboration."""
 
     def sse(data: dict) -> str:
@@ -594,10 +594,12 @@ async def _stream_analysis(case_description: str, context: str):
                 for aid, txt in list(agent_outputs.items())[-2:]
             )
 
+        profile_line = f"\n\nUser Style Preference: {profile_ctx}" if profile_ctx else ""
         prompt = (
             f"Case Facts:\n{case_description or 'No specific case description provided — give general guidance.'}"
             f"{prior_ctx}"
             f"\n\nAdditional Context: {context or 'None'}"
+            f"{profile_line}"
             f"\n\n{agent['system']}"
             "\n\nIMPORTANT: Format your response EXACTLY as:\n"
             "REASONING: [Your 2-sentence analytical approach for this specific case]\n"
@@ -698,8 +700,31 @@ async def analyze_session(
 
     case_desc = body.case_description or row["case_description"] or ""
 
+    # Fetch personalization profile (non-blocking; silently skipped on error)
+    profile_ctx = ""
+    try:
+        from routers.personalization import compute_profile, _profile_prompt_context
+        async with pool.acquire() as pconn:
+            evt_rows = await pconn.fetch(
+                "SELECT event_type, event_data FROM user_learning_events "
+                "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",
+                user["id"],
+            )
+        events = [
+            {
+                "event_type": r["event_type"],
+                "data": json.loads(r["event_data"]) if r["event_data"] else {},
+            }
+            for r in evt_rows
+        ]
+        if events:
+            computed    = compute_profile(events)
+            profile_ctx = _profile_prompt_context(computed)
+    except Exception as _pe:
+        logger.debug("Profile context skipped: %s", _pe)
+
     async def generate():
-        async for chunk in _stream_analysis(case_desc, body.context):
+        async for chunk in _stream_analysis(case_desc, body.context, profile_ctx):
             yield chunk
 
     return StreamingResponse(

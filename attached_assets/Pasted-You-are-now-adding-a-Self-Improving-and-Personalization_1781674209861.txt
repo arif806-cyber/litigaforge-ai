@@ -1,0 +1,43 @@
+You are now adding a Self-Improving and Personalization layer to Forge Workspace. This should make the system feel truly intelligent and adaptive over time — something that learns from the user and becomes more useful with continued use.
+
+Current State: All core features are built and polished. Now we need to add intelligence that improves with usage.
+
+Requirements:
+
+1. **Self-Improving System**
+   - The system should learn from user behavior and feedback.
+   - Examples:
+     - If a user frequently accepts suggestions from a particular agent, that agent should get priority in future interactions.
+     - If a user often rejects or edits certain types of arguments, the system should adjust its suggestions accordingly.
+     - Track which types of Indian Kanoon judgments the user finds most useful and prioritize similar ones in the future.
+
+2. **Personal Legal Twin / Profile**
+   - Create a basic “Personal Profile” for the user that stores their preferences, style, and patterns over time.
+   - This profile should influence:
+     - How agents generate arguments and drafts
+     - Which proactive suggestions appear
+     - How judgments are ranked and recommended
+   - The profile should improve automatically as the user works more in Forge.
+
+3. **Cross-Matter Intelligence**
+   - Allow the system to find connections between different matters the user has worked on.
+   - Example: “This argument pattern was successful in 3 of your previous matters. Would you like to apply a similar approach here?”
+   - When a new Indian Kanoon judgment is relevant to multiple saved matters, the system should proactively notify the user.
+
+4. **Feedback Loop**
+   - Add simple ways for users to give feedback on AI outputs (e.g., thumbs up/down, “This was helpful”, “Not relevant”).
+   - Use this feedback to improve future responses and suggestions.
+
+5. **Smart Recommendations**
+   - Based on the user’s history, proactively recommend:
+     - Previously used strategies that might apply to the current matter
+     - Specific agents that have been most useful for them in the past
+     - Types of judgments or legal angles they tend to prefer
+
+6. **Privacy & Control**
+   - Make it clear to the user what data is being used for personalization.
+   - Allow users to view, reset, or disable the learning features if they want.
+
+Goal: Make Forge Workspace feel like it has memory and gets smarter the more the user works with it. This should be one of the most differentiating and futuristic features of the system.
+
+Focus on making the self-improvement and personalization feel natural, useful, and advanced.
