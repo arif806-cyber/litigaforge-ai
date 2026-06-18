@@ -66,6 +66,7 @@ interface NodeShellProps {
   collapsed?: boolean;
   onToggleCollapse?: (e: React.MouseEvent) => void;
   simHighlight?: boolean;
+  impactFlash?: "positive" | "negative";
 }
 
 function NodeShell({
@@ -79,7 +80,9 @@ function NodeShell({
   collapsed,
   onToggleCollapse,
   simHighlight,
+  impactFlash,
 }: NodeShellProps) {
+  const hasFlash = Boolean(impactFlash);
   const glow    = simHighlight
     ? SIM_HIGHLIGHT_GLOW
     : selected ? selectedGlow(accentColor) : scoreGlow(score, accentColor);
@@ -108,10 +111,11 @@ function NodeShell({
         minWidth: 220,
         maxWidth: 280,
         padding: "10px 12px",
-        boxShadow: glow
-          ? `${glow}, 0 8px 32px rgba(0,0,0,0.6)`
-          : "0 4px 20px rgba(0,0,0,0.5)",
-        transition: "box-shadow 0.25s, border-color 0.2s",
+        boxShadow: hasFlash
+          ? undefined
+          : glow ? `${glow}, 0 8px 32px rgba(0,0,0,0.6)` : "0 4px 20px rgba(0,0,0,0.5)",
+        animation: hasFlash ? `forge-impact-${impactFlash} 1.5s ease-out forwards` : undefined,
+        transition: hasFlash ? "none" : "box-shadow 0.25s, border-color 0.2s",
         position: "relative",
         overflow: "hidden",
       }}>
@@ -214,6 +218,7 @@ export const JudgmentNode = memo(({ id, data, selected, isConnectable }: NodePro
     <NodeShell bgColor="#081c38" borderColor="#0d9488" accentColor="#14b8a6"
       selected={selected} isConnectable={isConnectable} score={score}
       simHighlight={Boolean(d.simHighlight)}
+      impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="⚖️" label={String(d.label || "Judgment")} typeLabel="Precedent" color="#14b8a6"
         badge={d.url ? (
@@ -257,6 +262,7 @@ export const FactNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
     <NodeShell bgColor="#050e22" borderColor="#2563eb" accentColor="#60a5fa"
       selected={selected} isConnectable={isConnectable} score={score}
       simHighlight={Boolean(d.simHighlight)}
+      impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="📋" label={String(d.label || "Fact")} typeLabel="Key Fact" color="#60a5fa" />
       {!collapsed && (
@@ -287,6 +293,7 @@ export const IssueNode = memo(({ id, data, selected, isConnectable }: NodeProps)
     <NodeShell bgColor="#13082e" borderColor="#9333ea" accentColor="#c084fc"
       selected={selected} isConnectable={isConnectable} score={score}
       simHighlight={Boolean(d.simHighlight)}
+      impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="🏛️" label={String(d.label || "Legal Issue")} typeLabel="Legal Issue" color="#c084fc" />
       {!collapsed && (
@@ -313,6 +320,7 @@ export const ArgumentNode = memo(({ id, data, selected, isConnectable }: NodePro
     <NodeShell bgColor="#051f1c" borderColor="#0d9488" accentColor="#2dd4bf"
       selected={selected} isConnectable={isConnectable} score={score}
       simHighlight={Boolean(d.simHighlight)}
+      impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="🗣️" label={String(d.label || "Argument")} typeLabel="Argument" color="#2dd4bf"
         badge={
@@ -346,6 +354,7 @@ export const RiskNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
     <NodeShell bgColor="#200a0a" borderColor={sevColor} accentColor={sevColor}
       selected={selected} isConnectable={isConnectable} score={score}
       simHighlight={Boolean(d.simHighlight)}
+      impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="⚠️" label={String(d.label || "Risk")} typeLabel="Risk Factor" color={sevColor}
         badge={
@@ -387,6 +396,7 @@ export const StrategyNode = memo(({ id, data, selected, isConnectable }: NodePro
     <NodeShell bgColor="#1c1100" borderColor="#d97706" accentColor="#fbbf24"
       selected={selected} isConnectable={isConnectable} score={score}
       simHighlight={Boolean(d.simHighlight)}
+      impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
       <NodeHeader icon="💡" label={String(d.label || "Strategy")} typeLabel="Strategy" color="#fbbf24"
         badge={
@@ -406,6 +416,117 @@ export const StrategyNode = memo(({ id, data, selected, isConnectable }: NodePro
 });
 StrategyNode.displayName = "StrategyNode";
 
+// ─── Cluster Node ─────────────────────────────────────────────────────────────
+
+export const ClusterNode = memo(({ id, data, selected, isConnectable }: NodeProps) => {
+  const d          = data as Record<string, unknown>;
+  const memberIds  = (d.memberIds as string[]) ?? [];
+  const typeCounts = (d.typeCounts as Record<string, number>) ?? {};
+
+  const TYPE_ICONS: Record<string, string> = {
+    judgment: "⚖️", fact: "📋", issue: "🏛️",
+    argument: "🗣️", risk: "⚠️", strategy: "💡",
+  };
+
+  const typeSummary = Object.entries(typeCounts)
+    .map(([t, c]) => `${c}${TYPE_ICONS[t] ?? ""}`)
+    .join("  ");
+
+  const hStyle: React.CSSProperties = {
+    background: "#475569",
+    border: "1.5px solid rgba(7,13,26,0.8)",
+    width: 9, height: 9, borderRadius: "50%",
+    transition: "opacity 0.15s, transform 0.15s",
+    boxShadow: "0 0 6px #47556988",
+  };
+
+  return (
+    <>
+      <Handle type="target"  position={Position.Top}    id="top"    isConnectable={isConnectable} style={hStyle} />
+      <Handle type="source"  position={Position.Right}  id="right"  isConnectable={isConnectable} style={hStyle} />
+      <Handle type="source"  position={Position.Bottom} id="bottom" isConnectable={isConnectable} style={hStyle} />
+      <Handle type="target"  position={Position.Left}   id="left"   isConnectable={isConnectable} style={hStyle} />
+
+      <div style={{
+        background: "#0c1225",
+        border: `1.5px solid ${selected ? "#64748b" : "#334155"}`,
+        borderRadius: 12,
+        minWidth: 240,
+        maxWidth: 320,
+        padding: "10px 12px",
+        boxShadow: selected
+          ? "0 0 0 2px #64748b88, 0 0 28px #47556933, 0 8px 32px rgba(0,0,0,0.6)"
+          : "0 4px 20px rgba(0,0,0,0.5)",
+        transition: "box-shadow 0.25s, border-color 0.2s",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* Top gradient bar */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: 2,
+          background: "linear-gradient(90deg, transparent, #47556988, transparent)",
+          borderRadius: "12px 12px 0 0",
+        }} />
+
+        {/* Header */}
+        <div style={{ marginBottom: 6, paddingRight: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
+            <span style={{ fontSize: 13 }}>📦</span>
+            <span style={{
+              fontSize: 8.5, fontWeight: 800, textTransform: "uppercase",
+              letterSpacing: "0.1em", color: "#64748b",
+            }}>Cluster</span>
+            <span style={{
+              marginLeft: "auto", fontSize: 8.5, fontWeight: 800, color: "#475569",
+              background: "rgba(71,85,105,0.2)", padding: "1px 7px", borderRadius: 8,
+            }}>
+              {memberIds.length} nodes
+            </span>
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 12, color: "#e2e8f0", lineHeight: 1.35 }}>
+            {String(d.label || "Group")}
+          </div>
+        </div>
+
+        {/* Type breakdown */}
+        {typeSummary && (
+          <div style={{ fontSize: 10.5, color: "#475569", marginBottom: 8, letterSpacing: "0.03em" }}>
+            {typeSummary}
+          </div>
+        )}
+
+        {/* Ungroup button */}
+        <button
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent("lf-cluster-expand", { detail: { clusterId: id } }));
+          }}
+          data-testid={`forge-ungroup-${id}`}
+          style={{
+            width: "100%", padding: "5px 0", borderRadius: 6,
+            border: "1px solid rgba(71,85,105,0.35)",
+            background: "rgba(71,85,105,0.1)",
+            color: "#64748b", fontSize: 9.5, fontWeight: 700,
+            cursor: "pointer", transition: "all 0.15s",
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = "rgba(71,85,105,0.22)";
+            (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = "rgba(71,85,105,0.1)";
+            (e.currentTarget as HTMLButtonElement).style.color = "#64748b";
+          }}
+        >
+          Ungroup (Ctrl+Shift+G)
+        </button>
+      </div>
+    </>
+  );
+});
+ClusterNode.displayName = "ClusterNode";
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export const nodeTypes = {
@@ -415,4 +536,5 @@ export const nodeTypes = {
   argument: ArgumentNode,
   risk:     RiskNode,
   strategy: StrategyNode,
+  cluster:  ClusterNode,
 };

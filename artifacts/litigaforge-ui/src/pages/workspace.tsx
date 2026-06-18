@@ -20,6 +20,8 @@ import SearchPanel from "@/components/workspace/SearchPanel";
 import { LangToggle, STRINGS, getInitialLang, type Lang } from "@/components/workspace/WorkspaceLang";
 import { NoSessionWelcome, EmptyCanvasGuide } from "@/components/workspace/ForgeWelcome";
 import { ToastStack, type ForgeToastItem } from "@/components/workspace/ForgeToast";
+import { layoutWithDagre } from "@/components/workspace/canvasLayout";
+import ConnectionHintsTray, { type ConnectionHint } from "@/components/workspace/ConnectionHintsTray";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -129,6 +131,45 @@ function makeDefaultAgentStates(): Record<string, AgentState> {
   return Object.fromEntries(AGENT_IDS.map(id => [id, { status: "idle" as const, text: "" }]));
 }
 
+// ─── Connection hint similarity ────────────────────────────────────────────────
+
+const HINT_STOPWORDS = new Set([
+  "the","of","and","in","a","an","is","to","with","by","for","on","at","or",
+  "v.","vs","that","this","which","from","under","such","any","all","has",
+  "had","have","been","not","was","are","were","but","its","their",
+]);
+
+function computeConnectionHints(newNode: Node, existing: Node[]): ConnectionHint[] {
+  const d         = newNode.data as Record<string, unknown>;
+  const summary   = String(d.summary || d.label || "").toLowerCase();
+  const actscited = Array.isArray(d.actscited) ? (d.actscited as string[]) : [];
+  const newKws    = summary.split(/\W+/).filter(w => w.length > 3 && !HINT_STOPWORDS.has(w));
+
+  const scored: Array<{ node: Node; score: number }> = [];
+  for (const n of existing) {
+    if (n.id === newNode.id || n.hidden || n.type === "cluster") continue;
+    const nd   = n.data as Record<string, unknown>;
+    const text = [nd.label, nd.content, nd.description, nd.summary]
+      .filter(Boolean).join(" ").toLowerCase();
+    let score = 0;
+    for (const kw of newKws) if (text.includes(kw)) score++;
+    for (const act of actscited) if (text.includes(act.toLowerCase())) score += 2;
+    if (score > 0) scored.push({ node: n, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, 3).map(({ node }) => {
+    const relType: RelType =
+      node.type === "argument" ? "supports" :
+      node.type === "risk"     ? "questions" : "cites";
+    return {
+      sourceId:    node.id,
+      sourceLabel: String((node.data as Record<string, unknown>).label || ""),
+      relType,
+    };
+  });
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ForgeWorkspace() {
@@ -159,6 +200,9 @@ export default function ForgeWorkspace() {
   const [toasts, setToasts]                 = useState<ForgeToastItem[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [sessionSearch, setSessionSearch]   = useState("");
+  const [fitViewTrigger, setFitViewTrigger] = useState(0);
+  const [connectionHints, setConnectionHints] = useState<ConnectionHint[]>([]);
+  const [hintNewNodeId, setHintNewNodeId]   = useState<string | null>(null);
   const t = STRINGS[lang];
 
   const [isMobile, setIsMobile]           = useState(() => window.innerWidth < 768);
@@ -400,6 +444,7 @@ export default function ForgeWorkspace() {
   }
 
   function propagateImpact(currentEdges: Edge[]) {
+    const flashedIds: string[] = [];
     setNodes(ns => {
       const updated = ns.map(n => ({ ...n, data: { ...(n.data as Record<string, unknown>) } }));
       const idxMap  = new Map(updated.map((n, i) => [n.id, i]));
@@ -408,16 +453,34 @@ export default function ForgeWorkspace() {
         const ti = idxMap.get(e.target);
         if (si === undefined || ti === undefined) continue;
         const srcScore = Number((updated[si].data as Record<string, unknown>).impact_score ?? 70);
-        const d = updated[ti].data as Record<string, unknown>;
+        const d        = updated[ti].data as Record<string, unknown>;
         const tgtScore = Number(d.impact_score ?? 70);
-        const rel = ((e.data as Record<string, unknown>)?.relType as string) ?? "";
+        const rel      = ((e.data as Record<string, unknown>)?.relType as string) ?? "";
         let delta = 0;
-        if (rel === "supports")     delta =  Math.round(srcScore * 0.08);
-        else if (rel === "cites")   delta =  5;
+        if (rel === "supports")         delta =  Math.round(srcScore * 0.08);
+        else if (rel === "cites")       delta =  5;
         else if (rel === "contradicts") delta = -10;
         if (delta !== 0) {
-          updated[ti] = { ...updated[ti], data: { ...d, impact_score: Math.min(100, Math.max(5, tgtScore + delta)) } };
+          updated[ti] = {
+            ...updated[ti],
+            data: {
+              ...d,
+              impact_score: Math.min(100, Math.max(5, tgtScore + delta)),
+              impactFlash:  delta > 0 ? "positive" : "negative",
+            },
+          };
+          flashedIds.push(updated[ti].id);
         }
+      }
+      // Clear flash after 1.6 s — mirrors simHighlight clear pattern
+      if (flashedIds.length > 0) {
+        setTimeout(() => {
+          setNodes(prev => prev.map(n => {
+            if (!flashedIds.includes(n.id)) return n;
+            const { impactFlash: _f, ...rest } = n.data as Record<string, unknown>;
+            return { ...n, data: rest };
+          }));
+        }, 1600);
       }
       return updated;
     });
@@ -504,6 +567,15 @@ export default function ForgeWorkspace() {
         message: `${addedCount} judgment${addedCount > 1 ? "s" : ""} added to canvas`,
         duration: 3000,
       });
+    }
+    // Smart connection hints: surface top-3 related nodes for new judgments
+    const newJudgments = newNodes.filter(n => n.type === "judgment");
+    if (newJudgments.length > 0) {
+      const hints = computeConnectionHints(newJudgments[0], nodes);
+      if (hints.length > 0) {
+        setConnectionHints(hints);
+        setHintNewNodeId(newJudgments[0].id);
+      }
     }
     // Fire judgment_add learning events for each added judgment node
     if (sessionId) {
@@ -986,6 +1058,39 @@ export default function ForgeWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onAskAgent]);
 
+  // ─── Cluster expand custom event ─────────────────────────────────────────────
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const { clusterId } = (e as CustomEvent<{ clusterId: string }>).detail;
+      handleExpandCluster(clusterId);
+    }
+    window.addEventListener("lf-cluster-expand", handler);
+    return () => window.removeEventListener("lf-cluster-expand", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, edges]);
+
+  // ─── Ctrl+G keyboard shortcut for grouping ───────────────────────────────────
+
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "g" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          const selectedCluster = nodes.find(n => n.selected && n.type === "cluster");
+          if (selectedCluster) handleExpandCluster(selectedCluster.id);
+        } else {
+          handleGroupSelection();
+        }
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, edges]);
+
   // ─── Personal Legal Twin — fetch profile + cross-matter ───────────────────────
 
   const fetchTwinData = useCallback(async () => {
@@ -1035,6 +1140,88 @@ export default function ForgeWorkspace() {
       addToast({ type: "error", message: "Could not reset learning data." });
     }
   }, []);
+
+  // ─── Canvas layout / grouping ─────────────────────────────────────────────────
+
+  function handleAutoLayout() {
+    if (nodes.filter(n => !n.hidden).length < 2) return;
+    pushHistory([...nodes], [...edges]);
+    setNodes(layoutWithDagre(nodes, edges));
+    setFitViewTrigger(t => t + 1);
+  }
+
+  function handleGroupSelection() {
+    const selected = nodes.filter(n => n.selected && n.type !== "cluster");
+    if (selected.length < 2) {
+      addToast({ type: "warning", message: "Select 2+ nodes to group (Ctrl+G)", duration: 2500 });
+      return;
+    }
+    const cx = selected.reduce((s, n) => s + n.position.x, 0) / selected.length;
+    const cy = selected.reduce((s, n) => s + n.position.y, 0) / selected.length;
+    const memberIds   = selected.map(n => n.id);
+    const memberIdSet = new Set(memberIds);
+    const externalEdges = edges.filter(e =>
+      (memberIdSet.has(e.source) && !memberIdSet.has(e.target)) ||
+      (!memberIdSet.has(e.source) && memberIdSet.has(e.target))
+    );
+    const typeCounts: Record<string, number> = {};
+    selected.forEach(n => { const t = n.type ?? "node"; typeCounts[t] = (typeCounts[t] ?? 0) + 1; });
+    const clusterId = `cluster-${Date.now()}`;
+    const proxyEdges: Edge[] = externalEdges.map(e => {
+      const srcIsMember = memberIdSet.has(e.source);
+      return {
+        id:     `proxy-${e.id}`,
+        source:  srcIsMember ? clusterId : e.source,
+        target:  srcIsMember ? e.target  : clusterId,
+        type:   "labeled",
+        data:    e.data,
+        style:   e.style,
+        animated: e.animated ?? false,
+      } as Edge;
+    });
+    const clusterNode: Node = {
+      id:       clusterId,
+      type:     "cluster",
+      position: { x: cx, y: cy },
+      data: {
+        label:                 `Group (${selected.length})`,
+        memberIds,
+        typeCounts,
+        originalExternalEdges: externalEdges,
+        proxyEdgeIds:          proxyEdges.map(e => e.id),
+      },
+    };
+    pushHistory([...nodes], [...edges]);
+    setNodes(prev => [
+      ...prev.map(n => memberIdSet.has(n.id) ? { ...n, hidden: true, selected: false } : n),
+      clusterNode,
+    ]);
+    setEdges(prev => [
+      ...prev.filter(e => !externalEdges.some(xe => xe.id === e.id)),
+      ...proxyEdges,
+    ]);
+    addToast({ type: "info", message: `${selected.length} nodes grouped — Ctrl+Shift+G to ungroup`, duration: 3500 });
+  }
+
+  function handleExpandCluster(clusterId: string) {
+    const clusterNode = nodes.find(n => n.id === clusterId);
+    if (!clusterNode) return;
+    const d = clusterNode.data as Record<string, unknown>;
+    const memberIds             = (d.memberIds as string[]) ?? [];
+    const proxyEdgeIds          = new Set((d.proxyEdgeIds as string[]) ?? []);
+    const originalExternalEdges = (d.originalExternalEdges as Edge[]) ?? [];
+    const memberIdSet           = new Set(memberIds);
+    pushHistory([...nodes], [...edges]);
+    setNodes(prev => prev
+      .filter(n => n.id !== clusterId)
+      .map(n => memberIdSet.has(n.id) ? { ...n, hidden: false } : n)
+    );
+    setEdges(prev => [
+      ...prev.filter(e => !proxyEdgeIds.has(e.id)),
+      ...originalExternalEdges,
+    ]);
+    addToast({ type: "info", message: "Group expanded.", duration: 2000 });
+  }
 
   // ─── Show first-visit tour when a session is first loaded ────────────────────
 
@@ -1264,6 +1451,27 @@ export default function ForgeWorkspace() {
           </>
         )}
 
+        {/* Desktop: Auto-layout + Group */}
+        {!isMobile && nodes.length >= 2 && (
+          <>
+            <button
+              onClick={handleAutoLayout}
+              data-testid="forge-auto-layout"
+              title="Auto-arrange all nodes in a hierarchy (Dagre layout)"
+              style={toolbarBtn(false)}
+            >⊞ Layout</button>
+            <button
+              onClick={handleGroupSelection}
+              data-testid="forge-group-nodes"
+              title="Group selected nodes into a cluster (Ctrl+G)"
+              style={{
+                ...toolbarBtn(false),
+                opacity: nodes.filter(n => n.selected).length >= 2 ? 1 : 0.4,
+              }}
+            >⊕ Group</button>
+          </>
+        )}
+
         {/* Save */}
         <button
           onClick={() => saveCanvas(false)}
@@ -1423,7 +1631,37 @@ export default function ForgeWorkspace() {
             onDeleteSelected={deleteSelectedNodes}
             canUndo={canUndo}
             canRedo={canRedo}
+            fitViewTrigger={fitViewTrigger}
           />
+          {/* Connection hints tray — slides from bottom edge */}
+          {connectionHints.length > 0 && hintNewNodeId && (
+            <ConnectionHintsTray
+              hints={connectionHints}
+              onAccept={(hint) => {
+                const rel = RELATIONSHIP_TYPES[hint.relType];
+                const newEdge: Edge = {
+                  id: `hint-${hint.sourceId}-${hintNewNodeId}-${Date.now()}`,
+                  source:  hint.sourceId,
+                  target:  hintNewNodeId,
+                  type:   "labeled",
+                  data:   { relType: hint.relType, label: rel.label, color: rel.color },
+                  style:  { stroke: rel.color, strokeWidth: 1.5 },
+                  animated: true,
+                };
+                pushHistory([...nodes], [...edges]);
+                setEdges(eds => [...eds, newEdge]);
+                const remaining = connectionHints.filter(h => h.sourceId !== hint.sourceId);
+                setConnectionHints(remaining);
+                if (remaining.length === 0) setHintNewNodeId(null);
+              }}
+              onDismissHint={(sourceId) => {
+                const remaining = connectionHints.filter(h => h.sourceId !== sourceId);
+                setConnectionHints(remaining);
+                if (remaining.length === 0) setHintNewNodeId(null);
+              }}
+              onDismissAll={() => { setConnectionHints([]); setHintNewNodeId(null); }}
+            />
+          )}
           {/* Welcome overlays */}
           {!sessionId && (
             <NoSessionWelcome

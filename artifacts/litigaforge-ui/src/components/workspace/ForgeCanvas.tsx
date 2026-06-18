@@ -38,6 +38,7 @@ function miniMapNodeColor(node: Node) {
     argument: "#14b8a6",
     risk:     "#ef4444",
     strategy: "#f59e0b",
+    cluster:  "#475569",
   };
   return map[node.type ?? ""] ?? "#475569";
 }
@@ -131,6 +132,7 @@ interface InternalProps {
   proximitySuggestion: { sourceId: string; targetId: string } | null;
   onProximityConnect: (sourceId: string, targetId: string) => void;
   onProximityCancel: () => void;
+  fitViewTrigger?: number;
 }
 
 function CanvasInternals({
@@ -139,6 +141,7 @@ function CanvasInternals({
   pendingConn, onConnectTyped, onPendingCancel,
   edgePicker, onEdgeTypeChange, onEdgePickerClose,
   proximitySuggestion, onProximityConnect, onProximityCancel,
+  fitViewTrigger,
 }: InternalProps) {
   const { fitView } = useReactFlow();
   const [showSearch, setShowSearch] = useState(false);
@@ -173,6 +176,13 @@ function CanvasInternals({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onUndo, onRedo, onDeleteSelected, onPendingCancel, onEdgePickerClose, onProximityCancel]);
+
+  // ── Fit-view when triggered from workspace (auto-layout etc.) ─────────────
+  useEffect(() => {
+    if (!fitViewTrigger) return;
+    const tid = setTimeout(() => fitView({ duration: 650, padding: 0.25 }), 60);
+    return () => clearTimeout(tid);
+  }, [fitViewTrigger, fitView]);
 
   // ── Canvas search ─────────────────────────────────────────────────────────
   function handleSearch(text: string) {
@@ -287,7 +297,7 @@ function CanvasInternals({
       {/* Keyboard hint */}
       <Panel position="top-right" style={{ padding: "5px 10px", background: "rgba(7,13,26,0.7)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
         <div style={{ fontSize: 8.5, color: "#334155", lineHeight: 1.7 }}>
-          Ctrl+F Search · Del Remove · Ctrl+Z Undo
+          Ctrl+F Search · Del Remove · Ctrl+Z Undo · Ctrl+G Group
         </div>
       </Panel>
     </>
@@ -308,6 +318,7 @@ export interface ForgeCanvasProps {
   onDeleteSelected: () => void;
   canUndo:          boolean;
   canRedo:          boolean;
+  fitViewTrigger?:  number;
 }
 
 // Inject global CSS once
@@ -318,6 +329,16 @@ function injectCSS() {
   const s = document.createElement("style");
   s.id = "forge-rf-css";
   s.textContent = `
+    @keyframes forge-impact-positive {
+      0%   { box-shadow: 0 0 0 1.5px #22c55e88, 0 0 24px #22c55e44, 0 4px 20px rgba(0,0,0,0.5); }
+      55%  { box-shadow: 0 0 0 3px   #22c55ecc, 0 0 48px #22c55e55, 0 4px 20px rgba(0,0,0,0.5); }
+      100% { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    }
+    @keyframes forge-impact-negative {
+      0%   { box-shadow: 0 0 0 1.5px #ef444488, 0 0 24px #ef444444, 0 4px 20px rgba(0,0,0,0.5); }
+      55%  { box-shadow: 0 0 0 3px   #ef4444cc, 0 0 48px #ef444455, 0 4px 20px rgba(0,0,0,0.5); }
+      100% { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    }
     .forge-canvas .react-flow__background { background: #070d1a !important; }
     .forge-canvas .react-flow__handle { opacity: 0 !important; transition: opacity 0.15s, transform 0.15s !important; }
     .forge-canvas .react-flow__node:hover .react-flow__handle,
@@ -340,6 +361,7 @@ export default function ForgeCanvas({
   onConnectTyped, onEdgeTypeChange,
   onUndo, onRedo, onDeleteSelected,
   canUndo, canRedo,
+  fitViewTrigger,
 }: ForgeCanvasProps) {
   injectCSS();
 
@@ -451,6 +473,7 @@ export default function ForgeCanvas({
           proximitySuggestion={proximitySuggestion}
           onProximityConnect={handleProximityConnect}
           onProximityCancel={() => setProximitySuggestion(null)}
+          fitViewTrigger={fitViewTrigger}
         />
       </ReactFlow>
 
