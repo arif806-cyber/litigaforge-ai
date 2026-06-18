@@ -64,7 +64,12 @@ const AGENTS = [
   },
 ];
 
-const DELIVERABLES = ['Lawyer Package PDF', 'IK Precedents', 'Fee Invoice', 'Action Plan'];
+const FOLDER_DOCS = [
+  { icon: '📋', label: 'Lawyer Package',  color: '#0d9488' },
+  { icon: '📊', label: 'Analysis Report', color: '#a855f7' },
+  { icon: '⚖️', label: 'Vakalatnama',    color: '#f59e0b' },
+  { icon: '🧾', label: 'Fee Invoice',     color: '#60a5fa' },
+];
 
 export function Scene5() {
   const [phase, setPhase] = useState(0);
@@ -315,11 +320,11 @@ export function Scene5() {
             <div className="flex justify-between text-[0.75vw] font-mono mb-2">
               <span className="text-[#0d9488]">
                 {phase >= 6
-                  ? '✓  FORGE COMPLETE — 6-SECTION LAWYER PACKAGE + PDF + INVOICE READY'
-                  : '⟳  SYNTHESIZING 3 AGENTS + 5 LIVE IK JUDGMENTS…'}
+                  ? '✓  FORGE COMPLETE — 4 DOCUMENTS GENERATED · 📁 CASE FOLDER READY'
+                  : '⟳  SYNTHESIZING 5 AGENTS + 5 LIVE IK JUDGMENTS…'}
               </span>
               <span className="text-white/50">
-                {phase >= 6 ? '6 sections  ·  PDF + Invoice generated' : `${Math.round((phase >= 6 ? 1 : synthPct) * 100)}%`}
+                {phase >= 6 ? '4 documents  ·  All PDFs ready' : `${Math.round((phase >= 6 ? 1 : synthPct) * 100)}%`}
               </span>
             </div>
             <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -335,30 +340,54 @@ export function Scene5() {
           </motion.div>
         )}
 
-        {/* Package Ready */}
+        {/* Case Folder Created */}
         {phase >= 6 && (
           <motion.div
-            className="flex gap-3 shrink-0"
-            initial={{ opacity: 0, y: 12 }}
+            className="shrink-0"
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', bounce: 0.4 }}
+            transition={{ type: 'spring', bounce: 0.35 }}
           >
-            {DELIVERABLES.map((doc, i) => (
-              <motion.div
-                key={doc}
-                className="flex-1 rounded-xl px-3 py-2.5 text-center"
-                style={{ background: 'rgba(13,148,136,0.1)', border: '1px solid rgba(13,148,136,0.3)' }}
-                initial={{ opacity: 0, scale: 0.88 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.1, type: 'spring', bounce: 0.45 }}
+            {/* Folder banner */}
+            <div
+              className="flex items-center gap-3 rounded-xl px-4 py-2.5 mb-2"
+              style={{ background: 'rgba(13,148,136,0.07)', border: '1px solid rgba(13,148,136,0.22)' }}
+            >
+              <span className="text-[1.2vw] shrink-0">📁</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[0.72vw] font-mono font-bold text-[#0d9488]">CASE FOLDER AUTO-CREATED</p>
+                <p className="text-[0.6vw] font-mono text-white/35 truncate">
+                  MACT_Motor_Accident_20260618 · 4 documents · Ready to download
+                </p>
+              </div>
+              <motion.span
+                className="text-[0.62vw] font-mono shrink-0 px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(13,148,136,0.15)', color: '#0d9488', border: '1px solid rgba(13,148,136,0.35)' }}
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 2, repeat: Infinity }}
               >
-                <div className="text-[1vw] mb-1">
-                  {i === 0 ? '📄' : i === 1 ? '⚖️' : i === 2 ? '🧾' : '📋'}
-                </div>
-                <p className="text-[0.65vw] font-mono text-white/70 leading-tight">{doc}</p>
-                <p className="text-[0.6vw] font-mono text-[#0d9488] mt-0.5">Ready ↓</p>
-              </motion.div>
-            ))}
+                ✓ All PDFs ready
+              </motion.span>
+            </div>
+            {/* 4 doc pills */}
+            <div className="flex gap-2">
+              {FOLDER_DOCS.map((d, i) => (
+                <motion.div
+                  key={d.label}
+                  className="flex-1 rounded-xl px-2 py-2.5 text-center"
+                  style={{ background: `${d.color}12`, border: `1px solid ${d.color}35` }}
+                  initial={{ opacity: 0, scale: 0.82, y: 6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: i * 0.13, type: 'spring', bounce: 0.5 }}
+                >
+                  <div className="text-[1.1vw] mb-0.5">{d.icon}</div>
+                  <p className="text-[0.6vw] font-mono font-bold leading-tight" style={{ color: d.color }}>
+                    {d.label}
+                  </p>
+                  <p className="text-[0.55vw] font-mono text-[#0d9488] mt-0.5">↓ Download</p>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
         )}
       </div>
