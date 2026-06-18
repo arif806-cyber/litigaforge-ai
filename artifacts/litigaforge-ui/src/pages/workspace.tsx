@@ -200,6 +200,10 @@ export default function ForgeWorkspace() {
   const [toasts, setToasts]                 = useState<ForgeToastItem[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [sessionSearch, setSessionSearch]   = useState("");
+  const [sessionFolder, setSessionFolder]   = useState<{
+    id: number; folder_name: string; file_count: number; updated_at: string;
+  } | null>(null);
+  const [isFetchingFolder, setIsFetchingFolder] = useState(false);
   const [fitViewTrigger, setFitViewTrigger] = useState(0);
   const [connectionHints, setConnectionHints] = useState<ConnectionHint[]>([]);
   const [hintNewNodeId, setHintNewNodeId]   = useState<string | null>(null);
@@ -241,6 +245,19 @@ export default function ForgeWorkspace() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  async function fetchSessionFolder(sid: number) {
+    setIsFetchingFolder(true);
+    try {
+      const res     = await api("/workspace/folders");
+      const folders = await res.json() as Array<{ id: number; folder_name: string; file_count: number; updated_at: string; session_id: number }>;
+      setSessionFolder(folders.find(f => f.session_id === sid) ?? null);
+    } catch {
+      setSessionFolder(null);
+    } finally {
+      setIsFetchingFolder(false);
+    }
+  }
+
   async function loadSessions() {
     setIsLoadingSessions(true);
     try {
@@ -272,6 +289,7 @@ export default function ForgeWorkspace() {
       setNodes([]);
       setEdges([]);
       setAgentStates(makeDefaultAgentStates());
+      setSessionFolder(null);
     } catch {
       addToast({ type: "error", message: "Could not create workspace", detail: "Check your connection and try again." });
     }
@@ -311,6 +329,7 @@ export default function ForgeWorkspace() {
 
   async function openSession(s: WorkspaceSession) {
     try {
+      setSessionFolder(null);
       const res  = await api(`/workspace/sessions/${s.id}`);
       const full = await res.json() as WorkspaceSession;
       setSessionId(full.id);
@@ -324,6 +343,8 @@ export default function ForgeWorkspace() {
       setSynthesisScore(null);
       setSuggestions([]);
       setSimState({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
+      // Load case folder for this session (non-critical)
+      void fetchSessionFolder(full.id);
       // Load saved agent feedback for this session (non-critical)
       try {
         const fbRes = await api(`/workspace/sessions/${full.id}/feedback`);
@@ -399,6 +420,7 @@ export default function ForgeWorkspace() {
       setSuggestions([]);
       setCollabFeed([]);
       setSynthesisScore(null);
+      setSessionFolder(null);
       if (remaining.length > 0) {
         void openSession(remaining[0]);
       } else {
@@ -736,8 +758,11 @@ export default function ForgeWorkspace() {
               // Auto-trigger proactive insights 1.5s after synthesis completes
               setTimeout(() => setAutoInsightCtx("agent_synthesis"), 1500);
             } else if (type === "folder_created") {
-              const fName  = event.folder_name as string;
-              const fCount = event.file_count  as number;
+              const fName    = event.folder_name as string;
+              const fCount   = event.file_count  as number;
+              const folderId = event.folder_id   as number;
+              // Update the persistent folder panel immediately
+              setSessionFolder({ id: folderId, folder_name: fName, file_count: fCount, updated_at: new Date().toISOString() });
               addToast({
                 type:     "success",
                 message:  "📁 Case folder created",
@@ -2080,6 +2105,63 @@ export default function ForgeWorkspace() {
                 })
               }
             </div>
+
+            {/* ── Case Folder panel ─────────────────────────────── */}
+            {sessionId && (
+              <div style={{
+                flexShrink: 0,
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                padding: "10px 12px 12px",
+              }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+                  📁 Case Folder
+                </div>
+
+                {isFetchingFolder && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 0", color: "#64748b", fontSize: 10 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: TEAL, animation: "forge-pulse 1.2s ease-in-out infinite" }} />
+                    Loading…
+                  </div>
+                )}
+
+                {!isFetchingFolder && !sessionFolder && (
+                  <div style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px dashed rgba(255,255,255,0.07)",
+                    textAlign: "center" as const,
+                  }}>
+                    <div style={{ fontSize: 18, marginBottom: 5, opacity: 0.4 }}>🗂️</div>
+                    <div style={{ fontSize: 9.5, color: "#64748b", lineHeight: 1.6 }}>
+                      No folder yet.<br />
+                      <span style={{ color: TEAL, fontWeight: 700 }}>Run Agent Analysis</span> to auto-generate one.
+                    </div>
+                  </div>
+                )}
+
+                {!isFetchingFolder && sessionFolder && (
+                  <div style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    background: "linear-gradient(135deg, rgba(20,184,166,0.06), rgba(14,116,144,0.04))",
+                    border: "1px solid rgba(20,184,166,0.2)",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: FG, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                        {sessionFolder.folder_name}
+                      </div>
+                      <div style={{ fontSize: 8.5, color: TEAL, fontWeight: 700, background: "rgba(20,184,166,0.12)", padding: "2px 7px", borderRadius: 8, flexShrink: 0, marginLeft: 6 }}>
+                        {sessionFolder.file_count} file{sessionFolder.file_count !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 9, color: "#64748b" }}>
+                      Created {new Date(sessionFolder.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           )}
 
