@@ -735,6 +735,15 @@ export default function ForgeWorkspace() {
               localSynthesisScore = score;
               // Auto-trigger proactive insights 1.5s after synthesis completes
               setTimeout(() => setAutoInsightCtx("agent_synthesis"), 1500);
+            } else if (type === "folder_created") {
+              const fName  = event.folder_name as string;
+              const fCount = event.file_count  as number;
+              addToast({
+                type:     "success",
+                message:  "📁 Case folder created",
+                detail:   `"${fName}" — ${fCount} file${fCount !== 1 ? "s" : ""} auto-saved.`,
+                duration: 6000,
+              });
             }
           } catch { /* malformed event */ }
         }
