@@ -55,7 +55,7 @@ const SECTION_KEYS: Record<string, string[]> = {
   research:   ["CASE TYPE", "LEGAL FRAMEWORK", "KEY JUDGMENTS", "FIRST STEPS"],
   strategy:   ["PRIMARY ARGUMENT", "PROCEDURAL ANGLE", "PRAYER CLAUSE"],
   risk:       ["RISK LEVEL", "COUNTER-ARGUMENTS", "ADVERSE PRECEDENTS"],
-  drafting:   ["LEGAL CONTENTION", "SUPPORTING AUTHORITIES", "PRAYER"],
+  drafting:   ["EXECUTIVE SUMMARY", "CLIENT ADVISORY", "DOCUMENT CHECKLIST", "ACTION PLAN", "DRAFT PETITION"],
   predictive: ["SUCCESS PROBABILITY", "BENCH CONCERNS", "FORUM", "TIMELINE"],
 };
 
@@ -289,7 +289,7 @@ function AgentCard({
               <div style={{
                 margin: "4px 12px 6px",
                 display: "flex", flexDirection: "column", gap: 7,
-                maxHeight: 160, overflowY: "auto",
+                maxHeight: def.id === "drafting" ? 320 : 160, overflowY: "auto",
               }}>
                 {sections.map((sec, si) => (
                   <div key={sec.title}>

@@ -543,15 +543,43 @@ _AGENTS = [
         "node_label": "Primary Legal Argument",
         "node_pos": {"x": 560, "y": 370},
         "system": (
-            "You are an expert in Indian legal drafting. Based on the case facts, draft: "
-            "(1) the main legal contention in formal Indian legal language, "
-            "(2) supporting authorities (cases + sections), "
-            "(3) the prayer clause with specific relief sought. "
-            "Use precise legal terminology appropriate for Indian courts.\n\n"
-            "OUTPUT FORMAT:\n"
-            "LEGAL CONTENTION: [The main contention in formal Indian legal language]\n"
-            "SUPPORTING AUTHORITIES: [Cases and sections cited in support, with accurate citations]\n"
-            "PRAYER: [Prayer clause with specific relief sought, in court-ready language]"
+            "You are an expert Indian legal drafting specialist creating a complete LAWYER PACKAGE "
+            "for a practicing advocate in Telangana/Andhra Pradesh. The Research, Strategy, and "
+            "Risk agents have already analysed this case — their outputs are provided as context. "
+            "Build directly on their specific findings. Apply BNS 2023, BNSS 2023, Motor Vehicles "
+            "Act (as amended), and current Telangana/AP court procedures.\n\n"
+            "Generate the following 5 package sections:\n\n"
+            "EXECUTIVE SUMMARY: Case classification (category + primary forum); primary legal "
+            "strategy with clear reasoning; parallel legal tracks where applicable (e.g., Criminal "
+            "+ MACT + Insurance); governing statutes and limitation periods; overall risk level and "
+            "main counter-arguments from the Risk Agent; top 5 immediate priority actions for the lawyer\n\n"
+            "CLIENT ADVISORY: One plain-language paragraph (no legalese, max 150 words). "
+            "Explain what happened legally in simple terms, what the lawyer will do, what documents "
+            "the client must provide with deadlines, and the expected timeline. "
+            "Write as a note from the lawyer to the client.\n\n"
+            "DOCUMENT CHECKLIST: All required documents organized by forum — "
+            "(a) Police Station: [document | who provides | how to obtain]; "
+            "(b) Court/Tribunal: [document | who provides | how to obtain]; "
+            "(c) Government Office/Others: [document | who provides | how to obtain]. "
+            "Mark [PRIORITY] on any document urgently required.\n\n"
+            "ACTION PLAN: Phase-by-phase roadmap with deadlines — "
+            "Phase 1 (0-48 hrs) emergency steps; "
+            "Phase 2 (Day 1-7) investigation and collection; "
+            "Phase 3 (Day 7-30) pre-filing preparation; "
+            "Phase 4 (Filing) petition and accompanying docs; "
+            "Phase 5 (Post-filing) appearance and hearing preparation. "
+            "Each action MUST cite a specific statute or section and include any limitation period.\n\n"
+            "DRAFT PETITION: Complete court-ready draft of the main petition/application with: "
+            "proper cause title (court name + parties), factual background, legal submissions citing "
+            "specific sections, prayer clause with all reliefs sought, verification/affidavit block. "
+            "Use [PLACEHOLDER] for case-specific details to be filled in. "
+            "Note stamp duty and court fee requirements under relevant state rules.\n\n"
+            "OUTPUT FORMAT — use EXACTLY these 5 section headings:\n"
+            "EXECUTIVE SUMMARY: [...]\n"
+            "CLIENT ADVISORY: [...]\n"
+            "DOCUMENT CHECKLIST: [...]\n"
+            "ACTION PLAN: [...]\n"
+            "DRAFT PETITION: [...]"
         ),
     },
     {
@@ -626,22 +654,41 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
         # Build prompt with context from completed agents
         prior_ctx = ""
         if agent_outputs:
-            prior_ctx = "\n\nInsights shared by peer agents:\n" + "\n".join(
-                f"• {aid.title()} Agent: {txt[:160]}…"
-                for aid, txt in list(agent_outputs.items())[-2:]
-            )
+            if agent["id"] == "drafting" and agent_outputs_full:
+                # Drafting (Lawyer Package) gets full outputs from ALL previous agents
+                prior_ctx = "\n\n=== Previous Agent Outputs (incorporate into Lawyer Package) ===\n" + "\n\n".join(
+                    f"--- {aid.upper()} AGENT ---\n{txt[:600]}"
+                    for aid, txt in agent_outputs_full.items()
+                )
+            else:
+                prior_ctx = "\n\nInsights shared by peer agents:\n" + "\n".join(
+                    f"• {aid.title()} Agent: {txt[:160]}…"
+                    for aid, txt in list(agent_outputs.items())[-2:]
+                )
 
         profile_line = f"\n\nUser Style Preference: {profile_ctx}" if profile_ctx else ""
+        if agent["id"] == "drafting":
+            format_instruction = (
+                "\n\nIMPORTANT: Format your response EXACTLY as:\n"
+                "REASONING: [2-sentence summary of your package drafting approach for this case]\n"
+                "---\n"
+                "[Full Lawyer Package: all 5 sections — EXECUTIVE SUMMARY, CLIENT ADVISORY, "
+                "DOCUMENT CHECKLIST, ACTION PLAN, DRAFT PETITION — as specified in the system prompt]"
+            )
+        else:
+            format_instruction = (
+                "\n\nIMPORTANT: Format your response EXACTLY as:\n"
+                "REASONING: [Your 2-sentence analytical approach for this specific case]\n"
+                "---\n"
+                "[Your full 3-4 paragraph analysis here]"
+            )
         prompt = (
             f"Case Facts:\n{case_description or 'No specific case description provided — give general guidance.'}"
             f"{prior_ctx}"
             f"\n\nAdditional Context: {context or 'None'}"
             f"{profile_line}"
             f"\n\n{agent['system']}"
-            "\n\nIMPORTANT: Format your response EXACTLY as:\n"
-            "REASONING: [Your 2-sentence analytical approach for this specific case]\n"
-            "---\n"
-            "[Your full 3-4 paragraph analysis here]"
+            f"{format_instruction}"
         )
 
         try:
