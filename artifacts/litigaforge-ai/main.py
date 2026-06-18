@@ -1168,6 +1168,36 @@ def _get_storage():
         return None
 
 
+# ── Public static file serving (no auth — for user guide / public assets) ───
+
+@app.get(f"{BASE_PATH}/public/{{filename}}")
+async def serve_public_file(filename: str):
+    """Serve public assets (e.g. user guide PDF) — no authentication required."""
+    import pathlib as _pl
+    safe = os.path.basename(filename)
+    if safe != filename or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+    _public_dir = _pl.Path(_script_dir) / "public"
+    fp = _public_dir / safe
+    if not fp.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    ext = safe.rsplit(".", 1)[-1].lower() if "." in safe else "bin"
+    mime_map = {
+        "pdf": "application/pdf", "png": "image/png",
+        "jpg": "image/jpeg", "jpeg": "image/jpeg", "txt": "text/plain",
+    }
+    media_type = mime_map.get(ext, "application/octet-stream")
+    return Response(
+        content=fp.read_bytes(),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe}"',
+            "Cache-Control": "public, max-age=86400",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @app.get(f"{BASE_PATH}/secure-files/{{filename}}")
 async def serve_secure_file(
     filename: str,

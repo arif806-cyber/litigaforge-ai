@@ -57,6 +57,31 @@ export default function DocumentsPage() {
         </button>
       </div>
 
+      {/* ── Pinned User Guide ──────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl p-4 mb-4 flex items-center gap-4"
+        style={{ background: "linear-gradient(135deg,#fffbeb,#fef3c7)", border: "1px solid #fde68a" }}>
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "#f59e0b" }}>
+          <FileText className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-amber-900 text-sm">LitigaForge AI — User Guide</p>
+          <p className="text-[11px] text-amber-700 mt-0.5">
+            16-page guide covering all features — matching, AI agents, document analysis, legal aid &amp; more.
+          </p>
+        </div>
+        <a
+          href="/litigaforge/public/litigaforge_user_guide.pdf"
+          download="LitigaForge_User_Guide.pdf"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-white font-semibold text-[11px] flex-shrink-0 transition-opacity hover:opacity-90"
+          style={{ background: "#d97706" }}
+        >
+          <Download className="w-3.5 h-3.5" />
+          Download PDF
+        </a>
+      </motion.div>
+
       <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
         {/* Header + Search */}
         <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
