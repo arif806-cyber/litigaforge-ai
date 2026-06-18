@@ -634,6 +634,42 @@ _CONSULTS: dict[str, dict[str, str]] = {
 }
 
 
+# ─── IK prompt helpers ────────────────────────────────────────────────────────
+
+def _build_ik_query(case_description: str) -> str:
+    """Build a compact IndianKanoon search query from the case description.
+    Pure function — no LLM call, no async.
+    """
+    words = (case_description or "").split()[:10]
+    base  = " ".join(words)
+    suffix = "Telangana OR Andhra Pradesh OR Supreme Court"
+    return (f"{base} {suffix}")[:100].strip()
+
+
+def _format_ik_for_prompt(docs: list[dict]) -> str:
+    """Format IK search results as an injected prompt block for the Research Agent."""
+    lines = [
+        "=== Live Indian Kanoon Results (real judgments fetched via API — "
+        "cite these in KEY JUDGMENTS) ===",
+    ]
+    for i, doc in enumerate(docs, 1):
+        title    = (doc.get("title") or "Unknown Case")[:90]
+        court    = doc.get("docsource") or "Court"
+        date_str = doc.get("publishdate") or doc.get("date") or ""
+        year     = date_str[:4] if date_str else ""
+        tid      = doc.get("tid") or doc.get("docid") or ""
+        headline = _re.sub(r"<[^>]+>", "", doc.get("headline") or "")[:200]
+        year_part = f" | {year}" if year else ""
+        tid_part  = f" | ID: {tid}" if tid else ""
+        lines.append(f"{i}. {title} | {court}{year_part}{tid_part}")
+        if headline:
+            lines.append(f"   Summary: {headline}")
+    lines.append(
+        "Use ONLY the cases above for the KEY JUDGMENTS section. Do not invent citations."
+    )
+    return "\n".join(lines)
+
+
 # ─── Multi-Agent Analysis  (SSE streaming) ────────────────────────────────────
 
 async def _stream_analysis(case_description: str, context: str, profile_ctx: str = ""):
@@ -697,6 +733,24 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
             f"\n\n{agent['system']}"
             f"{format_instruction}"
         )
+
+        # ── IK pre-fetch: inject real live judgments for Research Agent ──────
+        if agent["id"] == "research" and IK_TOKEN:
+            ik_query = _build_ik_query(case_description)
+            try:
+                _pool_ik = await get_pool()
+                async with _pool_ik.acquire() as _conn:
+                    ik_docs = await _cached_ik_search(_conn, ik_query, max_results=5)
+                if ik_docs:
+                    ik_block = _format_ik_for_prompt(ik_docs)
+                    prompt = ik_block + "\n\n" + prompt
+                    yield sse({"type": "ik_fetched", "count": len(ik_docs), "query": ik_query})
+                    logger.info(
+                        "IK pre-fetch: %d judgments injected into Research Agent prompt (query: %s)",
+                        len(ik_docs), ik_query[:60],
+                    )
+            except Exception as _ik_exc:
+                logger.warning("IK pre-fetch for Research Agent failed: %s", _ik_exc)
 
         try:
             response = await legal_llm.aask_legal_question(prompt)
