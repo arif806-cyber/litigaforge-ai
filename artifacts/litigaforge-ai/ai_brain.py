@@ -306,6 +306,38 @@ async def _call_groq_async(system: str, user: str, temperature: float = 0.3,
         return None
 
 
+async def call_llm_async(
+    system: str,
+    user: str,
+    temperature: float = 0.3,
+    max_tokens: int = 2000,
+) -> str | None:
+    """Public lightweight cascade: Claude → Gemini → Groq.
+
+    A general-purpose async LLM call with no entity extraction or smart
+    templates — just a direct completion. Used as the fallback when the
+    primary LiteLLM path fails.
+
+    Returns None only when all three providers fail; never raises.
+    """
+    _init_providers()
+
+    result = await _call_claude_async(system, user, temperature, max_tokens)
+    if result and len(result.strip()) > 60:
+        return result.strip()
+
+    result = await _call_gemini_async(system, user, temperature, max_tokens)
+    if result and len(result.strip()) > 60:
+        return result.strip()
+
+    result = await _call_groq_async(system, user, temperature, max_tokens)
+    if result and len(result.strip()) > 60:
+        return result.strip()
+
+    logger.warning("[AI_BRAIN] call_llm_async — all providers failed")
+    return None
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Entity Extraction — Gemini leads (fast), regex fallback
 # ──────────────────────────────────────────────────────────────────────────────

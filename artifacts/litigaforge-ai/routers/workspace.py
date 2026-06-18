@@ -27,9 +27,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+import ai_brain as _ai_brain
+
 from auth import require_user
 from database import get_pool
 from llm import legal_llm
+from llm.config import LEGAL_SYSTEM_PROMPT as _LEGAL_SYSTEM_PROMPT
 
 logger = logging.getLogger("litigaforge.workspace")
 router = APIRouter(tags=["workspace"])
@@ -822,8 +825,24 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
         try:
             response = await legal_llm.aask_legal_question(prompt)
             response  = (response or "").strip()
-        except Exception as exc:
-            logger.warning("Agent %s error: %s", agent["id"], exc)
+        except Exception as _primary_exc:
+            logger.warning(
+                "Agent %s — LiteLLM error (%s: %s); trying ai_brain cascade",
+                agent["id"], type(_primary_exc).__name__, _primary_exc,
+            )
+            # ── Fallback: ai_brain Claude → Gemini → Groq cascade ────────────
+            try:
+                _fb = await _ai_brain.call_llm_async(
+                    _LEGAL_SYSTEM_PROMPT,
+                    prompt,
+                    temperature=0.3,
+                    max_tokens=2000,
+                )
+                response = (_fb or "").strip()
+            except Exception as _fallback_exc:
+                logger.warning("Agent %s — ai_brain cascade also failed: %s", agent["id"], _fallback_exc)
+                response = ""
+        if not response:
             response = (
                 f"REASONING: Examining {agent['role']} from available case details.\n"
                 f"---\n{agent['name']} analysis requires more specific case information. "
