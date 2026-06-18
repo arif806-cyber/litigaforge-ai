@@ -451,13 +451,14 @@ async def get_profile(user=Depends(require_user)):
             """,
             user["id"],
         )
+        # Reverse DESC rows → chronological order so reactivate resets prior dismisses
         events = [
             {
                 "event_type": r["event_type"],
                 "data": json.loads(r["event_data"]) if r["event_data"] else {},
                 "date": r["created_at"].strftime("%Y-%m-%d"),
             }
-            for r in rows
+            for r in reversed(rows)
         ]
 
         session_count = (await conn.fetchval(
@@ -529,19 +530,20 @@ async def get_profile_summary(user=Depends(require_user)):
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT event_type, event_data FROM user_learning_events "
-            "WHERE user_id=$1 ORDER BY created_at ASC LIMIT 250",
+            "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 250",
             user["id"],
         )
         session_count = (await conn.fetchval(
             "SELECT COUNT(*) FROM workspace_sessions WHERE user_id=$1", user["id"]
         )) or 0
 
+    # Reverse DESC rows → chronological order for compute_profile()
     events = [
         {
             "event_type": r["event_type"],
             "data": json.loads(r["event_data"]) if r["event_data"] else {},
         }
-        for r in rows
+        for r in reversed(rows)
     ]
 
     if not events and session_count < 1:

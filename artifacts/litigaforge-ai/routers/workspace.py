@@ -764,15 +764,16 @@ async def analyze_session(
             if learning_enabled:
                 evt_rows = await pconn.fetch(
                     "SELECT event_type, event_data FROM user_learning_events "
-                    "WHERE user_id=$1 ORDER BY created_at ASC LIMIT 100",
+                    "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",
                     user["id"],
                 )
+                # Reverse DESC rows → chronological for compute_profile()
                 events = [
                     {
                         "event_type": r["event_type"],
                         "data": json.loads(r["event_data"]) if r["event_data"] else {},
                     }
-                    for r in evt_rows
+                    for r in reversed(evt_rows)
                 ]
                 if events:
                     computed    = compute_profile(events)
@@ -903,15 +904,16 @@ async def get_proactive_insights(
             sup_rows = await sup_conn.fetch(
                 "SELECT event_type, event_data FROM user_learning_events "
                 "WHERE user_id=$1 AND event_type IN ('suggestion_dismiss','suggestion_reactivate') "
-                "ORDER BY created_at ASC LIMIT 300",
+                "ORDER BY created_at DESC LIMIT 300",
                 user["id"],
             )
+        # Reverse DESC rows → chronological for compute_profile() (reactivate resets properly)
         sup_events = [
             {
                 "event_type": r["event_type"],
                 "data": json.loads(r["event_data"]) if r["event_data"] else {},
             }
-            for r in sup_rows
+            for r in reversed(sup_rows)
         ]
         if sup_events:
             sup_computed = _cp_supp(sup_events)
