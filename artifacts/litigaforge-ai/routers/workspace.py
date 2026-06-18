@@ -692,13 +692,16 @@ async def _auto_create_case_folder(
     session_id: int,
     case_desc: str,
     drafting_text: str,
+    agent_outputs: dict | None = None,
 ) -> dict | None:
-    """Create a case folder and auto-save Lawyer Package PDF after analysis completes."""
+    """Create a case folder and auto-save all lawyer docs after analysis completes."""
     import sys as _sys
     safe = _re.sub(r"[^A-Za-z0-9\s]", "", case_desc or "Untitled Case")
     slug = "_".join(safe.split()[:5]) or "Untitled_Case"
     date_tag    = datetime.now(timezone.utc).strftime("%Y%m%d")
     folder_name = f"{slug}_{date_tag}"[:120]
+
+    ai_dir = os.path.dirname(os.path.dirname(__file__))
 
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -712,12 +715,14 @@ async def _auto_create_case_folder(
         folder_dir = os.path.join(base_dir, "uploads", "folders", str(folder_id))
         os.makedirs(folder_dir, exist_ok=True)
 
+        if ai_dir not in _sys.path:
+            _sys.path.insert(0, ai_dir)
+
         file_count = 0
+
+        # ── 1. Lawyer Package PDF (from Drafting Agent) ───────────────────
         if drafting_text:
             try:
-                ai_dir = os.path.dirname(os.path.dirname(__file__))
-                if ai_dir not in _sys.path:
-                    _sys.path.insert(0, ai_dir)
                 from pdf_generator import generate_lawyer_package_pdf
                 pdf_bytes = generate_lawyer_package_pdf(
                     case_description=case_desc,
@@ -736,6 +741,47 @@ async def _auto_create_case_folder(
                 file_count += 1
             except Exception as _pe:
                 logger.warning("Auto-save Lawyer Package PDF failed: %s", _pe)
+
+        # ── 2. Full Analysis Report PDF (all 5 agents) ────────────────────
+        outputs = agent_outputs or {}
+        if outputs:
+            try:
+                from pdf_generator import generate_analysis_report_pdf
+                rpt_bytes = generate_analysis_report_pdf(
+                    case_description=case_desc,
+                    agent_outputs=outputs,
+                )
+                rpt_fn   = f"Analysis_Report_{date_tag}.pdf"
+                rpt_path = os.path.join(folder_dir, rpt_fn)
+                with open(rpt_path, "wb") as fh:
+                    fh.write(rpt_bytes)
+                await conn.execute(
+                    "INSERT INTO folder_documents "
+                    "(folder_id, filename, doc_type, file_path, file_size_bytes) "
+                    "VALUES ($1, $2, $3, $4, $5)",
+                    folder_id, rpt_fn, "analysis_report", rpt_path, len(rpt_bytes),
+                )
+                file_count += 1
+            except Exception as _re2:
+                logger.warning("Auto-save Analysis Report PDF failed: %s", _re2)
+
+        # ── 3. Vakalatnama PDF ─────────────────────────────────────────────
+        try:
+            from pdf_generator import generate_vakalatnama_pdf
+            vak_bytes = generate_vakalatnama_pdf(case_description=case_desc)
+            vak_fn    = f"Vakalatnama_{date_tag}.pdf"
+            vak_path  = os.path.join(folder_dir, vak_fn)
+            with open(vak_path, "wb") as fh:
+                fh.write(vak_bytes)
+            await conn.execute(
+                "INSERT INTO folder_documents "
+                "(folder_id, filename, doc_type, file_path, file_size_bytes) "
+                "VALUES ($1, $2, $3, $4, $5)",
+                folder_id, vak_fn, "vakalatnama", vak_path, len(vak_bytes),
+            )
+            file_count += 1
+        except Exception as _ve:
+            logger.warning("Auto-save Vakalatnama PDF failed: %s", _ve)
 
     return {"id": folder_id, "name": folder_name, "file_count": file_count}
 
@@ -994,27 +1040,30 @@ async def analyze_session(
         def _sse(d: dict) -> str:
             return f"data: {json.dumps(d, default=str)}\n\n"
 
-        drafting_buf: list[str] = []
+        agent_outputs_all: dict[str, str] = {}
 
         async for chunk in _stream_analysis(case_desc, body.context, profile_ctx):
             yield chunk
-            # Intercept Drafting Agent output to capture full text for folder creation
-            if '"agent_done"' in chunk and '"drafting"' in chunk:
+            # Capture ALL agent outputs for multi-doc folder generation
+            if '"agent_done"' in chunk:
                 try:
                     payload = json.loads(chunk.split("data: ", 1)[1])
-                    if payload.get("type") == "agent_done" and payload.get("agent") == "drafting":
-                        drafting_buf.append(payload.get("full_text", ""))
+                    if payload.get("type") == "agent_done":
+                        aid = payload.get("agent", "")
+                        ft  = payload.get("full_text", "")
+                        if aid and ft:
+                            agent_outputs_all[aid] = ft
                 except Exception:
                     pass
 
         # ── Auto-create case folder after all agents complete ─────────────────
-        drafting_text = drafting_buf[0] if drafting_buf else ""
         try:
             folder_info = await _auto_create_case_folder(
                 user_id=user["id"],
                 session_id=session_id,
                 case_desc=case_desc,
-                drafting_text=drafting_text,
+                drafting_text=agent_outputs_all.get("drafting", ""),
+                agent_outputs=agent_outputs_all,
             )
             if folder_info:
                 yield _sse({

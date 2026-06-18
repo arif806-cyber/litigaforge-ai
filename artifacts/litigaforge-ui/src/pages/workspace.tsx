@@ -209,6 +209,11 @@ export default function ForgeWorkspace() {
   const [hintNewNodeId, setHintNewNodeId]   = useState<string | null>(null);
   const [inputHighlight, setInputHighlight] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [folderOpen, setFolderOpen]           = useState(false);
+  const [folderFiles, setFolderFiles]         = useState<Array<{
+    id: number; filename: string; doc_type: string; file_size_bytes: number; created_at: string;
+  }>>([]);
+  const [isFetchingFolderFiles, setIsFetchingFolderFiles] = useState(false);
 
   function focusInput() {
     setLeftCollapsed(false);
@@ -262,11 +267,40 @@ export default function ForgeWorkspace() {
     try {
       const res     = await api("/workspace/folders");
       const folders = await res.json() as Array<{ id: number; folder_name: string; file_count: number; updated_at: string; session_id: number }>;
-      setSessionFolder(folders.find(f => f.session_id === sid) ?? null);
+      const found   = folders.find(f => f.session_id === sid) ?? null;
+      setSessionFolder(found);
+      if (found) void fetchFolderFiles(found.id);
     } catch {
       setSessionFolder(null);
     } finally {
       setIsFetchingFolder(false);
+    }
+  }
+
+  async function fetchFolderFiles(folderId: number) {
+    setIsFetchingFolderFiles(true);
+    try {
+      const res  = await api(`/workspace/folders/${folderId}`);
+      const data = await res.json() as { files: Array<{ id: number; filename: string; doc_type: string; file_size_bytes: number; created_at: string }> };
+      setFolderFiles(data.files ?? []);
+    } catch {
+      setFolderFiles([]);
+    } finally {
+      setIsFetchingFolderFiles(false);
+    }
+  }
+
+  async function downloadFolderFile(folderId: number, fileId: number, filename: string) {
+    try {
+      const res = await api(`/workspace/folders/${folderId}/files/${fileId}/download`);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      addToast({ type: "error", message: "Download failed", detail: "Please try again." });
     }
   }
 
@@ -773,13 +807,14 @@ export default function ForgeWorkspace() {
               const fName    = event.folder_name as string;
               const fCount   = event.file_count  as number;
               const folderId = event.folder_id   as number;
-              // Update the persistent folder panel immediately
               setSessionFolder({ id: folderId, folder_name: fName, file_count: fCount, updated_at: new Date().toISOString() });
+              setFolderOpen(true);
+              void fetchFolderFiles(folderId);
               addToast({
                 type:     "success",
                 message:  "📁 Case folder created",
-                detail:   `"${fName}" — ${fCount} file${fCount !== 1 ? "s" : ""} auto-saved.`,
-                duration: 6000,
+                detail:   `"${fName}" — ${fCount} file${fCount !== 1 ? "s" : ""} auto-saved. Click the folder to download.`,
+                duration: 8000,
               });
             }
           } catch { /* malformed event */ }
@@ -2157,26 +2192,82 @@ export default function ForgeWorkspace() {
                   </div>
                 )}
 
-                {!isFetchingFolder && sessionFolder && (
-                  <div style={{
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    background: "linear-gradient(135deg, rgba(20,184,166,0.06), rgba(14,116,144,0.04))",
-                    border: "1px solid rgba(20,184,166,0.2)",
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: FG, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-                        {sessionFolder.folder_name}
-                      </div>
-                      <div style={{ fontSize: 8.5, color: TEAL, fontWeight: 700, background: "rgba(20,184,166,0.12)", padding: "2px 7px", borderRadius: 8, flexShrink: 0, marginLeft: 6 }}>
-                        {sessionFolder.file_count} file{sessionFolder.file_count !== 1 ? "s" : ""}
-                      </div>
+                {!isFetchingFolder && sessionFolder && (() => {
+                  const DOC_ICONS: Record<string, string> = {
+                    lawyer_package:  "📋",
+                    analysis_report: "📊",
+                    vakalatnama:     "⚖️",
+                    invoice:         "🧾",
+                  };
+                  return (
+                    <div style={{ borderRadius: 8, border: "1px solid rgba(20,184,166,0.2)", overflow: "hidden" }}>
+                      {/* Folder header — clickable to expand/collapse */}
+                      <button
+                        onClick={() => {
+                          const next = !folderOpen;
+                          setFolderOpen(next);
+                          if (next && folderFiles.length === 0) void fetchFolderFiles(sessionFolder.id);
+                        }}
+                        style={{
+                          width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
+                          padding: "8px 12px", background: "linear-gradient(135deg,rgba(20,184,166,0.08),rgba(14,116,144,0.04))",
+                          border: "none", cursor: "pointer", gap: 6,
+                        }}
+                      >
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: FG, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, textAlign: "left" as const }}>
+                          {sessionFolder.folder_name}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                          <div style={{ fontSize: 8.5, color: TEAL, fontWeight: 700, background: "rgba(20,184,166,0.12)", padding: "2px 7px", borderRadius: 8 }}>
+                            {sessionFolder.file_count} file{sessionFolder.file_count !== 1 ? "s" : ""}
+                          </div>
+                          <span style={{ fontSize: 9, color: TEAL }}>{folderOpen ? "▲" : "▼"}</span>
+                        </div>
+                      </button>
+
+                      {/* Expanded file list */}
+                      {folderOpen && (
+                        <div style={{ background: "rgba(0,0,0,0.12)", padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+                          {isFetchingFolderFiles && (
+                            <div style={{ fontSize: 9, color: "#64748b", padding: "6px 0", textAlign: "center" as const }}>Loading files…</div>
+                          )}
+                          {!isFetchingFolderFiles && folderFiles.length === 0 && (
+                            <div style={{ fontSize: 9, color: "#64748b", padding: "6px 0", textAlign: "center" as const }}>No files yet</div>
+                          )}
+                          {!isFetchingFolderFiles && folderFiles.map(f => (
+                            <div key={f.id} style={{
+                              display: "flex", alignItems: "center", gap: 7,
+                              background: "rgba(255,255,255,0.03)", borderRadius: 6,
+                              padding: "5px 8px", border: "1px solid rgba(255,255,255,0.06)",
+                            }}>
+                              <span style={{ fontSize: 13, flexShrink: 0 }}>{DOC_ICONS[f.doc_type] ?? "📄"}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 9.5, fontWeight: 600, color: FG, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                                  {f.filename}
+                                </div>
+                                <div style={{ fontSize: 8, color: "#64748b", marginTop: 1 }}>
+                                  {f.file_size_bytes ? (f.file_size_bytes / 1024).toFixed(0) + " KB" : ""}{" · "}
+                                  {f.doc_type.replace(/_/g, " ")}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => void downloadFolderFile(sessionFolder.id, f.id, f.filename)}
+                                title="Download"
+                                style={{
+                                  background: "rgba(20,184,166,0.12)", border: "none", borderRadius: 5,
+                                  color: TEAL, cursor: "pointer", padding: "4px 7px", fontSize: 10, flexShrink: 0,
+                                }}
+                              >↓</button>
+                            </div>
+                          ))}
+                          <div style={{ fontSize: 8, color: "#475569", marginTop: 2, textAlign: "center" as const }}>
+                            Created {new Date(sessionFolder.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 9, color: "#64748b" }}>
-                      Created {new Date(sessionFolder.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
           </div>
