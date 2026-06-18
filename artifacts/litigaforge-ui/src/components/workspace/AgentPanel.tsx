@@ -55,7 +55,7 @@ const SECTION_KEYS: Record<string, string[]> = {
   research:   ["CASE TYPE", "LEGAL FRAMEWORK", "KEY JUDGMENTS", "FIRST STEPS"],
   strategy:   ["PRIMARY ARGUMENT", "PROCEDURAL ANGLE", "PRAYER CLAUSE"],
   risk:       ["RISK LEVEL", "COUNTER-ARGUMENTS", "ADVERSE PRECEDENTS"],
-  drafting:   ["EXECUTIVE SUMMARY", "CLIENT ADVISORY", "DOCUMENT CHECKLIST", "ACTION PLAN", "DRAFT PETITION"],
+  drafting:   ["EXECUTIVE SUMMARY", "CLIENT ADVISORY", "DOCUMENT CHECKLIST", "ACTION PLAN", "DRAFT PETITION", "FEE RECOMMENDATION"],
   predictive: ["SUCCESS PROBABILITY", "BENCH CONCERNS", "FORUM", "TIMELINE"],
 };
 
@@ -167,6 +167,8 @@ function AgentCard({
   onFeedback,
   onDraftCopy,
   forceAskOpen,
+  sessionId,
+  caseDescription,
 }: {
   def: AgentDef;
   state: AgentState;
@@ -174,6 +176,8 @@ function AgentCard({
   onFeedback: (agentId: string, vote: "up" | "down") => void;
   onDraftCopy?: (agentId: string, templateType: string, wordCountBucket: string) => void;
   forceAskOpen?: boolean;
+  sessionId?: number | null;
+  caseDescription?: string;
 }) {
   const isThinking   = state.status === "thinking";
   const isDone       = state.status === "done";
@@ -183,17 +187,95 @@ function AgentCard({
   const [showReasoning, setShowReasoning] = useState(false);
   const [askOpen,       setAskOpen]       = useState(false);
   const [askText,       setAskText]       = useState("");
+  const [invoiceOpen,   setInvoiceOpen]   = useState(false);
+  const [pdfLoading,    setPdfLoading]    = useState(false);
+  const [invLoading,    setInvLoading]    = useState(false);
+  const [invClient,     setInvClient]     = useState("");
+  const [invLawyer,     setInvLawyer]     = useState("");
+  const [invFirm,       setInvFirm]       = useState("");
+  const [invContact,    setInvContact]    = useState("");
+  const [invAmount,     setInvAmount]     = useState("");
+  const [invMode,       setInvMode]       = useState("UPI");
 
   // When forceAskOpen becomes true, open the inline ask UI
   useEffect(() => {
     if (forceAskOpen) setAskOpen(true);
   }, [forceAskOpen]);
 
+  // Pre-fill invoice amount from FEE RECOMMENDATION when Drafting Agent finishes
+  useEffect(() => {
+    if (def.id === "drafting" && isDone && !invAmount) {
+      const feeSection = sections.find(s => s.title === "FEE RECOMMENDATION");
+      if (feeSection) {
+        const m = feeSection.body.match(/Standard.*?Rs\.?\s*([\d,]+)/i);
+        if (m) setInvAmount(m[1].replace(/,/g, ""));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone, def.id]);
+
   function submitAsk() {
     const q = askText.trim();
     if (!q) return;
     onAskAgent(def.id, q);
     setAskText("");
+  }
+
+  async function downloadPdf() {
+    if (!sessionId) return;
+    setPdfLoading(true);
+    try {
+      const token = localStorage.getItem("lf_token") ?? "";
+      const r = await fetch(`/litigaforge/workspace/sessions/${sessionId}/export-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          drafting_text:    state.text ?? "",
+          case_description: caseDescription ?? "",
+        }),
+      });
+      if (!r.ok) throw new Error("PDF failed");
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = "LitigaForge_Package.pdf"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* silent — server errors logged backend-side */ }
+    finally { setPdfLoading(false); }
+  }
+
+  async function downloadInvoice() {
+    if (!sessionId || !invAmount) return;
+    setInvLoading(true);
+    try {
+      const token      = localStorage.getItem("lf_token") ?? "";
+      const feeSection = sections.find(s => s.title === "FEE RECOMMENDATION");
+      const r = await fetch(`/litigaforge/workspace/sessions/${sessionId}/invoice-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          client_name:      invClient,
+          lawyer_name:      invLawyer,
+          lawyer_firm:      invFirm,
+          lawyer_contact:   invContact,
+          case_description: caseDescription ?? "",
+          amount:           parseFloat(invAmount) || 0,
+          payment_mode:     invMode,
+          case_type:        "",
+          fee_tier:         "Standard",
+          fee_recommendation: feeSection?.body ?? "",
+        }),
+      });
+      if (!r.ok) throw new Error("Invoice failed");
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      const safe = invClient.replace(/\s+/g, "_") || "Client";
+      const a    = document.createElement("a");
+      a.href = url; a.download = `LitigaForge_Invoice_${safe}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      setInvoiceOpen(false);
+    } catch { /* silent */ }
+    finally { setInvLoading(false); }
   }
 
   return (
@@ -455,6 +537,44 @@ function AgentCard({
               📋 Copy
             </button>
           )}
+
+          {/* PDF Package download — drafting agent, requires sessionId */}
+          {def.id === "drafting" && state.text && sessionId && (
+            <button
+              onClick={() => { void downloadPdf(); }}
+              disabled={pdfLoading}
+              style={{
+                background: pdfLoading ? "rgba(255,255,255,0.05)" : "rgba(239,68,68,0.1)",
+                border: `1px solid ${pdfLoading ? "rgba(255,255,255,0.08)" : "rgba(239,68,68,0.3)"}`,
+                borderRadius: 6, padding: "3px 9px",
+                fontSize: 9, fontWeight: 700,
+                color: pdfLoading ? FGD : "#f87171",
+                cursor: pdfLoading ? "not-allowed" : "pointer",
+                transition: "all 0.15s", letterSpacing: "0.03em",
+              }}
+              title="Download full Lawyer Package as A4 court-ready PDF"
+            >
+              {pdfLoading ? "⟳" : "📄 PDF"}
+            </button>
+          )}
+
+          {/* Invoice PDF button — drafting agent, requires sessionId */}
+          {def.id === "drafting" && state.text && sessionId && (
+            <button
+              onClick={() => setInvoiceOpen(v => !v)}
+              style={{
+                background: invoiceOpen ? "rgba(234,179,8,0.15)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${invoiceOpen ? "rgba(234,179,8,0.4)" : "rgba(255,255,255,0.08)"}`,
+                borderRadius: 6, padding: "3px 9px",
+                fontSize: 9, fontWeight: 700,
+                color: invoiceOpen ? "#fbbf24" : FGD,
+                cursor: "pointer", transition: "all 0.15s", letterSpacing: "0.03em",
+              }}
+              title="Generate client invoice PDF with AI fee suggestion"
+            >
+              {invoiceOpen ? "✕ Invoice" : "🧾 Invoice"}
+            </button>
+          )}
         </div>
       )}
 
@@ -519,6 +639,89 @@ function AgentCard({
                   )}
                 </div>
               )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Invoice PDF form ── drafting agent only, opens below Ask panel ── */}
+      <AnimatePresence>
+        {def.id === "drafting" && isDone && invoiceOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            style={{ overflow: "hidden" }}
+          >
+            <div style={{
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              padding: "10px 12px",
+              background: "rgba(234,179,8,0.04)",
+            }}>
+              <div style={{ fontSize: 9.5, color: "#fbbf24", fontWeight: 700, marginBottom: 7, letterSpacing: "0.04em" }}>
+                🧾 Invoice PDF Generator
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(
+                  [
+                    ["Client Name",           invClient,  setInvClient,  "text",   "e.g., Rajesh Kumar"],
+                    ["Your Name",             invLawyer,  setInvLawyer,  "text",   "Adv. Full Name"],
+                    ["Firm / Enroll. No.",    invFirm,    setInvFirm,    "text",   "ABC Legal / AP/123/2000"],
+                    ["Contact",               invContact, setInvContact, "text",   "Phone / Email"],
+                    ["Amount (Rs.)",          invAmount,  setInvAmount,  "number", "e.g., 25000"],
+                  ] as [string, string, (v: string) => void, string, string][]
+                ).map(([label, val, setter, type, ph]) => (
+                  <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 9, color: FGD }}>{label}</span>
+                    <input
+                      type={type}
+                      value={val}
+                      onChange={e => setter(e.target.value)}
+                      placeholder={ph}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(234,179,8,0.2)",
+                        borderRadius: 6, padding: "5px 8px",
+                        fontSize: 10, color: FG, outline: "none",
+                        width: "100%", boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 9, color: FGD }}>Payment Mode</span>
+                  <select
+                    value={invMode}
+                    onChange={e => setInvMode(e.target.value)}
+                    style={{
+                      background: "rgba(20,20,30,0.95)",
+                      border: "1px solid rgba(234,179,8,0.2)",
+                      borderRadius: 6, padding: "5px 8px",
+                      fontSize: 10, color: FG, outline: "none",
+                    }}
+                  >
+                    {["UPI", "NEFT/RTGS", "Cash", "Cheque", "Bank Transfer"].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => { void downloadInvoice(); }}
+                  disabled={invLoading || !invAmount}
+                  style={{
+                    marginTop: 4, padding: "7px 0",
+                    background: invLoading || !invAmount ? "rgba(255,255,255,0.05)" : "rgba(234,179,8,0.15)",
+                    border: `1px solid ${invLoading || !invAmount ? "rgba(255,255,255,0.08)" : "rgba(234,179,8,0.4)"}`,
+                    borderRadius: 6, fontSize: 10, fontWeight: 700,
+                    color: invLoading || !invAmount ? FGD : "#fbbf24",
+                    cursor: invLoading || !invAmount ? "not-allowed" : "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {invLoading ? "⟳ Generating…" : "📥 Download Invoice PDF"}
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -632,6 +835,7 @@ interface AgentPanelProps {
   onDraftCopy?:           (agentId: string, templateType: string, wordCountBucket: string) => void;
   synthesisScore?:        number;
   openAskFor?:            string;
+  sessionId?:             number | null;
 }
 
 const AgentPanel = memo(({
@@ -646,6 +850,7 @@ const AgentPanel = memo(({
   onDraftCopy,
   synthesisScore,
   openAskFor,
+  sessionId,
 }: AgentPanelProps) => {
   const doneCount = Object.values(agentStates).filter(s => s.status === "done").length;
   const allDone   = doneCount === AGENT_DEFS.length;
@@ -748,6 +953,8 @@ const AgentPanel = memo(({
             onFeedback={onFeedback}
             onDraftCopy={onDraftCopy}
             forceAskOpen={openAskFor === def.id}
+            sessionId={sessionId}
+            caseDescription={caseDescription}
           />
         ))}
       </div>

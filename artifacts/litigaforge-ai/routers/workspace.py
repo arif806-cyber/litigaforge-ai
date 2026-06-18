@@ -574,12 +574,19 @@ _AGENTS = [
             "specific sections, prayer clause with all reliefs sought, verification/affidavit block. "
             "Use [PLACEHOLDER] for case-specific details to be filled in. "
             "Note stamp duty and court fee requirements under relevant state rules.\n\n"
-            "OUTPUT FORMAT — use EXACTLY these 5 section headings:\n"
+            "FEE RECOMMENDATION: Based on this case type and complexity, suggest 3 fee tiers "
+            "for a Hyderabad/Telangana advocate (2024-25 market rates). Each tier on one line: "
+            "Conservative (Rs. X): [what this covers, e.g., statutory MACT scheme only] | "
+            "Standard (Rs. Y): [recommended for this complexity level] | "
+            "Premium (Rs. Z): [full contested senior-advocate representation]. "
+            "Be case-specific -- not generic. Use realistic Hyderabad bar rates.\n\n"
+            "OUTPUT FORMAT — use EXACTLY these 6 section headings:\n"
             "EXECUTIVE SUMMARY: [...]\n"
             "CLIENT ADVISORY: [...]\n"
             "DOCUMENT CHECKLIST: [...]\n"
             "ACTION PLAN: [...]\n"
-            "DRAFT PETITION: [...]"
+            "DRAFT PETITION: [...]\n"
+            "FEE RECOMMENDATION: [...]"
         ),
     },
     {
@@ -672,8 +679,8 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
                 "\n\nIMPORTANT: Format your response EXACTLY as:\n"
                 "REASONING: [2-sentence summary of your package drafting approach for this case]\n"
                 "---\n"
-                "[Full Lawyer Package: all 5 sections — EXECUTIVE SUMMARY, CLIENT ADVISORY, "
-                "DOCUMENT CHECKLIST, ACTION PLAN, DRAFT PETITION — as specified in the system prompt]"
+                "[Full Lawyer Package: all 6 sections — EXECUTIVE SUMMARY, CLIENT ADVISORY, "
+                "DOCUMENT CHECKLIST, ACTION PLAN, DRAFT PETITION, FEE RECOMMENDATION — as specified in the system prompt]"
             )
         else:
             format_instruction = (
@@ -1263,6 +1270,119 @@ async def get_session_feedback(
             session_id,
         )
     return {r["agent_id"]: r["vote"] for r in rows}
+
+
+# ─── PDF Export ───────────────────────────────────────────────────────────────
+
+class ExportPdfBody(BaseModel):
+    drafting_text:    str = ""
+    case_description: str = ""
+    lawyer_name:      str = ""
+    client_name:      str = ""
+
+
+@router.post("/workspace/sessions/{session_id}/export-pdf")
+async def export_lawyer_package_pdf(
+    session_id: int, body: ExportPdfBody,
+    request: Request, user=Depends(require_user),
+):
+    """Generate and stream a court-ready Lawyer Package PDF from the Drafting Agent output."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, case_description FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+    if not row:
+        raise HTTPException(404, "Session not found")
+
+    case_desc = body.case_description or (row["case_description"] or "")
+
+    try:
+        import sys, os as _os
+        _ai_dir = _os.path.dirname(_os.path.dirname(__file__))
+        if _ai_dir not in sys.path:
+            sys.path.insert(0, _ai_dir)
+        from pdf_generator import generate_lawyer_package_pdf
+        pdf_bytes = generate_lawyer_package_pdf(
+            case_description=case_desc,
+            drafting_text=body.drafting_text,
+            lawyer_name=body.lawyer_name,
+            client_name=body.client_name,
+        )
+    except Exception as exc:
+        logger.error("PDF generation error: %s", exc)
+        raise HTTPException(500, "PDF generation failed")
+
+    from fastapi.responses import Response as _Resp
+    fname = f"LitigaForge_Package_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
+    return _Resp(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
+class InvoicePdfBody(BaseModel):
+    client_name:        str = ""
+    lawyer_name:        str = ""
+    lawyer_firm:        str = ""
+    lawyer_contact:     str = ""
+    case_description:   str = ""
+    amount:             float = 0
+    payment_mode:       str = ""
+    invoice_date:       str = ""
+    case_type:          str = ""
+    fee_tier:           str = "Standard"
+    fee_recommendation: str = ""
+
+
+@router.post("/workspace/sessions/{session_id}/invoice-pdf")
+async def generate_invoice_pdf_endpoint(
+    session_id: int, body: InvoicePdfBody,
+    request: Request, user=Depends(require_user),
+):
+    """Generate and stream a 2-page professional invoice PDF."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+    if not exists:
+        raise HTTPException(404, "Session not found")
+
+    try:
+        import sys, os as _os
+        _ai_dir = _os.path.dirname(_os.path.dirname(__file__))
+        if _ai_dir not in sys.path:
+            sys.path.insert(0, _ai_dir)
+        from pdf_generator import generate_invoice_pdf
+        pdf_bytes = generate_invoice_pdf(
+            client_name=body.client_name,
+            lawyer_name=body.lawyer_name,
+            lawyer_firm=body.lawyer_firm,
+            lawyer_contact=body.lawyer_contact,
+            case_description=body.case_description,
+            amount=body.amount,
+            payment_mode=body.payment_mode,
+            invoice_date=body.invoice_date,
+            case_type=body.case_type,
+            fee_tier=body.fee_tier,
+            fee_recommendation=body.fee_recommendation,
+        )
+    except Exception as exc:
+        logger.error("Invoice PDF error: %s", exc)
+        raise HTTPException(500, "Invoice generation failed")
+
+    from fastapi.responses import Response as _Resp
+    safe  = (body.client_name or "Client").replace(" ", "_")[:20]
+    fname = f"LitigaForge_Invoice_{safe}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
+    return _Resp(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

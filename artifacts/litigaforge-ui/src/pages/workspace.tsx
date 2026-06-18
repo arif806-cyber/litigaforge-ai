@@ -1750,6 +1750,7 @@ export default function ForgeWorkspace() {
             onDraftCopy={onDraftCopy}
             synthesisScore={synthesisScore ?? undefined}
             openAskFor={openAskForAgentId ?? undefined}
+            sessionId={sessionId}
           />
         )}
         {/* Left: collapsed strip — desktop only */}
@@ -2264,6 +2265,7 @@ export default function ForgeWorkspace() {
                   onDraftCopy={onDraftCopy}
                   synthesisScore={synthesisScore ?? undefined}
                   openAskFor={openAskForAgentId ?? undefined}
+                  sessionId={sessionId}
                 />
               )}
               {mobileSheet === "sessions" && (
