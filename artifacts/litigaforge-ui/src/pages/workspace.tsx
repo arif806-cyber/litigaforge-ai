@@ -923,7 +923,7 @@ export default function ForgeWorkspace() {
       if (isMobile) setMobileSheet("agent");
       return;
     }
-    const typeMap: Record<string, string> = { opportunity: "strategy", risk: "risk", precedent: "judgment", pattern: "argument", warning: "fact" };
+    const typeMap: Record<string, string> = { opportunity: "strategy", risk: "risk", precedent: "judgment", pattern: "argument", warning: "fact", step: "argument", framework: "strategy" };
     const nodeType = typeMap[s.type] ?? "strategy";
     const preset   = NODE_PRESETS[nodeType];
     if (!preset) return;

@@ -469,15 +469,30 @@ _AGENTS = [
         "node_label": "Core Legal Issue",
         "node_pos": {"x": 150, "y": 200},
         "system": (
-            "You are an expert Indian legal research agent with deep knowledge of Supreme Court "
-            "and High Court judgments. Analyze the given case and identify the 3 most critical "
-            "legal issues, relevant precedents (with accurate citations), and applicable statutes. "
-            "Be specific — name actual cases and their holdings. Focus on Telangana/Andhra Pradesh "
-            "High Court and Supreme Court of India precedents where relevant.\n\n"
-            "OUTPUT FORMAT:\n"
-            "HOLDINGS: [Key case holdings and findings from the most relevant precedents]\n"
-            "KEY RATIO: [Core legal principle / ratio decidendi applicable to this case]\n"
-            "APPLICABLE STATUTES: [Relevant acts, sections, and constitutional articles]"
+            "You are an expert Indian legal research specialist with 25 years of experience "
+            "in Supreme Court, High Court, and District Court practice. Give SPECIFIC, ACTIONABLE "
+            "research — not generic guidance. This is for a real lawyer with a real case.\n\n"
+            "STEP 1 — CASE CLASSIFICATION: Identify the PRIMARY legal category "
+            "(motor accident / criminal / property / family / service / consumer / labour / "
+            "commercial / constitutional / other) and the main applicable statute.\n\n"
+            "STEP 2 — LEGAL FRAMEWORK: Break the case into parallel legal tracks. "
+            "Example for motor accident: (a) Criminal — FIR + s.279/304A IPC; "
+            "(b) Compensation — MACT claim u/s 166 Motor Vehicles Act; "
+            "(c) Insurance — compulsory third-party policy claim. "
+            "Adapt to the actual case type — name each track and its governing statute.\n\n"
+            "STEP 3 — KEY JUDGMENTS: Cite 3 to 5 REAL Supreme Court or High Court "
+            "judgments directly relevant to these specific facts. For each: "
+            "Case Name v. Party (Year, Court) — one sentence on what it held and why "
+            "it DIRECTLY helps THIS case. Use well-known binding Indian precedents.\n\n"
+            "STEP 4 — FIRST STEPS: Numbered list of 3 to 5 immediate actions the lawyer "
+            "must take RIGHT NOW. Each step must cite a specific statute or section. "
+            "Example: '1. File MACT petition u/s 166 Motor Vehicles Act at District "
+            "Motor Accidents Claims Tribunal within 3 years of accident date.'\n\n"
+            "OUTPUT FORMAT (use EXACTLY these labels):\n"
+            "CASE TYPE: [Identified category and primary applicable statute]\n"
+            "LEGAL FRAMEWORK: [Track 1 — Statute / Track 2 — Statute / Track 3 — Statute]\n"
+            "KEY JUDGMENTS: [Case Name (Year, Court) — one-line holding relevant to this case]\n"
+            "FIRST STEPS: [1. Specific action with statute  2. Next step  3. Next step]"
         ),
     },
     {
@@ -862,18 +877,18 @@ class InsightsBody(BaseModel):
 
 
 _INSIGHT_FALLBACKS = [
-    {"id": "f1", "type": "opportunity", "emoji": "💡",
-     "text": "Run Agent Analysis to surface precedents relevant to your canvas.",
-     "detail": "The Multi-Agent system searches Indian Kanoon and identifies judgments matching your case facts."},
-    {"id": "f2", "type": "risk",        "emoji": "⚠️",
-     "text": "Add case facts as nodes before running strategic analysis.",
-     "detail": "A populated canvas lets the Risk Agent pinpoint argument weaknesses and opposing strategies."},
-    {"id": "f3", "type": "pattern",     "emoji": "🎯",
-     "text": "Connect your argument nodes to judgment nodes to reveal precedent strength.",
-     "detail": "Typed 'Supports / Cites' edges automatically adjust impact scores through the canvas."},
-    {"id": "f4", "type": "precedent",   "emoji": "📚",
-     "text": "Search Indian Kanoon from the Search tab to add live judgments to your canvas.",
-     "detail": "Real Supreme Court and High Court orders can be placed as judgment nodes for citation analysis."},
+    {"id": "f1", "type": "step",      "emoji": "⚡",
+     "text": "Add case facts as Fact nodes, then click ⚡ Analyze for specific AI guidance.",
+     "detail": "Describe: FIR status, parties, date of incident, injuries, court, and relief sought. More facts = more specific output."},
+    {"id": "f2", "type": "framework", "emoji": "🏛️",
+     "text": "Break your matter into legal tracks: Criminal + Civil + Regulatory.",
+     "detail": "Most Indian cases have parallel proceedings (e.g., criminal FIR + MACT compensation + insurance claim). Identify each track before building your argument map."},
+    {"id": "f3", "type": "precedent", "emoji": "⚖️",
+     "text": "Search Indian Kanoon for judgments matching your case facts.",
+     "detail": "Open the Search tab and type key terms (e.g., 'MACT compensation unknown vehicle' or 'property partition Hindu law'). Drop matching judgments onto the canvas."},
+    {"id": "f4", "type": "warning",   "emoji": "⚠️",
+     "text": "Add your case description so AI can give case-specific guidance.",
+     "detail": "Type the case description above (FIR details, parties, date, court, and what relief is sought). Without this, agents give only generic output."},
 ]
 
 
@@ -929,25 +944,46 @@ async def get_proactive_insights(
     ) or "  (empty canvas)"
 
     context_line = f"Recent context: {body.context}\n" if body.context else ""
+    case_words   = len((body.case_description or "").split())
+    vague_hint   = (
+        "\nNOTE: Case description is very short. Include 1 'warning' insight asking "
+        "for specific missing facts (FIR number, injuries, vehicle details, parties, dates)."
+        if case_words < 20 else ""
+    )
 
     prompt = (
         f"Case: {body.case_description or 'Not specified'}\n"
         f"Canvas ({len(nodes)} nodes):\n{node_summaries}\n"
-        f"{context_line}\n"
-        "You are a proactive legal AI for Indian courts. Generate exactly 4 smart, specific insights.\n"
-        "Output ONLY 4 pipe-separated lines: TYPE|EMOJI|SHORT_TEXT|DETAIL_TEXT\n"
-        "TYPE: opportunity | risk | precedent | pattern | warning | agent_rec\n"
-        "For agent_rec, EMOJI must be the agent emoji + space + agent_id. "
-        "Agent IDs: research, strategy, risk, drafting, predictive. "
-        "Example: 🔍 research\n"
-        "SHORT_TEXT ≤100 chars. DETAIL_TEXT ≤200 chars.\n"
-        "Be specific — mention legal principles, real case names, or court names.\n"
-        "When context mentions a simulation or what-if, include at least 1 agent_rec insight.\n"
-        "Example lines:\n"
-        "opportunity|💡|Maneka Gandhi precedent strengthens your Article 21 argument|"
-        "Maneka Gandhi v. Union (1978) established a broad reading of personal liberty.\n"
-        "agent_rec|🛡️ risk|Ask the Risk Agent to map opposition counter-arguments|"
-        "The Risk Agent can enumerate likely objections and mitigation strategies."
+        f"{context_line}"
+        f"{vague_hint}\n\n"
+        "You are an expert Indian legal AI for real court practice (Telangana/AP focus).\n"
+        "Generate exactly 4 ACTIONABLE suggestions for this specific case.\n"
+        "Each suggestion must be SPECIFIC — cite statute sections, real case names, or numbered steps.\n\n"
+        "OUTPUT FORMAT — output ONLY 4 pipe-separated lines:\n"
+        "TYPE|EMOJI|SHORT_TEXT (<=100 chars)|DETAIL_TEXT (<=250 chars)\n\n"
+        "TYPE options:\n"
+        "  step      = a specific action the lawyer must take RIGHT NOW (cite the statute section)\n"
+        "  framework = breakdown of the case into legal tracks (criminal+civil+insurance etc.)\n"
+        "  precedent = a specific named Indian judgment supporting a key argument\n"
+        "  warning   = a risk, limitation deadline, or missing fact the lawyer must not ignore\n"
+        "  agent_rec = recommend a specific workspace agent; EMOJI = agent_emoji + space + agent_id\n"
+        "              Agent IDs: research, strategy, risk, drafting, predictive\n\n"
+        "RULES:\n"
+        "- Always include at least 1 'step' with a specific statute section number\n"
+        "- Always include at least 1 'precedent' with a real case name and year\n"
+        "- For 'step': start with a verb (File, Apply, Obtain, Draft, Serve, Appear)\n"
+        "- For 'precedent': cite the actual case name, year, and court\n"
+        "- For 'framework': name each parallel legal track with its governing statute\n"
+        "- If canvas has fewer than 2 nodes: first suggestion should be 'step' to add facts\n\n"
+        "EXAMPLES:\n"
+        "step|⚡|File MACT petition u/s 166 Motor Vehicles Act at District Tribunal|"
+        "File within 3 years of accident. Claim from insurer + owner. FIR not required for s.166 MVA civil claim.\n"
+        "framework|🏛️|3 tracks: Criminal (s.304A IPC) + MACT Compensation + Insurance Claim|"
+        "Criminal: FIR to chargesheet to trial u/s 279 and 304A IPC. MACT: compensation u/s 166 MVA. Insurance: claim against compulsory motor policy.\n"
+        "precedent|⚖️|Sarla Verma v. DTC (2009 SC) — structured MACT compensation formula|"
+        "Supreme Court laid down standard multiplier method for motor accident compensation. Binding on all MACT courts in India.\n"
+        "warning|⚠️|Limitation: MACT claim must be filed within 3 years of accident date|"
+        "Under s.166(3) MVA, no time limit for filing — but courts have upheld 3-year guideline. File immediately to preserve all reliefs."
     )
 
     try:
@@ -958,8 +994,8 @@ async def get_proactive_insights(
             if len(parts) < 3:
                 continue
             stype = parts[0].lower()
-            if stype not in ("opportunity", "risk", "precedent", "pattern", "warning", "agent_rec"):
-                stype = "opportunity"
+            if stype not in ("opportunity", "risk", "precedent", "pattern", "warning", "agent_rec", "step", "framework"):
+                stype = "step"
             suggestions.append({
                 "id":     _uuid.uuid4().hex[:8],
                 "type":   stype,

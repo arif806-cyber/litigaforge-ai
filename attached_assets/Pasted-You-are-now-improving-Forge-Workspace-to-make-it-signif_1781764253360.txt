@@ -1,0 +1,39 @@
+You are now improving Forge Workspace to make it significantly more useful and practical for lawyers handling real legal cases.
+
+Current Problem:
+Even after accepting all suggestions from agents and Proactive Intelligence, the system is not giving specific, actionable, and relevant legal solutions. For example, in a hit-and-run case, the user is not getting proper guidance on compensation, relevant Indian Kanoon judgments, or step-by-step process.
+
+Your task is to improve the overall quality and usefulness of the system with the following requirements:
+
+1. **Better Research Agent**
+   - Improve the Research Agent so it gives more specific and relevant Indian Kanoon judgments.
+   - When the user gives a case description, the Research Agent should automatically identify the main legal issues (criminal + compensation) and fetch judgments accordingly.
+   - It should show direct links or citations of relevant cases with short explanations of why they are useful.
+
+2. **Structured Legal Framework**
+   - When a new matter is created or a document is uploaded, the system should automatically break the case into clear legal categories. For example, in a hit-and-run case:
+     - Criminal proceedings (FIR, police investigation, punishment)
+     - Compensation claim under Motor Vehicles Act
+     - Insurance claim process
+   - This structure should be visible on the Spatial Canvas or in a dedicated panel.
+
+3. **More Actionable Proactive Intelligence**
+   - Change Proactive Intelligence from generic suggestions to practical, step-by-step guidance.
+   - Examples of good suggestions:
+     - “First file FIR if not already done”
+     - “Claim compensation under Section 166 of the Motor Vehicles Act”
+     - “These 3 Indian Kanoon judgments support compensation even when vehicle number is unknown”
+     - “Add these facts as nodes before running agent analysis”
+
+4. **Stronger Connection Between Features**
+   - Make sure the Spatial Canvas, Agents, and Proactive Intelligence work together properly.
+   - When a user accepts a suggestion, it should automatically reflect on the canvas (as nodes or connections).
+   - Agents should use the current canvas state while giving analysis.
+
+5. **Better User Guidance**
+   - Add clear instructions or tooltips so lawyers understand how to use the system effectively for real cases.
+   - When the output is weak, the system should guide the user on what additional information is needed (e.g., “Please add details like FIR status, injuries, or vehicle number for better results”).
+
+Goal: Make Forge Workspace actually helpful for lawyers in real cases by giving specific judgments, clear legal structure, and practical steps — instead of generic suggestions.
+
+Focus on improving quality, relevance, and usefulness of the output.

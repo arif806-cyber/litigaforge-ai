@@ -52,7 +52,7 @@ const DEF_MAP = Object.fromEntries(AGENT_DEFS.map(d => [d.id, d]));
 interface Section { title: string; body: string }
 
 const SECTION_KEYS: Record<string, string[]> = {
-  research:   ["HOLDINGS", "KEY RATIO", "APPLICABLE STATUTES"],
+  research:   ["CASE TYPE", "LEGAL FRAMEWORK", "KEY JUDGMENTS", "FIRST STEPS"],
   strategy:   ["PRIMARY ARGUMENT", "PROCEDURAL ANGLE", "PRAYER CLAUSE"],
   risk:       ["RISK LEVEL", "COUNTER-ARGUMENTS", "ADVERSE PRECEDENTS"],
   drafting:   ["LEGAL CONTENTION", "SUPPORTING AUTHORITIES", "PRAYER"],
@@ -300,13 +300,30 @@ function AgentCard({
                     }}>
                       {sec.title}
                     </div>
-                    <div style={{
-                      fontSize: 10, color: "#94a3b8", lineHeight: 1.65,
-                      paddingLeft: 8, borderLeft: `3px solid ${def.color}33`,
-                      paddingBottom: si < sections.length - 1 ? 5 : 0,
-                    }}>
-                      {sec.body}
-                    </div>
+                    {sec.title === "FIRST STEPS" ? (
+                      <div style={{
+                        paddingLeft: 8, borderLeft: `3px solid ${def.color}33`,
+                        paddingBottom: si < sections.length - 1 ? 5 : 0,
+                        display: "flex", flexDirection: "column", gap: 4,
+                      }}>
+                        {sec.body.split(/(?=\d+\.\s)/).filter(Boolean).map((step, si2) => (
+                          <div key={si2} style={{ display: "flex", gap: 6, fontSize: 10, lineHeight: 1.6 }}>
+                            <span style={{ color: def.color, fontWeight: 800, flexShrink: 0, minWidth: 14 }}>
+                              {step.match(/^(\d+)/)?.[1] ?? "•"}
+                            </span>
+                            <span style={{ color: "#94a3b8" }}>{step.replace(/^\d+\.\s*/, "")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{
+                        fontSize: 10, color: "#94a3b8", lineHeight: 1.65,
+                        paddingLeft: 8, borderLeft: `3px solid ${def.color}33`,
+                        paddingBottom: si < sections.length - 1 ? 5 : 0,
+                      }}>
+                        {sec.body}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

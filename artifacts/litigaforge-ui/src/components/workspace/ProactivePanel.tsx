@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export interface Suggestion {
   id: string;
-  type: "opportunity" | "risk" | "precedent" | "pattern" | "warning" | "agent_rec" | "cross_matter";
+  type: "opportunity" | "risk" | "precedent" | "pattern" | "warning" | "agent_rec" | "cross_matter" | "step" | "framework";
   emoji: string;
   text: string;
   detail?: string;
@@ -25,13 +25,15 @@ interface ProactivePanelProps {
 // ─── Config ────────────────────────────────────────────────────────────────────
 
 const TYPE_META: Record<string, { color: string; label: string; acceptLabel?: string }> = {
-  opportunity:  { color: "#14b8a6", label: "Opportunity"    },
-  risk:         { color: "#ef4444", label: "Risk Detected"  },
-  precedent:    { color: "#3b82f6", label: "Precedent Match"},
-  pattern:      { color: "#a855f7", label: "Pattern Found"  },
-  warning:      { color: "#f59e0b", label: "Warning"        },
-  agent_rec:    { color: "#f97316", label: "Ask an Agent",  acceptLabel: "→ Ask Agent" },
-  cross_matter: { color: "#6366f1", label: "Similar Matter", acceptLabel: "→ Open Matter" },
+  opportunity:  { color: "#14b8a6", label: "Opportunity"      },
+  risk:         { color: "#ef4444", label: "Risk Detected"    },
+  precedent:    { color: "#3b82f6", label: "Precedent"        },
+  pattern:      { color: "#a855f7", label: "Pattern Found"    },
+  warning:      { color: "#f59e0b", label: "Missing Info"     },
+  agent_rec:    { color: "#f97316", label: "Ask an Agent",    acceptLabel: "→ Ask Agent"     },
+  cross_matter: { color: "#6366f1", label: "Similar Matter",  acceptLabel: "→ Open Matter"   },
+  step:         { color: "#22c55e", label: "Action Step",     acceptLabel: "✓ Add to Canvas" },
+  framework:    { color: "#eab308", label: "Legal Framework", acceptLabel: "✓ Add Framework" },
 };
 
 // ─── Skeleton card ─────────────────────────────────────────────────────────────
