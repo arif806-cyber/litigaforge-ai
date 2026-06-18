@@ -172,7 +172,7 @@ function AgentCard({
   state: AgentState;
   onAskAgent: (agentId: string, question: string) => void;
   onFeedback: (agentId: string, vote: "up" | "down") => void;
-  onDraftCopy?: (agentId: string) => void;
+  onDraftCopy?: (agentId: string, templateType: string, wordCountBucket: string) => void;
   forceAskOpen?: boolean;
 }) {
   const isThinking   = state.status === "thinking";
@@ -416,12 +416,15 @@ function AgentCard({
             {askOpen ? "✕ Close" : "💬 Ask"}
           </button>
 
-          {/* Step 5: Copy draft — drafting agent only */}
+          {/* Step 5: Copy draft — drafting agent only, emits template_type + word_count_bucket */}
           {def.id === "drafting" && state.text && onDraftCopy && (
             <button
               onClick={() => {
                 void navigator.clipboard.writeText(state.text ?? "").catch(() => {});
-                onDraftCopy(def.id);
+                const wc = (state.text ?? "").split(/\s+/).filter(Boolean).length;
+                const wcb = wc < 200 ? "short" : wc < 500 ? "medium" : "long";
+                const templateType = sections[0]?.title ?? "full";
+                onDraftCopy(def.id, templateType, wcb);
               }}
               style={{
                 background: "rgba(59,130,246,0.08)",
@@ -609,7 +612,7 @@ interface AgentPanelProps {
   collabFeed:             CollabEvent[];
   onAskAgent:             (agentId: string, question: string) => void;
   onFeedback:             (agentId: string, vote: "up" | "down") => void;
-  onDraftCopy?:           (agentId: string) => void;
+  onDraftCopy?:           (agentId: string, templateType: string, wordCountBucket: string) => void;
   synthesisScore?:        number;
   openAskFor?:            string;
 }

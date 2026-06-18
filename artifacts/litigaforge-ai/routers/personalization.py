@@ -142,11 +142,12 @@ def compute_profile(events: list[dict]) -> dict:
                 node_types[nt] = node_types.get(nt, 0) + 1
 
         elif t == "draft_accept":
-            style = d.get("section", "full")
+            # Prefer more-specific template_type over generic section name
+            style = d.get("template_type") or d.get("section", "full")
             draft_accepts[style] = draft_accepts.get(style, 0) + 1
 
         elif t == "draft_reject":
-            style = d.get("section", "full")
+            style = d.get("template_type") or d.get("section", "full")
             draft_rejects[style] = draft_rejects.get(style, 0) + 1
 
     # Agent affinity: base 50, +12 per up-vote, -10 per down-vote, clamped 0-100

@@ -1016,6 +1016,14 @@ export default function ForgeWorkspace() {
     }));
   }, [sessionId, caseDescription]);
 
+  // Step 5 helper: detect drafting-agent template from output text (mirrors SECTION_KEYS["drafting"])
+  const _detectDraftTemplate = (text: string): string => {
+    for (const key of ["LEGAL CONTENTION", "SUPPORTING AUTHORITIES", "PRAYER"]) {
+      if (text.includes(key + ":")) return key;
+    }
+    return "full";
+  };
+
   const onFeedback = useCallback((agentId: string, vote: "up" | "down") => {
     setAgentStates(prev => {
       const newVote = prev[agentId]?.feedback === vote ? null : vote;
@@ -1024,6 +1032,25 @@ export default function ForgeWorkspace() {
         void api(`/workspace/sessions/${sessionId}/agent/${agentId}/feedback`, {
           method: "POST",
           body: JSON.stringify({ vote: newVote }),
+        }).catch(() => {});
+      }
+      // Step 5: Emit draft_reject when user downvotes the drafting agent
+      if (agentId === "drafting" && vote === "down" && sessionId && prev["drafting"]?.text) {
+        const text = prev["drafting"].text ?? "";
+        const wc = text.split(/\s+/).filter(Boolean).length;
+        const wcb = wc < 200 ? "short" : wc < 500 ? "medium" : "long";
+        void api("/workspace/profile/event", {
+          method: "POST",
+          body: JSON.stringify({
+            event_type: "draft_reject",
+            session_id: sessionId,
+            data: {
+              agent_id: agentId,
+              section: "full",
+              template_type: _detectDraftTemplate(text),
+              word_count_bucket: wcb,
+            },
+          }),
         }).catch(() => {});
       }
       return {
@@ -1070,15 +1097,15 @@ export default function ForgeWorkspace() {
     }).catch(() => {});
   }, [sessionId]);
 
-  // Step 5: Draft copy tracking — logs draft_accept event and trains twin style preference
-  const onDraftCopy = useCallback((agentId: string) => {
+  // Step 5: Draft copy tracking — logs draft_accept with template_type + word_count_bucket
+  const onDraftCopy = useCallback((agentId: string, templateType: string, wordCountBucket: string) => {
     if (!sessionId) return;
     void api("/workspace/profile/event", {
       method: "POST",
       body: JSON.stringify({
         event_type: "draft_accept",
         session_id: sessionId,
-        data: { agent_id: agentId, section: "full" },
+        data: { agent_id: agentId, section: "full", template_type: templateType, word_count_bucket: wordCountBucket },
       }),
     }).catch(() => {});
   }, [sessionId]);

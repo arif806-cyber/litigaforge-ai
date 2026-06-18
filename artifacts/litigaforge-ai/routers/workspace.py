@@ -752,26 +752,31 @@ async def analyze_session(
 
     case_desc = body.case_description or row["case_description"] or ""
 
-    # Fetch personalization profile (non-blocking; silently skipped on error)
+    # Fetch personalization profile — only applied when learning is enabled (Step 1)
     profile_ctx = ""
     try:
         from routers.personalization import compute_profile, _profile_prompt_context
         async with pool.acquire() as pconn:
-            evt_rows = await pconn.fetch(
-                "SELECT event_type, event_data FROM user_learning_events "
-                "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",
-                user["id"],
+            prof_row = await pconn.fetchrow(
+                "SELECT learning_enabled FROM user_profile WHERE user_id=$1", user["id"]
             )
-        events = [
-            {
-                "event_type": r["event_type"],
-                "data": json.loads(r["event_data"]) if r["event_data"] else {},
-            }
-            for r in evt_rows
-        ]
-        if events:
-            computed    = compute_profile(events)
-            profile_ctx = _profile_prompt_context(computed)
+            learning_enabled = prof_row["learning_enabled"] if prof_row else True
+            if learning_enabled:
+                evt_rows = await pconn.fetch(
+                    "SELECT event_type, event_data FROM user_learning_events "
+                    "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",
+                    user["id"],
+                )
+                events = [
+                    {
+                        "event_type": r["event_type"],
+                        "data": json.loads(r["event_data"]) if r["event_data"] else {},
+                    }
+                    for r in evt_rows
+                ]
+                if events:
+                    computed    = compute_profile(events)
+                    profile_ctx = _profile_prompt_context(computed)
     except Exception as _pe:
         logger.debug("Profile context skipped: %s", _pe)
 
@@ -889,24 +894,29 @@ async def get_proactive_insights(
     if not nodes and not body.case_description:
         return {"suggestions": _INSIGHT_FALLBACKS}
 
-    # Step 4: Fetch suppressed suggestion types (dismissed ≥3×) — non-blocking
+    # Step 4: Compute suppressed suggestion types via compute_profile() so suggestion_reactivate
+    # events are properly honoured (dismiss count reset to 0 on undo).
     suppressed_types: set[str] = set()
     try:
+        from routers.personalization import compute_profile as _cp_supp
         async with pool.acquire() as sup_conn:
             sup_rows = await sup_conn.fetch(
-                "SELECT event_data FROM user_learning_events "
-                "WHERE user_id=$1 AND event_type='suggestion_dismiss' LIMIT 200",
+                "SELECT event_type, event_data FROM user_learning_events "
+                "WHERE user_id=$1 AND event_type IN ('suggestion_dismiss','suggestion_reactivate') LIMIT 300",
                 user["id"],
             )
-        dismiss_counts: dict[str, int] = {}
-        for r in sup_rows:
-            try:
-                d = json.loads(r["event_data"]) if r["event_data"] else {}
-                st = d.get("suggestion_type", "other")
-                dismiss_counts[st] = dismiss_counts.get(st, 0) + 1
-            except Exception:
-                pass
-        suppressed_types = {k for k, v in dismiss_counts.items() if v >= 3}
+        sup_events = [
+            {
+                "event_type": r["event_type"],
+                "data": json.loads(r["event_data"]) if r["event_data"] else {},
+            }
+            for r in sup_rows
+        ]
+        if sup_events:
+            sup_computed = _cp_supp(sup_events)
+            suppressed_types = {
+                k for k, v in sup_computed.get("suggestion_dismisses", {}).items() if v >= 3
+            }
     except Exception as _se:
         logger.debug("Suppression fetch skipped: %s", _se)
 
