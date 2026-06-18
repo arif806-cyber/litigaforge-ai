@@ -69,6 +69,18 @@ class AskAgentBody(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     case_description: str = ""
 
+class CreateFolderBody(BaseModel):
+    folder_name: str = Field(default="New Case Folder", max_length=300)
+    case_description: str = ""
+    session_id: int | None = None
+
+class RenameFolderBody(BaseModel):
+    folder_name: str = Field(min_length=1, max_length=300)
+
+class SuggestFeeBody(BaseModel):
+    case_description: str = ""
+    case_type: str = ""
+
 
 # ─── Session CRUD ──────────────────────────────────────────────────────────────
 
@@ -670,6 +682,61 @@ def _format_ik_for_prompt(docs: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# ─── Case Folder — auto-create after analysis ─────────────────────────────────
+
+async def _auto_create_case_folder(
+    user_id: int,
+    session_id: int,
+    case_desc: str,
+    drafting_text: str,
+) -> dict | None:
+    """Create a case folder and auto-save Lawyer Package PDF after analysis completes."""
+    import sys as _sys
+    safe = _re.sub(r"[^A-Za-z0-9\s]", "", case_desc or "Untitled Case")
+    slug = "_".join(safe.split()[:5]) or "Untitled_Case"
+    date_tag    = datetime.now(timezone.utc).strftime("%Y%m%d")
+    folder_name = f"{slug}_{date_tag}"[:120]
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        folder_row = await conn.fetchrow(
+            "INSERT INTO case_folders (user_id, session_id, folder_name, case_description) "
+            "VALUES ($1, $2, $3, $4) RETURNING id, folder_name",
+            user_id, session_id, folder_name, (case_desc or "")[:1000],
+        )
+        folder_id  = folder_row["id"]
+        base_dir   = os.path.dirname(os.path.dirname(__file__))
+        folder_dir = os.path.join(base_dir, "uploads", "folders", str(folder_id))
+        os.makedirs(folder_dir, exist_ok=True)
+
+        file_count = 0
+        if drafting_text:
+            try:
+                ai_dir = os.path.dirname(os.path.dirname(__file__))
+                if ai_dir not in _sys.path:
+                    _sys.path.insert(0, ai_dir)
+                from pdf_generator import generate_lawyer_package_pdf
+                pdf_bytes = generate_lawyer_package_pdf(
+                    case_description=case_desc,
+                    drafting_text=drafting_text,
+                )
+                pdf_fn   = f"Lawyer_Package_{date_tag}.pdf"
+                pdf_path = os.path.join(folder_dir, pdf_fn)
+                with open(pdf_path, "wb") as fh:
+                    fh.write(pdf_bytes)
+                await conn.execute(
+                    "INSERT INTO folder_documents "
+                    "(folder_id, filename, doc_type, file_path, file_size_bytes) "
+                    "VALUES ($1, $2, $3, $4, $5)",
+                    folder_id, pdf_fn, "lawyer_package", pdf_path, len(pdf_bytes),
+                )
+                file_count += 1
+            except Exception as _pe:
+                logger.warning("Auto-save Lawyer Package PDF failed: %s", _pe)
+
+    return {"id": folder_id, "name": folder_name, "file_count": file_count}
+
+
 # ─── Multi-Agent Analysis  (SSE streaming) ────────────────────────────────────
 
 async def _stream_analysis(case_description: str, context: str, profile_ctx: str = ""):
@@ -905,8 +972,40 @@ async def analyze_session(
         logger.debug("Profile context skipped: %s", _pe)
 
     async def generate():
+        def _sse(d: dict) -> str:
+            return f"data: {json.dumps(d, default=str)}\n\n"
+
+        drafting_buf: list[str] = []
+
         async for chunk in _stream_analysis(case_desc, body.context, profile_ctx):
             yield chunk
+            # Intercept Drafting Agent output to capture full text for folder creation
+            if '"agent_done"' in chunk and '"drafting"' in chunk:
+                try:
+                    payload = json.loads(chunk.split("data: ", 1)[1])
+                    if payload.get("type") == "agent_done" and payload.get("agent") == "drafting":
+                        drafting_buf.append(payload.get("full_text", ""))
+                except Exception:
+                    pass
+
+        # ── Auto-create case folder after all agents complete ─────────────────
+        drafting_text = drafting_buf[0] if drafting_buf else ""
+        try:
+            folder_info = await _auto_create_case_folder(
+                user_id=user["id"],
+                session_id=session_id,
+                case_desc=case_desc,
+                drafting_text=drafting_text,
+            )
+            if folder_info:
+                yield _sse({
+                    "type":        "folder_created",
+                    "folder_id":   folder_info["id"],
+                    "folder_name": folder_info["name"],
+                    "file_count":  folder_info["file_count"],
+                })
+        except Exception as _fe:
+            logger.warning("Auto-folder creation failed: %s", _fe)
 
     return StreamingResponse(
         generate(),
@@ -1429,6 +1528,36 @@ async def generate_invoice_pdf_endpoint(
         logger.error("Invoice PDF error: %s", exc)
         raise HTTPException(500, "Invoice generation failed")
 
+    # ── Auto-save invoice to case folder (non-blocking) ──────────────────────
+    try:
+        async with pool.acquire() as _fconn:
+            _frow = await _fconn.fetchrow(
+                "SELECT id FROM case_folders WHERE session_id=$1 AND user_id=$2 "
+                "ORDER BY created_at DESC LIMIT 1",
+                session_id, user["id"],
+            )
+        if _frow:
+            _fid  = _frow["id"]
+            _fdir = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                "uploads", "folders", str(_fid),
+            )
+            os.makedirs(_fdir, exist_ok=True)
+            _safe_c = (body.client_name or "Client").replace(" ", "_")[:16]
+            _inv_fn = f"Invoice_{_safe_c}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.pdf"
+            _inv_p  = os.path.join(_fdir, _inv_fn)
+            with open(_inv_p, "wb") as _fh:
+                _fh.write(pdf_bytes)
+            async with pool.acquire() as _fconn2:
+                await _fconn2.execute(
+                    "INSERT INTO folder_documents "
+                    "(folder_id, filename, doc_type, file_path, file_size_bytes) "
+                    "VALUES ($1, $2, $3, $4, $5)",
+                    _fid, _inv_fn, "invoice", _inv_p, len(pdf_bytes),
+                )
+    except Exception as _sfe:
+        logger.debug("Invoice auto-save to folder skipped: %s", _sfe)
+
     from fastapi.responses import Response as _Resp
     safe  = (body.client_name or "Client").replace(" ", "_")[:20]
     fname = f"LitigaForge_Invoice_{safe}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
@@ -1437,6 +1566,303 @@ async def generate_invoice_pdf_endpoint(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
+
+
+# ─── Case Folder CRUD ─────────────────────────────────────────────────────────
+
+@router.get("/workspace/folders")
+async def list_folders(
+    request: Request,
+    user=Depends(require_user),
+    q: str = "",
+):
+    """List all case folders for the current user, optionally filtered by name."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if q:
+            rows = await conn.fetch(
+                "SELECT cf.id, cf.folder_name, cf.case_description, cf.session_id, "
+                "       cf.created_at, cf.updated_at, COUNT(fd.id) AS file_count "
+                "FROM case_folders cf "
+                "LEFT JOIN folder_documents fd ON fd.folder_id = cf.id "
+                "WHERE cf.user_id = $1 AND cf.folder_name ILIKE $2 "
+                "GROUP BY cf.id ORDER BY cf.updated_at DESC LIMIT 100",
+                user["id"], f"%{q}%",
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT cf.id, cf.folder_name, cf.case_description, cf.session_id, "
+                "       cf.created_at, cf.updated_at, COUNT(fd.id) AS file_count "
+                "FROM case_folders cf "
+                "LEFT JOIN folder_documents fd ON fd.folder_id = cf.id "
+                "WHERE cf.user_id = $1 "
+                "GROUP BY cf.id ORDER BY cf.updated_at DESC LIMIT 100",
+                user["id"],
+            )
+    return [dict(r) for r in rows]
+
+
+@router.post("/workspace/folders", status_code=201)
+async def create_folder(
+    body: CreateFolderBody,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Manually create a new case folder."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO case_folders (user_id, session_id, folder_name, case_description) "
+            "VALUES ($1, $2, $3, $4) "
+            "RETURNING id, folder_name, case_description, session_id, created_at, updated_at",
+            user["id"], body.session_id, body.folder_name, body.case_description,
+        )
+    return {**dict(row), "file_count": 0}
+
+
+@router.get("/workspace/folders/{folder_id}")
+async def get_folder(
+    folder_id: int,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Get a single folder with all its document metadata."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        folder = await conn.fetchrow(
+            "SELECT id, folder_name, case_description, session_id, created_at, updated_at "
+            "FROM case_folders WHERE id=$1 AND user_id=$2",
+            folder_id, user["id"],
+        )
+        if not folder:
+            raise HTTPException(404, "Folder not found")
+        files = await conn.fetch(
+            "SELECT id, filename, doc_type, file_size_bytes, notes, created_at "
+            "FROM folder_documents WHERE folder_id=$1 ORDER BY created_at DESC",
+            folder_id,
+        )
+    return {**dict(folder), "files": [dict(f) for f in files]}
+
+
+@router.patch("/workspace/folders/{folder_id}")
+async def rename_folder(
+    folder_id: int,
+    body: RenameFolderBody,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Rename a case folder."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE case_folders SET folder_name=$1, updated_at=NOW() "
+            "WHERE id=$2 AND user_id=$3 RETURNING id, folder_name",
+            body.folder_name, folder_id, user["id"],
+        )
+    if not row:
+        raise HTTPException(404, "Folder not found")
+    return {"ok": True, "folder_name": row["folder_name"]}
+
+
+@router.delete("/workspace/folders/{folder_id}", status_code=200)
+async def delete_folder(
+    folder_id: int,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Delete a case folder and all its files from disk and DB."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        folder = await conn.fetchrow(
+            "SELECT id FROM case_folders WHERE id=$1 AND user_id=$2",
+            folder_id, user["id"],
+        )
+        if not folder:
+            raise HTTPException(404, "Folder not found")
+        files = await conn.fetch(
+            "SELECT file_path FROM folder_documents WHERE folder_id=$1", folder_id,
+        )
+        for f in files:
+            try:
+                os.remove(f["file_path"])
+            except OSError:
+                pass
+        try:
+            import shutil
+            shutil.rmtree(
+                os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    "uploads", "folders", str(folder_id),
+                ),
+                ignore_errors=True,
+            )
+        except Exception:
+            pass
+        await conn.execute(
+            "DELETE FROM case_folders WHERE id=$1 AND user_id=$2", folder_id, user["id"],
+        )
+    return {"ok": True}
+
+
+@router.get("/workspace/folders/{folder_id}/files/{file_id}/download")
+async def download_folder_file(
+    folder_id: int,
+    file_id: int,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Download a file from a case folder by ID."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        folder_ok = await conn.fetchval(
+            "SELECT id FROM case_folders WHERE id=$1 AND user_id=$2", folder_id, user["id"],
+        )
+        if not folder_ok:
+            raise HTTPException(404, "Folder not found")
+        file_row = await conn.fetchrow(
+            "SELECT filename, file_path FROM folder_documents WHERE id=$1 AND folder_id=$2",
+            file_id, folder_id,
+        )
+    if not file_row:
+        raise HTTPException(404, "File not found")
+    fpath = file_row["file_path"]
+    if not os.path.exists(fpath):
+        raise HTTPException(404, "File not found on disk")
+    with open(fpath, "rb") as fh:
+        content = fh.read()
+    from fastapi.responses import Response as _Resp
+    media = (
+        "application/pdf"
+        if file_row["filename"].lower().endswith(".pdf")
+        else "application/octet-stream"
+    )
+    return _Resp(
+        content=content,
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="{file_row["filename"]}"'},
+    )
+
+
+@router.delete("/workspace/folders/{folder_id}/files/{file_id}", status_code=200)
+async def delete_folder_file(
+    folder_id: int,
+    file_id: int,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Delete a single file from a case folder."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        folder_ok = await conn.fetchval(
+            "SELECT id FROM case_folders WHERE id=$1 AND user_id=$2", folder_id, user["id"],
+        )
+        if not folder_ok:
+            raise HTTPException(404, "Folder not found")
+        file_row = await conn.fetchrow(
+            "SELECT file_path FROM folder_documents WHERE id=$1 AND folder_id=$2",
+            file_id, folder_id,
+        )
+        if not file_row:
+            raise HTTPException(404, "File not found")
+        try:
+            os.remove(file_row["file_path"])
+        except OSError:
+            pass
+        await conn.execute(
+            "DELETE FROM folder_documents WHERE id=$1 AND folder_id=$2", file_id, folder_id,
+        )
+    return {"ok": True}
+
+
+# ─── AI Fee Suggestion ────────────────────────────────────────────────────────
+
+@router.post("/workspace/sessions/{session_id}/suggest-fee")
+async def suggest_fee(
+    session_id: int,
+    body: SuggestFeeBody,
+    request: Request,
+    user=Depends(require_user),
+):
+    """AI-powered professional fee suggestion based on case type & Hyderabad/Telangana market rates."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, case_description FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+    if not row:
+        raise HTTPException(404, "Session not found")
+
+    case_desc = body.case_description or row["case_description"] or ""
+    case_type = body.case_type or ""
+
+    prompt = (
+        "You are a professional legal fee advisor for Hyderabad/Telangana, India.\n"
+        f"Case type: {case_type or 'General civil/criminal matter'}\n"
+        f"Case description: {case_desc[:600]}\n\n"
+        "Suggest a professional fee range based on Hyderabad/Telangana advocate market rates.\n"
+        "Consider: case complexity, appropriate forum (district/HC), retainer + per-hearing structure.\n\n"
+        "OUTPUT — use ONLY these exact labels, one per line:\n"
+        "COMPLEXITY: [low/medium/high]\n"
+        "CONSERVATIVE: Rs. [amount]\n"
+        "STANDARD: Rs. [amount]\n"
+        "PREMIUM: Rs. [amount]\n"
+        "BREAKDOWN: [2-sentence description of fee structure — retainer, per-hearing, success component]\n"
+        "RATIONALE: [1-2 sentences explaining why this range fits this specific matter]"
+    )
+
+    _FB: dict[str, tuple] = {
+        "mact":        ("medium", "25000",  "50000",  "100000"),
+        "criminal":    ("medium", "15000",  "35000",   "75000"),
+        "civil":       ("medium", "20000",  "40000",   "85000"),
+        "consumer":    ("low",     "8000",  "15000",   "30000"),
+        "property":    ("high",   "35000",  "75000",  "150000"),
+        "matrimonial": ("medium", "25000",  "50000",  "100000"),
+        "writ":        ("high",   "40000",  "80000",  "160000"),
+        "cheque":      ("low",    "10000",  "20000",   "40000"),
+        "labour":      ("medium", "20000",  "40000",   "80000"),
+    }
+    search_text = (case_type + " " + case_desc[:80]).lower()
+    ct_key = next((k for k in _FB if k in search_text), "civil")
+    fb = _FB[ct_key]
+
+    try:
+        raw = (await legal_llm.aask_legal_question(prompt) or "").strip()
+    except Exception as _llm_exc:
+        logger.warning("Fee suggestion LLM error: %s", _llm_exc)
+        raw = (
+            f"COMPLEXITY: {fb[0]}\n"
+            f"CONSERVATIVE: Rs. {fb[1]}\n"
+            f"STANDARD: Rs. {fb[2]}\n"
+            f"PREMIUM: Rs. {fb[3]}\n"
+            "BREAKDOWN: Advance retainer on instruction, per-hearing fee, and a final closure fee.\n"
+            "RATIONALE: Based on standard Hyderabad district court rates for this case category."
+        )
+
+    result: dict = {"raw": raw, "case_type": case_type}
+    for line in raw.splitlines():
+        ln = line.strip()
+        if ln.startswith("COMPLEXITY:"):
+            result["complexity"]   = ln[11:].strip()
+        elif ln.startswith("CONSERVATIVE:"):
+            result["conservative"] = ln[13:].strip()
+        elif ln.startswith("STANDARD:"):
+            result["standard"]     = ln[9:].strip()
+        elif ln.startswith("PREMIUM:"):
+            result["premium"]      = ln[8:].strip()
+        elif ln.startswith("BREAKDOWN:"):
+            result["breakdown"]    = ln[10:].strip()
+        elif ln.startswith("RATIONALE:"):
+            result["rationale"]    = ln[10:].strip()
+
+    std_line = result.get("standard", f"Rs. {fb[2]}")
+    m = _re.search(r"[\d]+", std_line.replace(",", ""))
+    try:
+        result["suggested_amount"] = float(m.group()) if m else float(fb[2])
+    except (ValueError, AttributeError):
+        result["suggested_amount"] = float(fb[2])
+
+    return result
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

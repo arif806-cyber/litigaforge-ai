@@ -1,0 +1,71 @@
+You are an expert full-stack Python developer working on the LitigaForge AI legal platform.
+
+Your task is to implement two major connected features together:
+
+### Feature 1: Wire IndianKanoon Live Lookup into the Research Agent (Task 72)
+- The Indian Kanoon integration already exists via `_cached_ik_search()` in `artifacts/litigaforge-ai/routers/workspace.py`.
+- `INDIANKANOON_API_TOKEN` is already set in Replit Secrets.
+- Currently, the Research Agent in `_stream_analysis()` runs as a pure LLM call without live data.
+- You need to inject real Indian Kanoon results into the Research Agent prompt before the LLM call.
+
+Requirements for this part:
+- Create a new clean file: `artifacts/litigaforge-ai/tools/indian_kanoon_tool.py` with two standalone functions:
+  - `search_indian_kanoon(query, max_results=5, doctype=None)`
+  - `get_case_details(case_id)`
+- Use `requests` and `INDIANKANOON_API_TOKEN`. Keep it thin and reusable.
+- In `_stream_analysis()`, add logic that runs **only for the research agent**.
+- Use the existing `_cached_ik_search()` (do not rewrite the API call).
+- Build a compact query using a simple heuristic function `_build_ik_query(case_description)` — take first 10 words + "Telangana OR Andhra Pradesh OR Supreme Court", max 100 chars.
+- Format results using `_format_ik_for_prompt()` and prepend the block to the Research Agent’s prompt.
+- The formatted block must start with:
+  `=== Live Indian Kanoon Results (real judgments fetched via API — cite these in KEY JUDGMENTS) ===`
+- Yield an SSE event `{"type": "ik_fetched", ...}` when data is fetched.
+- If the token is not set, silently skip (no error).
+- Do not change the Research Agent system prompt or add extra LLM calls.
+
+### Feature 2: Professional Documents + Case Folder System + Invoice Module
+
+After the agents finish (especially after the Research Agent runs), the system should generate a complete **Lawyer Package** with the following:
+
+**A. Automatic Case Folder Creation ("My Documents")**
+- When a new case analysis is completed, automatically create a folder under "My Documents" using the case name (e.g., "Hit_and_Run_Shaikpet_ClientName_Date").
+- The folder name should be editable by the lawyer later.
+- All generated documents must be saved inside this case-specific folder.
+- The lawyer should be able to search folders by name or by date.
+- Inside each folder, support: Download, Print, and Share actions for individual files or the entire package.
+
+**B. Professional Court-Ready Documents**
+- All generated documents (Claim Petition, Form I, Affidavit, Vakalatnama, Client Advisory, Checklists, Action Plan, etc.) must be **real professional PDFs**, not raw markdown.
+- Use proper court formatting: A4, Times New Roman 14, 1.5 line spacing, justified, correct margins, cause title, verification blocks, and signature spaces.
+- Documents must be suitable for direct submission to court, police, SDM, or other parties.
+
+**C. Smart Invoice Module**
+- When generating the package, include an Invoice file inside the case folder.
+- AI should first analyze the case type and complexity, then suggest a reasonable professional fee range based on Hyderabad/Telangana market rates for that type of case.
+- When the lawyer opens the Invoice:
+  - Show a form to enter: Client Name/Organisation, Date, Amount (pre-filled with AI suggestion but editable), Lawyer Name/Organisation.
+  - On "Generate / Download / Print":
+    - Create a clean **2-page professional PDF**:
+      - Page 1: Client-facing invoice/receipt (professional layout with amount, payment details, thank you note).
+      - Page 2: Internal lawyer copy with fee analysis, breakdown, and market comparison notes.
+- The invoice must also be saved inside the case folder.
+
+### Important Constraints:
+- Reuse existing functions wherever possible (especially `_cached_ik_search`).
+- Do not install new packages.
+- No changes needed in the frontend for now (except optional handling of the `ik_fetched` SSE event).
+- Keep the Research Agent system prompt unchanged.
+- Focus on backend logic and professional PDF generation.
+- All documents should be properly organized inside the case folder.
+
+### Expected Final Behavior:
+1. User runs "Run Agent Analysis".
+2. Research Agent receives live Indian Kanoon results in its prompt → better "KEY JUDGMENTS".
+3. After analysis completes, a case folder is automatically created under "My Documents".
+4. A full set of professional PDFs is generated and saved inside that folder (including Petition, Form I, Checklist, Client Note, Action Plan, and Invoice).
+5. The Invoice suggests market fees and allows the lawyer to customize before generating a professional 2-page PDF.
+6. Lawyer can browse "My Documents", search folders, open any case folder, and download/print/share files easily.
+
+Now implement both features together cleanly. Start by creating the `indian_kanoon_tool.py` file, then update `workspace.py` for the Research Agent pre-fetch, and finally add the folder creation + professional document + invoice generation logic.
+
+Show the final code structure after implementation.

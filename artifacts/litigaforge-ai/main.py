@@ -836,6 +836,47 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("workspace tables init: %s", me)
 
+        # ── Case Folders (My Documents) ───────────────────────────────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS case_folders (
+                    id               SERIAL PRIMARY KEY,
+                    user_id          INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    session_id       INTEGER REFERENCES workspace_sessions(id) ON DELETE SET NULL,
+                    folder_name      VARCHAR(300) NOT NULL,
+                    case_description TEXT DEFAULT '',
+                    created_at       TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at       TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_case_folders_user "
+                "ON case_folders (user_id, updated_at DESC)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_case_folders_session "
+                "ON case_folders (session_id)"
+            )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS folder_documents (
+                    id              SERIAL PRIMARY KEY,
+                    folder_id       INTEGER REFERENCES case_folders(id) ON DELETE CASCADE,
+                    filename        VARCHAR(300) NOT NULL,
+                    doc_type        VARCHAR(50)  DEFAULT 'pdf',
+                    file_path       TEXT         NOT NULL,
+                    file_size_bytes INTEGER      DEFAULT 0,
+                    notes           TEXT         DEFAULT '',
+                    created_at      TIMESTAMPTZ  DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_folder_documents_folder "
+                "ON folder_documents (folder_id, created_at DESC)"
+            )
+            logger.info("case folders tables ready")
+        except Exception as me:
+            logger.warning("case folders tables init: %s", me)
+
         # ── Personalization / Legal Twin ──────────────────────────────────────
         try:
             await conn.execute("""
