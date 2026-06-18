@@ -168,11 +168,13 @@ export function NoSessionWelcome({ t, onCreate, onCreateDemo }: NoSessionProps) 
 // ─── Empty canvas guide ────────────────────────────────────────────────────────
 
 interface EmptyCanvasProps {
-  t:          WS;
-  onSearch:   () => void;
-  onAnalyze:  () => void;
-  onAddNode:  () => void;
-  isAnalyzing: boolean;
+  t:              WS;
+  onSearch:       () => void;
+  onAnalyze:      () => void;
+  onAddNode:      () => void;
+  isAnalyzing:    boolean;
+  caseDescription?: string;
+  onFocusInput?:  () => void;
 }
 
 const STEPS = (t: WS) => [
@@ -181,7 +183,7 @@ const STEPS = (t: WS) => [
   { num: "3", icon: "🗺️", label: t.step3, desc: t.step3d, color: "#a855f7" },
 ];
 
-export function EmptyCanvasGuide({ t, onSearch, onAnalyze, onAddNode, isAnalyzing }: EmptyCanvasProps) {
+export function EmptyCanvasGuide({ t, onSearch, onAnalyze, onAddNode, isAnalyzing, caseDescription, onFocusInput }: EmptyCanvasProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -314,11 +316,17 @@ export function EmptyCanvasGuide({ t, onSearch, onAnalyze, onAddNode, isAnalyzin
           <motion.button
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
-            onClick={onAnalyze}
+            onClick={() => {
+              if (!caseDescription?.trim()) {
+                onFocusInput?.();
+              } else {
+                onAnalyze();
+              }
+            }}
             disabled={isAnalyzing}
             style={quickBtn("#f59e0b")}
           >
-            ⚡ {isAnalyzing ? t.analyzing : t.runAnalysis.replace("⚡ ", "")}
+            {isAnalyzing ? `⟳ ${t.analyzing}` : !caseDescription?.trim() ? "✍️ Type case → then Run" : `⚡ ${t.runAnalysis.replace("⚡ ", "")}`}
           </motion.button>
 
           <motion.button

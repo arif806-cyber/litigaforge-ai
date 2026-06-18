@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, type RefObject } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -836,6 +836,9 @@ interface AgentPanelProps {
   synthesisScore?:        number;
   openAskFor?:            string;
   sessionId?:             number | null;
+  inputHighlight?:        boolean;
+  onHighlightDone?:       () => void;
+  textareaRef?:           RefObject<HTMLTextAreaElement | null>;
 }
 
 const AgentPanel = memo(({
@@ -851,6 +854,9 @@ const AgentPanel = memo(({
   synthesisScore,
   openAskFor,
   sessionId,
+  inputHighlight,
+  onHighlightDone,
+  textareaRef,
 }: AgentPanelProps) => {
   const doneCount = Object.values(agentStates).filter(s => s.status === "done").length;
   const allDone   = doneCount === AGENT_DEFS.length;
@@ -906,36 +912,53 @@ const AgentPanel = memo(({
 
         {/* Case description */}
         <textarea
+          ref={textareaRef}
           value={caseDescription}
-          onChange={e => onCaseDescriptionChange(e.target.value)}
-          placeholder="Describe your case for the agents…"
-          rows={3}
+          onChange={e => { onCaseDescriptionChange(e.target.value); if (inputHighlight) onHighlightDone?.(); }}
+          placeholder="Describe your case here — facts, parties, relief sought…"
+          rows={4}
+          onAnimationEnd={() => onHighlightDone?.()}
           style={{
-            width: "100%", background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            width: "100%",
+            background: inputHighlight ? "rgba(20,184,166,0.08)" : "rgba(255,255,255,0.04)",
+            border: inputHighlight ? "1.5px solid rgba(20,184,166,0.7)" : "1px solid rgba(255,255,255,0.08)",
             borderRadius: 8, padding: "8px 10px",
             fontSize: 10.5, color: FG, resize: "none", outline: "none",
             boxSizing: "border-box", lineHeight: 1.5, fontFamily: "inherit",
+            transition: "border-color 0.3s, background 0.3s",
+            boxShadow: inputHighlight ? "0 0 0 3px rgba(20,184,166,0.2)" : "none",
           }}
         />
+
+        {/* No-session hint */}
+        {!sessionId && (
+          <div style={{ fontSize: 9, color: "#f59e0b", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>
+            <span>⚠</span>
+            <span>Create a workspace first (right panel → Files tab → + New)</span>
+          </div>
+        )}
 
         {/* Analyze button */}
         <motion.button
           onClick={onAnalyze}
-          disabled={isAnalyzing}
-          whileTap={!isAnalyzing ? { scale: 0.97 } : undefined}
+          disabled={isAnalyzing || !sessionId}
+          whileTap={!isAnalyzing && !!sessionId ? { scale: 0.97 } : undefined}
+          title={!sessionId ? "Create a workspace session first" : "Run 5 specialist AI agents on your case"}
           style={{
             width: "100%", marginTop: 8, padding: "10px 0",
             borderRadius: 8, border: "none",
             background: isAnalyzing
               ? "rgba(20,184,166,0.1)"
-              : "linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #0d9488 100%)",
+              : !sessionId
+                ? "rgba(255,255,255,0.04)"
+                : "linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #0d9488 100%)",
             backgroundSize: "200% 200%",
-            color: isAnalyzing ? "#14b8a6" : "#fff",
+            color: isAnalyzing ? "#14b8a6" : !sessionId ? "#475569" : "#fff",
             fontWeight: 800, fontSize: 11.5,
-            cursor: isAnalyzing ? "not-allowed" : "pointer",
+            cursor: isAnalyzing || !sessionId ? "not-allowed" : "pointer",
             letterSpacing: "0.04em",
-            boxShadow: isAnalyzing ? "none" : "0 4px 20px rgba(13,148,136,0.35)",
+            opacity: !sessionId ? 0.5 : 1,
+            boxShadow: isAnalyzing || !sessionId ? "none" : "0 4px 20px rgba(13,148,136,0.35)",
           }}
         >
           {isAnalyzing ? "⟳  Agents Working…" : "▶  Run Agent Analysis"}

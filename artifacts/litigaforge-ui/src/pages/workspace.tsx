@@ -207,6 +207,18 @@ export default function ForgeWorkspace() {
   const [fitViewTrigger, setFitViewTrigger] = useState(0);
   const [connectionHints, setConnectionHints] = useState<ConnectionHint[]>([]);
   const [hintNewNodeId, setHintNewNodeId]   = useState<string | null>(null);
+  const [inputHighlight, setInputHighlight] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  function focusInput() {
+    setLeftCollapsed(false);
+    setInputHighlight(true);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+    setTimeout(() => setInputHighlight(false), 3000);
+  }
   const t = STRINGS[lang];
 
   const [isMobile, setIsMobile]           = useState(() => window.innerWidth < 768);
@@ -1785,6 +1797,9 @@ export default function ForgeWorkspace() {
             synthesisScore={synthesisScore ?? undefined}
             openAskFor={openAskForAgentId ?? undefined}
             sessionId={sessionId}
+            inputHighlight={inputHighlight}
+            onHighlightDone={() => setInputHighlight(false)}
+            textareaRef={textareaRef}
           />
         )}
         {/* Left: collapsed strip — desktop only */}
@@ -1875,6 +1890,8 @@ export default function ForgeWorkspace() {
               onAnalyze={() => void runAnalysis()}
               onAddNode={() => { if (isMobile) setMobileSheet("agent"); else setShowAddMenu(true); }}
               isAnalyzing={isAnalyzing}
+              caseDescription={caseDescription}
+              onFocusInput={focusInput}
             />
           )}
           {/* First-visit guided tour */}
