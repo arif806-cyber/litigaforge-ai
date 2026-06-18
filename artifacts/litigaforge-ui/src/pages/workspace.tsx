@@ -224,6 +224,8 @@ export default function ForgeWorkspace() {
   const historyRef          = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
   const histIdxRef          = useRef<number>(-1);
   const simAfterSummaryRef  = useRef<string>("");
+  const prevNodeScoresRef   = useRef<Map<string, number>>(new Map());
+  const flashTimersRef      = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -1091,6 +1093,66 @@ export default function ForgeWorkspace() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, edges]);
 
+  // ─── Score-change impact flash (visual-only — score scrubber & agent updates) ─
+
+  useEffect(() => {
+    const prevScores = prevNodeScoresRef.current;
+    const nextScores = new Map<string, number>();
+    const changedNodeIds: string[] = [];
+
+    for (const n of nodes) {
+      const score = Number((n.data as Record<string, unknown>).impact_score ?? 0);
+      nextScores.set(n.id, score);
+      const prev = prevScores.get(n.id);
+      if (prev !== undefined && prev !== score) changedNodeIds.push(n.id);
+    }
+    prevNodeScoresRef.current = nextScores;
+    if (changedNodeIds.length === 0) return;
+
+    // First-degree neighbours of all changed nodes
+    const changedSet  = new Set(changedNodeIds);
+    const neighborIds = new Set<string>();
+    for (const e of edges) {
+      if (changedSet.has(e.source) && !changedSet.has(e.target)) neighborIds.add(e.target);
+      if (changedSet.has(e.target) && !changedSet.has(e.source)) neighborIds.add(e.source);
+    }
+    if (neighborIds.size === 0) return;
+
+    // Average delta → flash direction
+    const totalDelta = changedNodeIds.reduce((sum, id) => {
+      const cur  = nextScores.get(id) ?? 0;
+      const prev = prevScores.get(id) ?? cur;
+      return sum + (cur - prev);
+    }, 0);
+    const flash: "positive" | "negative" = totalDelta >= 0 ? "positive" : "negative";
+    const ids = [...neighborIds];
+
+    // Cancel existing timers for these nodes (avoid double-flash on rapid edits)
+    for (const id of ids) {
+      const existing = flashTimersRef.current.get(id);
+      if (existing) { clearTimeout(existing); flashTimersRef.current.delete(id); }
+    }
+
+    // Visual-only flash — no impact_score mutation
+    setNodes(prev => prev.map(n => {
+      if (!neighborIds.has(n.id)) return n;
+      return { ...n, data: { ...(n.data as Record<string, unknown>), impactFlash: flash } };
+    }));
+
+    // Clear after 1.6 s
+    const tid = setTimeout(() => {
+      setNodes(prev => prev.map(n => {
+        if (!ids.includes(n.id)) return n;
+        const { impactFlash: _f, ...rest } = n.data as Record<string, unknown>;
+        return { ...n, data: rest };
+      }));
+      for (const id of ids) flashTimersRef.current.delete(id);
+    }, 1600);
+    for (const id of ids) flashTimersRef.current.set(id, tid);
+  // edges is read via closure intentionally — flash fires on score change, not edge change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes]);
+
   // ─── Personal Legal Twin — fetch profile + cross-matter ───────────────────────
 
   const fetchTwinData = useCallback(async () => {
@@ -1472,6 +1534,19 @@ export default function ForgeWorkspace() {
           </>
         )}
 
+        {/* Desktop: Ungroup (shown when a cluster node is selected) */}
+        {!isMobile && nodes.some(n => n.selected && n.type === "cluster") && (
+          <button
+            onClick={() => {
+              const sel = nodes.find(n => n.selected && n.type === "cluster");
+              if (sel) handleExpandCluster(sel.id);
+            }}
+            data-testid="forge-ungroup-nodes"
+            title="Ungroup the selected cluster (Ctrl+Shift+G)"
+            style={toolbarBtn(false)}
+          >⊖ Ungroup</button>
+        )}
+
         {/* Save */}
         <button
           onClick={() => saveCanvas(false)}
@@ -1535,7 +1610,7 @@ export default function ForgeWorkspace() {
           <button
             onClick={() => void runAnalysis()}
             disabled={isAnalyzing || !sessionId}
-            title="Run AI Analysis"
+            title="Run 5 AI agents — scores propagate to connected nodes after analysis"
             style={{
               width: 34, height: 34, borderRadius: 8, flexShrink: 0,
               border: isAnalyzing ? "1px solid rgba(20,184,166,0.15)" : "1px solid rgba(168,85,247,0.35)",
