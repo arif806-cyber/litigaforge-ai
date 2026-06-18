@@ -822,6 +822,16 @@ async def lifespan(app: FastAPI):
                 "CREATE INDEX IF NOT EXISTS idx_ikanoon_cache_fetched "
                 "ON ikanoon_search_cache (fetched_at DESC)"
             )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS workspace_agent_feedback (
+                    id          SERIAL PRIMARY KEY,
+                    session_id  INTEGER REFERENCES workspace_sessions(id) ON DELETE CASCADE,
+                    agent_id    VARCHAR(32) NOT NULL,
+                    vote        CHAR(4) NOT NULL,
+                    updated_at  TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE (session_id, agent_id)
+                )
+            """)
             logger.info("workspace tables ready")
         except Exception as me:
             logger.warning("workspace tables init: %s", me)

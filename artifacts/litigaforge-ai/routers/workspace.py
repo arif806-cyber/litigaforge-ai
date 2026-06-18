@@ -473,7 +473,11 @@ _AGENTS = [
             "and High Court judgments. Analyze the given case and identify the 3 most critical "
             "legal issues, relevant precedents (with accurate citations), and applicable statutes. "
             "Be specific — name actual cases and their holdings. Focus on Telangana/Andhra Pradesh "
-            "High Court and Supreme Court of India precedents where relevant."
+            "High Court and Supreme Court of India precedents where relevant.\n\n"
+            "OUTPUT FORMAT:\n"
+            "HOLDINGS: [Key case holdings and findings from the most relevant precedents]\n"
+            "KEY RATIO: [Core legal principle / ratio decidendi applicable to this case]\n"
+            "APPLICABLE STATUTES: [Relevant acts, sections, and constitutional articles]"
         ),
     },
     {
@@ -489,7 +493,11 @@ _AGENTS = [
             "Develop a compelling legal strategy for this case. Identify: (1) the strongest "
             "legal arguments and their order of priority, (2) procedural angles — stay, "
             "injunction, or expedited hearing opportunities, (3) how to structure the prayer "
-            "clause for maximum relief. Be tactical and specific."
+            "clause for maximum relief. Be tactical and specific.\n\n"
+            "OUTPUT FORMAT:\n"
+            "PRIMARY ARGUMENT: [The single strongest legal argument, its priority, and why it wins]\n"
+            "PROCEDURAL ANGLE: [Stay / injunction / expedited hearing opportunities and how to seek them]\n"
+            "PRAYER CLAUSE: [Specific relief sought, in formal Indian court language]"
         ),
     },
     {
@@ -504,7 +512,11 @@ _AGENTS = [
             "You are playing devil's advocate. Analyze this case from the opposing counsel's "
             "perspective. What are the 3 strongest counter-arguments? What weaknesses exist in "
             "the client's position? What adverse precedents might the opposition rely on? "
-            "Rate the overall risk level (1-10) and suggest mitigation strategies."
+            "Rate the overall risk level (1-10) and suggest mitigation strategies.\n\n"
+            "OUTPUT FORMAT:\n"
+            "RISK LEVEL: [1-10, where 10 is maximum risk]\n"
+            "COUNTER-ARGUMENTS: [The 3 strongest arguments the opposing counsel will raise]\n"
+            "ADVERSE PRECEDENTS: [Specific cases and holdings the opposition is likely to cite]"
         ),
     },
     {
@@ -520,7 +532,11 @@ _AGENTS = [
             "(1) the main legal contention in formal Indian legal language, "
             "(2) supporting authorities (cases + sections), "
             "(3) the prayer clause with specific relief sought. "
-            "Use precise legal terminology appropriate for Indian courts."
+            "Use precise legal terminology appropriate for Indian courts.\n\n"
+            "OUTPUT FORMAT:\n"
+            "LEGAL CONTENTION: [The main contention in formal Indian legal language]\n"
+            "SUPPORTING AUTHORITIES: [Cases and sections cited in support, with accurate citations]\n"
+            "PRAYER: [Prayer clause with specific relief sought, in court-ready language]"
         ),
     },
     {
@@ -537,7 +553,12 @@ _AGENTS = [
             "(1) probability of success at trial (0-100%), "
             "(2) likely concerns the bench will raise during arguments, "
             "(3) whether this is better suited for trial court, High Court, or Supreme Court, "
-            "(4) estimated timeline. Cite recent similar outcomes where possible."
+            "(4) estimated timeline. Cite recent similar outcomes where possible.\n\n"
+            "OUTPUT FORMAT:\n"
+            "SUCCESS PROBABILITY: [0-100]%\n"
+            "BENCH CONCERNS: [Specific concerns the bench is likely to raise during arguments]\n"
+            "FORUM: [Most appropriate forum — Trial Court / High Court / Supreme Court — and why]\n"
+            "TIMELINE: [Realistic estimated duration to resolution at the recommended forum]"
         ),
     },
 ]
@@ -572,6 +593,7 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
         return f"data: {json.dumps(data, default=str)}\n\n"
 
     agent_outputs: dict[str, str] = {}
+    agent_outputs_full: dict[str, str] = {}
 
     for agent in _AGENTS:
         # ── Inter-agent consultation event ──────────────────────────────────
@@ -643,6 +665,7 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
             await asyncio.sleep(0.018)
 
         agent_outputs[agent["id"]] = analysis[:200]
+        agent_outputs_full[agent["id"]] = analysis
 
         # ── Suggested canvas node ───────────────────────────────────────────
         short = analysis[:240] + ("…" if len(analysis) > 240 else "")
@@ -670,6 +693,35 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
         })
 
         await asyncio.sleep(0.3)
+
+    # ── Agree/Disagree detection ────────────────────────────────────────────
+    risk_level: int | None   = None
+    success_prob: int | None = None
+
+    for line in agent_outputs_full.get("risk", "").splitlines():
+        m = _re.match(r"RISK LEVEL:\s*(\d+)", line.strip())
+        if m:
+            risk_level = int(m.group(1))
+            break
+
+    for line in agent_outputs_full.get("predictive", "").splitlines():
+        m = _re.match(r"SUCCESS PROBABILITY:\s*(\d+)", line.strip())
+        if m:
+            success_prob = int(m.group(1))
+            break
+
+    if risk_level is not None and success_prob is not None:
+        if risk_level <= 4 and success_prob >= 65:
+            yield sse({"type": "agent_agree", "a": "risk", "b": "predictive", "label": "Aligned on outcome"})
+        elif risk_level >= 7 and success_prob >= 65:
+            yield sse({"type": "agent_disagree", "a": "risk", "b": "predictive", "label": "Risk vs. Optimism conflict"})
+
+    # Text overlap check: shared case references between research and drafting
+    _CASE_PATTERN = _re.compile(r'[A-Z][A-Za-z .]{3,20}v\.?\s+[A-Z][A-Za-z .]{3,20}')
+    research_cases = {m.group().strip().lower() for m in _CASE_PATTERN.finditer(agent_outputs_full.get("research", ""))}
+    drafting_cases  = {m.group().strip().lower() for m in _CASE_PATTERN.finditer(agent_outputs_full.get("drafting",  ""))}
+    if research_cases & drafting_cases:
+        yield sse({"type": "agent_agree", "a": "research", "b": "drafting", "label": "Shared precedent basis"})
 
     # ── Final synthesis — dynamic consensus score ────────────────────────────
     total_chars = sum(len(txt) for txt in agent_outputs.values())
@@ -1028,6 +1080,65 @@ async def simulate_what_if(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ─── Agent Feedback ───────────────────────────────────────────────────────────
+
+class FeedbackBody(BaseModel):
+    vote: str  # "up" or "down"
+
+
+@router.post("/workspace/sessions/{session_id}/agent/{agent_id}/feedback", status_code=200)
+async def save_agent_feedback(
+    session_id: int,
+    agent_id: str,
+    body: FeedbackBody,
+    request: Request,
+    user=Depends(require_user),
+):
+    """UPSERT thumbs-up/down vote for an agent's analysis in a session."""
+    if body.vote not in ("up", "down"):
+        raise HTTPException(400, "vote must be 'up' or 'down'")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+        if not exists:
+            raise HTTPException(404, "Session not found")
+        await conn.execute(
+            """
+            INSERT INTO workspace_agent_feedback (session_id, agent_id, vote, updated_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (session_id, agent_id)
+            DO UPDATE SET vote = EXCLUDED.vote, updated_at = NOW()
+            """,
+            session_id, agent_id, body.vote,
+        )
+    return {"ok": True}
+
+
+@router.get("/workspace/sessions/{session_id}/feedback")
+async def get_session_feedback(
+    session_id: int,
+    request: Request,
+    user=Depends(require_user),
+):
+    """Return {agent_id: vote} map of all saved feedback for this session."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+        if not exists:
+            raise HTTPException(404, "Session not found")
+        rows = await conn.fetch(
+            "SELECT agent_id, vote FROM workspace_agent_feedback WHERE session_id=$1",
+            session_id,
+        )
+    return {r["agent_id"]: r["vote"] for r in rows}
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

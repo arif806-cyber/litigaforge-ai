@@ -278,6 +278,22 @@ export default function ForgeWorkspace() {
       setSynthesisScore(null);
       setSuggestions([]);
       setSimState({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
+      // Load saved agent feedback for this session (non-critical)
+      try {
+        const fbRes = await api(`/workspace/sessions/${full.id}/feedback`);
+        if (fbRes.ok) {
+          const fb = await fbRes.json() as Record<string, "up" | "down">;
+          if (Object.keys(fb).length > 0) {
+            setAgentStates(prev => {
+              const next = { ...prev };
+              for (const [agentId, vote] of Object.entries(fb)) {
+                if (next[agentId]) next[agentId] = { ...next[agentId], feedback: vote };
+              }
+              return next;
+            });
+          }
+        }
+      } catch { /* feedback load is non-critical */ }
     } catch {
       addToast({ type: "error", message: "Failed to open workspace", detail: "The session may have been deleted." });
     }
@@ -597,6 +613,24 @@ export default function ForgeWorkspace() {
                 message:   event.message as string,
                 timestamp: Date.now(),
               }]);
+            } else if (type === "agent_agree") {
+              const a     = event.a as string;
+              const b     = event.b as string;
+              const label = event.label as string;
+              setAgentStates(prev => ({
+                ...prev,
+                [a]: { ...(prev[a] ?? { status: "done", text: "" }), agreesWith: { agentId: b, label } },
+                [b]: { ...(prev[b] ?? { status: "done", text: "" }), agreesWith: { agentId: a, label } },
+              }));
+            } else if (type === "agent_disagree") {
+              const a     = event.a as string;
+              const b     = event.b as string;
+              const label = event.label as string;
+              setAgentStates(prev => ({
+                ...prev,
+                [a]: { ...(prev[a] ?? { status: "done", text: "" }), conflictsWith: { agentId: b, label } },
+                [b]: { ...(prev[b] ?? { status: "done", text: "" }), conflictsWith: { agentId: a, label } },
+              }));
             } else if (type === "agent_synthesis") {
               const score = event.consensus_score as number;
               setSynthesisScore(score);
@@ -866,14 +900,24 @@ export default function ForgeWorkspace() {
   }, [sessionId, caseDescription]);
 
   const onFeedback = useCallback((agentId: string, vote: "up" | "down") => {
-    setAgentStates(prev => ({
-      ...prev,
-      [agentId]: {
-        ...(prev[agentId] ?? { status: "done", text: "" }),
-        feedback: prev[agentId]?.feedback === vote ? null : vote,
-      },
-    }));
-    // Persist feedback to backend for twin learning
+    setAgentStates(prev => {
+      const newVote = prev[agentId]?.feedback === vote ? null : vote;
+      // Persist to dedicated feedback endpoint (DB-backed, survives reloads)
+      if (sessionId && newVote) {
+        void api(`/workspace/sessions/${sessionId}/agent/${agentId}/feedback`, {
+          method: "POST",
+          body: JSON.stringify({ vote: newVote }),
+        }).catch(() => {});
+      }
+      return {
+        ...prev,
+        [agentId]: {
+          ...(prev[agentId] ?? { status: "done", text: "" }),
+          feedback: newVote,
+        },
+      };
+    });
+    // Also emit profile event for twin learning
     if (sessionId) {
       void api("/workspace/profile/event", {
         method: "POST",

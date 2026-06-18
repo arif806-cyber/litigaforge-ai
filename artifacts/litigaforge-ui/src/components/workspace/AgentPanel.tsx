@@ -15,6 +15,8 @@ export interface AgentState {
   askStreaming?: boolean;
   canvasNodeAdded?: boolean;
   consultedBy?: string[];
+  agreesWith?: { agentId: string; label: string };
+  conflictsWith?: { agentId: string; label: string };
 }
 
 export interface CollabEvent {
@@ -44,6 +46,39 @@ const AGENT_DEFS: AgentDef[] = [
 ];
 
 const DEF_MAP = Object.fromEntries(AGENT_DEFS.map(d => [d.id, d]));
+
+// ─── Section parsing ───────────────────────────────────────────────────────────
+
+interface Section { title: string; body: string }
+
+const SECTION_KEYS: Record<string, string[]> = {
+  research:   ["HOLDINGS", "KEY RATIO", "APPLICABLE STATUTES"],
+  strategy:   ["PRIMARY ARGUMENT", "PROCEDURAL ANGLE", "PRAYER CLAUSE"],
+  risk:       ["RISK LEVEL", "COUNTER-ARGUMENTS", "ADVERSE PRECEDENTS"],
+  drafting:   ["LEGAL CONTENTION", "SUPPORTING AUTHORITIES", "PRAYER"],
+  predictive: ["SUCCESS PROBABILITY", "BENCH CONCERNS", "FORUM", "TIMELINE"],
+};
+
+function parseAgentSections(text: string, agentId: string): Section[] {
+  const keys = SECTION_KEYS[agentId];
+  if (!keys?.length) return [];
+  if (!keys.some(k => text.includes(k + ":"))) return [];
+  const sections: Section[] = [];
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    const startIdx = text.indexOf(key + ":");
+    if (startIdx === -1) continue;
+    const afterHeader = text.slice(startIdx + key.length + 1).trimStart();
+    let endIdx = afterHeader.length;
+    for (let j = i + 1; j < keys.length; j++) {
+      const nextIdx = afterHeader.indexOf(keys[j] + ":");
+      if (nextIdx !== -1 && nextIdx < endIdx) endIdx = nextIdx;
+    }
+    const body = afterHeader.slice(0, endIdx).trim();
+    if (body) sections.push({ title: key, body });
+  }
+  return sections;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -141,6 +176,7 @@ function AgentCard({
   const isThinking   = state.status === "thinking";
   const isDone       = state.status === "done";
   const hasContent   = (isThinking || isDone) && (state.text || state.reasoning);
+  const sections     = isDone ? parseAgentSections(state.text ?? "", def.id) : [];
 
   const [showReasoning, setShowReasoning] = useState(false);
   const [askOpen,       setAskOpen]       = useState(false);
@@ -247,24 +283,51 @@ function AgentCard({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <div style={{
-              margin: "4px 12px 6px",
-              padding: "8px 10px",
-              background: "rgba(0,0,0,0.2)",
-              borderRadius: 8,
-              fontSize: 10, color: "#94a3b8", lineHeight: 1.65,
-              maxHeight: 110, overflowY: "auto",
-              wordBreak: "break-word",
-            }}>
-              {state.text}
-              {isThinking && (
-                <motion.span
-                  style={{ display: "inline-block", marginLeft: 2, color: def.color }}
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
-                >▌</motion.span>
-              )}
-            </div>
+            {sections.length > 0 ? (
+              <div style={{
+                margin: "4px 12px 6px",
+                display: "flex", flexDirection: "column", gap: 7,
+                maxHeight: 160, overflowY: "auto",
+              }}>
+                {sections.map((sec, si) => (
+                  <div key={sec.title}>
+                    <div style={{
+                      fontSize: 8.5, fontWeight: 800, color: def.color,
+                      letterSpacing: "0.08em", textTransform: "uppercase",
+                      marginBottom: 3,
+                    }}>
+                      {sec.title}
+                    </div>
+                    <div style={{
+                      fontSize: 10, color: "#94a3b8", lineHeight: 1.65,
+                      paddingLeft: 8, borderLeft: `3px solid ${def.color}33`,
+                      paddingBottom: si < sections.length - 1 ? 5 : 0,
+                    }}>
+                      {sec.body}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                margin: "4px 12px 6px",
+                padding: "8px 10px",
+                background: "rgba(0,0,0,0.2)",
+                borderRadius: 8,
+                fontSize: 10, color: "#94a3b8", lineHeight: 1.65,
+                maxHeight: 110, overflowY: "auto",
+                wordBreak: "break-word",
+              }}>
+                {state.text}
+                {isThinking && (
+                  <motion.span
+                    style={{ display: "inline-block", marginLeft: 2, color: def.color }}
+                    animate={{ opacity: [1, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity }}
+                  >▌</motion.span>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -283,6 +346,32 @@ function AgentCard({
               padding: "2px 7px", borderRadius: 8, display: "flex", alignItems: "center", gap: 3,
             }}>
               ⊕ Canvas
+            </span>
+          )}
+
+          {/* Agree/Disagree badges */}
+          {state.agreesWith && (
+            <span style={{
+              fontSize: 8.5, fontWeight: 700, color: "#22c55e",
+              background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)",
+              padding: "2px 7px", borderRadius: 8,
+              display: "flex", alignItems: "center", gap: 3,
+            }}
+              title={state.agreesWith.label}
+            >
+              ✓ {DEF_MAP[state.agreesWith.agentId]?.name ?? state.agreesWith.agentId}
+            </span>
+          )}
+          {state.conflictsWith && (
+            <span style={{
+              fontSize: 8.5, fontWeight: 700, color: "#f59e0b",
+              background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)",
+              padding: "2px 7px", borderRadius: 8,
+              display: "flex", alignItems: "center", gap: 3,
+            }}
+              title={state.conflictsWith.label}
+            >
+              ⚡ {DEF_MAP[state.conflictsWith.agentId]?.name ?? state.conflictsWith.agentId}
             </span>
           )}
 
@@ -408,25 +497,34 @@ function CollabTimeline({ feed }: { feed: CollabEvent[] }) {
       border: "1px solid rgba(20,184,166,0.1)",
       borderRadius: 10,
     }}>
-      <div style={{ fontSize: 9, fontWeight: 800, color: "#0d9488", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+      <div style={{ fontSize: 9, fontWeight: 800, color: "#0d9488", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
         ⟳ Agent Collaboration
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {feed.slice(-5).map((ev, i) => {
-          const fromDef = DEF_MAP[ev.from];
-          const toDef   = DEF_MAP[ev.to];
+          const fromDef  = DEF_MAP[ev.from];
+          const toDef    = DEF_MAP[ev.to];
+          const lineColor = fromDef?.color ?? "#14b8a6";
           return (
             <motion.div
               key={i}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: i * 0.05 }}
-              style={{ display: "flex", alignItems: "flex-start", gap: 7 }}
+              style={{ display: "flex", alignItems: "stretch", gap: 8 }}
             >
-              <span style={{ fontSize: 10, flexShrink: 0 }}>
-                {fromDef?.emoji ?? "🤖"} → {toDef?.emoji ?? "🤖"}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Left accent line (timeline marker) */}
+              <div style={{
+                width: 3, flexShrink: 0,
+                background: `${lineColor}66`,
+                borderRadius: 2,
+                minHeight: 32,
+              }} />
+              {/* Content */}
+              <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+                <div style={{ fontSize: 9, color: lineColor, fontWeight: 700, marginBottom: 2 }}>
+                  {fromDef?.emoji ?? "🤖"}{fromDef?.name ? ` ${fromDef.name}` : ""} → {toDef?.emoji ?? "🤖"}
+                </div>
                 <div style={{ fontSize: 9.5, color: "#94a3b8", lineHeight: 1.5 }}>
                   {ev.message}
                 </div>
