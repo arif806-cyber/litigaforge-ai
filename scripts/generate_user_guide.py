@@ -1,428 +1,443 @@
 """
 LitigaForge AI — Professional User Guide PDF Generator
-Uses fpdf2 (2.8.3). Run: python3 scripts/generate_user_guide.py
+Uses fpdf2 (2.8.3) with DejaVu Sans Unicode font.
+Run: python3 scripts/generate_user_guide.py
 Output: litigaforge_user_guide.pdf
 """
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 import datetime
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# ── Brand colours ──────────────────────────────────────────────────────────────
-NAVY   = (26,  39,  68)    # #1a2744
-AMBER  = (245, 158, 11)    # #f59e0b
-TEAL   = (20,  184, 166)   # #14b8a6
+FONT_DIR = "/usr/share/fonts/truetype/dejavu/"
+FONT_R    = FONT_DIR + "DejaVuSans.ttf"
+FONT_B    = FONT_DIR + "DejaVuSans-Bold.ttf"
+
+NAVY   = (26,  39,  68)
+AMBER  = (245, 158, 11)
+TEAL   = (20,  184, 166)
 WHITE  = (255, 255, 255)
-LIGHT  = (248, 250, 252)   # #f8fafc
-MUTED  = (100, 116, 139)   # #64748b
-DARK   = (15,  23,  42)    # #0f172a
-PURPLE = (168, 85,  247)   # #a855f7
+LIGHT  = (248, 250, 252)
+MUTED  = (100, 116, 139)
+DARK   = (15,  23,  42)
+PURPLE = (168, 85,  247)
+SLATE  = (30,  41,  59)
+AMBER_LIGHT = (255, 251, 235)
+AMBER_DARK  = (92,  73,  10)
 
 TODAY  = datetime.date.today().strftime("%B %Y")
 
-# ── Features data ──────────────────────────────────────────────────────────────
 FEATURES = [
     {
         "num": "01",
-        "icon": "FORGE WORKSPACE",
-        "name": "AI Workspace (ForgeBoard)",
-        "tagline": "5 specialised AI agents analyse your case on a live canvas",
+        "cat": "FORGE WORKSPACE",
+        "name": "AI Workspace — ForgeBoard",
+        "tagline": "5 specialised AI agents analyse your case on a live interactive canvas",
         "overview": (
-            "The ForgeBoard is LitigaForge AI's flagship feature — a multi-agent legal "
-            "intelligence canvas. Five specialist AI agents (Research, Strategy, Risk & Counter, "
-            "Drafting, and Predictive) work in parallel to analyse your case, surface relevant "
-            "precedents from Indian Kanoon, build an argument map, and produce a consensus "
-            "strategy score out of 100."
+            "The ForgeBoard is LitigaForge AI's flagship feature — a multi-agent legal intelligence "
+            "canvas. Five specialist AI agents work in parallel: Research (surfaces Indian precedents), "
+            "Strategy (builds argument maps), Risk & Counter (identifies weaknesses), Drafting (auto-generates "
+            "notices and pleadings), and Predictive (estimates outcome probability). Each agent streams "
+            "its output live. Results are scored 0–100 and synthesised into a consensus legal strategy."
         ),
         "steps": [
-            "Log in and click Workspace (lightning bolt icon) in the sidebar.",
-            "Click '+ New Workspace' to create a session, or open an existing one.",
-            "Type your case facts in the 'Describe your case' box on the left panel.",
+            "Log in and click the Workspace icon (lightning bolt) in the sidebar.",
+            "Click '+ New Workspace' to start a session, or open an existing one.",
+            "Type your case facts in the 'Describe your case' panel on the left.",
             "Click the green 'Run Agent Analysis' button.",
-            "Watch the five agents run in real-time — each card fills with analysis.",
-            "After completion, explore the canvas nodes. Run 'What-If Simulation' to test scenarios.",
-            "Your session auto-saves. A Case Folder is created with all outputs.",
+            "Watch all five agents stream their analysis live on the canvas.",
+            "After completion, explore the canvas nodes and run 'What-If Simulation' to test arguments.",
+            "A Case Folder is created automatically — it stores all agent outputs and documents.",
         ],
         "usecase_title": "Case: Family Pension Rejection — Lalitha Devi v. State of Telangana",
         "usecase": (
-            "Lalitha Devi's family pension claim was rejected because Form-5 was filed 7 days "
-            "beyond the 90-day window after her late husband's retirement. She described the "
-            "situation in ForgeBoard. The Research Agent surfaced CCS Pension Rules 1972 (Rule 54) "
-            "and three CAT Hyderabad judgments where courts condoned similar delays. The Strategy "
-            "Agent recommended filing a writ petition seeking quashing of the rejection order "
-            "with a prayer for retrospective pension release. Consensus score: 78/100 — strong case."
+            "Lalitha Devi's family pension claim was rejected because Form-5 was filed 7 days beyond "
+            "the 90-day window after her late husband's retirement. She described the situation in "
+            "ForgeBoard. The Research Agent surfaced CCS Pension Rules 1972 (Rule 54) and three CAT "
+            "Hyderabad orders where courts condoned similar delays on grounds of ignorance. The Strategy "
+            "Agent recommended a writ petition seeking quashing of the rejection with a prayer for "
+            "retrospective pension release. Consensus strategy score: 78/100 — strong case."
         ),
-        "tip": "Use the 'Twin' tab to build a Legal Twin profile for ongoing personalised guidance.",
+        "tip": "Use the 'Twin' tab inside Workspace to build a Legal Twin profile for personalised ongoing guidance across all your matters.",
     },
     {
         "num": "02",
-        "icon": "MATCH & CONNECT",
-        "name": "Client-Lawyer Matching",
-        "tagline": "AI matches you with verified advocates — scored 0 to 100",
+        "cat": "MATCH & CONNECT",
+        "name": "Client–Lawyer Matching",
+        "tagline": "AI matches you with verified advocates — every match scored 0 to 100",
         "overview": (
-            "LitigaForge AI's matching engine analyses your case requirements against the profiles "
-            "of all verified advocates on the platform. Each match is assigned an AI score from "
-            "0–100 based on practice area alignment, district proximity, language preference, "
-            "experience, and availability. You can accept or decline proposals, and communicate "
-            "directly via the in-platform chat."
+            "LitigaForge AI's matching engine analyses your case requirements against all verified "
+            "advocates on the platform. Each match receives a score from 0–100 based on practice area "
+            "alignment, district proximity, language preference, years of experience, and current "
+            "availability. You review AI-explained proposals, then accept or decline. Once accepted, "
+            "a secure in-platform chat thread opens immediately."
         ),
         "steps": [
-            "Go to 'Post a Case' from the sidebar and fill in the case type, description, budget range, and preferred district.",
-            "Optionally enable 'Anonymous posting' to hide your identity until you accept a match.",
-            "Submit the case. The AI engine scans all verified advocates and generates proposals within minutes.",
-            "Visit 'My Cases' and click 'View Proposals' to see your matches.",
-            "Click on an advocate's card to see their AI explanation, bar number, ratings, and hourly rate.",
+            "Go to 'Post a Case' in the sidebar and fill in case type, description, budget, and preferred district.",
+            "Enable 'Anonymous posting' to hide your identity until you choose to connect.",
+            "Submit. The AI engine scans all verified advocates and generates proposals.",
+            "Visit 'My Cases' and click 'View Proposals' to see your scored matches.",
+            "Click an advocate's card to read the AI explanation, bar number, ratings, and hourly rate.",
             "Click 'Accept' to connect — a secure chat thread opens automatically.",
-            "Communicate, share documents, and confirm engagement — all within LitigaForge AI.",
+            "Communicate, share documents, and confirm your engagement — entirely within LitigaForge AI.",
         ],
         "usecase_title": "Case: Hit-and-Run Accident Compensation — Ravi Kumar, Secunderabad",
         "usecase": (
-            "Ravi Kumar's motorcycle was struck by a fleeing vehicle on NH-65. He posted a "
-            "Motor Accident Claims case with a budget of Rs 5,000–10,000 and preferred Telugu "
-            "communication. The AI matched him with an advocate from Secunderabad (score: 89/100) "
-            "specialising in MACT cases with 14 years' experience. The AI explanation noted "
-            "alignment on location, language, and 12 previously won MACT petitions. Ravi accepted "
-            "the proposal and received a case assessment within the same day."
+            "Ravi Kumar's motorcycle was struck by a fleeing vehicle on NH-65. He posted a Motor "
+            "Accident Claims case with a budget of Rs 5,000–10,000 and requested Telugu communication. "
+            "The AI matched him with a Secunderabad advocate (score: 89/100) who specialises in MACT "
+            "cases with 14 years' experience. The AI explanation cited alignment on location, language, "
+            "and 12 previously won MACT petitions in the Ranga Reddy district. Ravi accepted the "
+            "proposal and received a written case assessment the same afternoon."
         ),
-        "tip": "Verified advocates show a blue badge. Always check bar number and district before accepting.",
+        "tip": "Verified advocates display a blue shield badge. Always confirm bar number and district specialisation before accepting a proposal.",
     },
     {
         "num": "03",
-        "icon": "LEGAL Q&A",
+        "cat": "LEGAL Q&A",
         "name": "Legal Q&A",
-        "tagline": "Instant AI answers to any legal question — community knowledge base",
+        "tagline": "Instant AI answers to any legal question — community knowledge base included",
         "overview": (
-            "The Legal Q&A section lets anyone — even without an account — ask a legal question "
-            "and receive an AI-generated answer within seconds. Answers are sourced through a "
-            "multi-model AI cascade (Claude, Gemini, Groq) and draw on Indian statute law, court "
-            "precedents, and regulatory guidelines. Answered questions are added to a community "
-            "knowledge base that grows richer over time."
+            "The Legal Q&A section allows anyone to ask a legal question and receive an AI-generated "
+            "answer within seconds — no account required for basic queries. Answers draw on a "
+            "multi-model AI cascade (Claude Sonnet, Gemini 2.5 Flash, Groq Llama) trained on Indian "
+            "statutes, court rules, and regulatory guidelines. All answered questions are added to a "
+            "community knowledge base organised by category."
         ),
         "steps": [
-            "Click 'Ask' in the sidebar (no login required for basic queries).",
-            "Type your legal question in plain language — Hindi, Telugu, or English.",
+            "Click 'Ask' in the sidebar — no login required for basic queries.",
+            "Type your question in plain language — Hindi, Telugu, or English all work.",
             "Click 'Ask'. The AI provides an answer with citations within 10–15 seconds.",
-            "Browse past answers by category (Consumer, Property, Labour, Criminal, etc.).",
-            "Upvote helpful answers to surface them for other users.",
-            "Log in to save your questions and receive follow-up updates.",
+            "Browse past answers by category: Consumer, Property, Labour, Criminal, Family, Tax, and more.",
+            "Upvote helpful answers to surface them for other users with similar questions.",
+            "Log in to save your questions and receive follow-up updates when related cases are decided.",
         ],
         "usecase_title": "Query: GST Input Tax Credit Reversal — Priya Textiles, Warangal",
         "usecase": (
-            "Priya Sharma, proprietor of Priya Textiles, asked: 'Can a trader reverse ITC claimed "
-            "on goods returned by buyer under GST?' The AI answered citing Section 16(2) and Rule "
-            "37 of CGST Rules, explaining the ITC reversal obligation on buyer's part when credit "
-            "notes are issued, and the 180-day payment rule. It recommended filing GSTR-2B "
-            "reconciliation first. The question was saved to the Tax category and upvoted 14 times "
-            "by other Warangal traders facing the same issue."
+            "Priya Sharma, proprietor of Priya Textiles, asked: 'Can a trader reverse ITC claimed on "
+            "goods returned by buyer under GST?' The AI answered citing Section 16(2) and Rule 37 of "
+            "CGST Rules 2017, explaining the ITC reversal obligation on the buyer's part when credit "
+            "notes are issued, and the 180-day payment rule. It recommended filing a GSTR-2B "
+            "reconciliation first and consulting a GST practitioner for Rule 37A implications. The "
+            "question was saved to the Tax category and upvoted 14 times by other Warangal traders."
         ),
-        "tip": "Prefix your question with your state for more localised answers (e.g., 'In Telangana...').",
+        "tip": "Prefix your question with your state for localised answers — e.g., 'In Telangana, can a landlord...' gives more relevant jurisdiction-specific guidance.",
     },
     {
         "num": "04",
-        "icon": "DOCUMENT ANALYZER",
+        "cat": "DOCUMENT ANALYZER",
         "name": "Document Analyzer",
         "tagline": "Risk scoring, missing clauses, and recommendations for any legal document",
         "overview": (
-            "Upload any legal document — an agreement, notice, contract, or court order — and "
-            "the AI will analyse it for risk exposure, missing standard clauses, non-standard "
-            "terms, and compliance gaps. Each document receives a risk score (0–100) and a "
-            "prioritised recommendation list. No account required for basic scans."
+            "Upload any legal document — an agreement, notice, contract, or court order — and the AI "
+            "analyses it for risk exposure, missing standard clauses, non-standard terms, and compliance "
+            "gaps. Each document receives a risk score from 0–100 and a prioritised recommendation list "
+            "with plain-language explanations. No account is required for basic document scans."
         ),
         "steps": [
             "Click 'Review' (document icon) in the sidebar.",
-            "Paste the document text into the analysis box, or type a summary.",
+            "Paste the document text into the analysis box, or type a description of its contents.",
             "Click 'Analyse Document'.",
-            "Review the Risk Score card — red (high risk), amber (medium), green (low).",
-            "Read the 'Missing Clauses' section to identify gaps.",
-            "Expand each 'Recommendation' card for plain-language explanations.",
-            "Download or copy the full report for your records.",
+            "Review the Risk Score card: red (high risk 70–100), amber (medium 40–69), green (low 0–39).",
+            "Read the 'Missing Clauses' section to identify contractual gaps.",
+            "Expand each 'Recommendation' card for specific, actionable improvement suggestions.",
+            "Download or copy the full analysis report for use in negotiations or filing.",
         ],
-        "usecase_title": "Document: Rental Agreement — Syed Iqbal, Hyderabad",
+        "usecase_title": "Document: Rental Agreement — Syed Iqbal, Banjara Hills, Hyderabad",
         "usecase": (
-            "Syed Iqbal received a rental agreement for a commercial property in Banjara Hills. "
-            "He pasted the 12-page document into the Analyzer. The AI flagged a Risk Score of "
-            "67/100 — citing: (1) no force majeure clause, (2) unclear lock-in period language, "
+            "Syed Iqbal received a rental agreement for a commercial property in Banjara Hills. He "
+            "pasted the 12-page document into the Analyzer. The AI flagged a Risk Score of 67/100, "
+            "citing four issues: (1) no force majeure clause, (2) ambiguous lock-in period language, "
             "(3) no dispute resolution mechanism, and (4) missing TDS deduction clause under "
-            "Section 194-I. Recommendations included negotiating a 3-year lock-in cap and adding "
-            "a mandatory arbitration clause under the Arbitration & Conciliation Act, 1996. "
-            "Syed used the report to negotiate three amendments before signing."
+            "Section 194-I of the Income Tax Act. Recommendations included negotiating a 3-year "
+            "lock-in cap and adding a mandatory arbitration clause under the Arbitration & "
+            "Conciliation Act, 1996. Syed used the report to negotiate three amendments before signing."
         ),
-        "tip": "For best results, paste the full document text — the AI can process up to 20,000 characters.",
+        "tip": "For best results, paste the complete document text — the AI can process up to 20,000 characters and detects subtle risks that quick reads miss.",
     },
     {
         "num": "05",
-        "icon": "JUDGMENT FINDER",
+        "cat": "JUDGMENT FINDER",
         "name": "Judgment Finder",
-        "tagline": "Search Indian case law — precedents from SC, HC, and Tribunals",
+        "tagline": "Search Indian case law — precedents from SC, High Courts, and Tribunals",
         "overview": (
-            "The Judgment Finder connects to India's largest legal database (Indian Kanoon) to "
-            "surface relevant case law for your matter. You can search by keyword, party name, "
-            "statute, or court. Each result includes a digest summary, key legal principles, and "
-            "a link to the full judgment. The AI also highlights how each precedent applies to "
-            "your specific facts."
+            "The Judgment Finder connects to India's largest legal database (Indian Kanoon) to surface "
+            "relevant case law. Search by keyword, party name, statute section, or court. Each result "
+            "includes a curated AI digest — facts, ruling, key legal principle, and citation — plus a "
+            "direct link to the full judgment text. The AI also highlights how each precedent applies "
+            "to your specific facts."
         ),
         "steps": [
             "Click 'Judgments' in the sidebar.",
             "Enter keywords, party names, or the section of law you need precedents for.",
-            "Click 'Search'. The AI returns up to 10 curated precedents.",
-            "Click any result to see the full digest: facts, held, principle, and citation.",
-            "Click 'View on Indian Kanoon' for the full text.",
-            "Bookmark important judgments (logged-in users only).",
+            "Click 'Search'. The AI returns up to 10 curated, relevance-ranked precedents.",
+            "Click any result to see the full digest: facts, held, key principle, and citation.",
+            "Click 'View on Indian Kanoon' for the full text of the judgment.",
+            "Bookmark important judgments from your profile (logged-in users).",
             "Inside ForgeBoard, the Research Agent automatically surfaces judgments during analysis.",
         ],
-        "usecase_title": "Search: Consumer Forum Deficiency in Service — Vijaya Electronics, Nellore",
+        "usecase_title": "Search: Consumer Forum — Deficiency in Service, Vijaya Electronics, Nellore",
         "usecase": (
-            "T. Subrahmanyam purchased a refrigerator from Vijaya Electronics, Nellore, that "
-            "broke down within 6 months. The seller refused to honour the warranty. He searched "
-            "for 'deficiency in service consumer forum refrigerator warranty' on the Judgment "
-            "Finder. The AI surfaced National Consumer Disputes Redressal Commission orders "
-            "including Whirlpool of India Ltd. v. Pooja Enterprises where compensation was "
-            "awarded for warranty refusal. The digest noted the 2-year limitation period under "
-            "the Consumer Protection Act, 2019. Subrahmanyam filed in the Nellore DCDRC with "
-            "the citation and received an ex-parte order within 90 days."
+            "T. Subrahmanyam purchased a refrigerator from Vijaya Electronics, Nellore, that broke "
+            "down within 6 months. The seller refused to honour the warranty. He searched 'deficiency "
+            "in service consumer forum refrigerator warranty' on the Judgment Finder. The AI surfaced "
+            "NCDRC orders including Whirlpool of India Ltd. v. Pooja Enterprises where compensation "
+            "was awarded for warranty refusal. The digest noted the 2-year limitation period under the "
+            "Consumer Protection Act, 2019. Subrahmanyam filed in the Nellore DCDRC with the citation "
+            "and received an ex-parte order within 90 days."
         ),
-        "tip": "Bookmark judgments inside ForgeBoard sessions — they become part of your case strategy.",
+        "tip": "Use the Judgment Finder inside a ForgeBoard session — the Research Agent links precedents directly to your case argument map.",
     },
     {
         "num": "06",
-        "icon": "AI LEGAL CHAT",
+        "cat": "AI LEGAL CHAT",
         "name": "AI Legal Chat & Drafting",
         "tagline": "Draft legal notices, plaints, petitions, and responses in minutes",
         "overview": (
-            "The AI Legal Chat is a real-time drafting assistant trained on Indian legal templates. "
-            "Select from four starter templates (Demand Notice, Reply to Notice, Bail Application, "
-            "Legal Opinion) or start a free-form conversation. The AI adapts the draft to your "
-            "facts and jurisdiction. All outputs carry an automatic legal disclaimer."
+            "The AI Legal Chat is a real-time drafting assistant trained on Indian legal templates and "
+            "court formats. Choose from four starter templates — Demand Notice, Reply to Notice, Bail "
+            "Application, Legal Opinion — or start a free-form conversation. The AI adapts every draft "
+            "to your specific facts and jurisdiction. All outputs carry an automatic legal disclaimer "
+            "as required by Bar Council guidelines."
         ),
         "steps": [
             "Click 'Legal Chat' (chat bubble icon) in the sidebar.",
             "Choose a template: Demand Notice, Reply to Notice, Bail Application, or Legal Opinion — or type freely.",
-            "Describe your situation in the chat box.",
-            "The AI generates a draft in standard legal format.",
-            "Ask follow-up questions to refine specific clauses or add parties.",
-            "Click 'Copy' to copy the draft, or paste it into any document editor.",
-            "Always have a licensed advocate review the final draft before filing.",
+            "Describe your situation, parties involved, dates, and the relief you seek.",
+            "The AI generates a draft in standard Indian legal format within seconds.",
+            "Ask follow-up questions to refine specific clauses, add parties, or change the tone.",
+            "Click 'Copy' to copy the draft text for use in any document editor.",
+            "Always have a licensed and enrolled advocate review the final draft before filing or dispatch.",
         ],
         "usecase_title": "Draft: Legal Notice for Cheque Dishonour — K. Raghunath, Vijayawada",
         "usecase": (
-            "K. Raghunath lent Rs 3,00,000 to a business associate whose cheque bounced on "
-            "presentation. He opened AI Legal Chat, selected 'Demand Notice', and described "
-            "the transaction dates, cheque number, and drawee's address. The AI generated a "
-            "Section 138 Negotiable Instruments Act notice within 60 seconds — correctly "
-            "formatted with a 15-day demand period, return memo details, and Vijayawada "
-            "jurisdiction. Raghunath's advocate made two minor edits and dispatched it by "
-            "registered post. The associate paid within the notice period."
+            "K. Raghunath lent Rs 3,00,000 to a business associate whose cheque was returned dishonoured "
+            "on presentation. He opened AI Legal Chat, selected 'Demand Notice', and described the "
+            "transaction dates, cheque number, bank return memo details, and the drawee's Vijayawada "
+            "address. The AI generated a Section 138 Negotiable Instruments Act, 1881 notice within "
+            "60 seconds — correctly formatted with a 15-day demand period and Vijayawada territorial "
+            "jurisdiction. His advocate made two minor edits and dispatched it by registered post. "
+            "The associate paid in full within the notice period."
         ),
-        "tip": "Use the chat history to build on previous drafts — the AI remembers the thread context.",
+        "tip": "The AI remembers your chat thread context — reference earlier drafts in the same session to build complex documents incrementally.",
     },
     {
         "num": "07",
-        "icon": "CLIENT DASHBOARD",
+        "cat": "CLIENT DASHBOARD",
         "name": "Client Dashboard & Case Tracking",
-        "tagline": "Track every stage of your active cases with a visual timeline",
+        "tagline": "Visual timeline for every active case — hearing dates, documents, and advocate chat",
         "overview": (
             "The Client Dashboard is your command centre for all active legal matters. Each case "
-            "shows a real-time stage timeline (Intake → Filed → Hearing → Judgment), upcoming "
-            "hearing dates, assigned advocate details, match proposals awaiting decision, and "
-            "all documents linked to the case. You can upload new documents directly and message "
-            "your advocate through the in-platform chat."
+            "displays a real-time stage timeline (Intake > Filed > Hearing > Judgment), the next "
+            "hearing date, your assigned advocate's contact details, pending match proposals, and "
+            "all documents linked to that case. Upload documents directly, and message your advocate "
+            "via the secure in-platform chat."
         ),
         "steps": [
-            "Log in as a Client and you land on the Client Dashboard automatically.",
-            "The left sidebar shows all your active cases. Click any case to expand.",
-            "The stage timeline bar shows the current stage highlighted in amber.",
-            "Click 'Proposals' to see and act on pending match proposals.",
-            "Click 'Documents' to upload case documents (PDF, JPG, PNG, DOCX).",
-            "Tap the advocate's 'Contact' button to open the in-platform secure chat.",
-            "The NALSA helpline number is always shown at the bottom for free legal aid.",
+            "Log in as a Client — the dashboard is your landing page automatically.",
+            "The left panel lists all your active cases. Click any case card to expand the details.",
+            "The stage timeline bar highlights the current stage in amber.",
+            "Click 'Proposals' to review and act on any pending advocate match proposals.",
+            "Click 'Documents' to upload case documents — PDF, JPG, PNG, and DOCX supported.",
+            "Tap 'Contact Advocate' to open the secure in-platform chat with your assigned lawyer.",
+            "The NALSA helpline (1516) is always displayed at the bottom for free legal aid access.",
         ],
-        "usecase_title": "Case: Cheque Bounce Recovery — M. Anitha, Karimnagar",
+        "usecase_title": "Case Tracking: Cheque Bounce Recovery — M. Anitha, Karimnagar",
         "usecase": (
             "M. Anitha had a Section 138 NI Act complaint filed in the Karimnagar Judicial "
-            "Magistrate Court. Her advocate updated the case stage to 'Hearing' after the "
-            "summons was served. Anitha could see on her Client Dashboard that the next hearing "
-            "was on 22 July, and the case was at 'Stage 3 of 5'. She uploaded the original "
-            "cheque image and bank return memo directly to the case folder from her phone. "
-            "Her advocate acknowledged receipt via the in-platform chat and confirmed the "
-            "documents were sufficient for the next date."
+            "Magistrate Court. Her advocate updated the case stage to 'Hearing' after summons was "
+            "served. Anitha could see on her dashboard that the next hearing was set for 22 July and "
+            "the matter was at Stage 3 of 5. She uploaded the original cheque image and bank return "
+            "memo directly to the case folder from her phone. Her advocate acknowledged receipt via "
+            "in-platform chat and confirmed the documents were sufficient for the next date."
         ),
-        "tip": "Enable push notifications for hearing date reminders — go to Settings > Notifications.",
+        "tip": "Enable push notifications in Settings > Notifications to receive automatic reminders for upcoming hearing dates — never miss a court date.",
     },
     {
         "num": "08",
-        "icon": "ADVOCATE DIRECTORY",
+        "cat": "ADVOCATE DIRECTORY",
         "name": "Advocate Directory",
-        "tagline": "Find and contact verified advocates across Telangana & Andhra Pradesh",
+        "tagline": "Find and contact verified advocates across Telangana and Andhra Pradesh",
         "overview": (
-            "The Advocate Directory lists all verified lawyers on the platform with their bar "
-            "council registration, practice areas, districts covered, languages spoken, "
-            "experience in years, hourly rate, and availability status. Each advocate has "
-            "a rating from past clients. You can filter by any combination of these criteria "
-            "to find the right advocate for your matter."
+            "The Advocate Directory lists all verified lawyers registered on the platform — complete "
+            "with bar council registration number, practice areas, districts covered, languages spoken, "
+            "years of experience, hourly rate, and current availability. Client ratings from past "
+            "matters are displayed on each profile. Filter by any combination of criteria to find "
+            "exactly the right advocate for your situation."
         ),
         "steps": [
             "Click 'Lawyers' in the sidebar.",
-            "Use the filter row to select: District, Practice Area, Language, and Budget.",
-            "Browse the advocate cards — verified advocates show a blue shield badge.",
-            "Click an advocate's card to see full profile: bio, bar number, ratings, and hourly rate.",
-            "Click 'Post a Case' to formally submit a case requirement that the advocate can respond to.",
-            "Alternatively, advocates can register directly via 'Register as Advocate' for free.",
+            "Use the filter row to narrow by: District, Practice Area, Language, and Budget range.",
+            "Browse advocate cards — verified advocates show a blue shield badge.",
+            "Click any card to see the full profile: bio, bar number, ratings, hourly rate, and languages.",
+            "Click 'Post a Case' to formally submit a requirement that matching advocates can respond to.",
+            "Advocates can self-register via 'Register as Advocate' — free for all enrolled lawyers.",
         ],
-        "usecase_title": "Search: Property Dispute Lawyer — S. Padmavathi, Guntur",
+        "usecase_title": "Search: Property Dispute Advocate — S. Padmavathi, Guntur",
         "usecase": (
-            "S. Padmavathi needed an advocate for a property partition suit in Guntur District "
-            "Court. She filtered the directory for District: Guntur, Practice Area: Property, "
+            "S. Padmavathi needed an advocate for a property partition suit in the Guntur District "
+            "Court. She filtered the directory for District: Guntur, Practice Area: Property Law, "
             "Language: Telugu. Six verified advocates appeared. She selected one with 22 years' "
-            "experience and a 4.8 rating from 31 clients. His bar number was verified against "
-            "the Bar Council of Andhra Pradesh register. She posted the case and received his "
-            "proposal within 4 hours with a fee estimate of Rs 8,000 for the first hearing."
+            "experience and a 4.8 client rating from 31 matters. His Bar Council of Andhra Pradesh "
+            "registration number was independently verifiable. She posted the case and received his "
+            "proposal within 4 hours with a clear fee estimate for the first two hearings."
         ),
-        "tip": "Advocates with 'Verified' badge have had their bar number checked by the LitigaForge team.",
+        "tip": "Advocates with the 'Verified' badge have had their bar enrolment number cross-checked by the LitigaForge AI team.",
     },
     {
         "num": "09",
-        "icon": "LEGAL AID",
+        "cat": "LEGAL AID FINDER",
         "name": "Legal Aid Finder",
-        "tagline": "Free legal help through NALSA, TSLSA, and all 8 district legal services authorities",
+        "tagline": "Free legal help via NALSA, TSLSA, and all 8 district legal services authorities",
         "overview": (
-            "LitigaForge AI provides a built-in legal aid eligibility checker and directory. "
-            "If you qualify under NALSA / TSLSA income criteria, you are entitled to free legal "
-            "representation. The platform lists all 8 Telangana DLSA (District Legal Services "
-            "Authority) contacts, the national NALSA helpline (1516), and the State helpline, "
-            "so help is always one tap away."
+            "LitigaForge AI provides a built-in legal aid eligibility checker and a complete DLSA "
+            "directory. If you qualify under NALSA / TSLSA income or category criteria, you are "
+            "entitled to free legal representation under the Legal Services Authorities Act, 1987. "
+            "The platform lists all 8 Telangana District Legal Services Authority offices with "
+            "addresses, phone numbers, and emails."
         ),
         "steps": [
             "Click 'Legal Aid' in the sidebar.",
-            "Run the Eligibility Wizard: answer 5 questions about income, category (SC/ST/Women/Disabled/Child), and case type.",
-            "The wizard shows whether you qualify for free legal aid under Legal Services Authorities Act, 1987.",
-            "If eligible, the nearest DLSA address, phone number, and email are shown.",
-            "Call NALSA Toll-Free: 1516 (24x7) for immediate guidance.",
-            "All TSLSA DLSA contacts are listed — Hyderabad, Warangal, Karimnagar, Nalgonda, Nizamabad, Khammam, Medak, Adilabad.",
+            "Run the Eligibility Wizard — answer 5 questions about income, beneficiary category (SC/ST/Women/Disabled/Child), and case type.",
+            "The wizard shows whether you qualify for free legal aid and the legal basis.",
+            "If eligible, your nearest DLSA address, phone number, and email are displayed.",
+            "Call NALSA Toll-Free: 1516 (available 24x7) for immediate guidance.",
+            "TSLSA offices covered: Hyderabad, Warangal, Karimnagar, Nalgonda, Nizamabad, Khammam, Medak, Adilabad.",
         ],
         "usecase_title": "Eligibility Check: Domestic Violence Protection — Sunita Bai, Adilabad",
         "usecase": (
-            "Sunita Bai, a tribal woman from Adilabad with monthly income below Rs 1 lakh, "
-            "was facing domestic violence and needed urgent legal protection. She ran the "
-            "Legal Aid Eligibility Wizard on LitigaForge AI. The wizard confirmed she qualified "
-            "on two grounds: Scheduled Tribe category and domestic violence case type. The "
-            "platform showed the Adilabad DLSA contact and address. She called 1516, was "
-            "connected to a duty advocate within 20 minutes, and filed for a Protection Order "
-            "under the Protection of Women from Domestic Violence Act, 2005 — at zero cost."
+            "Sunita Bai, a Scheduled Tribe woman from Adilabad with a monthly income below Rs 1 lakh, "
+            "was facing domestic violence and needed urgent legal protection. She ran the Legal Aid "
+            "Eligibility Wizard on LitigaForge AI. The wizard confirmed eligibility on two grounds: "
+            "Scheduled Tribe category and domestic violence case type. The platform displayed the "
+            "Adilabad DLSA address and direct phone number. She called 1516, was connected to a duty "
+            "advocate within 20 minutes, and filed for a Protection Order under the Protection of "
+            "Women from Domestic Violence Act, 2005 — at zero cost."
         ),
-        "tip": "Women, children, SC/ST, and persons with disabilities always qualify regardless of income.",
+        "tip": "Women, children, persons belonging to SC/ST communities, and persons with disabilities always qualify for free legal aid regardless of income level.",
     },
     {
         "num": "10",
-        "icon": "FREE TEMPLATES",
+        "cat": "FREE TEMPLATES",
         "name": "Free Document Templates",
-        "tagline": "10 AI-powered legal document templates — filled dynamically with your facts",
+        "tagline": "10 AI-powered legal templates — filled dynamically with your specific facts",
         "overview": (
-            "LitigaForge AI provides 10 free, professionally drafted document templates that "
-            "the AI fills with your specific case details. Templates cover the most common "
-            "Indian legal documents. Each template generates a ready-to-print PDF with all "
-            "standard clauses, proper formatting, and party details auto-populated."
+            "LitigaForge AI provides 10 free, professionally drafted document templates that the AI "
+            "fills with your specific case details. Templates cover the most common Indian legal "
+            "documents. Each one generates a formatted, ready-to-print document with standard clauses, "
+            "proper court heading, and party details auto-populated. No design or drafting experience "
+            "required."
         ),
         "steps": [
             "Click 'Free Documents' in the sidebar.",
-            "Browse the 10 template cards — each shows the document type and typical use case.",
+            "Browse the 10 template cards — each card shows the document type and typical use case.",
             "Click 'Generate' on your chosen template.",
-            "Fill in the dynamic form — the AI pre-populates fields based on your profile.",
-            "Review the preview pane on the right.",
-            "Click 'Download PDF' for the finished document.",
-            "For more complex or custom documents, use the AI Legal Chat feature (Feature 06).",
+            "Fill the dynamic form — fields are pre-populated where your profile data is available.",
+            "Review the live preview on the right panel as you type.",
+            "Click 'Download PDF' to save the finished document.",
+            "For fully custom documents beyond these templates, use AI Legal Chat (Feature 06).",
         ],
         "usecase_title": "Template: Affidavit of Income — Ramesh Goud, Nizamabad",
         "usecase": (
             "Ramesh Goud needed an affidavit of income to apply for an OBC non-creamy layer "
-            "certificate in Nizamabad. He opened Free Documents, selected the 'Affidavit of "
-            "Income' template, and filled in his name, father's name, address, and annual "
-            "income details. The AI generated a properly formatted affidavit on Rs 100 stamp "
-            "paper template, mentioning the Telangana jurisdiction. Ramesh printed it, got "
-            "it notarised, and submitted — saving the Rs 500 he would have paid a local "
+            "certificate in Nizamabad. He opened Free Documents, selected the 'Affidavit of Income' "
+            "template, and filled in his name, father's name, complete address, and annual income "
+            "figure. The AI generated a properly formatted affidavit citing the Telangana jurisdiction "
+            "with the standard verification clause. Ramesh printed it, got it notarised at the local "
+            "Sub-Registrar office, and submitted — saving Rs 500 he would otherwise have paid a "
             "typing centre."
         ),
-        "tip": "Available templates: Demand Notice, Affidavit, Rent Agreement, Power of Attorney, Partnership Deed, NDA, Sale Agreement, Legal Heir Certificate application, Bail Application draft, and Consumer Complaint.",
+        "tip": "Templates available: Demand Notice, Income Affidavit, Rent Agreement, Power of Attorney, Partnership Deed, NDA, Sale Agreement, Legal Heir Certificate, Bail Application, and Consumer Complaint.",
     },
     {
         "num": "11",
-        "icon": "SUBSCRIPTION",
+        "cat": "SUBSCRIPTION",
         "name": "Subscription Plans",
-        "tagline": "Choose the plan that matches your legal needs",
+        "tagline": "Three plans — Free, Professional, and Advocate Pro",
         "overview": (
-            "LitigaForge AI offers three plans. The Free plan gives full access to Legal Q&A, "
-            "Judgment Finder, Legal Aid, and basic templates. The Professional plan (Rs 999/month) "
-            "adds unlimited AI analysis, document uploads, and priority matching. The Advocate Pro "
-            "plan (Rs 2,499/month) is for practising advocates and adds case management tools, "
-            "client portal access, and the full Lawyer Dashboard."
+            "LitigaForge AI offers three subscription tiers. The Free plan gives full access to Legal "
+            "Q&A, Judgment Finder, Legal Aid, and basic templates. The Professional plan (Rs 999/month) "
+            "adds unlimited AI analysis sessions, expanded document uploads, and priority matching. "
+            "The Advocate Pro plan (Rs 2,499/month) is for practising advocates — it adds the full "
+            "Lawyer Dashboard, case management, client portal access, and a verified badge that "
+            "increases placement in search results."
         ),
         "steps": [
-            "Click your plan badge (top right) or go to 'Subscription' in the sidebar.",
-            "Compare the three plan tiers on the plan comparison table.",
+            "Click your plan badge (top right corner) or go to 'Subscription' in the sidebar.",
+            "Compare the three plan tiers side by side on the plan comparison table.",
             "Click 'Upgrade' on your chosen plan.",
-            "Pay securely via Razorpay (UPI, card, net banking, wallets all supported).",
-            "Your new tier activates instantly after payment verification.",
-            "To downgrade, visit Subscription and select a lower tier — effective from next billing cycle.",
+            "Pay securely via Razorpay — UPI, card, net banking, and wallets all accepted.",
+            "Your new tier activates instantly after Razorpay payment verification.",
+            "To downgrade, select a lower tier — the change takes effect at your next billing cycle.",
         ],
-        "usecase_title": "Upgrade: From Free to Professional — Meera Reddy, Hyderabad",
+        "usecase_title": "Upgrade: Free to Professional — Meera Reddy, Hyderabad",
         "usecase": (
-            "Meera Reddy used the Free plan for two months to research her property dispute. "
-            "When her advocate requested 14 document uploads (Free limit: 5) and she needed "
-            "priority matching for a second opinion, she upgraded to Professional at Rs 999/month "
-            "via UPI. The upgrade confirmed instantly. She uploaded all 14 documents within "
-            "minutes and received three new advocate proposals within 2 hours. The Professional "
-            "plan paid for itself in the first month — a comparable consultation would have "
-            "cost Rs 3,000."
+            "Meera Reddy used the Free plan for two months to research her property dispute and run "
+            "three ForgeBoard sessions. When her advocate requested 14 document uploads (Free plan "
+            "limit: 5) and she needed priority matching for a second legal opinion, she upgraded to "
+            "Professional at Rs 999/month via UPI. The upgrade activated instantly. She uploaded all "
+            "14 documents and received three new advocate proposals within 2 hours. The first month's "
+            "subscription cost less than a single consultation at a law firm."
         ),
-        "tip": "Advocates on Advocate Pro get a verified badge, higher placement in search results, and the full Lawyer Dashboard for case and document management.",
+        "tip": "Advocate Pro subscribers receive a verified badge, priority placement in the directory, and the complete Lawyer Dashboard for managing cases, documents, and client communications.",
     },
     {
         "num": "12",
-        "icon": "DIGEST ALERTS",
+        "cat": "DAILY DIGEST",
         "name": "Judgment Digest & Email Alerts",
-        "tagline": "Daily legal intelligence delivered to your inbox every morning at 7 AM",
+        "tagline": "Curated daily legal intelligence delivered to your inbox every morning at 7 AM IST",
         "overview": (
-            "LitigaForge AI sends a curated Judgment Digest email every morning with new Supreme "
-            "Court, High Court, and tribunal judgments relevant to your subscribed categories. "
-            "Subscribe once, choose your areas of interest, and receive concise summaries with "
-            "key principles and citation links — no full-text reading required. Double opt-in "
-            "confirms your subscription."
+            "LitigaForge AI sends a daily Judgment Digest email every morning with new Supreme Court, "
+            "High Court, and tribunal judgments relevant to your chosen categories. Subscribe once, "
+            "select your areas of law, and receive concise AI-generated summaries with key principles "
+            "and citation links — no full-text reading required. Subscription is confirmed via double "
+            "opt-in to ensure only genuine subscribers receive the digest."
         ),
         "steps": [
-            "Go to 'Judgments' in the sidebar and scroll to 'Subscribe to Daily Digest'.",
-            "Enter your email and select your preferred legal categories (e.g., Property, Criminal, Consumer, Labour).",
-            "Click 'Subscribe'. A confirmation email arrives within 2 minutes — click the link to confirm.",
-            "Every morning at 7:00 AM IST, you receive a digest with 3–5 new judgments.",
-            "Each judgment in the email includes: case name, court, date, key principle, and a 'Read More' link.",
-            "To unsubscribe, click 'Unsubscribe' in any digest email — takes effect immediately.",
+            "Go to 'Judgments' and scroll to the 'Subscribe to Daily Digest' section.",
+            "Enter your email address and select your preferred legal categories.",
+            "Click 'Subscribe'. A confirmation email arrives within 2 minutes — click the link to activate.",
+            "Every morning at 7:00 AM IST, receive a digest with 3–5 new judgments.",
+            "Each digest entry includes: case name, court, date, key holding, and a 'Read Full Judgment' link.",
+            "To unsubscribe, click 'Unsubscribe' in any digest email — takes effect immediately with no data retained.",
         ],
-        "usecase_title": "Alert: Property Law Update — Advocate Srikanth, Warangal",
+        "usecase_title": "Digest Alert: Property Law Update — Advocate G. Srikanth, Warangal",
         "usecase": (
-            "Advocate G. Srikanth from Warangal subscribed to the Property and Revenue Law "
-            "categories. On a Tuesday morning, the digest included a fresh Telangana High Court "
-            "judgment on Section 89 Transfer of Property Act interpretation. He opened the "
-            "summary before court, noted the key principle, and cited it in his arguments in "
-            "the Warangal District Court that afternoon — a judgment his opponent had not yet "
-            "encountered. The client complimented him on his thorough preparation. Srikanth "
-            "credits the daily digest for keeping him ahead in a fast-moving practice."
+            "Advocate G. Srikanth subscribed to Property Law and Revenue Law categories. On a Tuesday "
+            "morning the digest included a fresh Telangana High Court order interpreting Section 89 of "
+            "the Transfer of Property Act. He read the 80-word AI summary before reaching the "
+            "courthouse, noted the key principle, and cited it in his arguments in the Warangal "
+            "District Court that afternoon. His opponent had not yet found the judgment. The client "
+            "commented on his thorough preparation. Srikanth credits the daily digest for keeping "
+            "him ahead in a fast-moving practice area."
         ),
-        "tip": "The digest is free for all users. You can manage category preferences at any time from your profile settings.",
+        "tip": "The Judgment Digest is completely free for all users — no subscription required. Manage your category preferences at any time from your profile settings.",
     },
 ]
 
-# ── PDF class ──────────────────────────────────────────────────────────────────
 
 class LitigaForgePDF(FPDF):
+    def __init__(self):
+        super().__init__(orientation='P', unit='mm', format='A4')
+        self.add_font('DV',  '', FONT_R)
+        self.add_font('DV',  'B', FONT_B)
+        self.set_auto_page_break(auto=True, margin=18)
+        self.set_margins(18, 18, 18)
 
     def header(self):
         if self.page_no() == 1:
             return
         self.set_fill_color(*NAVY)
         self.rect(0, 0, 210, 10, 'F')
-        self.set_font('Helvetica', 'B', 7)
+        self.set_font('DV', 'B', 7)
         self.set_text_color(*AMBER)
         self.set_xy(10, 2)
-        self.cell(0, 6, 'LITIGAFORGE AI  |  USER GUIDE', ln=0, align='L')
+        self.cell(100, 6, 'LITIGAFORGE AI  |  USER GUIDE')
         self.set_text_color(*WHITE)
-        self.set_xy(0, 2)
-        self.cell(200, 6, TODAY, ln=0, align='R')
+        self.set_xy(100, 2)
+        self.cell(100, 6, TODAY, align='R',
+                  new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     def footer(self):
         if self.page_no() == 1:
@@ -430,415 +445,401 @@ class LitigaForgePDF(FPDF):
         self.set_y(-12)
         self.set_fill_color(*NAVY)
         self.rect(0, 285, 210, 15, 'F')
-        self.set_font('Helvetica', '', 7)
+        self.set_font('DV', '', 7)
         self.set_text_color(*MUTED)
         self.set_xy(10, 287)
-        self.cell(0, 6, 'For legal advice, always consult a qualified advocate. LitigaForge AI is an informational platform.', align='L')
-        self.set_xy(0, 287)
+        self.cell(150, 6, 'For legal advice, consult a qualified advocate. LitigaForge AI is an informational platform.')
         self.set_text_color(*AMBER)
-        self.cell(200, 6, f'Page {self.page_no()}', align='R')
+        self.set_xy(160, 287)
+        self.cell(40, 6, f'Page {self.page_no()}', align='R')
 
 
-def make_pdf():
-    pdf = LitigaForgePDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=18)
-    pdf.set_margins(18, 18, 18)
+def _sec(pdf: LitigaForgePDF, title: str):
+    y = pdf.get_y()
+    pdf.set_fill_color(*NAVY)
+    pdf.rect(18, y, 174, 11, 'F')
+    pdf.set_fill_color(*AMBER)
+    pdf.rect(18, y, 3, 11, 'F')
+    pdf.set_xy(25, y + 2)
+    pdf.set_font('DV', 'B', 11)
+    pdf.set_text_color(*WHITE)
+    pdf.cell(0, 7, title.upper(), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(5)
+
+
+def make_pdf() -> LitigaForgePDF:
+    pdf = LitigaForgePDF()
 
     # ── COVER PAGE ──────────────────────────────────────────────────────────────
     pdf.add_page()
-
-    # Full navy background
     pdf.set_fill_color(*NAVY)
     pdf.rect(0, 0, 210, 297, 'F')
-
-    # Amber top stripe
+    # amber top stripe
     pdf.set_fill_color(*AMBER)
-    pdf.rect(0, 0, 210, 3, 'F')
+    pdf.rect(0, 0, 210, 4, 'F')
 
-    # Brand mark (geometric square)
+    # Brand mark — nested rectangles
     pdf.set_fill_color(*TEAL)
-    pdf.rect(18, 28, 18, 18, 'F')
+    pdf.rect(18, 28, 20, 20, 'F')
     pdf.set_fill_color(*AMBER)
-    pdf.rect(22, 32, 10, 10, 'F')
+    pdf.rect(22, 32, 12, 12, 'F')
     pdf.set_fill_color(*NAVY)
-    pdf.rect(25, 35, 4, 4, 'F')
+    pdf.rect(26, 36, 4, 4, 'F')
 
-    # LitigaForge AI wordmark
-    pdf.set_font('Helvetica', 'B', 26)
+    # Wordmark
+    pdf.set_xy(44, 28)
+    pdf.set_font('DV', 'B', 28)
     pdf.set_text_color(*WHITE)
-    pdf.set_xy(40, 28)
-    pdf.cell(0, 10, 'LitigaForge', ln=0)
+    pdf.cell(60, 11, 'LitigaForge', new_x=XPos.END, new_y=YPos.TOP)
     pdf.set_text_color(*AMBER)
-    pdf.set_font('Helvetica', 'B', 26)
-    pdf.cell(0, 10, ' AI', ln=1)
+    pdf.cell(20, 11, ' AI', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    pdf.set_font('Helvetica', '', 9)
+    pdf.set_xy(44, 42)
+    pdf.set_font('DV', '', 9)
     pdf.set_text_color(148, 163, 184)
-    pdf.set_xy(40, 40)
-    pdf.cell(0, 6, 'Legal Intelligence for Telangana & Andhra Pradesh', ln=1)
+    pdf.cell(0, 6, 'Legal Intelligence for Telangana & Andhra Pradesh')
 
-    # Amber separator line
+    # Amber rule
     pdf.set_fill_color(*AMBER)
-    pdf.rect(18, 58, 60, 1.5, 'F')
+    pdf.rect(18, 60, 70, 1.5, 'F')
 
     # Main title
-    pdf.set_xy(18, 68)
-    pdf.set_font('Helvetica', 'B', 38)
+    pdf.set_xy(18, 70)
+    pdf.set_font('DV', 'B', 40)
     pdf.set_text_color(*WHITE)
-    pdf.multi_cell(174, 14, 'Complete\nUser Guide', align='L')
+    pdf.multi_cell(174, 16, 'Complete\nUser Guide', align='L')
 
     # Subtitle
-    pdf.set_xy(18, 108)
-    pdf.set_font('Helvetica', '', 13)
+    pdf.set_xy(18, 110)
+    pdf.set_font('DV', '', 12)
     pdf.set_text_color(148, 163, 184)
-    pdf.cell(0, 8, '12 Features  |  12 Real Case Studies', ln=1)
+    pdf.cell(0, 8, '12 Features  |  12 Real-World Case Studies from Telangana & AP')
 
-    # Feature pills row
-    pills = ['AI Workspace', 'Lawyer Matching', 'Legal Q&A', 'Document Analyzer',
-             'Judgment Finder', 'AI Drafting', 'Case Tracking', 'Legal Aid']
-    pdf.set_xy(18, 126)
-    x = 18
-    for p in pills:
-        pdf.set_fill_color(255, 255, 255, )
+    # Feature label tags
+    tags = ['AI Workspace', 'Lawyer Matching', 'Legal Q&A', 'Document Analyzer',
+            'Judgment Finder', 'AI Drafting', 'Case Tracking', 'Legal Aid']
+    x, y_tag = 18, 128
+    for tag in tags:
         pdf.set_fill_color(30, 50, 90)
         pdf.set_text_color(*TEAL)
-        pdf.set_font('Helvetica', 'B', 7.5)
-        w = pdf.get_string_width(p) + 10
-        pdf.set_xy(x, 126)
-        pdf.cell(w, 7, p, border=0, fill=True, align='C')
+        pdf.set_font('DV', 'B', 7)
+        w = pdf.get_string_width(tag) + 10
+        if x + w > 192:
+            x = 18; y_tag += 10
+        pdf.set_xy(x, y_tag)
+        pdf.cell(w, 7, tag, fill=True, align='C')
         x += w + 4
-        if x > 170:
-            x = 18
-            pdf.set_xy(x, 135)
 
-    # Large decorative element
+    # Decorative circles
     pdf.set_fill_color(20, 40, 80)
-    pdf.ellipse(130, 150, 120, 120, 'F')
+    pdf.ellipse(128, 152, 122, 122, 'F')
     pdf.set_fill_color(15, 30, 65)
-    pdf.ellipse(150, 170, 80, 80, 'F')
-    pdf.set_text_color(*TEAL)
-    pdf.set_font('Helvetica', 'B', 60)
-    pdf.set_xy(138, 178)
-    pdf.cell(60, 20, '\u26a1', align='C')
+    pdf.ellipse(150, 174, 78, 78, 'F')
+    pdf.set_fill_color(*TEAL)
+    pdf.ellipse(175, 200, 28, 28, 'F')
+    pdf.set_fill_color(*AMBER)
+    pdf.ellipse(165, 192, 10, 10, 'F')
 
     # Stats bar
     pdf.set_fill_color(20, 40, 80)
-    pdf.rect(0, 230, 210, 30, 'F')
-    stats = [('12', 'Features'), ('5', 'AI Agents'), ('3', 'AI Models'), ('2', 'States Covered')]
-    for i, (num, label) in enumerate(stats):
-        x = 18 + i * 46
-        pdf.set_xy(x, 234)
-        pdf.set_font('Helvetica', 'B', 18)
+    pdf.rect(0, 232, 210, 30, 'F')
+    for i, (num, label) in enumerate([('12','Features'),('5','AI Agents'),('3','AI Models'),('2','States')]):
+        bx = 18 + i * 46
+        pdf.set_xy(bx, 237)
+        pdf.set_font('DV', 'B', 18)
         pdf.set_text_color(*AMBER)
         pdf.cell(40, 8, num, align='C')
-        pdf.set_xy(x, 243)
-        pdf.set_font('Helvetica', '', 7.5)
+        pdf.set_xy(bx, 246)
+        pdf.set_font('DV', '', 7.5)
         pdf.set_text_color(148, 163, 184)
         pdf.cell(40, 6, label, align='C')
 
-    # Bottom amber bar
+    # Bottom stripe
     pdf.set_fill_color(*AMBER)
-    pdf.rect(0, 265, 210, 1, 'F')
-
-    # Version / date
-    pdf.set_xy(18, 270)
-    pdf.set_font('Helvetica', '', 8)
+    pdf.rect(0, 267, 210, 1, 'F')
+    pdf.set_xy(18, 272)
+    pdf.set_font('DV', '', 8)
     pdf.set_text_color(100, 116, 139)
-    pdf.cell(0, 6, f'Version 1.0  |  {TODAY}  |  litigaforge.com', align='L')
-    pdf.set_xy(0, 270)
+    pdf.cell(120, 6, f'Version 1.0  |  {TODAY}  |  litigaforge.com')
+    pdf.set_xy(130, 272)
     pdf.set_text_color(*TEAL)
-    pdf.cell(192, 6, 'legal@litigaforge.com', align='R')
+    pdf.cell(62, 6, 'legal@litigaforge.com', align='R')
 
     # ── ABOUT PAGE ─────────────────────────────────────────────────────────────
     pdf.add_page()
+    _sec(pdf, 'About LitigaForge AI')
 
-    # Section title
-    _section_title(pdf, 'About LitigaForge AI')
-
-    pdf.set_font('Helvetica', '', 10.5)
+    pdf.set_font('DV', '', 10)
     pdf.set_text_color(*DARK)
-    about_text = (
+    pdf.multi_cell(174, 6, (
         "LitigaForge AI is an end-to-end legal technology platform built specifically for "
         "litigants, advocates, and legal professionals in Telangana and Andhra Pradesh. "
         "It combines cutting-edge AI (Claude Sonnet, Gemini 2.5 Flash, Groq Llama) with "
         "deep knowledge of Indian statute law, court procedures, and regional legal nuances "
-        "to provide intelligence that is both legally accurate and locally relevant.\n\n"
+        "to deliver intelligence that is both legally accurate and locally relevant.\n\n"
         "Whether you are a first-time litigant who needs free legal aid, a seasoned advocate "
-        "who wants AI-powered case strategy, or a business owner who needs a contract reviewed — "
-        "LitigaForge AI has a feature built for your exact situation."
-    )
-    pdf.multi_cell(174, 6, about_text)
+        "who wants AI-powered case strategy, or a business owner who needs a contract reviewed "
+        "before signing — LitigaForge AI has a feature built for your exact situation."
+    ))
     pdf.ln(5)
 
     # Three pillars
     pillars = [
-        (TEAL,   'Find', 'Discover verified advocates, precedents, legal aid contacts, and government resources in seconds.'),
+        (TEAL,   'Find',    'Discover verified advocates, precedents, legal aid contacts, and government resources in seconds.'),
         (AMBER,  'Analyse', 'Run 5-agent AI analysis on your case. Score arguments. Simulate what-if scenarios.'),
-        (PURPLE, 'Act', 'Draft notices, file complaints, track hearings, and collaborate securely with your advocate.'),
+        (PURPLE, 'Act',     'Draft notices, file complaints, track hearings, and collaborate securely with your advocate.'),
     ]
     col_w = 54
-    pdf.set_xy(18, pdf.get_y())
-    start_y = pdf.get_y()
+    sy = pdf.get_y()
     for i, (color, title, desc) in enumerate(pillars):
-        x = 18 + i * (col_w + 6)
+        cx = 18 + i * (col_w + 6)
         pdf.set_fill_color(*color)
-        pdf.rect(x, start_y, col_w, 2, 'F')
-        pdf.set_xy(x, start_y + 5)
-        pdf.set_font('Helvetica', 'B', 11)
+        pdf.rect(cx, sy, col_w, 2, 'F')
+        pdf.set_xy(cx, sy + 5)
+        pdf.set_font('DV', 'B', 11)
         pdf.set_text_color(*color)
-        pdf.cell(col_w, 7, title, align='L')
-        pdf.set_xy(x, start_y + 13)
-        pdf.set_font('Helvetica', '', 8.5)
+        pdf.cell(col_w, 7, title)
+        pdf.set_xy(cx, sy + 14)
+        pdf.set_font('DV', '', 8.5)
         pdf.set_text_color(*DARK)
         pdf.multi_cell(col_w, 5, desc)
-    pdf.set_y(start_y + 44)
+    pdf.set_y(sy + 46)
     pdf.ln(4)
 
     # Getting started box
-    pdf.set_fill_color(248, 250, 252)
-    box_y = pdf.get_y()
-    pdf.rect(18, box_y, 174, 45, 'F')
+    bx_y = pdf.get_y()
+    pdf.set_fill_color(*LIGHT)
+    pdf.rect(18, bx_y, 174, 48, 'F')
     pdf.set_fill_color(*TEAL)
-    pdf.rect(18, box_y, 3, 45, 'F')
-    pdf.set_xy(25, box_y + 5)
-    pdf.set_font('Helvetica', 'B', 10)
+    pdf.rect(18, bx_y, 3, 48, 'F')
+    pdf.set_xy(25, bx_y + 5)
+    pdf.set_font('DV', 'B', 10)
     pdf.set_text_color(*NAVY)
-    pdf.cell(0, 6, 'Getting Started in 3 Steps', ln=1)
-    steps = [
+    pdf.cell(0, 6, 'Getting Started in 3 Steps', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    for num, step in [
         ('1', 'Create your free account at litigaforge.com — no credit card required.'),
         ('2', 'Choose your role: Client (I need legal help) or Advocate (I am a lawyer).'),
         ('3', 'Explore any feature from the sidebar — everything is accessible immediately.'),
-    ]
-    for num, step in steps:
+    ]:
         pdf.set_xy(25, pdf.get_y())
-        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_font('DV', 'B', 9)
         pdf.set_text_color(*TEAL)
-        pdf.cell(7, 6, num + '.', ln=0)
-        pdf.set_font('Helvetica', '', 9)
+        pdf.cell(8, 7, num + '.')
+        pdf.set_xy(33, pdf.get_y() - 7)
+        pdf.set_font('DV', '', 9)
         pdf.set_text_color(*DARK)
-        pdf.multi_cell(160, 6, step)
-
+        pdf.multi_cell(159, 6, step)
     pdf.ln(8)
 
     # ── TABLE OF CONTENTS ───────────────────────────────────────────────────────
-    _section_title(pdf, 'Table of Contents')
-    pdf.ln(2)
-
+    _sec(pdf, 'Table of Contents')
     for i, f in enumerate(FEATURES):
-        y = pdf.get_y()
-        pdf.set_fill_color(*LIGHT)
+        ry = pdf.get_y()
         if i % 2 == 0:
-            pdf.rect(18, y, 174, 9, 'F')
-        pdf.set_xy(18, y + 1.5)
-        pdf.set_font('Helvetica', 'B', 9)
+            pdf.set_fill_color(*LIGHT)
+            pdf.rect(18, ry, 174, 9, 'F')
+        pdf.set_xy(18, ry + 1.5)
+        pdf.set_font('DV', 'B', 9)
         pdf.set_text_color(*NAVY)
-        pdf.cell(12, 6, f['num'], ln=0)
-        pdf.set_font('Helvetica', '', 9)
+        pdf.cell(14, 6, f['num'])
+        pdf.set_font('DV', '', 9)
         pdf.set_text_color(*DARK)
-        pdf.cell(130, 6, f['name'], ln=0)
-        pdf.set_font('Helvetica', '', 9)
+        pdf.cell(128, 6, f['name'])
+        pdf.set_font('DV', '', 9)
         pdf.set_text_color(*MUTED)
-        pdf.cell(32, 6, f'Feature {f["num"]}', align='R', ln=1)
+        pdf.cell(32, 6, f'Feature {f["num"]}', align='R',
+                 new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    # ── FEATURE PAGES ──────────────────────────────────────────────────────────
+    # ── FEATURE PAGES ───────────────────────────────────────────────────────────
     for f in FEATURES:
         pdf.add_page()
 
-        # Feature number banner (navy bar)
+        # Header banner
         pdf.set_fill_color(*NAVY)
-        pdf.rect(0, 0, 210, 22, 'F')
+        pdf.rect(0, 0, 210, 24, 'F')
         pdf.set_fill_color(*AMBER)
-        pdf.rect(0, 22, 210, 2, 'F')
+        pdf.rect(0, 24, 210, 2, 'F')
 
-        # Feature number
         pdf.set_xy(18, 4)
-        pdf.set_font('Helvetica', 'B', 28)
+        pdf.set_font('DV', 'B', 28)
         pdf.set_text_color(*AMBER)
-        pdf.cell(22, 15, f['num'], ln=0)
+        pdf.cell(24, 15, f['num'])
 
-        # Feature category badge
-        pdf.set_xy(42, 5)
-        pdf.set_font('Helvetica', 'B', 6.5)
+        pdf.set_xy(44, 5)
+        pdf.set_font('DV', 'B', 6.5)
         pdf.set_text_color(*TEAL)
-        pdf.cell(0, 5, f['icon'], ln=0)
+        pdf.cell(0, 5, f['cat'])
 
-        # Feature name
-        pdf.set_xy(42, 11)
-        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_xy(44, 12)
+        pdf.set_font('DV', 'B', 13)
         pdf.set_text_color(*WHITE)
-        pdf.cell(0, 7, f['name'], ln=0)
+        pdf.cell(0, 7, f['name'])
 
-        pdf.set_y(28)
+        pdf.set_y(30)
 
-        # Tagline
+        # Tagline strip
         pdf.set_fill_color(*LIGHT)
-        pdf.rect(18, 27, 174, 10, 'F')
+        pdf.rect(18, 29, 174, 11, 'F')
         pdf.set_fill_color(*TEAL)
-        pdf.rect(18, 27, 2, 10, 'F')
-        pdf.set_xy(24, 28)
-        pdf.set_font('Helvetica', 'I', 9.5)
+        pdf.rect(18, 29, 2, 11, 'F')
+        pdf.set_xy(24, 31)
+        pdf.set_font('DV', '', 9.5)
         pdf.set_text_color(*NAVY)
-        pdf.cell(0, 8, f['tagline'], ln=1)
+        pdf.cell(0, 7, f['tagline'])
 
-        pdf.ln(4)
+        pdf.set_y(45)
 
         # Overview
-        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_font('DV', 'B', 8.5)
         pdf.set_text_color(*NAVY)
-        pdf.cell(0, 6, 'OVERVIEW', ln=1)
-        pdf.set_font('Helvetica', '', 9.5)
+        pdf.cell(0, 6, 'OVERVIEW', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font('DV', '', 9.5)
         pdf.set_text_color(*DARK)
         pdf.multi_cell(174, 5.5, f['overview'])
         pdf.ln(5)
 
-        # How to use
-        pdf.set_font('Helvetica', 'B', 9)
+        # Steps
+        pdf.set_font('DV', 'B', 8.5)
         pdf.set_text_color(*NAVY)
-        pdf.cell(0, 6, 'HOW TO USE — STEP BY STEP', ln=1)
+        pdf.cell(0, 6, 'HOW TO USE — STEP BY STEP', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
         for idx, step in enumerate(f['steps']):
-            step_y = pdf.get_y()
-            # Circle bullet
+            sy2 = pdf.get_y()
             pdf.set_fill_color(*TEAL)
-            pdf.rect(18, step_y + 0.5, 5, 5, 'F')
-            pdf.set_xy(18, step_y + 0.5)
-            pdf.set_font('Helvetica', 'B', 6.5)
+            pdf.rect(18, sy2 + 0.5, 5.5, 5.5, 'F')
+            pdf.set_xy(18, sy2 + 0.5)
+            pdf.set_font('DV', 'B', 6.5)
             pdf.set_text_color(*WHITE)
-            pdf.cell(5, 5, str(idx + 1), align='C', ln=0)
-            pdf.set_xy(26, step_y)
-            pdf.set_font('Helvetica', '', 9.5)
+            pdf.cell(5.5, 5.5, str(idx + 1), align='C')
+            pdf.set_xy(27, sy2)
+            pdf.set_font('DV', '', 9.5)
             pdf.set_text_color(*DARK)
-            pdf.multi_cell(166, 5.5, step)
-            pdf.ln(1)
+            pdf.multi_cell(165, 5.5, step)
+            pdf.ln(1.5)
 
         pdf.ln(4)
 
-        # Use case box
+        # Use case
         uc_y = pdf.get_y()
-        box_h_est = 55
-        # Navy header
         pdf.set_fill_color(*NAVY)
-        pdf.rect(18, uc_y, 174, 10, 'F')
-        pdf.set_xy(18, uc_y + 1.5)
-        pdf.set_font('Helvetica', 'B', 8)
+        pdf.rect(18, uc_y, 174, 11, 'F')
+        pdf.set_xy(18, uc_y + 2)
+        pdf.set_font('DV', 'B', 8)
         pdf.set_text_color(*AMBER)
-        pdf.cell(6, 7, '\u2605', ln=0)
+        pdf.cell(8, 7, '*')
         pdf.set_text_color(*WHITE)
-        pdf.cell(0, 7, '  REAL-WORLD USE CASE', ln=1)
+        pdf.cell(0, 7, '  REAL-WORLD USE CASE', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-        # Case title
         pdf.set_fill_color(240, 245, 255)
-        pdf.set_xy(18, uc_y + 10)
-        pdf.set_font('Helvetica', 'B', 8.5)
+        pdf.rect(18, pdf.get_y(), 174, 2, 'F')
+
+        pdf.set_xy(18, pdf.get_y() + 3)
+        pdf.set_font('DV', 'B', 8.5)
         pdf.set_text_color(*NAVY)
         pdf.multi_cell(174, 5.5, f['usecase_title'])
         pdf.ln(2)
-
-        # Case narrative
         pdf.set_xy(18, pdf.get_y())
-        pdf.set_font('Helvetica', '', 9)
-        pdf.set_text_color(30, 41, 59)
+        pdf.set_font('DV', '', 9)
+        pdf.set_text_color(*SLATE)
         pdf.multi_cell(174, 5.5, f['usecase'])
         pdf.ln(3)
 
-        # Tip banner
-        tip_y = pdf.get_y()
-        pdf.set_fill_color(245, 158, 11, )
-        pdf.set_fill_color(255, 251, 235)
-        pdf.rect(18, tip_y, 174, 14, 'F')
+        # Tip
+        ty = pdf.get_y()
+        pdf.set_fill_color(*AMBER_LIGHT)
+        pdf.rect(18, ty, 174, 16, 'F')
         pdf.set_fill_color(*AMBER)
-        pdf.rect(18, tip_y, 2, 14, 'F')
-        pdf.set_xy(24, tip_y + 1.5)
-        pdf.set_font('Helvetica', 'B', 8)
+        pdf.rect(18, ty, 2, 16, 'F')
+        pdf.set_xy(24, ty + 2)
+        pdf.set_font('DV', 'B', 8)
         pdf.set_text_color(*AMBER)
-        pdf.cell(0, 5, 'PRO TIP', ln=1)
+        pdf.cell(0, 5, 'PRO TIP', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_xy(24, pdf.get_y())
-        pdf.set_font('Helvetica', '', 8.5)
-        pdf.set_text_color(92, 73, 10)
+        pdf.set_font('DV', '', 8.5)
+        pdf.set_text_color(*AMBER_DARK)
         pdf.multi_cell(166, 5, f['tip'])
 
-    # ── BACK COVER ─────────────────────────────────────────────────────────────
+    # ── BACK COVER ──────────────────────────────────────────────────────────────
     pdf.add_page()
-
     pdf.set_fill_color(*NAVY)
     pdf.rect(0, 0, 210, 297, 'F')
     pdf.set_fill_color(*AMBER)
-    pdf.rect(0, 0, 210, 3, 'F')
+    pdf.rect(0, 0, 210, 4, 'F')
 
-    pdf.set_xy(18, 40)
-    pdf.set_font('Helvetica', 'B', 22)
+    # Logo repeat
+    pdf.set_fill_color(*TEAL)
+    pdf.rect(18, 30, 16, 16, 'F')
+    pdf.set_fill_color(*AMBER)
+    pdf.rect(21, 33, 10, 10, 'F')
+    pdf.set_fill_color(*NAVY)
+    pdf.rect(24, 36, 4, 4, 'F')
+
+    pdf.set_xy(40, 30)
+    pdf.set_font('DV', 'B', 22)
     pdf.set_text_color(*WHITE)
-    pdf.cell(0, 10, 'LitigaForge AI', ln=1)
-    pdf.set_font('Helvetica', '', 10)
+    pdf.cell(60, 10, 'LitigaForge')
+    pdf.set_text_color(*AMBER)
+    pdf.cell(20, 10, ' AI')
+
+    pdf.set_xy(40, 42)
+    pdf.set_font('DV', '', 9)
     pdf.set_text_color(*TEAL)
-    pdf.set_xy(18, 52)
-    pdf.cell(0, 6, 'Legal Intelligence for Telangana & Andhra Pradesh', ln=1)
+    pdf.cell(0, 6, 'Legal Intelligence for Telangana & Andhra Pradesh')
 
     pdf.set_fill_color(*AMBER)
-    pdf.rect(18, 62, 50, 1.5, 'F')
-    pdf.ln(14)
+    pdf.rect(18, 56, 55, 1.5, 'F')
 
     contacts = [
-        ('\u2022 Website', 'litigaforge.com'),
-        ('\u2022 Legal Email', 'legal@litigaforge.com'),
-        ('\u2022 NALSA Helpline', '1516 (Toll-Free, 24x7)'),
-        ('\u2022 Platform', 'Available in English, Telugu, Hindi'),
+        ('Website',       'litigaforge.com'),
+        ('Legal Email',   'legal@litigaforge.com'),
+        ('NALSA Helpline','1516  (Toll-Free, 24x7)'),
+        ('Platform',      'Available in English, Telugu, and Hindi'),
     ]
-    pdf.set_xy(18, 72)
+    pdf.set_xy(18, 68)
     for label, val in contacts:
-        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_font('DV', 'B', 9)
         pdf.set_text_color(*AMBER)
-        pdf.cell(40, 7, label, ln=0)
-        pdf.set_font('Helvetica', '', 9)
+        pdf.cell(44, 8, label + ':')
+        pdf.set_xy(62, pdf.get_y() - 8)
+        pdf.set_font('DV', '', 9)
         pdf.set_text_color(*WHITE)
-        pdf.cell(0, 7, val, ln=1)
+        pdf.cell(0, 8, val, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    pdf.set_xy(18, 110)
+    # Disclaimer box
+    dby = 115
     pdf.set_fill_color(20, 40, 80)
-    pdf.rect(18, 110, 174, 35, 'F')
+    pdf.rect(18, dby, 174, 42, 'F')
     pdf.set_fill_color(*TEAL)
-    pdf.rect(18, 110, 2, 35, 'F')
-    pdf.set_xy(25, 115)
-    pdf.set_font('Helvetica', 'B', 9)
+    pdf.rect(18, dby, 2, 42, 'F')
+    pdf.set_xy(25, dby + 6)
+    pdf.set_font('DV', 'B', 9)
     pdf.set_text_color(*TEAL)
-    pdf.cell(0, 6, 'LEGAL DISCLAIMER', ln=1)
+    pdf.cell(0, 6, 'LEGAL DISCLAIMER', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_xy(25, pdf.get_y())
-    pdf.set_font('Helvetica', '', 8.5)
+    pdf.set_font('DV', '', 8.5)
     pdf.set_text_color(148, 163, 184)
-    disc = (
+    pdf.multi_cell(162, 5.5, (
         "LitigaForge AI provides legal information and AI-generated analysis for educational "
-        "and informational purposes only. It does not constitute legal advice. Always consult "
-        "a qualified and enrolled advocate before taking any legal action. LitigaForge AI is "
-        "not responsible for outcomes based on reliance on platform content alone."
-    )
-    pdf.multi_cell(162, 5.5, disc)
+        "and informational purposes only. It does not constitute legal advice and does not "
+        "create an advocate-client relationship. Always consult a qualified and enrolled "
+        "advocate registered with the Bar Council before taking any legal action. LitigaForge "
+        "AI is not responsible for outcomes based solely on reliance on platform content."
+    ))
 
-    pdf.set_xy(18, 260)
-    pdf.set_font('Helvetica', '', 8)
+    pdf.set_xy(18, 265)
+    pdf.set_font('DV', '', 8)
     pdf.set_text_color(100, 116, 139)
-    pdf.cell(0, 6, f'(c) {datetime.date.today().year} LitigaForge AI. All rights reserved. Version 1.0  |  {TODAY}', ln=1)
-
+    pdf.cell(0, 6, f'(c) {datetime.date.today().year} LitigaForge AI. All rights reserved. Version 1.0  |  {TODAY}')
     pdf.set_fill_color(*AMBER)
-    pdf.rect(0, 294, 210, 3, 'F')
+    pdf.rect(0, 293, 210, 4, 'F')
 
     return pdf
-
-
-def _section_title(pdf: LitigaForgePDF, title: str):
-    y = pdf.get_y()
-    pdf.set_fill_color(*NAVY)
-    pdf.rect(18, y, 174, 10, 'F')
-    pdf.set_fill_color(*AMBER)
-    pdf.rect(18, y, 3, 10, 'F')
-    pdf.set_xy(25, y + 1.5)
-    pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(*WHITE)
-    pdf.cell(0, 7, title.upper(), ln=1)
-    pdf.ln(5)
 
 
 if __name__ == '__main__':
     pdf = make_pdf()
     out = 'litigaforge_user_guide.pdf'
     pdf.output(out)
-    print(f'PDF saved: {out}')
+    import os
+    size_kb = os.path.getsize(out) // 1024
+    print(f'PDF saved: {out}  ({size_kb} KB)')

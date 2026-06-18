@@ -83,3 +83,9 @@ id = "mskmJAj5fe8gwiSs8s-6I"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_carousel.mp3"
 type = "audio"
 title = "VO carousel"
+
+[[outputs]]
+id = "z2OEk8IB_EvEw3X7g_3h5"
+uri = "file://litigaforge_user_guide.pdf"
+type = "pdf"
+title = "LitigaForge AI — Complete User Guide"
