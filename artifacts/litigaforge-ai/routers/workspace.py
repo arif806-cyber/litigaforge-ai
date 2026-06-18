@@ -764,7 +764,7 @@ async def analyze_session(
             if learning_enabled:
                 evt_rows = await pconn.fetch(
                     "SELECT event_type, event_data FROM user_learning_events "
-                    "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",
+                    "WHERE user_id=$1 ORDER BY created_at ASC LIMIT 100",
                     user["id"],
                 )
                 events = [
@@ -902,7 +902,8 @@ async def get_proactive_insights(
         async with pool.acquire() as sup_conn:
             sup_rows = await sup_conn.fetch(
                 "SELECT event_type, event_data FROM user_learning_events "
-                "WHERE user_id=$1 AND event_type IN ('suggestion_dismiss','suggestion_reactivate') LIMIT 300",
+                "WHERE user_id=$1 AND event_type IN ('suggestion_dismiss','suggestion_reactivate') "
+                "ORDER BY created_at ASC LIMIT 300",
                 user["id"],
             )
         sup_events = [

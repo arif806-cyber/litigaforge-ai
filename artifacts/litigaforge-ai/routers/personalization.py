@@ -529,7 +529,7 @@ async def get_profile_summary(user=Depends(require_user)):
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT event_type, event_data FROM user_learning_events "
-            "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 250",
+            "WHERE user_id=$1 ORDER BY created_at ASC LIMIT 250",
             user["id"],
         )
         session_count = (await conn.fetchval(
