@@ -32,6 +32,7 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 
 ## Table of Contents
 
+- [Forge Workspace](#forge-workspace)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Repo Structure](#repo-structure)
@@ -45,6 +46,47 @@ LitigaForge AI is a full-stack legal platform that connects clients with verifie
 - [Mobile App](#mobile-app--play-store--app-store)
 - [Architecture](#architecture)
 - [API Reference](#api-reference)
+
+---
+
+## Forge Workspace
+
+**Forge Workspace** (`/workspace`) is LitigaForge AI's advanced legal strategy environment — a spatial canvas where lawyers and law students can build argument maps, run multi-agent AI analysis, simulate what-if scenarios, and search 50M+ Indian judgments, all in one place.
+
+### Key capabilities
+
+| Feature | How to use |
+|---|---|
+| **Spatial Canvas** | Drag to pan, scroll to zoom. Right-click any node to edit or delete. Connect nodes by dragging from a handle to build argument chains. Six node types: Fact, Issue, Argument, Risk, Strategy, Judgment. |
+| **5-Agent AI Analysis** | Click **⚡ Analyze** to run five specialist AI agents in parallel: Litigator, Researcher, Risk Analyst, Drafter, and Strategist. Each streams its reasoning live. Thumb up/down to teach your Personal Twin. |
+| **Personal Legal Twin** | Opens in the **Twin** tab. Self-learning advocate profile built from your session history — which agents you trust, which nodes you add, which suggestions you accept. Personalises all 5 agents over time. |
+| **Indian Kanoon Search** | Open the **Search** tab. Type any legal query; matching judgments from 50M+ cases drop directly onto the canvas as connected nodes. |
+| **What-If Simulation** | Open the **Simulate** tab. Pick a preset (or type your own scenario), click **Run**. See before/after risk scores, per-node impact deltas, and a streamed AI analysis — without touching your main canvas. |
+| **Proactive Insights** | The **Insights** tab auto-refreshes after every analysis and simulation. Accept a suggestion to add it as a canvas node; dismiss to teach the system your preferences. |
+| **Collaboration Timeline** | Agent Society panel shows a live feed of agent steps so you can follow the reasoning as it unfolds. |
+| **Undo / Redo** | Ctrl+Z / Ctrl+Y (up to 50 steps). Every node add, delete, and connection is captured. |
+| **Auto-Save** | Canvas saves to PostgreSQL 2 seconds after each change. Manual save button available in the toolbar. |
+
+### Getting started
+
+1. **Log in** at `/login` (or register a new account).
+2. Navigate to **⚡ Workspace** in the sidebar.
+3. On first visit: choose **Create Your First Workspace** (blank canvas) or **⚖️ Try Demo** (9-node Family Pension argument map with two pre-loaded Supreme Court judgments).
+4. Describe your case in the text area (top of Agent panel), then click **⚡ Analyze**.
+5. Open **Search** to pull relevant Indian Kanoon judgments onto the canvas.
+6. Open **Simulate** to stress-test your argument map with what-if scenarios.
+
+### Environment requirements for Workspace
+
+All workspace API routes are mounted at `/litigaforge/workspace/*`. The following env vars must be set (already configured in Replit):
+
+| Variable | Value |
+|---|---|
+| `BASE_PATH` | `/litigaforge` |
+| `PORT` | `5000` |
+| `DATABASE_URL` | Replit-managed PostgreSQL |
+| `SESSION_SECRET` | JWT signing secret |
+| `GEMINI_API_KEY` *(optional)* | Falls back to Replit AI proxy if unset |
 
 ---
 

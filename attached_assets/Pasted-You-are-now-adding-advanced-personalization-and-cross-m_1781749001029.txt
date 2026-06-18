@@ -1,0 +1,40 @@
+You are now adding advanced personalization and cross-matter intelligence features to Forge Workspace to make the system feel truly intelligent and adaptive over time.
+
+Current State: The core system is built, integrated, and polished. Now we want to make Forge Workspace feel like it learns from the user and becomes smarter with continued use.
+
+Requirements:
+
+1. **Advanced Personalization**
+   - Create a system that learns the user’s preferences and working style over time.
+   - The system should remember:
+     - Which types of arguments the user prefers
+     - Which agents they interact with most
+     - Which kinds of Indian Kanoon judgments they find most useful
+     - Their preferred tone and structure in drafts
+   - Use this learning to personalize future suggestions, agent outputs, and proactive insights.
+
+2. **Cross-Matter Intelligence**
+   - Allow the system to find connections between different matters the user has worked on.
+   - Examples of useful insights:
+     - “You used a similar argument structure in Matter X that was successful.”
+     - “This new judgment is relevant to 3 of your previous matters.”
+     - “Your strategy in this matter is very different from how you usually approach similar cases.”
+   - When relevant, the system should proactively show these connections.
+
+3. **Self-Evolving Behavior**
+   - The system should gradually improve its suggestions and agent behavior based on user feedback and actions.
+   - If a user frequently accepts or rejects certain types of suggestions, the system should adjust accordingly over time.
+   - Make this learning feel natural and transparent (not creepy).
+
+4. **User Control & Transparency**
+   - Give users visibility into what the system has learned about them.
+   - Allow users to view, edit, or reset their personalization data if they want.
+   - Add a simple toggle to turn personalization on or off.
+
+5. **Integration**
+   - These features should work seamlessly with the Spatial Canvas, Multi-Agent System, and Proactive Intelligence.
+   - Personalized insights should appear naturally in the Proactive Insights panel and agent outputs.
+
+Goal: Make Forge Workspace feel like a system that truly understands the user and improves with every interaction. This should be one of the most advanced and differentiating features of the product.
+
+Focus on making personalization and cross-matter intelligence feel useful, natural, and futuristic.

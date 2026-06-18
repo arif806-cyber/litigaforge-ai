@@ -213,46 +213,54 @@ export default function ForgeWorkspace() {
   }
 
   async function createSession(title = "Untitled Workspace") {
-    const res = await api("/workspace/sessions", {
-      method: "POST",
-      body: JSON.stringify({ title, case_description: "" }),
-    });
-    const s = await res.json() as WorkspaceSession;
-    setSessions(prev => [s, ...prev]);
-    setSessionId(s.id);
-    setSessionTitle(s.title);
-    setCaseDescription(s.case_description || "");
-    setNodes([]);
-    setEdges([]);
-    setAgentStates(makeDefaultAgentStates());
+    try {
+      const res = await api("/workspace/sessions", {
+        method: "POST",
+        body: JSON.stringify({ title, case_description: "" }),
+      });
+      const s = await res.json() as WorkspaceSession;
+      setSessions(prev => [s, ...prev]);
+      setSessionId(s.id);
+      setSessionTitle(s.title);
+      setCaseDescription(s.case_description || "");
+      setNodes([]);
+      setEdges([]);
+      setAgentStates(makeDefaultAgentStates());
+    } catch {
+      addToast({ type: "error", message: "Could not create workspace", detail: "Check your connection and try again." });
+    }
   }
 
   async function createDemoSession() {
-    const res = await api("/workspace/sessions", {
-      method: "POST",
-      body: JSON.stringify({
-        title: "Family Pension Claim — Lalitha Devi v. State of Telangana",
-        case_description: DEMO_CASE_DESCRIPTION,
-      }),
-    });
-    const s = await res.json() as WorkspaceSession;
-    // Persist demo canvas immediately so it survives a reload
-    void api(`/workspace/sessions/${s.id}`, {
-      method: "PUT",
-      body: JSON.stringify({ nodes_json: DEMO_NODES, edges_json: DEMO_EDGES, case_description: DEMO_CASE_DESCRIPTION }),
-    }).catch(() => {});
-    setSessions(prev => [s, ...prev]);
-    setSessionId(s.id);
-    setSessionTitle(s.title);
-    setCaseDescription(DEMO_CASE_DESCRIPTION);
-    setNodes(DEMO_NODES);
-    setEdges(DEMO_EDGES);
-    setAgentStates(makeDefaultAgentStates());
-    addToast({
-      type: "success",
-      message: "Demo matter loaded!",
-      detail: "Family Pension canvas is ready. Click ⚡ Analyze to run the 5 AI agents.",
-    });
+    try {
+      const res = await api("/workspace/sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Family Pension Claim — Lalitha Devi v. State of Telangana",
+          case_description: DEMO_CASE_DESCRIPTION,
+        }),
+      });
+      const s = await res.json() as WorkspaceSession;
+      // Persist demo canvas immediately so it survives a reload
+      void api(`/workspace/sessions/${s.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ nodes_json: DEMO_NODES, edges_json: DEMO_EDGES, case_description: DEMO_CASE_DESCRIPTION }),
+      }).catch(() => {});
+      setSessions(prev => [s, ...prev]);
+      setSessionId(s.id);
+      setSessionTitle(s.title);
+      setCaseDescription(DEMO_CASE_DESCRIPTION);
+      setNodes(DEMO_NODES);
+      setEdges(DEMO_EDGES);
+      setAgentStates(makeDefaultAgentStates());
+      addToast({
+        type: "success",
+        message: "Demo matter loaded!",
+        detail: "Family Pension canvas is ready. Click ⚡ Analyze to run the 5 AI agents.",
+      });
+    } catch {
+      addToast({ type: "error", message: "Could not load demo workspace", detail: "Check your connection and try again." });
+    }
   }
 
   async function openSession(s: WorkspaceSession) {
@@ -459,6 +467,9 @@ export default function ForgeWorkspace() {
   const onSearchNodesAdded = useCallback((newNodes: Node[]) => {
     if (!newNodes.length) return;
     pushHistory([...nodes], [...edges]);
+    // Compute deduplicated count for toast feedback
+    const existingIdSet = new Set(nodes.map(n => n.id));
+    const addedCount = newNodes.filter(n => !existingIdSet.has(n.id)).length;
     setNodes(prev => {
       const existingIds = new Set(prev.map(n => n.id));
       let placed = [...prev];
@@ -471,6 +482,13 @@ export default function ForgeWorkspace() {
         });
       return [...prev, ...deduped];
     });
+    if (addedCount > 0) {
+      addToast({
+        type: "info",
+        message: `${addedCount} judgment${addedCount > 1 ? "s" : ""} added to canvas`,
+        duration: 3000,
+      });
+    }
     // Fire judgment_add learning events for each added judgment node
     if (sessionId) {
       newNodes.filter(n => n.type === "judgment").forEach(n => {
@@ -625,6 +643,7 @@ export default function ForgeWorkspace() {
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
+      let localScoreChange: number | null = null;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -662,13 +681,14 @@ export default function ForgeWorkspace() {
               }, 2000);
             } else if (etype === "sim_after") {
               const afterSummary = ev.summary as string;
+              localScoreChange = ev.score_change as number;
               simAfterSummaryRef.current = afterSummary;
               setSimState(p => ({
                 ...p,
                 after: {
                   avgScore:        ev.avg_score      as number,
                   riskLevel:       ev.risk_level     as string,
-                  scoreChange:     ev.score_change   as number,
+                  scoreChange:     localScoreChange as number,
                   summary:         afterSummary,
                   recommendation:  ev.recommendation as string,
                 },
@@ -682,9 +702,16 @@ export default function ForgeWorkspace() {
           } catch { /* malformed */ }
         }
       }
+      // Toast on completion — mirrors pattern in runAnalysis
+      const changeStr = localScoreChange !== null
+        ? `Score ${localScoreChange >= 0 ? "+" : ""}${localScoreChange.toFixed(0)} pts — AI insights refresh shortly.`
+        : "Canvas updated. Check the Simulation tab.";
+      addToast({ type: "success", message: "⚡ Simulation complete", detail: changeStr, duration: 5000 });
     } catch {
       setSimState(p => ({ ...p, phase: "complete" }));
     }
+    // addToast intentionally excluded from deps — follows existing pattern
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, caseDescription, nodes, simState.phase]);
 
   const onSaveSimulation = useCallback(() => {
@@ -723,9 +750,16 @@ export default function ForgeWorkspace() {
       });
       const data = await res.json() as { suggestions: Suggestion[] };
       setSuggestions(data.suggestions ?? []);
+      // Only toast on auto-triggers (synthesis/simulation) — not on manual tab open
+      if (ctx && (data.suggestions?.length ?? 0) > 0) {
+        const n = data.suggestions.length;
+        addToast({ type: "info", message: `✨ ${n} AI insight${n > 1 ? "s" : ""} refreshed`, duration: 3000 });
+      }
     } catch { /* keep existing */ } finally {
       setIsLoadingInsights(false);
     }
+    // addToast is stable enough — intentionally excluded from deps (follows existing pattern)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, caseDescription, nodes, isLoadingInsights]);
 
   const onAcceptSuggestion = useCallback((s: Suggestion) => {
