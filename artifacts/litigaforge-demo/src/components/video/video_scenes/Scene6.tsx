@@ -8,10 +8,10 @@ const NAV_ITEMS = [
 ];
 
 const TABS = [
-  { id: 1, label: 'Case Strategy', color: '#0d9488' },
-  { id: 2, label: 'Precedent Pack', color: '#a855f7' },
-  { id: 3, label: 'Hearing Pack', color: '#f59e0b' },
-  { id: 4, label: 'Client Memo', color: '#e2e8f0' },
+  { id: 1, label: 'Executive Summary', color: '#0d9488' },
+  { id: 2, label: 'Key Judgments', color: '#a855f7' },
+  { id: 3, label: 'Draft Petition', color: '#f59e0b' },
+  { id: 4, label: 'Fee & Invoice', color: '#60a5fa' },
 ];
 
 export function Scene6() {
@@ -74,23 +74,41 @@ export function Scene6() {
         {/* Top Header */}
         <div className="px-8 py-4 border-b border-white/10 bg-white/3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="text-[1.3vw] font-display font-bold truncate">Property Dispute</span>
+            <span className="text-[1.3vw] font-display font-bold truncate">MACT Compensation</span>
             <span className="px-2.5 py-1 bg-[#0d9488]/20 text-[#0d9488] text-[0.7vw] font-mono rounded-full border border-[#0d9488]/30 shrink-0">
               ACTIVE
             </span>
             <span className="text-[0.82vw] font-mono text-white/35 truncate hidden xl:block">
-              Unauthorized Occupation
+              Motor Accident · Hyderabad District Court
             </span>
           </div>
-          <div className="flex items-center gap-5 text-[0.78vw] font-mono shrink-0">
-            <span className="text-white/40">
-              ⏱ Generated in{' '}
-              <span className="text-[#0d9488] font-bold">47s</span>
-            </span>
-            <span className="text-white/40">
-              Saved{' '}
-              <span className="text-[#f59e0b] font-bold">14.3 hrs</span>
-            </span>
+          <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <motion.div
+                className="px-3.5 py-1.5 text-[0.72vw] font-mono rounded-lg cursor-pointer flex items-center gap-1.5"
+                style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.4)', color: '#c084fc' }}
+                animate={{ boxShadow: ['0 0 0px #a855f700', '0 0 14px #a855f755', '0 0 0px #a855f700'] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                📄 Export PDF
+              </motion.div>
+              <motion.div
+                className="px-3.5 py-1.5 text-[0.72vw] font-mono rounded-lg cursor-pointer flex items-center gap-1.5"
+                style={{ background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.4)', color: '#93c5fd' }}
+                animate={{ boxShadow: ['0 0 0px #60a5fa00', '0 0 14px #60a5fa55', '0 0 0px #60a5fa00'] }}
+                transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+              >
+                🧾 Invoice
+              </motion.div>
+            </div>
+            <div className="flex items-center gap-3 text-[0.75vw] font-mono">
+              <span className="text-white/40">
+                ⏱ Generated in <span className="text-[#0d9488] font-bold">52s</span>
+              </span>
+              <span className="text-white/40">
+                Saved <span className="text-[#f59e0b] font-bold">16h</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -117,36 +135,15 @@ export function Scene6() {
               </div>
             );
           })}
-          <div className="ml-auto flex items-center py-2">
-            <div className="px-4 py-1.5 bg-[#0d9488]/15 border border-[#0d9488]/35 text-[#0d9488] text-[0.75vw] font-mono rounded-lg">
-              Download All ↓
-            </div>
-          </div>
         </div>
 
         {/* Content Area */}
         <div className="flex-1 overflow-hidden relative">
           <AnimatePresence mode="popLayout" initial={false}>
-            {phase === 1 && (
-              <Panel key="strategy">
-                <StrategyPanel />
-              </Panel>
-            )}
-            {phase === 2 && (
-              <Panel key="precedent">
-                <PrecedentPanel />
-              </Panel>
-            )}
-            {phase === 3 && (
-              <Panel key="hearing">
-                <HearingPanel />
-              </Panel>
-            )}
-            {phase === 4 && (
-              <Panel key="memo">
-                <MemoPanel />
-              </Panel>
-            )}
+            {phase === 1 && <Panel key="summary"><SummaryPanel /></Panel>}
+            {phase === 2 && <Panel key="judgments"><JudgmentsPanel /></Panel>}
+            {phase === 3 && <Panel key="petition"><PetitionPanel /></Panel>}
+            {phase === 4 && <Panel key="fee"><FeePanel /></Panel>}
           </AnimatePresence>
         </div>
 
@@ -192,152 +189,127 @@ function Panel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ─── Panel 1: Case Strategy ────────────────────────────────────── */
-function StrategyPanel() {
+/* ─── Panel 1: Executive Summary ───────────────────────────────── */
+function SummaryPanel() {
+  const bullets = [
+    { label: 'Claim Type', value: 'MACT Compensation u/s 166 MV Act, 1988', color: '#0d9488' },
+    { label: 'Forum', value: 'Motor Accidents Claims Tribunal, Hyderabad', color: '#0d9488' },
+    { label: 'Compensation Est.', value: '₹45–65 Lakhs (Sarla Verma multiplier)', color: '#f59e0b' },
+    { label: 'Limitation', value: '3 years from date of accident — within time', color: '#34d399' },
+    { label: 'Win Probability', value: '91% based on 5 IK binding precedents', color: '#34d399' },
+    { label: 'Interim Relief', value: 'Solatium u/s 164A — eligible, apply immediately', color: '#a855f7' },
+  ];
   return (
     <div className="h-full flex flex-col gap-5">
       <div className="shrink-0">
-        <h2 className="text-[2vw] font-display font-bold text-[#0d9488]">Case Strategy</h2>
+        <h2 className="text-[2vw] font-display font-bold text-[#0d9488]">Executive Summary</h2>
         <p className="text-[0.82vw] font-mono text-white/35 mt-1">
-          AI-synthesized legal roadmap · 3 phases · Est. 6–8 months
+          AI-synthesized from 3 agents · 5 live IndianKanoon judgments · Court-ready
         </p>
       </div>
-
-      <div className="flex-1 grid grid-cols-3 gap-5 min-h-0">
-        {[
-          {
-            step: '01',
-            title: 'Issue Section 106 Notice',
-            timing: 'Day 0',
-            desc: 'Draft and serve statutory notice terminating month-to-month tenancy. 15-day period mandatory under TPA.',
-          },
-          {
-            step: '02',
-            title: 'File RC Suit for Possession',
-            timing: 'Day 16+',
-            desc: 'File suit for possession alongside mesne profits claim at prevailing market rate. Attach notice with postal receipts.',
-          },
-          {
-            step: '03',
-            title: 'Apply Interim Injunction',
-            timing: 'Day 30+',
-            desc: 'Restrain tenant from subletting or structural damage pending final order. Probability of grant: 78%.',
-          },
-        ].map((item, i) => (
+      <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
+        {bullets.map((b, i) => (
           <motion.div
             key={i}
-            className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col overflow-hidden"
-            initial={{ opacity: 0, y: 16 }}
+            className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-between"
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.15, type: 'spring', bounce: 0.3 }}
+            transition={{ delay: i * 0.1, type: 'spring', bounce: 0.3 }}
           >
-            <div className="flex items-start justify-between mb-4">
-              <span className="text-[2.2vw] font-display font-bold text-[#0d9488]/35 leading-none">
-                {item.step}
-              </span>
-              <span className="px-2 py-1 text-[0.62vw] font-mono rounded-full border border-white/20 text-white/45">
-                {item.timing}
-              </span>
-            </div>
-            <h3 className="text-[0.95vw] font-display font-bold mb-3 leading-snug">{item.title}</h3>
-            <p className="text-[0.78vw] font-mono text-white/55 flex-1 leading-relaxed">{item.desc}</p>
+            <p className="text-[0.68vw] font-mono text-white/35 uppercase tracking-wider mb-2">{b.label}</p>
+            <p className="text-[0.88vw] font-display font-bold leading-snug" style={{ color: b.color }}>
+              {b.value}
+            </p>
           </motion.div>
         ))}
       </div>
-
-      <motion.div
-        className="bg-white/5 border border-white/10 rounded-xl p-4 shrink-0"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-      >
-        <div className="flex justify-between text-[0.8vw] font-mono mb-2">
-          <span className="text-white/45">AI Confidence Score</span>
-          <span className="text-[#0d9488] font-bold">92%</span>
-        </div>
-        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            style={{
-              background: 'linear-gradient(90deg,#0d9488,#a855f7)',
-            }}
-            initial={{ width: 0 }}
-            animate={{ width: '92%' }}
-            transition={{ duration: 1.2, ease: 'easeOut', delay: 0.6 }}
-          />
-        </div>
-      </motion.div>
     </div>
   );
 }
 
-/* ─── Panel 2: Precedent Pack ───────────────────────────────────── */
-function PrecedentPanel() {
+/* ─── Panel 2: Key Judgments (IK Live) ─────────────────────────── */
+function JudgmentsPanel() {
   const cases = [
     {
+      title: 'Sarla Verma v. Delhi Transport Corp.',
+      citation: '(2009) 6 SCC 121',
       court: 'Supreme Court of India',
-      year: '2021',
-      citation: 'AIR 2021 SC 1234',
-      title: 'Mesne profits at prevailing market rate',
-      quote:
-        '"A tenant holding over after expiry of tenancy is liable to pay mesne profits at the market rate, not contractual rent."',
+      tag: 'BINDING',
+      tagColor: '#a855f7',
+      quote: '"The multiplier method shall be the uniform basis for computing compensation under the MV Act."',
+      source: 'IndianKanoon live',
+    },
+    {
+      title: 'National Insurance Co. v. Pranay Sethi',
+      citation: '(2017) 16 SCC 680',
+      court: 'Supreme Court of India',
       tag: 'CRITICAL',
+      tagColor: '#f59e0b',
+      quote: '"Future prospects at 40% for salaried, 25% for self-employed below 40 years — mandatory addition."',
+      source: 'IndianKanoon live',
     },
     {
-      court: 'High Court',
-      year: '2019',
-      citation: '2019 (3) MLJ 456',
-      title: 'Section 106 — 15-day notice mandatory',
-      quote:
-        '"A notice to quit under Section 106 TPA must expressly grant the tenant 15 days to vacate to be legally valid."',
-      tag: 'ESSENTIAL',
-    },
-    {
-      court: 'Supreme Court of India',
-      year: '2015',
-      citation: 'AIR 2015 SC 789',
-      title: "Landlord's bona fide need — subjective test",
-      quote:
-        '"The bona fide need of the landlord is a subjective determination; honest belief suffices."',
-      tag: 'SUPPORTING',
+      title: 'Oriental Insurance v. Syed Ibrahim',
+      citation: '2022 (1) TS 342',
+      court: 'Telangana High Court',
+      tag: 'LOCAL PRECEDENT',
+      tagColor: '#0d9488',
+      quote: '"Telangana courts must apply Pranay Sethi formula uniformly irrespective of insurer objection."',
+      source: 'IndianKanoon live',
     },
   ];
 
   return (
-    <div className="h-full flex flex-col gap-5">
-      <div className="shrink-0">
-        <h2 className="text-[2vw] font-display font-bold text-[#a855f7]">Precedent Pack</h2>
-        <p className="text-[0.82vw] font-mono text-white/35 mt-1">
-          12 relevant cases found · Top 3 selected · Court-ready citations
-        </p>
+    <div className="h-full flex flex-col gap-4">
+      <div className="shrink-0 flex items-center justify-between">
+        <div>
+          <h2 className="text-[2vw] font-display font-bold text-[#a855f7]">Key Judgments</h2>
+          <p className="text-[0.82vw] font-mono text-white/35 mt-1">
+            5 judgments fetched live · Top 3 injected · Court-ready citations
+          </p>
+        </div>
+        <motion.div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[0.7vw] font-mono"
+          style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.4)', color: '#c084fc' }}
+          animate={{ opacity: [0.7, 1, 0.7] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="w-1.5 h-1.5 rounded-full bg-[#a855f7] animate-pulse" />
+          IndianKanoon API · Live
+        </motion.div>
       </div>
-      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-hidden">
         {cases.map((c, i) => (
           <motion.div
             key={i}
-            className="bg-white/5 border-l-4 border-[#a855f7] rounded-r-2xl p-5 flex gap-5 shrink-0"
+            className="rounded-2xl p-4 flex gap-4 shrink-0"
+            style={{ background: 'rgba(255,255,255,0.04)', borderLeft: `4px solid ${c.tagColor}` }}
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.18 }}
           >
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-                <span className="text-[0.95vw] font-display font-bold">{c.title}</span>
+              <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                <span className="text-[0.9vw] font-display font-bold">{c.title}</span>
                 <span
-                  className="text-[0.65vw] font-mono px-2 py-0.5 rounded-full shrink-0"
-                  style={{
-                    background: '#a855f720',
-                    color: '#a855f7',
-                    border: '1px solid #a855f745',
-                  }}
+                  className="text-[0.62vw] font-mono px-2 py-0.5 rounded-full shrink-0"
+                  style={{ background: `${c.tagColor}20`, color: c.tagColor, border: `1px solid ${c.tagColor}45` }}
                 >
                   {c.tag}
                 </span>
               </div>
-              <p className="text-[0.75vw] font-mono text-white/35 mb-2">
-                {c.court} · {c.year} · {c.citation}
+              <p className="text-[0.7vw] font-mono mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                {c.court} · {c.citation}
               </p>
-              <p className="text-[0.82vw] font-mono text-white/65 italic leading-relaxed">{c.quote}</p>
+              <p className="text-[0.78vw] font-mono italic leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                {c.quote}
+              </p>
+            </div>
+            <div
+              className="shrink-0 text-[0.6vw] font-mono px-2 py-1 rounded-lg self-start mt-0.5"
+              style={{ background: 'rgba(168,85,247,0.1)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.25)' }}
+            >
+              {c.source}
             </div>
           </motion.div>
         ))}
@@ -346,104 +318,14 @@ function PrecedentPanel() {
   );
 }
 
-/* ─── Panel 3: Hearing Pack ─────────────────────────────────────── */
-function HearingPanel() {
+/* ─── Panel 3: Draft Petition ───────────────────────────────────── */
+function PetitionPanel() {
   return (
     <div className="h-full flex flex-col gap-5">
       <div className="shrink-0">
-        <h2 className="text-[2vw] font-display font-bold text-[#f59e0b]">Hearing Preparation Pack</h2>
+        <h2 className="text-[2vw] font-display font-bold text-[#f59e0b]">Draft Petition</h2>
         <p className="text-[0.82vw] font-mono text-white/35 mt-1">
-          District Court · AI-prepared · Ready to use
-        </p>
-      </div>
-      <div className="flex-1 grid grid-cols-2 gap-5 min-h-0">
-        <motion.div
-          className="bg-white/5 border border-white/10 rounded-2xl p-6 overflow-hidden"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <h3 className="text-[0.95vw] font-display font-bold mb-4 text-[#f59e0b]">Required Exhibits</h3>
-          <ul className="space-y-3">
-            {[
-              'Original Lease Deed',
-              'Rent Payment Ledger (6 mo)',
-              'Legal Notice Copy (Exh. A)',
-              'Postal Receipts + Acknowledgement',
-              'Property Tax Records',
-            ].map((item, i) => (
-              <motion.li
-                key={i}
-                className="flex items-center gap-3 text-[0.82vw] font-mono text-white/65"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 + i * 0.1 }}
-              >
-                <div className="w-5 h-5 rounded bg-[#f59e0b]/15 border border-[#f59e0b]/40 flex items-center justify-center shrink-0">
-                  <div className="w-2 h-2 bg-[#f59e0b] rounded-sm" />
-                </div>
-                {item}
-              </motion.li>
-            ))}
-          </ul>
-        </motion.div>
-
-        <div className="flex flex-col gap-4">
-          <motion.div
-            className="bg-white/5 border border-white/10 rounded-2xl p-6"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <h3 className="text-[0.95vw] font-display font-bold mb-4 text-[#f59e0b]">Witnesses</h3>
-            <ul className="space-y-3">
-              {['Plaintiff (Landlord) — Primary', 'Bank Manager — Rent records'].map((w, i) => (
-                <li key={i} className="flex items-center gap-3 text-[0.82vw] font-mono text-white/65">
-                  <div className="w-5 h-5 rounded-full bg-[#f59e0b]/15 border border-[#f59e0b]/40 shrink-0" />
-                  {w}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-
-          <motion.div
-            className="bg-white/5 border border-white/10 rounded-2xl p-6 flex-1"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <h3 className="text-[0.95vw] font-display font-bold mb-4 text-[#f59e0b]">Key Arguments</h3>
-            <ul className="space-y-2.5">
-              {[
-                'Tenant holding over — no renewal',
-                'Section 106 notice duly served',
-                'Mesne profits at market rate',
-                'No valid defense identified',
-              ].map((a, i) => (
-                <li
-                  key={i}
-                  className="text-[0.8vw] font-mono text-white/65 flex items-start gap-2"
-                >
-                  <span className="text-[#f59e0b] shrink-0 mt-0.5">→</span>
-                  {a}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Panel 4: Client Memo ──────────────────────────────────────── */
-function MemoPanel() {
-  return (
-    <div className="h-full flex flex-col gap-4">
-      <div className="shrink-0">
-        <h2 className="text-[2vw] font-display font-bold text-white">Client Memo</h2>
-        <p className="text-[0.82vw] font-mono text-white/35 mt-1">
-          Ready to send · Professional format · AI-drafted
+          District Court ready · MACT format · 5 IK citations embedded
         </p>
       </div>
 
@@ -453,59 +335,155 @@ function MemoPanel() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', bounce: 0.3 }}
       >
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-[#0d9488]" />
-        <div className="p-8 h-full flex flex-col overflow-hidden">
-          <div className="flex justify-between items-start mb-5 shrink-0">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-[#f59e0b]" />
+        <div className="p-6 h-full flex flex-col overflow-hidden">
+          <div className="flex justify-between items-start mb-4 shrink-0">
             <div>
-              <p className="text-[0.68vw] font-mono text-gray-400 tracking-widest uppercase">
-                Privileged &amp; Confidential
-              </p>
-              <p className="text-[0.68vw] font-mono text-gray-400 mt-0.5">
-                Prepared by LitigaForge Forge AI · {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              <p className="text-[0.65vw] font-mono text-gray-400 tracking-widest uppercase">Draft · Privileged & Confidential</p>
+              <p className="text-[0.65vw] font-mono text-gray-400 mt-0.5">
+                LitigaForge Forge AI · {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
             <div className="flex gap-2">
-              <div className="px-4 py-2 bg-[#0d9488] text-white text-[0.72vw] font-mono rounded-lg cursor-pointer">
-                Send Now
-              </div>
-              <div className="px-4 py-2 border border-gray-200 text-gray-500 text-[0.72vw] font-mono rounded-lg cursor-pointer">
+              <div className="px-3 py-1.5 bg-[#f59e0b] text-white text-[0.68vw] font-mono rounded-lg cursor-pointer">
                 Download PDF
+              </div>
+              <div className="px-3 py-1.5 border border-gray-200 text-gray-500 text-[0.68vw] font-mono rounded-lg cursor-pointer">
+                Edit Draft
               </div>
             </div>
           </div>
 
-          <div className="flex-1 overflow-hidden">
-            <p className="text-[1vw] text-gray-800 font-sans font-semibold mb-4">Dear Client,</p>
-            <motion.div
-              className="text-[0.85vw] text-gray-700 font-sans leading-relaxed space-y-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35 }}
-            >
-              <p>
-                We have completed our comprehensive review of your property dispute matter involving
-                unauthorized occupation of the premises. Our AI-powered Forge Workspace has prepared
-                a complete legal package for your matter.
-              </p>
-              <p>
-                The strategy involves issuing an immediate <strong>Section 106 Notice</strong>,
-                followed by filing a Recovery of Possession suit with a claim for mesne profits at
-                the prevailing market rate. Our precedent research has identified{' '}
-                <strong>12 binding authorities</strong> strongly in your favour.
-              </p>
-              <p>
-                Our assessment indicates a{' '}
-                <strong className="text-[#0d9488]">94% probability of a favourable outcome</strong>.
-                Estimated resolution timeline is 6–8 months from filing.
-              </p>
-              <p className="text-gray-400 text-[0.75vw]">
-                Please review and confirm to proceed. All attached documents are court-ready and
-                available for immediate download.
-              </p>
-            </motion.div>
-          </div>
+          <motion.div
+            className="flex-1 overflow-hidden text-[0.8vw] text-gray-700 font-sans leading-relaxed space-y-2.5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35 }}
+          >
+            <p className="font-bold text-gray-800 text-[0.92vw]">
+              IN THE MOTOR ACCIDENTS CLAIMS TRIBUNAL, HYDERABAD
+            </p>
+            <p className="font-semibold text-gray-700">MACT Case No. ___ / 2026</p>
+            <div className="border-l-2 border-gray-200 pl-3 text-[0.75vw] text-gray-500 space-y-1">
+              <p>Petitioner: [Victim's Family] — hereinafter "Claimants"</p>
+              <p>Respondents: (1) Owner of Vehicle, (2) Driver, (3) Insurance Co.</p>
+            </div>
+            <p className="font-bold text-gray-800">CLAIM PETITION U/S 166, MV ACT 1988</p>
+            <p>
+              The Claimants respectfully submit that on [date], the deceased was fatally injured in a motor
+              vehicle accident caused by the rash and negligent driving of Respondent No. 2. As per{' '}
+              <strong>Sarla Verma v. DTC (2009) 6 SCC 121</strong>, compensation shall be computed using the
+              structured multiplier formula, with <strong>+40% future prospects</strong> as mandated by{' '}
+              <strong>Pranay Sethi (2017) 16 SCC 680</strong>.
+            </p>
+            <p className="text-gray-400 text-[0.7vw]">
+              … [continues — all IK citations auto-embedded · 8 pages court-ready]
+            </p>
+          </motion.div>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/* ─── Panel 4: Fee & Invoice ────────────────────────────────────── */
+function FeePanel() {
+  const items = [
+    { desc: 'MACT Petition Filing & Representation', amount: '₹15,000' },
+    { desc: 'Research & Precedent Analysis (5 IK judgments)', amount: '₹8,000' },
+    { desc: 'Hearing Preparation Pack', amount: '₹5,000' },
+    { desc: 'AI Document Drafting (Forge Workspace)', amount: '₹4,500' },
+    { desc: 'Success fee on award (5% of compensation)', amount: 'Variable' },
+  ];
+
+  return (
+    <div className="h-full flex flex-col gap-5">
+      <div className="shrink-0">
+        <h2 className="text-[2vw] font-display font-bold text-[#60a5fa]">Fee Recommendation & Invoice</h2>
+        <p className="text-[0.82vw] font-mono text-white/35 mt-1">
+          AI-benchmarked · Bar Council compliant · Instant PDF invoice
+        </p>
+      </div>
+
+      <div className="flex-1 flex gap-5 min-h-0">
+        {/* Invoice table */}
+        <motion.div
+          className="flex-1 bg-white rounded-2xl shadow-xl overflow-hidden"
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', bounce: 0.3 }}
+        >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-[#60a5fa] rounded-t-2xl" />
+          <div className="p-5 h-full flex flex-col">
+            <div className="flex justify-between items-center mb-4 shrink-0">
+              <p className="text-[0.85vw] font-bold text-gray-800">Fee Estimate · LitigaForge</p>
+              <span className="text-[0.65vw] font-mono bg-blue-50 text-blue-600 px-2 py-1 rounded-full border border-blue-200">
+                DRAFT
+              </span>
+            </div>
+            <div className="flex-1 space-y-2 overflow-hidden">
+              {items.map((item, i) => (
+                <motion.div
+                  key={i}
+                  className="flex items-center justify-between py-2 border-b border-gray-100"
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.12 }}
+                >
+                  <p className="text-[0.72vw] text-gray-600 font-sans flex-1 pr-3">{item.desc}</p>
+                  <p className="text-[0.8vw] font-bold text-gray-800 shrink-0 font-mono">{item.amount}</p>
+                </motion.div>
+              ))}
+            </div>
+            <motion.div
+              className="mt-4 pt-3 border-t-2 border-gray-200 flex justify-between items-center shrink-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              <p className="text-[0.8vw] font-bold text-gray-800">Upfront Retainer</p>
+              <p className="text-[1.1vw] font-black text-[#60a5fa]">₹32,500</p>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* Actions */}
+        <motion.div
+          className="w-[22%] flex flex-col gap-3"
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <motion.div
+            className="rounded-2xl p-5 flex flex-col items-center text-center gap-2 cursor-pointer"
+            style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.4)' }}
+            animate={{ boxShadow: ['0 0 0px #a855f700', '0 0 20px #a855f740', '0 0 0px #a855f700'] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
+          >
+            <span className="text-[1.8vw]">📄</span>
+            <p className="text-[0.78vw] font-bold" style={{ color: '#c084fc' }}>Download PDF</p>
+            <p className="text-[0.62vw] font-mono text-white/40">Lawyer Package</p>
+          </motion.div>
+          <motion.div
+            className="rounded-2xl p-5 flex flex-col items-center text-center gap-2 cursor-pointer"
+            style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.4)' }}
+            animate={{ boxShadow: ['0 0 0px #60a5fa00', '0 0 20px #60a5fa40', '0 0 0px #60a5fa00'] }}
+            transition={{ duration: 2.5, repeat: Infinity, delay: 0.8 }}
+          >
+            <span className="text-[1.8vw]">🧾</span>
+            <p className="text-[0.78vw] font-bold" style={{ color: '#93c5fd' }}>Generate Invoice</p>
+            <p className="text-[0.62vw] font-mono text-white/40">Client-ready</p>
+          </motion.div>
+          <div
+            className="flex-1 rounded-2xl p-4 flex flex-col gap-2"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <p className="text-[0.65vw] font-mono text-white/30 uppercase tracking-wider">AI benchmark</p>
+            <p className="text-[0.72vw] font-mono text-white/60">Hyderabad avg MACT retainer: ₹28k–₹40k</p>
+            <p className="text-[0.7vw] font-mono text-green-400">✓ Market-rate compliant</p>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }

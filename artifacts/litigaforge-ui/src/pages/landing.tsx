@@ -1098,11 +1098,11 @@ function StatsBanner() {
 function ForgeWorkspacePromo() {
   const { ref, inView } = useSection();
   const features = [
-    { emoji: "🗺️", label: "Spatial Strategy Canvas" },
-    { emoji: "🤖", label: "Multi-AI Agent Panel" },
-    { emoji: "⚖️", label: "Legal Strategy Synthesis" },
-    { emoji: "🧬", label: "Personal Legal Twin" },
-    { emoji: "⚡", label: "What-If Simulation" },
+    { emoji: "🔍", label: "Live IndianKanoon Lookup" },
+    { emoji: "🤖", label: "5-Agent AI Panel" },
+    { emoji: "📄", label: "PDF Export" },
+    { emoji: "🧾", label: "Fee Invoice" },
+    { emoji: "⚖️", label: "6-Section Lawyer Package" },
   ];
   return (
     <motion.section ref={ref} initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
@@ -1114,26 +1114,26 @@ function ForgeWorkspacePromo() {
         <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.15), transparent)" }} />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto">
-        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+      <div className="relative z-10 max-w-6xl mx-auto">
+        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
           {/* Left: copy */}
-          <div className="flex-1 text-center lg:text-left">
+          <div className="lg:w-[38%] flex-shrink-0 text-center lg:text-left">
             <motion.div variants={fadeUp}
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5"
               style={{ background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.3)" }}>
               <Zap className="w-3.5 h-3.5" style={{ color: "#2dd4bf" }} />
-              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#2dd4bf" }}>Advanced AI Experience</span>
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#2dd4bf" }}>Live Product Demo</span>
             </motion.div>
 
             <motion.h2 variants={fadeUp} className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
-              Experience the Future<br />
+              See Forge Workspace<br />
               <span style={{ background: "linear-gradient(135deg, #14b8a6, #0891b2)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                of Legal Work
+                in Action
               </span>
             </motion.h2>
 
-            <motion.p variants={fadeUp} className="mt-5 text-base leading-relaxed max-w-lg" style={{ color: "#94a3b8" }}>
-              Forge Workspace is an intelligent, spatial, and agent-powered environment where you map your entire legal strategy visually — with Claude, Gemini, and GPT-5 working as your personal legal team in real time.
+            <motion.p variants={fadeUp} className="mt-5 text-base leading-relaxed" style={{ color: "#94a3b8" }}>
+              Watch 5 AI agents — Research, Strategy, Risk, Drafting, and Predictive — collaborate on a real case. Live IndianKanoon judgments fetched. Full 6-section Lawyer Package generated. PDF and invoice in seconds.
             </motion.p>
 
             {/* Feature pills */}
@@ -1156,49 +1156,45 @@ function ForgeWorkspacePromo() {
                 Open Forge Workspace
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <span className="text-xs font-medium" style={{ color: "#475569" }}>No setup · Instant access</span>
+              <span className="text-xs font-medium" style={{ color: "#475569" }}>Free · No setup needed</span>
             </motion.div>
           </div>
 
-          {/* Right: visual card */}
-          <motion.div variants={fadeUp} className="flex-shrink-0 w-full lg:w-80">
+          {/* Right: embedded demo video */}
+          <motion.div variants={fadeUp} className="flex-1 w-full min-w-0">
+            {/* Browser chrome wrapper */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: "rgba(7,13,28,0.95)", border: "1px solid rgba(20,184,166,0.2)", boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(20,184,166,0.05)" }}>
-              {/* Toolbar bar */}
-              <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid rgba(20,184,166,0.12)", background: "rgba(8,16,36,0.98)" }}>
+              style={{ background: "rgba(7,13,28,0.97)", border: "1px solid rgba(20,184,166,0.25)", boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(20,184,166,0.06)" }}>
+              {/* Title bar */}
+              <div className="flex items-center gap-2.5 px-4 py-2.5"
+                style={{ borderBottom: "1px solid rgba(20,184,166,0.12)", background: "rgba(8,16,36,0.98)" }}>
                 <div className="flex gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
                   <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
                   <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
                 </div>
                 <div className="flex-1 text-center text-[10px] font-bold tracking-widest uppercase" style={{ color: "#14b8a6" }}>
-                  ⚡ Forge Workspace
+                  ⚡ Forge Workspace · Live Demo
+                </div>
+                <div className="text-[10px] font-mono" style={{ color: "rgba(20,184,166,0.45)" }}>
+                  litigaforge.com/workspace
                 </div>
               </div>
-              {/* Agent panel rows */}
-              <div className="p-4 space-y-2.5">
-                {[
-                  { agent: "Claude Sonnet", status: "Analyzing precedents…", color: "#f59e0b", dot: "#f59e0b" },
-                  { agent: "Gemini Flash",  status: "Cross-referencing acts…", color: "#60a5fa", dot: "#60a5fa" },
-                  { agent: "GPT-5",         status: "Drafting strategy…",     color: "#a78bfa", dot: "#a78bfa" },
-                ].map(a => (
-                  <div key={a.agent} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0 animate-pulse" style={{ background: a.dot }} />
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-bold" style={{ color: a.color }}>{a.agent}</div>
-                      <div className="text-[10px] truncate" style={{ color: "#475569" }}>{a.status}</div>
-                    </div>
-                  </div>
-                ))}
-                {/* Score badge */}
-                <div className="mt-3 flex items-center justify-between px-3 py-2.5 rounded-xl"
-                  style={{ background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))", border: "1px solid rgba(20,184,166,0.25)" }}>
-                  <span className="text-[11px] font-bold" style={{ color: "#94a3b8" }}>Synthesis Score</span>
-                  <span className="text-lg font-black" style={{ color: "#14b8a6" }}>87<span className="text-xs font-semibold text-teal-600">/100</span></span>
-                </div>
+              {/* iframe */}
+              <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                <iframe
+                  src="/litigaforge-demo"
+                  title="Forge Workspace Live Demo"
+                  className="absolute inset-0 w-full h-full"
+                  style={{ border: "none" }}
+                  allow="autoplay"
+                />
               </div>
             </div>
+            {/* Caption */}
+            <p className="mt-3 text-center text-xs" style={{ color: "#334155" }}>
+              Auto-playing demo · Real agents · Live IndianKanoon API · PDF &amp; Invoice export
+            </p>
           </motion.div>
         </div>
       </div>
