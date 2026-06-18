@@ -15,6 +15,8 @@ export interface TwinProfile {
   node_type_preferences:  Record<string, number>;
   top_agent:              string;
   summary_insights?:      Array<{ emoji: string; text: string }>;
+  suppressed_types?:      Record<string, number>;
+  draft_style_preference?: { top_section: string; total_copies: number; accept_rate: number } | null;
 }
 
 export interface CrossMatterData {
@@ -23,6 +25,7 @@ export interface CrossMatterData {
     title:         string;
     shared_topics: string[];
     updated_at:    string;
+    argument_echo?: boolean;
   }>;
   patterns: Array<{
     node_type: string;
@@ -38,14 +41,15 @@ export interface CrossMatterData {
 }
 
 interface Props {
-  profile:           TwinProfile | null;
-  crossMatter:       CrossMatterData | null;
-  isLoading:         boolean;
-  sessionReady:      boolean;
-  onToggleLearning:  (enabled: boolean) => void;
-  onReset:           () => void;
-  onRefresh:         () => void;
-  onOpenSession?:    (sessionId: number) => void;
+  profile:                     TwinProfile | null;
+  crossMatter:                 CrossMatterData | null;
+  isLoading:                   boolean;
+  sessionReady:                boolean;
+  onToggleLearning:            (enabled: boolean) => void;
+  onReset:                     () => void;
+  onRefresh:                   () => void;
+  onOpenSession?:              (sessionId: number) => void;
+  onReactivateSuggestionType?: (type: string) => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -177,7 +181,7 @@ function Skeleton() {
 
 export default function PersonalTwinPanel({
   profile, crossMatter, isLoading, sessionReady,
-  onToggleLearning, onReset, onRefresh, onOpenSession,
+  onToggleLearning, onReset, onRefresh, onOpenSession, onReactivateSuggestionType,
 }: Props) {
 
   if (!sessionReady) {
@@ -380,6 +384,18 @@ export default function PersonalTwinPanel({
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 5 }}>
                   <div style={{ fontSize: 9.5, fontWeight: 700, color: FG, lineHeight: 1.3, flex: 1 }}>
                     🗂️ {c.title}
+                    {c.argument_echo && (
+                      <span style={{
+                        display: "inline-block", marginLeft: 6,
+                        padding: "1px 5px", borderRadius: 5,
+                        background: "rgba(168,85,247,0.12)",
+                        border: "1px solid rgba(168,85,247,0.28)",
+                        fontSize: 7, fontWeight: 800, color: "#c084fc",
+                        letterSpacing: "0.04em", verticalAlign: "middle",
+                      }}>
+                        ≋ ECHO
+                      </span>
+                    )}
                   </div>
                   {onOpenSession && (
                     <button
@@ -480,6 +496,55 @@ export default function PersonalTwinPanel({
           <SecHead title="Cross-Matter Intelligence" />
           <div style={{ fontSize: 9, color: FGS, lineHeight: 1.7 }}>
             Work on a few more matters and the twin will surface thematic connections, reusable argument patterns, and strategic carry-overs automatically.
+          </div>
+        </div>
+      )}
+
+      {/* ── Reduced Visibility (Step 4: suppressed suggestion types) ─────────── */}
+      {profile.suppressed_types && Object.keys(profile.suppressed_types).length > 0 && (
+        <div style={{ padding: "13px 14px 11px", borderBottom: `1px solid ${BORDER}` }}>
+          <SecHead title="Reduced Visibility" />
+          <div style={{ fontSize: 8.5, color: FGS, lineHeight: 1.6, marginBottom: 9 }}>
+            These suggestion types are hidden after 3+ dismissals. Undo to re-enable them.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {Object.entries(profile.suppressed_types).map(([type, count]) => (
+              <div key={type} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "6px 10px",
+                background: "rgba(239,68,68,0.04)",
+                border: "1px solid rgba(239,68,68,0.12)",
+                borderRadius: 7,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9.5, color: "#fca5a5" }}>
+                    {SUGGESTION_LABELS[type] ?? type}
+                  </span>
+                  <span style={{
+                    fontSize: 7.5, color: FGS,
+                    padding: "1px 5px", borderRadius: 4,
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}>
+                    dismissed {count}×
+                  </span>
+                </div>
+                {onReactivateSuggestionType && (
+                  <button
+                    onClick={() => onReactivateSuggestionType(type)}
+                    style={{
+                      background: "rgba(20,184,166,0.08)",
+                      border: "1px solid rgba(20,184,166,0.22)",
+                      borderRadius: 5, padding: "3px 8px",
+                      color: TEAL, fontSize: 8, fontWeight: 700,
+                      cursor: "pointer", flexShrink: 0,
+                    }}
+                  >
+                    ↩ Undo
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

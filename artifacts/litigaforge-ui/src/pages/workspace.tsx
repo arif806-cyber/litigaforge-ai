@@ -579,19 +579,43 @@ export default function ForgeWorkspace() {
         setHintNewNodeId(newJudgments[0].id);
       }
     }
-    // Fire judgment_add learning events for each added judgment node
+    // Fire judgment_add learning events — read response for cross-matter judgment hits (Step 3)
     if (sessionId) {
-      newNodes.filter(n => n.type === "judgment").forEach(n => {
+      for (const n of newNodes.filter(n => n.type === "judgment")) {
         const d = n.data as Record<string, unknown>;
-        void api("/workspace/profile/event", {
-          method: "POST",
-          body: JSON.stringify({
-            event_type: "judgment_add",
-            session_id: sessionId,
-            data: { court: d.court ?? "", title: (d.label ?? "").toString().slice(0, 80) },
-          }),
-        }).catch(() => {});
-      });
+        void (async () => {
+          try {
+            const evtRes = await api("/workspace/profile/event", {
+              method: "POST",
+              body: JSON.stringify({
+                event_type: "judgment_add",
+                session_id: sessionId,
+                data: { court: d.court ?? "", title: (d.label ?? "").toString().slice(0, 80) },
+              }),
+            });
+            const evtData = await evtRes.json() as {
+              cross_matter_hit?: { session_id: number; session_title: string; judgment_title: string } | null;
+            };
+            if (evtData.cross_matter_hit) {
+              const hit = evtData.cross_matter_hit;
+              setSuggestions(prev => {
+                const deduped = prev.filter(s => !(s.type === "cross_matter" && s.sessionId === hit.session_id));
+                return [
+                  {
+                    id: `cm-jdg-${Date.now()}`,
+                    type: "cross_matter" as const,
+                    emoji: "🔗",
+                    text: `"${hit.judgment_title.slice(0, 45)}" also in "${hit.session_title.slice(0, 35)}"`,
+                    detail: "This judgment was used in another matter — open it to reuse its arguments.",
+                    sessionId: hit.session_id,
+                  },
+                  ...deduped.slice(0, 9),
+                ];
+              });
+            }
+          } catch { /* non-critical */ }
+        })();
+      }
     }
   }, [nodes, edges, setNodes, sessionId]);
 
@@ -1021,6 +1045,42 @@ export default function ForgeWorkspace() {
         }),
       }).catch(() => {});
     }
+  }, [sessionId]);
+
+  // Step 4: Reactivate a suppressed suggestion type (undo suppress)
+  // Fires event then manually re-fetches twin profile so the UI updates immediately
+  const onReactivateSuggestionType = useCallback((type: string) => {
+    if (!sessionId) return;
+    void api("/workspace/profile/event", {
+      method: "POST",
+      body: JSON.stringify({
+        event_type: "suggestion_reactivate",
+        session_id: sessionId,
+        data: { suggestion_type: type },
+      }),
+    }).then(async () => {
+      // Re-fetch twin profile so Reduced Visibility section updates
+      const [profRes, cmRes] = await Promise.all([
+        api("/workspace/profile"),
+        api(`/workspace/sessions/${sessionId}/cross-matter`),
+      ]);
+      const [prof, cm] = await Promise.all([profRes.json(), cmRes.json()]);
+      setTwinProfile(prof as TwinProfile);
+      setCrossMatter(cm as CrossMatterData);
+    }).catch(() => {});
+  }, [sessionId]);
+
+  // Step 5: Draft copy tracking — logs draft_accept event and trains twin style preference
+  const onDraftCopy = useCallback((agentId: string) => {
+    if (!sessionId) return;
+    void api("/workspace/profile/event", {
+      method: "POST",
+      body: JSON.stringify({
+        event_type: "draft_accept",
+        session_id: sessionId,
+        data: { agent_id: agentId, section: "full" },
+      }),
+    }).catch(() => {});
   }, [sessionId]);
 
   // ─── Auto-fetch insights when switching to insights tab ───────────────────────
@@ -1660,6 +1720,7 @@ export default function ForgeWorkspace() {
             collabFeed={collabFeed}
             onAskAgent={onAskAgent}
             onFeedback={onFeedback}
+            onDraftCopy={onDraftCopy}
             synthesisScore={synthesisScore ?? undefined}
             openAskFor={openAskForAgentId ?? undefined}
           />
@@ -2024,6 +2085,7 @@ export default function ForgeWorkspace() {
                 onReset={onResetProfile}
                 onRefresh={fetchTwinData}
                 onOpenSession={(sid) => openSession({ id: sid, title: "", case_description: "", nodes_json: [], edges_json: [], insights: [], updated_at: "" })}
+                onReactivateSuggestionType={onReactivateSuggestionType}
               />
             </div>
           )}
@@ -2172,6 +2234,7 @@ export default function ForgeWorkspace() {
                   collabFeed={collabFeed}
                   onAskAgent={onAskAgent}
                   onFeedback={onFeedback}
+                  onDraftCopy={onDraftCopy}
                   synthesisScore={synthesisScore ?? undefined}
                   openAskFor={openAskForAgentId ?? undefined}
                 />
@@ -2263,6 +2326,7 @@ export default function ForgeWorkspace() {
                   onReset={onResetProfile}
                   onRefresh={fetchTwinData}
                   onOpenSession={(sid) => openSession({ id: sid, title: "", case_description: "", nodes_json: [], edges_json: [], insights: [], updated_at: "" })}
+                  onReactivateSuggestionType={onReactivateSuggestionType}
                 />
               )}
             </div>

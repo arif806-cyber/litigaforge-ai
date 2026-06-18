@@ -165,12 +165,14 @@ function AgentCard({
   state,
   onAskAgent,
   onFeedback,
+  onDraftCopy,
   forceAskOpen,
 }: {
   def: AgentDef;
   state: AgentState;
   onAskAgent: (agentId: string, question: string) => void;
   onFeedback: (agentId: string, vote: "up" | "down") => void;
+  onDraftCopy?: (agentId: string) => void;
   forceAskOpen?: boolean;
 }) {
   const isThinking   = state.status === "thinking";
@@ -413,6 +415,26 @@ function AgentCard({
           >
             {askOpen ? "✕ Close" : "💬 Ask"}
           </button>
+
+          {/* Step 5: Copy draft — drafting agent only */}
+          {def.id === "drafting" && state.text && onDraftCopy && (
+            <button
+              onClick={() => {
+                void navigator.clipboard.writeText(state.text ?? "").catch(() => {});
+                onDraftCopy(def.id);
+              }}
+              style={{
+                background: "rgba(59,130,246,0.08)",
+                border: "1px solid rgba(59,130,246,0.25)",
+                borderRadius: 6, padding: "3px 9px",
+                fontSize: 9, fontWeight: 700, color: "#93c5fd",
+                cursor: "pointer", transition: "all 0.15s", letterSpacing: "0.03em",
+              }}
+              title="Copy draft to clipboard — tracked for style learning"
+            >
+              📋 Copy
+            </button>
+          )}
         </div>
       )}
 
@@ -587,6 +609,7 @@ interface AgentPanelProps {
   collabFeed:             CollabEvent[];
   onAskAgent:             (agentId: string, question: string) => void;
   onFeedback:             (agentId: string, vote: "up" | "down") => void;
+  onDraftCopy?:           (agentId: string) => void;
   synthesisScore?:        number;
   openAskFor?:            string;
 }
@@ -600,6 +623,7 @@ const AgentPanel = memo(({
   collabFeed,
   onAskAgent,
   onFeedback,
+  onDraftCopy,
   synthesisScore,
   openAskFor,
 }: AgentPanelProps) => {
@@ -702,6 +726,7 @@ const AgentPanel = memo(({
             state={agentStates[def.id] ?? { status: "idle", text: "" }}
             onAskAgent={onAskAgent}
             onFeedback={onFeedback}
+            onDraftCopy={onDraftCopy}
             forceAskOpen={openAskFor === def.id}
           />
         ))}

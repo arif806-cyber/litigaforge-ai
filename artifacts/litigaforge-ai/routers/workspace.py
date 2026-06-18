@@ -889,6 +889,27 @@ async def get_proactive_insights(
     if not nodes and not body.case_description:
         return {"suggestions": _INSIGHT_FALLBACKS}
 
+    # Step 4: Fetch suppressed suggestion types (dismissed ≥3×) — non-blocking
+    suppressed_types: set[str] = set()
+    try:
+        async with pool.acquire() as sup_conn:
+            sup_rows = await sup_conn.fetch(
+                "SELECT event_data FROM user_learning_events "
+                "WHERE user_id=$1 AND event_type='suggestion_dismiss' LIMIT 200",
+                user["id"],
+            )
+        dismiss_counts: dict[str, int] = {}
+        for r in sup_rows:
+            try:
+                d = json.loads(r["event_data"]) if r["event_data"] else {}
+                st = d.get("suggestion_type", "other")
+                dismiss_counts[st] = dismiss_counts.get(st, 0) + 1
+            except Exception:
+                pass
+        suppressed_types = {k for k, v in dismiss_counts.items() if v >= 3}
+    except Exception as _se:
+        logger.debug("Suppression fetch skipped: %s", _se)
+
     node_summaries = "\n".join(
         f"  • [{n.get('type','node')}] {n.get('data',{}).get('label','Untitled')} — score {n.get('data',{}).get('impact_score',70)}"
         for n in nodes
@@ -935,6 +956,8 @@ async def get_proactive_insights(
             })
             if len(suggestions) >= 4:
                 break
+        if suppressed_types:
+            suggestions = [s for s in suggestions if s["type"] not in suppressed_types]
         return {"suggestions": suggestions or _INSIGHT_FALLBACKS}
     except Exception as exc:
         logger.warning("Insights error: %s", exc)

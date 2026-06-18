@@ -2,7 +2,7 @@
 Forge Workspace — Self-Improving Personalization Layer
 
 Endpoints (all prefixed with BASE_PATH from main.py):
-  POST   /workspace/profile/event          — record a learning event (fire-and-forget)
+  POST   /workspace/profile/event          — record a learning event (returns cross_matter_hit)
   GET    /workspace/profile                — get Personal Legal Twin profile
   PUT    /workspace/profile/settings       — toggle learning on/off
   DELETE /workspace/profile/reset          — wipe all learning data
@@ -59,6 +59,29 @@ _PATTERN_INSIGHTS = {
 }
 
 
+# ─── Pure helpers ─────────────────────────────────────────────────────────────
+
+def _title_overlap(a: str, b: str) -> float:
+    """Word-level Jaccard overlap between two lowercased title strings."""
+    wa = set(a.split())
+    wb = set(b.split())
+    if not wa or not wb:
+        return 0.0
+    return len(wa & wb) / len(wa | wb)
+
+
+def _node_type_seq(nodes_json: list) -> list:
+    """Top-5 node types sorted by y-position (topological proxy for argument structure)."""
+    if not nodes_json or not isinstance(nodes_json, list):
+        return []
+    valid = [
+        n for n in nodes_json
+        if isinstance(n, dict) and n.get("type") not in (None, "", "cluster")
+    ]
+    ordered = sorted(valid, key=lambda n: (n.get("position") or {}).get("y", 0))
+    return [n["type"] for n in ordered[:5]]
+
+
 # ─── Pydantic schemas ──────────────────────────────────────────────────────────
 
 class LearningEventBody(BaseModel):
@@ -81,6 +104,8 @@ def compute_profile(events: list[dict]) -> dict:
     suggestion_dismisses: dict[str, int] = {}
     judgment_courts: dict[str, int] = {}
     node_types:      dict[str, int] = {}
+    draft_accepts:   dict[str, int] = {}
+    draft_rejects:   dict[str, int] = {}
 
     for ev in events:
         t = ev.get("event_type", "")
@@ -102,6 +127,11 @@ def compute_profile(events: list[dict]) -> dict:
             st = d.get("suggestion_type", "other")
             suggestion_dismisses[st] = suggestion_dismisses.get(st, 0) + 1
 
+        elif t == "suggestion_reactivate":
+            # User clicked "Undo suppress" — clear the dismiss tally for that type
+            st = d.get("suggestion_type", "other")
+            suggestion_dismisses[st] = 0
+
         elif t == "judgment_add":
             court = d.get("court") or "Other"
             judgment_courts[court] = judgment_courts.get(court, 0) + 1
@@ -111,6 +141,14 @@ def compute_profile(events: list[dict]) -> dict:
             if nt:
                 node_types[nt] = node_types.get(nt, 0) + 1
 
+        elif t == "draft_accept":
+            style = d.get("section", "full")
+            draft_accepts[style] = draft_accepts.get(style, 0) + 1
+
+        elif t == "draft_reject":
+            style = d.get("section", "full")
+            draft_rejects[style] = draft_rejects.get(style, 0) + 1
+
     # Agent affinity: base 50, +12 per up-vote, -10 per down-vote, clamped 0-100
     agent_scores: dict[str, int] = {}
     for a in _ALL_AGENTS:
@@ -119,6 +157,19 @@ def compute_profile(events: list[dict]) -> dict:
 
     top_agent = max(agent_scores, key=lambda a: agent_scores[a]) if agent_scores else "research"
 
+    # Draft style preference
+    draft_style_preference = None
+    total_drafts = sum(draft_accepts.values()) + sum(draft_rejects.values())
+    if draft_accepts and total_drafts >= 2:
+        top_section = max(draft_accepts, key=lambda k: draft_accepts[k])
+        total_a     = sum(draft_accepts.values())
+        accept_rate = round(total_a / max(total_drafts, 1) * 100)
+        draft_style_preference = {
+            "top_section":  top_section,
+            "total_copies": total_a,
+            "accept_rate":  accept_rate,
+        }
+
     return {
         "agent_scores":           agent_scores,
         "suggestion_accepts":     suggestion_accepts,
@@ -126,6 +177,7 @@ def compute_profile(events: list[dict]) -> dict:
         "judgment_courts":        judgment_courts,
         "node_type_preferences":  node_types,
         "top_agent":              top_agent,
+        "draft_style_preference": draft_style_preference,
     }
 
 
@@ -164,6 +216,13 @@ def _profile_prompt_context(profile: dict) -> str:
     if courts:
         top_court = max(courts, key=lambda k: courts[k])
         parts.append(f"User prefers {top_court} judgments — prioritise this forum's precedents where applicable.")
+
+    draft_pref = profile.get("draft_style_preference")
+    if draft_pref and draft_pref.get("accept_rate", 0) >= 60:
+        parts.append(
+            f"User frequently copies '{draft_pref['top_section']}' sections from the Drafting Agent — "
+            "tailor contention structure accordingly."
+        )
 
     return " ".join(parts)
 
@@ -251,6 +310,18 @@ def _generate_summary_insights(profile: dict, session_count: int) -> list[dict]:
             ),
         })
 
+    # Draft style preference (Step 5)
+    draft_pref = profile.get("draft_style_preference")
+    if draft_pref and draft_pref.get("total_copies", 0) >= 2:
+        insights.append({
+            "emoji": "✍️",
+            "text": (
+                f"You've copied Drafting Agent output {draft_pref['total_copies']} time"
+                f"{'s' if draft_pref['total_copies'] != 1 else ''} — "
+                f"'{draft_pref['top_section']}' is your go-to draft section."
+            ),
+        })
+
     # Low-engagement nudge (constructive)
     low_agents = [a for a in _ALL_AGENTS if agent_scores.get(a, 50) <= 38]
     if low_agents and not high_agents:
@@ -268,17 +339,17 @@ def _generate_summary_insights(profile: dict, session_count: int) -> list[dict]:
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
-@router.post("/workspace/profile/event", status_code=204)
+@router.post("/workspace/profile/event")
 async def record_event(body: LearningEventBody, user=Depends(require_user)):
-    """Fire-and-forget learning event. Returns 204 always."""
+    """Record a learning event. Returns cross_matter_hit for judgment_add events."""
     pool = await get_pool()
+    cross_matter_hit = None
     async with pool.acquire() as conn:
-        # Respect the user's learning preference
         row = await conn.fetchrow(
             "SELECT learning_enabled FROM user_profile WHERE user_id=$1", user["id"]
         )
         if row and not row["learning_enabled"]:
-            return
+            return {"cross_matter_hit": None}
 
         await conn.execute(
             """
@@ -290,6 +361,41 @@ async def record_event(body: LearningEventBody, user=Depends(require_user)):
             body.event_type,
             json.dumps(body.data),
         )
+
+        # Step 3: For judgment_add, check if same citation appeared in another session
+        if body.event_type == "judgment_add":
+            title_norm = (body.data.get("title") or "").strip().lower()
+            if len(title_norm) >= 8:
+                jrows = await conn.fetch(
+                    """
+                    SELECT e.session_id, e.event_data, s.title AS session_title
+                    FROM user_learning_events e
+                    JOIN workspace_sessions s ON s.id = e.session_id
+                    WHERE e.user_id=$1 AND e.event_type='judgment_add'
+                      AND ($2::int IS NULL OR e.session_id != $2)
+                    ORDER BY e.created_at DESC LIMIT 200
+                    """,
+                    user["id"], body.session_id,
+                )
+                for r in jrows:
+                    try:
+                        d = json.loads(r["event_data"]) if r["event_data"] else {}
+                        other_norm = (d.get("title") or "").strip().lower()
+                        if other_norm and (
+                            title_norm in other_norm
+                            or other_norm in title_norm
+                            or _title_overlap(title_norm, other_norm) >= 0.5
+                        ):
+                            cross_matter_hit = {
+                                "session_id":    r["session_id"],
+                                "session_title": r["session_title"],
+                                "judgment_title": body.data.get("title", ""),
+                            }
+                            break
+                    except Exception:
+                        pass
+
+    return {"cross_matter_hit": cross_matter_hit}
 
 
 @router.get("/workspace/profile")
@@ -329,6 +435,11 @@ async def get_profile(user=Depends(require_user)):
         unique_days = len({e["date"] for e in events[:100]})
         score       = _twin_score(computed, session_count, len(events), unique_days)
 
+        # Step 4: Compute suppressed suggestion types (dismissed ≥3 times)
+        suppressed_types = {
+            k: v for k, v in computed["suggestion_dismisses"].items() if v >= 3
+        }
+
         return {
             "twin_score":              score,
             "total_sessions":          session_count,
@@ -341,6 +452,8 @@ async def get_profile(user=Depends(require_user)):
             "judgment_courts":         computed["judgment_courts"],
             "node_type_preferences":   computed["node_type_preferences"],
             "top_agent":               computed["top_agent"],
+            "suppressed_types":        suppressed_types,
+            "draft_style_preference":  computed.get("draft_style_preference"),
         }
 
 
@@ -438,16 +551,44 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
     if not others:
         return {"connections": [], "patterns": [], "recommendation": None, "judgment_court_context": None}
 
+    # Step 2: Build topological node-type sequence for argument-echo detection
+    cur_raw = current["nodes_json"] or []
+    if isinstance(cur_raw, str):
+        try:
+            cur_raw = json.loads(cur_raw)
+        except Exception:
+            cur_raw = []
+    cur_seq = _node_type_seq(cur_raw)
+
     connections = []
     for s in others:
         other_text = f"{s['title']} {s['case_description'] or ''}".lower()
         shared = sorted(cur_terms & {t for t in _LEGAL_TERMS if t in other_text})
-        if shared:
+
+        # Argument-echo: ≥2 node types match at the same topological position
+        argument_echo = False
+        other_raw = s["nodes_json"] or []
+        if isinstance(other_raw, str):
+            try:
+                other_raw = json.loads(other_raw)
+            except Exception:
+                other_raw = []
+        other_seq = _node_type_seq(other_raw)
+        if cur_seq and other_seq:
+            matches = sum(
+                1 for i, tp in enumerate(cur_seq)
+                if i < len(other_seq) and tp == other_seq[i]
+            )
+            if matches >= 2:
+                argument_echo = True
+
+        if shared or argument_echo:
             connections.append({
                 "session_id":    s["id"],
                 "title":         s["title"],
                 "shared_topics": shared[:4],
                 "updated_at":    s["updated_at"].isoformat(),
+                "argument_echo": argument_echo,
             })
 
     # Node-type patterns across all prior sessions
@@ -490,11 +631,18 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
             "all_courts":  dict(sorted(court_counts.items(), key=lambda x: -x[1])[:4]),
         }
 
-    # Top recommendation
+    # Top recommendation (prefer argument-echo connections)
     recommendation = None
-    if connections:
+    echo_conns = [c for c in connections if c.get("argument_echo")]
+    if echo_conns:
+        top = echo_conns[0]
+        recommendation = (
+            f'Your matter "{top["title"]}" uses the same argument structure — '
+            "consider reviewing it for reusable legal contentions."
+        )
+    elif connections:
         top = connections[0]
-        topics = " & ".join(top["shared_topics"][:2])
+        topics = " & ".join(top["shared_topics"][:2]) if top["shared_topics"] else "common themes"
         recommendation = (
             f'Your matter "{top["title"]}" also covers {topics}. '
             "Consider reviewing its canvas for reusable arguments."
