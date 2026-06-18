@@ -966,8 +966,13 @@ async def get_proactive_insights(
             })
             if len(suggestions) >= 4:
                 break
+        # Step 4: Downgrade suppressed types (not remove) — demote to end, cap at 1 slot
         if suppressed_types:
-            suggestions = [s for s in suggestions if s["type"] not in suppressed_types]
+            normal  = [s for s in suggestions if s["type"] not in suppressed_types]
+            demoted = [s for s in suggestions if s["type"] in suppressed_types]
+            # Allow at most 1 demoted suggestion only when there is room (fewer than 3 normal)
+            cap = 1 if len(normal) < 3 else 0
+            suggestions = normal + demoted[:cap]
         return {"suggestions": suggestions or _INSIGHT_FALLBACKS}
     except Exception as exc:
         logger.warning("Insights error: %s", exc)

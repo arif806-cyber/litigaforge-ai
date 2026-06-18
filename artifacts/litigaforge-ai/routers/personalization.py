@@ -70,16 +70,53 @@ def _title_overlap(a: str, b: str) -> float:
     return len(wa & wb) / len(wa | wb)
 
 
-def _node_type_seq(nodes_json: list) -> list:
-    """Top-5 node types sorted by y-position (topological proxy for argument structure)."""
+def _node_type_seq(nodes_json: list, edges_json: list = None) -> list:
+    """Top-5 node types in topological order (Kahn's BFS on graph edges; y-pos fallback)."""
+    from collections import deque
     if not nodes_json or not isinstance(nodes_json, list):
         return []
-    valid = [
-        n for n in nodes_json
-        if isinstance(n, dict) and n.get("type") not in (None, "", "cluster")
-    ]
-    ordered = sorted(valid, key=lambda n: (n.get("position") or {}).get("y", 0))
-    return [n["type"] for n in ordered[:5]]
+    valid = {
+        n["id"]: n
+        for n in nodes_json
+        if isinstance(n, dict) and n.get("id") and n.get("type") not in (None, "", "cluster")
+    }
+    if not valid:
+        return []
+
+    edges = edges_json if isinstance(edges_json, list) else []
+    adj:    dict[str, list[str]] = {nid: [] for nid in valid}
+    in_deg: dict[str, int]       = {nid: 0  for nid in valid}
+    for e in edges:
+        if not isinstance(e, dict):
+            continue
+        src, tgt = e.get("source"), e.get("target")
+        if src in valid and tgt in valid:
+            adj[src].append(tgt)
+            in_deg[tgt] += 1
+
+    def _y(nid: str) -> float:
+        return float((valid[nid].get("position") or {}).get("y", 0))
+
+    roots = sorted([nid for nid, d in in_deg.items() if d == 0], key=_y)
+    if not roots:
+        # Cycle or missing edges — fall back to y-sort
+        ordered = sorted(valid.values(), key=lambda n: (n.get("position") or {}).get("y", 0))
+        return [n["type"] for n in ordered[:5]]
+
+    queue = deque(roots)
+    topo: list[str] = []
+    while queue and len(topo) < 5:
+        nid = queue.popleft()
+        topo.append(valid[nid]["type"])
+        for tgt in sorted(adj[nid], key=_y):
+            in_deg[tgt] -= 1
+            if in_deg[tgt] == 0:
+                queue.append(tgt)
+
+    if not topo:
+        ordered = sorted(valid.values(), key=lambda n: (n.get("position") or {}).get("y", 0))
+        return [n["type"] for n in ordered[:5]]
+    return topo
 
 
 # ─── Pydantic schemas ──────────────────────────────────────────────────────────
@@ -521,7 +558,7 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         current = await conn.fetchrow(
-            "SELECT id, title, case_description, nodes_json "
+            "SELECT id, title, case_description, nodes_json, edges_json "
             "FROM workspace_sessions WHERE id=$1 AND user_id=$2",
             session_id, user["id"],
         )
@@ -530,7 +567,7 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
 
         others = await conn.fetch(
             """
-            SELECT id, title, case_description, nodes_json, updated_at
+            SELECT id, title, case_description, nodes_json, edges_json, updated_at
             FROM workspace_sessions
             WHERE user_id=$1 AND id != $2
             ORDER BY updated_at DESC LIMIT 25
@@ -552,29 +589,31 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
     if not others:
         return {"connections": [], "patterns": [], "recommendation": None, "judgment_court_context": None}
 
-    # Step 2: Build topological node-type sequence for argument-echo detection
-    cur_raw = current["nodes_json"] or []
-    if isinstance(cur_raw, str):
-        try:
-            cur_raw = json.loads(cur_raw)
-        except Exception:
-            cur_raw = []
-    cur_seq = _node_type_seq(cur_raw)
+    # Step 2: Build topological node-type sequence using real graph edges (Kahn's BFS)
+    def _parse_json_col(val) -> list:
+        if not val:
+            return []
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except Exception:
+                return []
+        return list(val) if isinstance(val, list) else []
+
+    cur_raw   = _parse_json_col(current["nodes_json"])
+    cur_edges = _parse_json_col(current["edges_json"])
+    cur_seq   = _node_type_seq(cur_raw, cur_edges)
 
     connections = []
     for s in others:
         other_text = f"{s['title']} {s['case_description'] or ''}".lower()
         shared = sorted(cur_terms & {t for t in _LEGAL_TERMS if t in other_text})
 
-        # Argument-echo: ≥2 node types match at the same topological position
+        # Argument-echo: ≥2 node types match at the same topological position (edge-based)
         argument_echo = False
-        other_raw = s["nodes_json"] or []
-        if isinstance(other_raw, str):
-            try:
-                other_raw = json.loads(other_raw)
-            except Exception:
-                other_raw = []
-        other_seq = _node_type_seq(other_raw)
+        other_raw   = _parse_json_col(s["nodes_json"])
+        other_edges = _parse_json_col(s["edges_json"])
+        other_seq   = _node_type_seq(other_raw, other_edges)
         if cur_seq and other_seq:
             matches = sum(
                 1 for i, tp in enumerate(cur_seq)

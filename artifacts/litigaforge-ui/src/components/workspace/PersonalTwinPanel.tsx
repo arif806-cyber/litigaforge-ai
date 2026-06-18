@@ -370,6 +370,30 @@ export default function PersonalTwinPanel({
       {crossMatter && crossMatter.connections.length > 0 && (
         <div style={{ padding: "13px 14px 11px", borderBottom: `1px solid ${BORDER}` }}>
           <SecHead title={`Cross-Matter Links (${crossMatter.connections.length})`} />
+
+          {/* Step 2: Argument Structure Echo — explicit card when any connection echoes */}
+          {crossMatter.connections.some(c => c.argument_echo) && (
+            <div style={{
+              marginBottom: 10, padding: "9px 12px",
+              background: "linear-gradient(135deg, rgba(168,85,247,0.08), rgba(99,102,241,0.05))",
+              border: "1px solid rgba(168,85,247,0.25)",
+              borderRadius: 8,
+            }}>
+              <div style={{
+                fontSize: 9, fontWeight: 800, color: "#c084fc",
+                letterSpacing: "0.05em", marginBottom: 4,
+              }}>
+                ≋ ARGUMENT STRUCTURE ECHO
+              </div>
+              <div style={{ fontSize: 8.5, color: FGD, lineHeight: 1.55 }}>
+                {crossMatter.connections.filter(c => c.argument_echo).length === 1
+                  ? "1 past matter shares the same node types in the same argument order."
+                  : `${crossMatter.connections.filter(c => c.argument_echo).length} past matters share the same argument structure.`}
+                {" "}Your reasoning pattern is consistent — that's a signal worth trusting.
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {crossMatter.connections.map(c => (
               <motion.div
@@ -505,7 +529,7 @@ export default function PersonalTwinPanel({
         <div style={{ padding: "13px 14px 11px", borderBottom: `1px solid ${BORDER}` }}>
           <SecHead title="Reduced Visibility" />
           <div style={{ fontSize: 8.5, color: FGS, lineHeight: 1.6, marginBottom: 9 }}>
-            These suggestion types are hidden after 3+ dismissals. Undo to re-enable them.
+            These suggestion types are shown less often after 3+ dismissals. Undo to restore full frequency.
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {Object.entries(profile.suppressed_types).map(([type, count]) => (
