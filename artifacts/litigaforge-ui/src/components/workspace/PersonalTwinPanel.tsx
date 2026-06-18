@@ -14,6 +14,7 @@ export interface TwinProfile {
   judgment_courts:        Record<string, number>;
   node_type_preferences:  Record<string, number>;
   top_agent:              string;
+  summary_insights?:      Array<{ emoji: string; text: string }>;
 }
 
 export interface CrossMatterData {
@@ -29,16 +30,22 @@ export interface CrossMatterData {
     insight:   string;
   }>;
   recommendation: string | null;
+  judgment_court_context?: {
+    court:      string;
+    count:      number;
+    all_courts: Record<string, number>;
+  } | null;
 }
 
 interface Props {
-  profile:          TwinProfile | null;
-  crossMatter:      CrossMatterData | null;
-  isLoading:        boolean;
-  sessionReady:     boolean;
-  onToggleLearning: (enabled: boolean) => void;
-  onReset:          () => void;
-  onRefresh:        () => void;
+  profile:           TwinProfile | null;
+  crossMatter:       CrossMatterData | null;
+  isLoading:         boolean;
+  sessionReady:      boolean;
+  onToggleLearning:  (enabled: boolean) => void;
+  onReset:           () => void;
+  onRefresh:         () => void;
+  onOpenSession?:    (sessionId: number) => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -170,7 +177,7 @@ function Skeleton() {
 
 export default function PersonalTwinPanel({
   profile, crossMatter, isLoading, sessionReady,
-  onToggleLearning, onReset, onRefresh,
+  onToggleLearning, onReset, onRefresh, onOpenSession,
 }: Props) {
 
   if (!sessionReady) {
@@ -266,6 +273,33 @@ export default function PersonalTwinPanel({
         </div>
       </div>
 
+      {/* ── What Your Twin Knows ────────────────────────────────────────────── */}
+      {profile.summary_insights && profile.summary_insights.length > 0 && (
+        <div style={{ padding: "13px 14px 11px", borderBottom: `1px solid ${BORDER}` }}>
+          <SecHead title="What Your Twin Knows" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {profile.summary_insights.map((insight, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.07 }}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 9,
+                  padding: "8px 10px",
+                  background: "rgba(20,184,166,0.04)",
+                  border: "1px solid rgba(20,184,166,0.1)",
+                  borderRadius: 8,
+                }}
+              >
+                <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{insight.emoji}</span>
+                <div style={{ fontSize: 9.5, color: FGD, lineHeight: 1.6 }}>{insight.text}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Agent Affinities ────────────────────────────────────────────────── */}
       <div style={{ padding: "13px 14px 11px", borderBottom: `1px solid ${BORDER}` }}>
         <SecHead title="Agent Affinities" />
@@ -343,8 +377,22 @@ export default function PersonalTwinPanel({
                   background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8,
                 }}
               >
-                <div style={{ fontSize: 9.5, fontWeight: 700, color: FG, marginBottom: 5, lineHeight: 1.3 }}>
-                  🗂️ {c.title}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 5 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: FG, lineHeight: 1.3, flex: 1 }}>
+                    🗂️ {c.title}
+                  </div>
+                  {onOpenSession && (
+                    <button
+                      onClick={() => onOpenSession(c.session_id)}
+                      style={{
+                        background: "rgba(20,184,166,0.08)",
+                        border: "1px solid rgba(20,184,166,0.22)",
+                        borderRadius: 5, padding: "3px 8px",
+                        color: TEAL, fontSize: 8.5, fontWeight: 700,
+                        cursor: "pointer", flexShrink: 0, marginLeft: 7,
+                      }}
+                    >→ Open</button>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {c.shared_topics.map(topic => (
@@ -389,8 +437,45 @@ export default function PersonalTwinPanel({
         </div>
       )}
 
+      {/* ── Judgment Court Footprint ─────────────────────────────────────────── */}
+      {crossMatter?.judgment_court_context && (
+        <div style={{ padding: "13px 14px 11px", borderBottom: `1px solid ${BORDER}` }}>
+          <SecHead title="Your Judgment Footprint" />
+          <div style={{
+            padding: "9px 12px",
+            background: "rgba(99,102,241,0.04)",
+            border: "1px solid rgba(99,102,241,0.15)",
+            borderRadius: 8,
+          }}>
+            <div style={{ fontSize: 9.5, color: FGD, lineHeight: 1.65 }}>
+              <span style={{ fontWeight: 700, color: "#a5b4fc" }}>
+                {crossMatter.judgment_court_context.court}
+              </span>
+              {" "}is your most-cited forum (
+              {crossMatter.judgment_court_context.count} judgment
+              {crossMatter.judgment_court_context.count !== 1 ? "s" : ""}).
+              {" "}Agents prioritise its precedents in future analyses.
+            </div>
+            {Object.keys(crossMatter.judgment_court_context.all_courts).length > 1 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 7 }}>
+                {Object.entries(crossMatter.judgment_court_context.all_courts).map(([court, cnt]) => (
+                  <span key={court} style={{
+                    padding: "2px 7px", borderRadius: 9,
+                    background: "rgba(99,102,241,0.08)",
+                    border: "1px solid rgba(99,102,241,0.18)",
+                    fontSize: 7.5, fontWeight: 700, color: "#a5b4fc",
+                  }}>
+                    {court} ({cnt})
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Empty cross-matter state ─────────────────────────────────────────── */}
-      {crossMatter && crossMatter.connections.length === 0 && crossMatter.patterns.length === 0 && (
+      {crossMatter && crossMatter.connections.length === 0 && crossMatter.patterns.length === 0 && !crossMatter.judgment_court_context && (
         <div style={{ padding: "13px 14px 11px", borderBottom: `1px solid ${BORDER}` }}>
           <SecHead title="Cross-Matter Intelligence" />
           <div style={{ fontSize: 9, color: FGS, lineHeight: 1.7 }}>

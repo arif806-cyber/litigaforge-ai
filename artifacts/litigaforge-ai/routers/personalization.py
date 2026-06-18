@@ -139,13 +139,13 @@ def _twin_score(profile: dict, total_sessions: int, total_events: int, active_da
 
 
 def _profile_prompt_context(profile: dict) -> str:
-    """Build a 1-2 sentence context string to inject into agent prompts."""
+    """Build a 1-3 sentence context string to inject into agent prompts."""
     agent_scores = profile.get("agent_scores", {})
     top_agent    = profile.get("top_agent", "research")
     accepts      = profile.get("suggestion_accepts", {})
+    courts       = profile.get("judgment_courts", {})
 
     high_agents = [a for a in _ALL_AGENTS if agent_scores.get(a, 50) >= 65]
-    low_agents  = [a for a in _ALL_AGENTS if agent_scores.get(a, 50) <= 35]
 
     parts = []
     if high_agents:
@@ -154,17 +154,116 @@ def _profile_prompt_context(profile: dict) -> str:
     if accepts:
         top_accept = max(accepts, key=lambda k: accepts[k])
         type_map = {
-            "opportunity": "identifying opportunities",
-            "risk":        "highlighting risks",
-            "precedent":   "citing precedents",
+            "opportunity": "identifying strategic opportunities",
+            "risk":        "highlighting risks and counter-arguments",
+            "precedent":   "citing specific case precedents",
             "pattern":     "finding argument patterns",
-            "warning":     "flagging warnings",
+            "warning":     "flagging procedural warnings",
         }
         parts.append(f"User frequently engages with suggestions about {type_map.get(top_accept, top_accept)}.")
-    if low_agents:
-        pass  # Don't penalise — just guide
+    if courts:
+        top_court = max(courts, key=lambda k: courts[k])
+        parts.append(f"User prefers {top_court} judgments — prioritise this forum's precedents where applicable.")
 
     return " ".join(parts)
+
+
+def _generate_summary_insights(profile: dict, session_count: int) -> list[dict]:
+    """Return a list of {emoji, text} natural-language insights for display in the Twin panel."""
+    agent_scores = profile.get("agent_scores", {})
+    top_agent    = profile.get("top_agent", "research")
+    accepts      = profile.get("suggestion_accepts", {})
+    dismisses    = profile.get("suggestion_dismisses", {})
+    courts       = profile.get("judgment_courts", {})
+    node_types   = profile.get("node_type_preferences", {})
+
+    insights = []
+
+    # Agent affinity
+    high_agents = [a for a in _ALL_AGENTS if agent_scores.get(a, 50) >= 62]
+    if high_agents:
+        label = _AGENT_LABELS.get(top_agent, top_agent.title())
+        emoji = _AGENT_EMOJIS.get(top_agent, "🤖")
+        insights.append({
+            "emoji": emoji,
+            "text": f"You trust {label} analysis most — your ratings consistently favour its outputs.",
+        })
+
+    # Suggestion engagement
+    total_accepts = sum(accepts.values())
+    if total_accepts >= 1:
+        top_type = max(accepts, key=lambda k: accepts[k])
+        type_labels = {
+            "opportunity": "strategic opportunities",
+            "risk":        "risk flags",
+            "precedent":   "precedent matches",
+            "pattern":     "argument patterns",
+            "warning":     "procedural warnings",
+        }
+        insights.append({
+            "emoji": "✦",
+            "text": (
+                f"You've accepted {total_accepts} proactive suggestion"
+                f"{'s' if total_accepts != 1 else ''}, favouring "
+                f"{type_labels.get(top_type, top_type)} — the system surfaces these first."
+            ),
+        })
+
+    # Court preference
+    if courts:
+        top_court = max(courts, key=lambda k: courts[k])
+        cnt = courts[top_court]
+        insights.append({
+            "emoji": "⚖️",
+            "text": (
+                f"You most frequently work with {top_court} judgments "
+                f"({cnt} added) — agents prioritise this forum's precedents."
+            ),
+        })
+
+    # Canvas style
+    if node_types:
+        top_node = max(node_types, key=lambda k: node_types[k])
+        node_labels = {
+            "judgment":  "precedent-based arguments",
+            "strategy":  "strategic framing",
+            "risk":      "risk mapping",
+            "argument":  "legal arguments",
+            "issue":     "issue identification",
+            "fact":      "evidence-first reasoning",
+        }
+        insights.append({
+            "emoji": "🗺️",
+            "text": (
+                f"Your canvases are built around {node_labels.get(top_node, top_node + ' nodes')} — "
+                "a systematic and precise working style."
+            ),
+        })
+
+    # Session volume
+    if session_count >= 3:
+        insights.append({
+            "emoji": "📂",
+            "text": (
+                f"You've worked on {session_count} matter"
+                f"{'s' if session_count != 1 else ''} in Forge Workspace. "
+                "Cross-matter connections are now active."
+            ),
+        })
+
+    # Low-engagement nudge (constructive)
+    low_agents = [a for a in _ALL_AGENTS if agent_scores.get(a, 50) <= 38]
+    if low_agents and not high_agents:
+        label = _AGENT_LABELS.get(low_agents[0], low_agents[0].title())
+        insights.append({
+            "emoji": "💡",
+            "text": (
+                f"You haven't rated {label} outputs yet. "
+                "Try 👍/👎 to help the system calibrate its style."
+            ),
+        })
+
+    return insights[:6]
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -272,6 +371,36 @@ async def reset_profile(user=Depends(require_user)):
         )
 
 
+@router.get("/workspace/profile/summary")
+async def get_profile_summary(user=Depends(require_user)):
+    """Return natural-language insight bullets describing what the system has learned."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT event_type, event_data FROM user_learning_events "
+            "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 250",
+            user["id"],
+        )
+        session_count = (await conn.fetchval(
+            "SELECT COUNT(*) FROM workspace_sessions WHERE user_id=$1", user["id"]
+        )) or 0
+
+    events = [
+        {
+            "event_type": r["event_type"],
+            "data": json.loads(r["event_data"]) if r["event_data"] else {},
+        }
+        for r in rows
+    ]
+
+    if not events and session_count < 1:
+        return {"insights": []}
+
+    profile  = compute_profile(events)
+    insights = _generate_summary_insights(profile, session_count)
+    return {"insights": insights}
+
+
 @router.get("/workspace/sessions/{session_id}/cross-matter")
 async def cross_matter(session_id: int, user=Depends(require_user)):
     """Find thematic connections between this session and the user's others."""
@@ -295,60 +424,95 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
             user["id"], session_id,
         )
 
-        if not others:
-            return {"connections": [], "patterns": [], "recommendation": None}
+        # Judgment court history from learning events
+        jdg_rows = await conn.fetch(
+            "SELECT event_data FROM user_learning_events "
+            "WHERE user_id=$1 AND event_type='judgment_add' ORDER BY created_at DESC LIMIT 50",
+            user["id"],
+        )
 
-        # Keyword matching
-        cur_text  = f"{current['title']} {current['case_description'] or ''}".lower()
-        cur_terms = {t for t in _LEGAL_TERMS if t in cur_text}
+    # Keyword matching
+    cur_text  = f"{current['title']} {current['case_description'] or ''}".lower()
+    cur_terms = {t for t in _LEGAL_TERMS if t in cur_text}
 
-        connections = []
-        for s in others:
-            other_text  = f"{s['title']} {s['case_description'] or ''}".lower()
-            shared = sorted(cur_terms & {t for t in _LEGAL_TERMS if t in other_text})
-            if shared:
-                connections.append({
-                    "session_id":    s["id"],
-                    "title":         s["title"],
-                    "shared_topics": shared[:4],
-                    "updated_at":    s["updated_at"].isoformat(),
-                })
+    if not others:
+        return {"connections": [], "patterns": [], "recommendation": None, "judgment_court_context": None}
 
-        # Node-type patterns across all prior sessions
-        nt_counts: dict[str, int] = {}
-        for s in others:
-            nodes = s["nodes_json"] or []
-            for n in (nodes if isinstance(nodes, list) else []):
-                if isinstance(n, dict):
-                    nt = n.get("type", "")
-                    if nt:
-                        nt_counts[nt] = nt_counts.get(nt, 0) + 1
+    connections = []
+    for s in others:
+        other_text = f"{s['title']} {s['case_description'] or ''}".lower()
+        shared = sorted(cur_terms & {t for t in _LEGAL_TERMS if t in other_text})
+        if shared:
+            connections.append({
+                "session_id":    s["id"],
+                "title":         s["title"],
+                "shared_topics": shared[:4],
+                "updated_at":    s["updated_at"].isoformat(),
+            })
 
-        patterns = [
-            {
-                "node_type": nt,
-                "count":     cnt,
-                "insight":   _PATTERN_INSIGHTS.get(nt, f"{nt.title()} nodes used across {cnt} matter(s)."),
-            }
-            for nt, cnt in sorted(nt_counts.items(), key=lambda x: -x[1])
-            if cnt >= 2
-        ][:4]
+    # Node-type patterns across all prior sessions
+    nt_counts: dict[str, int] = {}
+    for s in others:
+        nodes = s["nodes_json"] or []
+        for n in (nodes if isinstance(nodes, list) else []):
+            if isinstance(n, dict):
+                nt = n.get("type", "")
+                if nt:
+                    nt_counts[nt] = nt_counts.get(nt, 0) + 1
 
-        # Top recommendation
-        recommendation = None
-        if connections:
-            top = connections[0]
-            topics = " & ".join(top["shared_topics"][:2])
-            recommendation = (
-                f'Your matter "{top["title"]}" also covers {topics}. '
-                "Consider reviewing its canvas for reusable arguments."
-            )
-        elif patterns:
-            p = patterns[0]
-            recommendation = p["insight"]
-
-        return {
-            "connections":     connections[:5],
-            "patterns":        patterns,
-            "recommendation":  recommendation,
+    patterns = [
+        {
+            "node_type": nt,
+            "count":     cnt,
+            "insight":   _PATTERN_INSIGHTS.get(nt, f"{nt.title()} nodes used across {cnt} matter(s)."),
         }
+        for nt, cnt in sorted(nt_counts.items(), key=lambda x: -x[1])
+        if cnt >= 2
+    ][:4]
+
+    # Judgment court context — which courts the user has previously worked with
+    court_counts: dict[str, int] = {}
+    for r in jdg_rows:
+        try:
+            d = json.loads(r["event_data"]) if r["event_data"] else {}
+        except Exception:
+            d = {}
+        court = d.get("court") or "Other"
+        court_counts[court] = court_counts.get(court, 0) + 1
+
+    judgment_court_context = None
+    if court_counts:
+        top_court = max(court_counts, key=lambda k: court_counts[k])
+        cnt = court_counts[top_court]
+        judgment_court_context = {
+            "court":       top_court,
+            "count":       cnt,
+            "all_courts":  dict(sorted(court_counts.items(), key=lambda x: -x[1])[:4]),
+        }
+
+    # Top recommendation
+    recommendation = None
+    if connections:
+        top = connections[0]
+        topics = " & ".join(top["shared_topics"][:2])
+        recommendation = (
+            f'Your matter "{top["title"]}" also covers {topics}. '
+            "Consider reviewing its canvas for reusable arguments."
+        )
+    elif patterns:
+        p = patterns[0]
+        recommendation = p["insight"]
+    elif judgment_court_context:
+        court = judgment_court_context["court"]
+        cnt   = judgment_court_context["count"]
+        recommendation = (
+            f"You've added {cnt} judgment{'s' if cnt != 1 else ''} from {court} — "
+            "agents will prioritise this forum's precedents in future analyses."
+        )
+
+    return {
+        "connections":             connections[:5],
+        "patterns":                patterns,
+        "recommendation":          recommendation,
+        "judgment_court_context":  judgment_court_context,
+    }

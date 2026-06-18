@@ -783,20 +783,39 @@ export default function ForgeWorkspace() {
         body: JSON.stringify({ case_description: caseDescription, nodes, context: ctx }),
       });
       const data = await res.json() as { suggestions: Suggestion[] };
-      setSuggestions(data.suggestions ?? []);
-      // Only toast on auto-triggers (synthesis/simulation) — not on manual tab open
-      if (ctx && (data.suggestions?.length ?? 0) > 0) {
-        const n = data.suggestions.length;
+      const apiSuggestions = data.suggestions ?? [];
+
+      // Inject cross-matter connections as cross_matter suggestions (top 2)
+      const cmSuggestions: Suggestion[] = (crossMatter?.connections ?? []).slice(0, 2).map(c => ({
+        id:        `cm-${c.session_id}`,
+        type:      "cross_matter" as const,
+        emoji:     "🗂️",
+        text:      `Similar matter: "${c.title}"`,
+        detail:    `Shared topics: ${c.shared_topics.slice(0, 3).join(", ")}. Open this matter to review reusable arguments and precedents.`,
+        sessionId: c.session_id,
+      }));
+
+      setSuggestions([...cmSuggestions, ...apiSuggestions]);
+      if (ctx && (apiSuggestions.length + cmSuggestions.length) > 0) {
+        const n = apiSuggestions.length + cmSuggestions.length;
         addToast({ type: "info", message: `✨ ${n} AI insight${n > 1 ? "s" : ""} refreshed`, duration: 3000 });
       }
     } catch { /* keep existing */ } finally {
       setIsLoadingInsights(false);
     }
-    // addToast is stable enough — intentionally excluded from deps (follows existing pattern)
+    // addToast is stable — intentionally excluded from deps (established pattern)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, caseDescription, nodes, isLoadingInsights]);
+  }, [sessionId, caseDescription, nodes, isLoadingInsights, crossMatter]);
 
   const onAcceptSuggestion = useCallback((s: Suggestion) => {
+    // cross_matter: navigate to the linked session
+    if (s.type === "cross_matter") {
+      if (s.sessionId != null) {
+        void openSession({ id: s.sessionId, title: "", case_description: "", nodes_json: [], edges_json: [], insights: [], updated_at: "" });
+      }
+      setSuggestions(prev => prev.filter(x => x.id !== s.id));
+      return;
+    }
     // agent_rec type: dispatch a custom event to launch the agent ask panel
     if (s.type === "agent_rec") {
       const parts   = s.emoji.trim().split(/\s+/);
@@ -973,11 +992,14 @@ export default function ForgeWorkspace() {
     if (!sessionId || isLoadingTwin) return;
     setIsLoadingTwin(true);
     try {
-      const [profRes, crossRes] = await Promise.all([
+      const [profRes, crossRes, summaryRes] = await Promise.all([
         api("/workspace/profile"),
         api(`/workspace/sessions/${sessionId}/cross-matter`),
+        api("/workspace/profile/summary"),
       ]);
-      setTwinProfile(await profRes.json() as TwinProfile);
+      const prof    = await profRes.json() as TwinProfile;
+      const summary = (await summaryRes.json()) as { insights: Array<{ emoji: string; text: string }> };
+      setTwinProfile({ ...prof, summary_insights: summary.insights ?? [] });
       setCrossMatter(await crossRes.json() as CrossMatterData);
     } catch { /* keep existing profile */ } finally {
       setIsLoadingTwin(false);
@@ -1688,6 +1710,7 @@ export default function ForgeWorkspace() {
                 onToggleLearning={onToggleLearning}
                 onReset={onResetProfile}
                 onRefresh={fetchTwinData}
+                onOpenSession={(sid) => openSession({ id: sid, title: "", case_description: "", nodes_json: [], edges_json: [], insights: [], updated_at: "" })}
               />
             </div>
           )}
@@ -1926,6 +1949,7 @@ export default function ForgeWorkspace() {
                   onToggleLearning={onToggleLearning}
                   onReset={onResetProfile}
                   onRefresh={fetchTwinData}
+                  onOpenSession={(sid) => openSession({ id: sid, title: "", case_description: "", nodes_json: [], edges_json: [], insights: [], updated_at: "" })}
                 />
               )}
             </div>
