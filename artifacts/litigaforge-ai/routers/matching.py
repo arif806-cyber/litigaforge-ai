@@ -380,7 +380,7 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
 
     rows = await fetch(
         """SELECT m.id, m.status, m.match_score, m.ai_explanation,
-                  m.client_message, m.created_at,
+                  m.client_message, m.created_at, m.case_requirement_id,
                   c.title as case_title, c.case_type, c.description, c.location, c.budget_range,
                   CASE WHEN c.is_anonymous THEN NULL ELSE c.user_id END as client_user_id
            FROM matches m

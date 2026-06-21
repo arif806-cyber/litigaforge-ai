@@ -17,6 +17,7 @@ import { useCountry } from "@/hooks/useCountry";
 import { LAWYER_DASHBOARD_COPY } from "@/lib/country-copy";
 import { formatDate, caseTerms } from "@/lib/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import IncomingCaseFeed, { type CaseFeedItem } from "@/components/lawyer/IncomingCaseFeed";
 
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
@@ -282,6 +283,32 @@ export default function LawyerDashboard() {
     },
   });
 
+  const acceptLeadMut = useMutation({
+    mutationFn: (matchId: number) => apiFetch(`/matches/${matchId}/accept`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lawyer-matches"] }),
+  });
+
+  const declineLeadMut = useMutation({
+    mutationFn: (matchId: number) => apiFetch(`/matches/${matchId}/decline`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lawyer-matches"] }),
+  });
+
+  const allLeads: any[] = matchData?.matches ?? (Array.isArray(matchData) ? matchData : []);
+  const feedCases: CaseFeedItem[] = allLeads
+    .filter((m: any) => m.status === "pending")
+    .map((m: any): CaseFeedItem => ({
+      id: m.id,
+      case_requirement_id: m.case_requirement_id ?? 0,
+      category: m.case_type ?? "Case",
+      created_at: m.created_at,
+      title: m.case_title ?? "Untitled Case",
+      description: m.description ?? "",
+      location: m.location ?? undefined,
+      budget: m.budget_range ?? "",
+      funnelIndex: 0,
+      clientIsOnline: false,
+    }));
+
   const isAdvocatePro = user?.subscription_tier === "advocate_pro";
   const lawyerFirstName = user?.name?.split(" ")[0] ?? "Advocate";
 
@@ -446,6 +473,33 @@ export default function LawyerDashboard() {
                   </motion.button>
                 ))}
               </div>
+
+              {/* ── Incoming Client Requests ── */}
+              {feedCases.length > 0 && (
+                <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+                  <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-sm">New Client Requests</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Swipe right to accept · left to pass</p>
+                    </div>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>
+                      {feedCases.length} pending
+                    </span>
+                  </div>
+                  <div className="px-4 pb-5">
+                    <IncomingCaseFeed
+                      cases={feedCases}
+                      onAccept={(id) => acceptLeadMut.mutate(id)}
+                      onDecline={(id) => declineLeadMut.mutate(id)}
+                      onView={(item) => {
+                        if (item.case_requirement_id) {
+                          apiFetch(`/cases/${item.case_requirement_id}/track-view`, { method: "POST" }).catch(() => {});
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* ── Case Tabs + Search ── */}
               <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>

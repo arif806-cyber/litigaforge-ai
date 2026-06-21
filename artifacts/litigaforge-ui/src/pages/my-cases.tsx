@@ -16,6 +16,8 @@ import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { useCountry } from "@/hooks/useCountry";
 import { formatDate } from "@/lib/locale";
+import { LawyerMatchCard } from "@/components/LawyerMatchCard";
+import { useLawyerPresence } from "@/hooks/useLawyerPresence";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   open:     { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" },
@@ -37,6 +39,7 @@ export default function MyCases() {
   const [search, setSearch] = useState("");
   const [editingCase, setEditingCase] = useState<any>(null);
   const [editForm, setEditForm] = useState({ title: "", case_type: "", description: "", location: "", budget_range: "", is_anonymous: false });
+  const [expandedCase, setExpandedCase] = useState<number | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["my-cases"],
@@ -53,6 +56,26 @@ export default function MyCases() {
     mutationFn: (id: number) => apiFetch(`/cases/requirements/${id}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-cases"] }),
   });
+
+  const { data: matchesData } = useQuery({
+    queryKey: ["client-matches"],
+    queryFn: () => apiFetch("/matches/client"),
+    enabled: !!user,
+    staleTime: 30000,
+  });
+  const clientMatches: any[] = matchesData?.matches ?? [];
+
+  const acceptMatchMutation = useMutation({
+    mutationFn: (matchId: number) => apiFetch(`/matches/${matchId}/accept`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-matches"] }),
+  });
+
+  const declineMatchMutation = useMutation({
+    mutationFn: (matchId: number) => apiFetch(`/matches/${matchId}/decline`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["client-matches"] }),
+  });
+
+  const reviewingLawyers = useLawyerPresence(expandedCase);
 
   if (!user) {
     return (<>
@@ -175,6 +198,36 @@ export default function MyCases() {
                     </Link>
                   </div>
                 </div>
+                {(() => {
+                  const caseMatches = clientMatches.filter((m: any) => m.case_requirement_id === c.id);
+                  if (caseMatches.length === 0) return null;
+                  const isExpanded = expandedCase === c.id;
+                  return (
+                    <div className="mt-3 pt-3 border-t" style={{ borderColor: "#F1F5F9" }}>
+                      <button
+                        onClick={() => setExpandedCase(isExpanded ? null : c.id)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        {isExpanded ? "Hide" : "View"} matched lawyers ({caseMatches.length})
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-2 space-y-2">
+                          {caseMatches.map((m: any) => (
+                            <LawyerMatchCard
+                              key={m.id}
+                              match={m}
+                              isReviewing={reviewingLawyers.has(m.lawyer_id)}
+                              onAccept={(match) => acceptMatchMutation.mutate(match.id)}
+                              onDecline={(id) => declineMatchMutation.mutate(id)}
+                              testIdPrefix="my-cases-match"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </motion.div>
             );
           })}
