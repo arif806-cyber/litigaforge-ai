@@ -1,0 +1,54 @@
+import { useEffect, useState } from "react";
+
+function MatchRing({ score }) {
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 80 ? "#22c55e" : score >= 60 ? "#f59e0b" : "#ef4444";
+
+  return (
+    <div className="relative w-14 h-14">
+      <svg width="56" height="56" className="rotate-[-90deg]">
+        <circle cx="28" cy="28" r={radius} stroke="#e5e7eb" strokeWidth="4" fill="none" />
+        <circle
+          cx="28" cy="28" r={radius} stroke={color} strokeWidth="4" fill="none"
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold">
+        {score}%
+      </span>
+    </div>
+  );
+}
+
+export default function LawyerMatchCard({ lawyer, caseId, isReviewing, onRequest }) {
+  const [requested, setRequested] = useState(false);
+
+  return (
+    <div className="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+      <MatchRing score={lawyer.match_score} />
+      <img src={lawyer.photo_url} className="w-12 h-12 rounded-full object-cover" />
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm truncate">{lawyer.name}</div>
+        <div className="text-xs text-gray-500">{lawyer.specialty} · {lawyer.distance_km}km away</div>
+        <div className="text-xs text-amber-600 mt-0.5">⚡ Responds in ~{lawyer.avg_response_hours}h</div>
+        {isReviewing && (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[11px] text-green-600 font-medium">Reviewing your case now…</span>
+          </div>
+        )}
+      </div>
+      <button
+        disabled={requested}
+        onClick={() => { setRequested(true); onRequest(lawyer.id); }}
+        className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap
+          ${requested ? "bg-gray-200 text-gray-500" : "bg-blue-600 text-white active:scale-95"}`}
+      >
+        {requested ? "Requested ✓" : "Request"}
+      </button>
+    </div>
+  );
+}

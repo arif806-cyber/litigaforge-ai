@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { PaymentModal } from "@/components/PaymentModal";
 import { ScoreRing } from "@/components/case-file-os";
+import CaseProgressRail from "@/components/CaseProgressRail";
+import { LawyerMatchCard } from "@/components/LawyerMatchCard";
+import { useLawyerPresence } from "@/hooks/useLawyerPresence";
 
 interface MyRequirement {
   id: number; title: string; case_type: string; description: string;
@@ -195,6 +198,17 @@ export default function ClientDashboard() {
   const connectedLawyers = [...new Set(clientCases.map((c) => c.lawyer_id))].length;
   const pendingMatches = allMatches.filter((m) => m.status === "pending").length;
 
+  const currentStage = (() => {
+    if (activeCases > 0)       return "hired";
+    if (acceptedMatches > 0)   return "proposals";
+    if (pendingMatches > 0)    return "requested";
+    if (allMatches.length > 0) return "matched";
+    return "posted";
+  })();
+
+  const presenceCaseId = allMatches[0]?.case_requirement_id ?? null;
+  const reviewingIds = useLawyerPresence(presenceCaseId);
+
   const firstName = user?.name?.split(" ")[0] ?? "Client";
   const initials = (user?.name ?? "C").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   const { activeConfig, loading: countryLoading } = useCountry();
@@ -295,13 +309,8 @@ export default function ClientDashboard() {
           );
         })()}
 
-        {/* ── Stat Cards ───────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label={t.active_cases}  value={activeCases}      icon={Briefcase} iconBg="bg-blue-50"    iconColor="text-blue-600"    borderColor="#3b82f6" />
-          <StatCard label={t.hearings}      value={upcomingHearings} icon={Calendar}  iconBg="bg-amber-50"   iconColor="text-amber-600"   borderColor="#f59e0b" />
-          <StatCard label={t.my_lawyers}    value={connectedLawyers} icon={User}      iconBg="bg-emerald-50" iconColor="text-emerald-600" borderColor="#10b981" />
-          <StatCard label={t.posted}        value={activeReqs}       icon={FileText}  iconBg="bg-violet-50"  iconColor="text-violet-600"  borderColor="#8b5cf6" />
-        </div>
+        {/* ── Case Progress Rail ───────────────────────────────── */}
+        <CaseProgressRail currentStage={currentStage} />
 
         {/* ── Country Section ───────────────────────────────────── */}
         {!countryLoading && activeConfig && (
@@ -598,56 +607,14 @@ export default function ClientDashboard() {
                 )}
 
                 {!matchLoading && filteredMatches.map((m, i) => (
-                  <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                    className="rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all p-4">
-                    <div className="flex items-start gap-3">
-                      <ScoreRing score={m.match_score} size={48} showLabel={false} className="flex-shrink-0" data-testid={`dashboard-match-score-ring-${m.id}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div>
-                            <p className="font-semibold text-foreground text-sm">{m.lawyer_name}</p>
-                            <p className="text-[11px] text-muted-foreground">{m.district} · {m.experience_years}yr exp</p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-[11px] font-bold text-foreground">₹{m.hourly_rate}/hr</p>
-                            {m.rating > 0 && <p className="text-[10px] text-amber-500">★ {m.rating}</p>}
-                          </div>
-                        </div>
-                        <MatchScoreBar score={m.match_score} />
-                        {m.ai_explanation && (
-                          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed line-clamp-2">{m.ai_explanation}</p>
-                        )}
-                        {m.client_message && (
-                          <div className="mt-2 rounded-lg p-2.5 text-[11px] text-muted-foreground bg-muted border border-border">
-                            <span className="font-semibold text-foreground">Lawyer says:</span> {m.client_message}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-3 flex-wrap">
-                          {m.status === "pending" && (
-                            <>
-                              <button onClick={() => setPayingMatch(m)}
-                                className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-sm">
-                                <Lock className="w-3 h-3" /> Accept & Pay
-                              </button>
-                              <button onClick={() => declineMut.mutate(m.id)} disabled={declineMut.isPending}
-                                className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors">
-                                {declineMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Decline"}
-                              </button>
-                            </>
-                          )}
-                          {m.status === "accepted" && (
-                            <button onClick={() => setShowMessageModal({ matchId: m.id, lawyerName: m.lawyer_name })}
-                              className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition-colors">
-                              <MessageSquare className="w-3 h-3" /> Message
-                            </button>
-                          )}
-                          <button onClick={() => setShowMatchDetail(m)}
-                            className="text-xs font-semibold text-primary hover:underline transition-colors ml-auto">
-                            View Profile →
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                  <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                    <LawyerMatchCard
+                      match={m}
+                      isReviewing={reviewingIds.has(m.lawyer_id)}
+                      onAccept={(match) => setPayingMatch(match as any)}
+                      onDecline={(id) => declineMut.mutate(id)}
+                      testIdPrefix="dashboard-match-card"
+                    />
                   </motion.div>
                 ))}
               </div>

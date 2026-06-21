@@ -19,6 +19,7 @@ from routers.research      import router as research_router
 from routers.llm           import router as llm_router
 from routers.workspace        import router as workspace_router
 from routers.personalization  import router as personalization_router
+from routers.presence         import router as presence_router
 
 __all__ = [
     "auth_router",
@@ -39,4 +40,5 @@ __all__ = [
     "llm_router",
     "workspace_router",
     "personalization_router",
+    "presence_router",
 ]
