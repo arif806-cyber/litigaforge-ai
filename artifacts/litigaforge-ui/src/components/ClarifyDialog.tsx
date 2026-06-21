@@ -50,11 +50,14 @@ export function ClarifyDialog({
     setAnswers({});
     setGeneric({});
     setDetailsOpen(false);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     (async () => {
       try {
         const data: ClarifyResponse = await apiFetch("/clarify", {
           method: "POST",
           body: JSON.stringify({ text: baseText, surface, country }),
+          signal: controller.signal,
         });
         if (cancelled) return;
         const qs = Array.isArray(data?.questions) ? data.questions : [];
@@ -66,10 +69,11 @@ export function ClarifyDialog({
           setDetailsOpen(true);
         }
       } finally {
+        clearTimeout(timer);
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; controller.abort(); clearTimeout(timer); };
   }, [open, baseText, surface, country]);
 
   const compose = (): string => {
@@ -197,16 +201,16 @@ export function ClarifyDialog({
 
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
               <Button
+                type="button"
                 variant="ghost"
                 onClick={() => onProceed("")}
-                disabled={loading}
                 data-testid="clarify-skip"
               >
                 Skip
               </Button>
               <Button
+                type="button"
                 onClick={() => onProceed(compose())}
-                disabled={loading}
                 className="px-6 shadow-md"
                 data-testid="clarify-proceed"
               >
