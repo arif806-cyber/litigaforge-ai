@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import LawyerFunnelStepper from "./LawyerFunnelStepper";
 import { ClientPresenceBadge } from "./ClientPresenceBadge";
 import { ResponseTimerBadge } from "./ResponseTimerBadge";
+import { useClientOnlineStatus } from "@/hooks/useClientOnlineStatus";
 
 export interface CaseFeedItem {
   id: number;
@@ -47,6 +48,8 @@ export default function IncomingCaseFeed({
   useEffect(() => {
     if (current) onView?.(current);
   }, [index, current?.id]);
+
+  const clientIsOnline = useClientOnlineStatus(current?.case_requirement_id);
 
   if (!current) return <EmptyState />;
 
@@ -107,7 +110,7 @@ export default function IncomingCaseFeed({
           {current.budget && <span>💰 {current.budget}</span>}
         </div>
 
-        <ClientPresenceBadge isOnline={current.clientIsOnline ?? false} />
+        <ClientPresenceBadge isOnline={clientIsOnline} />
 
         <div className="mt-3">
           <LawyerFunnelStepper currentIndex={current.funnelIndex ?? 0} />

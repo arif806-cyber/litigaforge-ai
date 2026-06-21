@@ -18,6 +18,7 @@ import { useCountry } from "@/hooks/useCountry";
 import { formatDate } from "@/lib/locale";
 import { LawyerMatchCard } from "@/components/LawyerMatchCard";
 import { useLawyerPresence } from "@/hooks/useLawyerPresence";
+import { useClientPresence } from "@/hooks/useClientPresence";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   open:     { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" },
@@ -76,6 +77,8 @@ export default function MyCases() {
   });
 
   const reviewingLawyers = useLawyerPresence(expandedCase);
+  const heartbeatCaseId = expandedCase ?? ((data as any)?.cases?.[0]?.id ?? null);
+  useClientPresence(heartbeatCaseId);
 
   if (!user) {
     return (<>
