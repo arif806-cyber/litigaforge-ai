@@ -1,0 +1,67 @@
+Implement persistent, resumable chat history for LitigaForge's lawyer-client messaging feature.
+
+CONTEXT: We have chat_threads and need to verify/build chat_messages persistence, paginated history loading, and cross-device read tracking.
+
+1. DATABASE — add/verify these models in models.py:
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(Integer, primary_key=True)
+    thread_id = Column(Integer, ForeignKey("chat_threads.id"), index=True)
+    sender_id = Column(Integer, nullable=False)
+    sender_type = Column(String, nullable=False)  # "client" or "lawyer"
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+class ThreadReadState(Base):
+    __tablename__ = "thread_read_state"
+    id = Column(Integer, primary_key=True)
+    thread_id = Column(Integer, ForeignKey("chat_threads.id"), index=True)
+    user_id = Column(Integer, nullable=False)
+    last_read_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint('thread_id', 'user_id', name='_thread_user_uc'),)
+
+Run the migration (alembic revision --autogenerate -m "add chat persistence" then alembic upgrade head). If alembic isn't set up, just create the tables directly via Base.metadata.create_all.
+
+2. BACKEND ENDPOINTS — add to the chat router:
+
+GET /api/chat/threads/{thread_id}/messages?before={iso_timestamp}&limit=50
+- Returns messages for thread_id, ordered oldest-to-newest
+- If "before" param provided, return messages with created_at < before (for infinite scroll up)
+- Default limit 50
+- Verify user has access to this thread (is either the client_id or lawyer_id on the thread) before returning
+
+POST /api/chat/threads/{thread_id}/messages
+- Create a new ChatMessage row
+- Update chat_threads.last_message_at to now
+- Broadcast via existing WebSocket connection manager: 
+  await manager.broadcast(thread_id, {"event": "new_message", "message": serialized_message})
+- Return the created message
+
+POST /api/chat/threads/{thread_id}/mark-read
+- Upsert ThreadReadState for (thread_id, current_user.id) with last_read_at = now
+
+GET /api/chat/threads (UPDATE existing endpoint)
+- For each thread, also return: unread_count = count of messages where created_at > current user's last_read_at for that thread (treat missing ThreadReadState as epoch 0, meaning everything unread)
+- Sort threads by last_message_at descending
+
+3. FRONTEND — useMessages.js hook:
+
+- On mount: fetch latest 50 messages for the thread (no "before" param)
+- Expose loadOlder() that fetches with before = timestamp of oldest currently-loaded message, and prepends to the list
+- Subscribe to the existing WebSocket connection for this thread_id; on "new_message" event, append to message list
+- On thread open, call POST /mark-read immediately, and again on new_message events while thread is open
+- Replace any localStorage/sessionStorage-based unread tracking with the GET /api/chat/threads unread_count field from the backend
+
+4. FRONTEND — MessagesPage.jsx:
+
+- On scroll-to-top of the conversation panel, trigger loadOlder() (infinite scroll pagination)
+- Remove the 5-second polling interval for message refresh — rely entirely on the WebSocket "new_message" event
+- Remove the 15-second polling interval for the unread badge — refetch /api/chat/threads on WebSocket "new_message" event instead, or maintain a local counter that increments on receipt
+
+5. TEST before marking done:
+- Send a message, refresh the page, confirm full history loads (not just latest few)
+- Open the same thread on two different browser sessions, confirm unread count matches on both
+- Scroll up in a thread with 100+ messages, confirm older messages load without duplicating
+
+Do not remove the existing accept-match → auto-create-thread logic — only touch message persistence, pagination, and read tracking.
