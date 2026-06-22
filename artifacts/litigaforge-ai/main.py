@@ -607,6 +607,26 @@ async def lifespan(app: FastAPI):
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_lawyer_cases_client ON lawyer_cases (client_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_thread ON chat_messages (thread_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_client_documents_client ON client_documents (client_id)")
+        # ── Thread read state + last_message_at on chat_threads ──────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS thread_read_state (
+                    id SERIAL PRIMARY KEY,
+                    thread_id INTEGER REFERENCES chat_threads(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL,
+                    last_read_at TIMESTAMPTZ DEFAULT NOW(),
+                    CONSTRAINT _thread_user_uc UNIQUE (thread_id, user_id)
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_thread_read_state_thread_user ON thread_read_state (thread_id, user_id)"
+            )
+            await conn.execute(
+                "ALTER TABLE chat_threads ADD COLUMN IF NOT EXISTS last_message_at TIMESTAMPTZ"
+            )
+            logger.info("thread_read_state table + chat_threads.last_message_at ready")
+        except Exception as me:
+            logger.warning("thread_read_state init: %s", me)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions (user_id)")
         # ── Migrations ──
         try:

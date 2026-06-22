@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquare, Send, ArrowLeft, Loader2, User, Scale,
-  CheckCheck, Clock, X, Plus,
+  CheckCheck, Plus, ChevronUp,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -22,6 +22,7 @@ interface ChatThread {
   client_name: string | null;
   last_message: string | null;
   last_message_at: string | null;
+  unread_count: number;
 }
 
 interface ChatMessage {
@@ -33,30 +34,14 @@ interface ChatMessage {
   created_at: string;
 }
 
-/* ── localStorage helpers for unread tracking ───────────────── */
-const STORAGE_KEY = (threadId: number) => `lf_thread_read_${threadId}`;
-
-function markRead(threadId: number) {
-  try { localStorage.setItem(STORAGE_KEY(threadId), new Date().toISOString()); } catch { }
-}
-
-function isUnread(thread: ChatThread): boolean {
-  if (!thread.last_message_at) return false;
-  try {
-    const last = localStorage.getItem(STORAGE_KEY(thread.id));
-    if (!last) return true;
-    return new Date(thread.last_message_at) > new Date(last);
-  } catch { return false; }
-}
-
 /* ── Thread list item ────────────────────────────────────────── */
 function ThreadRow({
-  thread, active, currentUserId, role, onClick,
+  thread, active, role, onClick,
 }: {
   thread: ChatThread; active: boolean;
-  currentUserId: number; role: string; onClick: () => void;
+  role: string; onClick: () => void;
 }) {
-  const unread = isUnread(thread);
+  const unread = thread.unread_count > 0;
   const otherParty = role === "lawyer" ? (thread.client_name ?? "Client") : thread.lawyer_name;
   const initials = otherParty.split(" ").map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2);
 
@@ -95,7 +80,9 @@ function ThreadRow({
         )}
       </div>
       {unread && (
-        <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+        <div className="flex-shrink-0 mt-2 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+          {thread.unread_count > 9 ? "9+" : thread.unread_count}
+        </div>
       )}
     </button>
   );
@@ -191,7 +178,6 @@ function NoThreads({ role }: { role: string }) {
 /* ── Main Page ───────────────────────────────────────────────── */
 export default function Messages() {
   const { user } = useAuth();
-  const [location] = useLocation();
   const qc = useQueryClient();
 
   // Parse ?match=N or ?thread=N from URL
@@ -205,19 +191,26 @@ export default function Messages() {
   const [mobileView, setMobileView] = useState<"list" | "messages">("list");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Local message list — managed manually to support WS push + infinite scroll
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+
   const endRef = useRef<HTMLDivElement>(null);
+  const msgContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  /* ── Threads ── */
+  /* ── Threads query (no polling — WS events trigger invalidation) ── */
   const { data: threadsData, isLoading: threadsLoading } = useQuery({
     queryKey: ["chat-threads"],
     queryFn: () => apiFetch("/chat/threads"),
     enabled: !!user,
-    refetchInterval: 10_000,
+    staleTime: 15_000,
   });
   const threads: ChatThread[] = threadsData?.threads ?? [];
 
-  // Auto-select by match_id from URL
+  // Auto-select by match_id or thread_id from URL
   useEffect(() => {
     if (!threads.length) return;
     if (initMatchId && !activeThreadId) {
@@ -230,24 +223,145 @@ export default function Messages() {
 
   const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
 
-  /* ── Messages ── */
+  /* ── Initial message load (latest 50) ── */
   const { data: messagesData, isLoading: msgsLoading } = useQuery({
-    queryKey: ["chat-messages", activeThreadId],
+    queryKey: ["chat-messages-init", activeThreadId],
     queryFn: () => apiFetch(`/chat/threads/${activeThreadId}/messages`),
     enabled: !!activeThreadId,
-    refetchInterval: 5_000,
+    staleTime: Infinity, // WS handles updates; no background refetch
   });
-  const messages: ChatMessage[] = messagesData?.messages ?? [];
 
-  // Scroll to bottom on new messages
+  // Seed localMessages from initial fetch
+  useEffect(() => {
+    if (messagesData?.messages) {
+      setLocalMessages(messagesData.messages);
+      setHasOlderMessages((messagesData.messages as ChatMessage[]).length >= 50);
+    }
+  }, [messagesData]);
+
+  // Reset on thread switch
+  useEffect(() => {
+    setLocalMessages([]);
+    setHasOlderMessages(true);
+    setLoadingOlder(false);
+  }, [activeThreadId]);
+
+  /* ── Mark read on thread open ── */
+  useEffect(() => {
+    if (!activeThreadId) return;
+    apiFetch(`/chat/threads/${activeThreadId}/mark-read`, { method: "POST" }).catch(() => {});
+  }, [activeThreadId]);
+
+  /* ── WebSocket subscription ── */
+  useEffect(() => {
+    if (!activeThreadId) return;
+    const token = typeof window !== "undefined"
+      ? (localStorage.getItem("lf_token") ?? "")
+      : "";
+    const proto = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = typeof window !== "undefined" ? window.location.host : "";
+    const wsUrl = `${proto}//${host}/litigaforge/ws/chat/${activeThreadId}?token=${encodeURIComponent(token)}`;
+
+    let ws: WebSocket;
+    let closed = false;
+    let pingInterval: ReturnType<typeof setInterval> | null = null;
+
+    const connect = () => {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        // Keep-alive ping every 25 s
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) ws.send("ping");
+        }, 25_000);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.event === "new_message") {
+            const msg: ChatMessage = data.message;
+            setLocalMessages((prev) => {
+              if (prev.some((m) => m.id === msg.id)) return prev;
+              return [...prev, msg];
+            });
+            // Mark read since thread is open, refresh thread list for badge update
+            apiFetch(`/chat/threads/${activeThreadId}/mark-read`, { method: "POST" }).catch(() => {});
+            qc.invalidateQueries({ queryKey: ["chat-threads"] });
+          }
+        } catch { /* ignore parse errors */ }
+      };
+
+      ws.onclose = () => {
+        if (pingInterval) clearInterval(pingInterval);
+        // Reconnect after 3 s unless the effect was cleaned up
+        if (!closed) setTimeout(connect, 3_000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    };
+
+    connect();
+    return () => {
+      closed = true;
+      if (pingInterval) clearInterval(pingInterval);
+      ws?.close();
+    };
+  }, [activeThreadId, qc]);
+
+  /* ── Scroll to bottom on new messages ── */
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [localMessages.length]);
 
-  // Mark as read when viewing
+  /* ── Load older messages (cursor pagination) ── */
+  const loadOlder = useCallback(async () => {
+    if (loadingOlder || !hasOlderMessages || !localMessages.length || !activeThreadId) return;
+    const oldest = localMessages[0];
+    const container = msgContainerRef.current;
+    const scrollHeightBefore = container?.scrollHeight ?? 0;
+
+    setLoadingOlder(true);
+    try {
+      const data = await apiFetch(
+        `/chat/threads/${activeThreadId}/messages?before=${encodeURIComponent(oldest.created_at)}`
+      );
+      const older: ChatMessage[] = data.messages ?? [];
+      if (older.length === 0) {
+        setHasOlderMessages(false);
+        return;
+      }
+      setHasOlderMessages(older.length >= 50);
+      setLocalMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const newOnes = older.filter((m) => !existingIds.has(m.id));
+        return [...newOnes, ...prev];
+      });
+      // Restore scroll position after prepend
+      requestAnimationFrame(() => {
+        if (container) {
+          container.scrollTop = container.scrollHeight - scrollHeightBefore;
+        }
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [activeThreadId, localMessages, loadingOlder, hasOlderMessages]);
+
+  /* ── Scroll-to-top triggers loadOlder ── */
   useEffect(() => {
-    if (activeThreadId) markRead(activeThreadId);
-  }, [activeThreadId, messages.length]);
+    const el = msgContainerRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      if (el.scrollTop < 10 && hasOlderMessages && !loadingOlder) {
+        loadOlder();
+      }
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [loadOlder, hasOlderMessages, loadingOlder]);
 
   /* ── Send ── */
   const sendMut = useMutation({
@@ -257,7 +371,6 @@ export default function Messages() {
         body: JSON.stringify({ thread_id: activeThreadId, content }),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["chat-messages", activeThreadId] });
       qc.invalidateQueries({ queryKey: ["chat-threads"] });
       setDraft("");
     },
@@ -282,9 +395,7 @@ export default function Messages() {
 
   const selectThread = (thread: ChatThread) => {
     setActiveThreadId(thread.id);
-    markRead(thread.id);
     setMobileView("messages");
-    // Update URL without reload
     const url = new URL(window.location.href);
     url.searchParams.set("thread", String(thread.id));
     url.searchParams.delete("match");
@@ -297,8 +408,7 @@ export default function Messages() {
       : activeThread.lawyer_name)
     : null;
 
-  /* ── Unread count for the header badge ── */
-  const unreadCount = threads.filter(isUnread).length;
+  const unreadCount = threads.reduce((sum, t) => sum + (t.unread_count ?? 0), 0);
 
   if (!user) return null;
 
@@ -311,7 +421,6 @@ export default function Messages() {
       />
 
       <div className="h-full flex flex-col overflow-hidden">
-        {/* ── Thread list + message panel ── */}
         <div className="flex flex-1 overflow-hidden">
 
           {/* ── Thread list ── */}
@@ -344,7 +453,6 @@ export default function Messages() {
                       <ThreadRow
                         thread={t}
                         active={t.id === activeThreadId}
-                        currentUserId={user.id}
                         role={user.role}
                         onClick={() => selectThread(t)}
                       />
@@ -385,12 +493,28 @@ export default function Messages() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto py-3 space-y-1">
+                <div ref={msgContainerRef} className="flex-1 overflow-y-auto py-3 space-y-1">
+                  {/* Load older indicator */}
+                  {hasOlderMessages && localMessages.length > 0 && (
+                    <div className="flex justify-center py-2">
+                      {loadingOlder ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <button
+                          onClick={loadOlder}
+                          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" /> Load older messages
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {msgsLoading ? (
                     <div className="py-12 text-center">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
                     </div>
-                  ) : messages.length === 0 ? (
+                  ) : localMessages.length === 0 ? (
                     <div className="py-12 text-center px-6">
                       <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-3">
                         <MessageSquare className="w-6 h-6 text-muted-foreground" />
@@ -401,7 +525,7 @@ export default function Messages() {
                       </p>
                     </div>
                   ) : (
-                    messages.map((msg) => (
+                    localMessages.map((msg) => (
                       <MessageBubble key={msg.id} msg={msg} currentUserId={user.id} />
                     ))
                   )}

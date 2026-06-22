@@ -68,18 +68,10 @@ function useUnreadCount() {
     queryKey: ["chat-threads"],
     queryFn: () => apiFetch("/chat/threads"),
     enabled: !!user,
-    refetchInterval: 15_000,
-    staleTime: 10_000,
+    staleTime: 15_000,
   });
-  const threads: Array<{ id: number; last_message_at: string | null }> = data?.threads ?? [];
-  return threads.filter((t) => {
-    if (!t.last_message_at) return false;
-    try {
-      const key = `lf_thread_read_${t.id}`;
-      const last = localStorage.getItem(key);
-      return !last || new Date(t.last_message_at) > new Date(last);
-    } catch { return false; }
-  }).length;
+  const threads: Array<{ unread_count?: number }> = data?.threads ?? [];
+  return threads.reduce((sum, t) => sum + (t.unread_count ?? 0), 0);
 }
 
 /* ─── Nav Item ─── */
