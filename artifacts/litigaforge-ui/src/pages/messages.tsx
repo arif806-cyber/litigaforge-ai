@@ -228,7 +228,8 @@ export default function Messages() {
     queryKey: ["chat-messages-init", activeThreadId],
     queryFn: () => apiFetch(`/chat/threads/${activeThreadId}/messages`),
     enabled: !!activeThreadId,
-    staleTime: Infinity, // WS handles updates; no background refetch
+    // staleTime defaults to 0 so revisiting a thread always refetches fresh history;
+    // WS handles real-time push while the thread is active.
   });
 
   // Seed localMessages from initial fetch
@@ -246,11 +247,13 @@ export default function Messages() {
     setLoadingOlder(false);
   }, [activeThreadId]);
 
-  /* ── Mark read on thread open ── */
+  /* ── Mark read on thread open (clears badge immediately) ── */
   useEffect(() => {
     if (!activeThreadId) return;
-    apiFetch(`/chat/threads/${activeThreadId}/mark-read`, { method: "POST" }).catch(() => {});
-  }, [activeThreadId]);
+    apiFetch(`/chat/threads/${activeThreadId}/mark-read`, { method: "POST" })
+      .then(() => qc.invalidateQueries({ queryKey: ["chat-threads"] }))
+      .catch(() => {});
+  }, [activeThreadId, qc]);
 
   /* ── WebSocket subscription ── */
   useEffect(() => {
