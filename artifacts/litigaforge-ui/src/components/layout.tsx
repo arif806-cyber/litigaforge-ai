@@ -5,8 +5,10 @@ import {
   Scale, FileText, Menu, X,
   Crown, LogOut, User as UserIcon,
   Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper,
-  Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users, Zap
+  Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users, Zap, Inbox,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
@@ -30,12 +32,14 @@ const clientNav: NavEntry[] = [
   { href: "/post-case",        label: "Post a Case",     icon: Plus,      tKey: "post_case" },
   { href: "/my-cases",         label: "My Cases",        icon: FileText,  tKey: "my_cases" },
   { href: "/matches",          label: "Match Proposals", icon: Sparkles,  tKey: "match_proposals" },
+  { href: "/messages",         label: "Messages",        icon: Inbox },
   { href: "/documents",        label: "Documents",       icon: FileCheck, tKey: "documents" },
 ];
 
 const lawyerNav: NavEntry[] = [
   { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star,      tKey: "dashboard" },
   { href: "/matches",          label: "Client Requests",  icon: Users,     tKey: "client_requests" },
+  { href: "/messages",         label: "Messages",         icon: Inbox },
   { href: "/review",           label: "Doc Analyzer",     icon: FileSearch, tKey: "doc_analyzer" },
   { href: "/subscription",     label: "Profile & Plans",  icon: Crown,     tKey: "profile_plans" },
 ];
@@ -57,11 +61,32 @@ function navLabel(item: NavEntry, t: Translation): string {
   return item.tKey && t[item.tKey] ? t[item.tKey] : item.label;
 }
 
+/* ─── Unread messages hook ─── */
+function useUnreadCount() {
+  const { user } = useAuth();
+  const { data } = useQuery({
+    queryKey: ["chat-threads"],
+    queryFn: () => apiFetch("/chat/threads"),
+    enabled: !!user,
+    refetchInterval: 15_000,
+    staleTime: 10_000,
+  });
+  const threads: Array<{ id: number; last_message_at: string | null }> = data?.threads ?? [];
+  return threads.filter((t) => {
+    if (!t.last_message_at) return false;
+    try {
+      const key = `lf_thread_read_${t.id}`;
+      const last = localStorage.getItem(key);
+      return !last || new Date(t.last_message_at) > new Date(last);
+    } catch { return false; }
+  }).length;
+}
+
 /* ─── Nav Item ─── */
 function NavItem({
-  href, label, icon: Icon, location, onClick, testId, highlight,
+  href, label, icon: Icon, location, onClick, testId, highlight, badge,
 }: {
-  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string; highlight?: boolean;
+  href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string; highlight?: boolean; badge?: number;
 }) {
   const active = href === "/" ? location === "/" : location.startsWith(href);
   return (
@@ -89,8 +114,13 @@ function NavItem({
         "w-4 h-4 flex-shrink-0",
         active ? "text-sidebar-primary-foreground" : highlight ? "text-teal-400" : "group-hover:text-sidebar-foreground"
       )} />
-      <span className={cn("tracking-wide", highlight && !active ? "text-teal-400" : "")}>{label}</span>
-      {highlight && !active && (
+      <span className={cn("tracking-wide flex-1", highlight && !active ? "text-teal-400" : "")}>{label}</span>
+      {badge != null && badge > 0 && !active && (
+        <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+      {highlight && !active && !badge && (
         <span className="ml-auto text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded"
           style={{ background: "rgba(20,184,166,0.18)", color: "#2dd4bf" }}>
           NEW
@@ -164,6 +194,7 @@ function SidebarContent({
   user: User | null;
 }) {
   const { t } = useLanguage();
+  const unreadCount = useUnreadCount();
   const isClient = user?.role !== "lawyer";
   const roleNav = isClient ? clientNav : lawyerNav;
   const roleLabel = isClient ? "Client" : "Advocate";
@@ -200,6 +231,7 @@ function SidebarContent({
             testId={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
             location={location}
             onClick={onNav}
+            badge={item.href === "/messages" ? unreadCount : undefined}
           />
         ))}
 
@@ -222,13 +254,117 @@ function SidebarContent({
   );
 }
 
+/* ─── Bottom Tab Bar ─── */
+function BottomTabBar({ location, user }: { location: string; user: User | null }) {
+  const { t } = useLanguage();
+  const unreadCount = useUnreadCount();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const openDrawer = useCallback(() => setDrawerOpen(true), []);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+
+  useEffect(() => { closeDrawer(); }, [location, closeDrawer]);
+
+  return (
+    <>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
+        {(user?.role === "lawyer" ? lawyerNav : clientNav).map((item) => {
+          const { href, icon: Icon } = item;
+          const active = href === "/" ? location === "/" : location.startsWith(href);
+          const badge = item.href === "/messages" ? unreadCount : 0;
+          return (
+            <Link key={href} href={href}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl transition-all duration-200 active:scale-95",
+                active ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              <div className={cn(
+                "flex items-center justify-center w-10 h-10 rounded-xl transition-all relative",
+                active ? "bg-primary/10" : ""
+              )}>
+                <Icon className={cn("w-[22px] h-[22px] transition-colors", active ? "text-primary" : "text-muted-foreground")} />
+                {badge > 0 && !active && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
+              </div>
+              <span className={cn("text-[11px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>
+                {navLabel(item, t)}
+              </span>
+            </Link>
+          );
+        })}
+        <button
+          onPointerDown={openDrawer}
+          className="flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl active:scale-95 transition-all"
+        >
+          <div className={cn(
+            "flex items-center justify-center w-10 h-10 rounded-xl transition-all",
+            commonNav.some(s => location.startsWith(s.href)) ? "bg-primary/10" : ""
+          )}>
+            <Menu className={cn("w-[22px] h-[22px] transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
+          </div>
+          <span className={cn("text-[11px] font-medium leading-none", commonNav.some(s => location.startsWith(s.href)) ? "text-primary font-semibold" : "text-muted-foreground")}>
+            More
+          </span>
+        </button>
+      </nav>
+      {/* Drawer for "More" on mobile */}
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {drawerOpen && (
+            <>
+              <motion.div key="btm-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 9996 }}
+                onPointerDown={closeDrawer}
+              />
+              <motion.div key="btm-drawer" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 380, damping: 36 }}
+                style={{ zIndex: 9997 }}
+                className="fixed bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-2xl shadow-2xl pb-safe"
+              >
+                <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Legal Tools</p>
+                  <button onPointerDown={closeDrawer} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center">
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+                <div className="px-3 pb-6 grid grid-cols-3 gap-2">
+                  {commonNav.map((item) => {
+                    const { href, icon: Icon, label } = item;
+                    const active = location.startsWith(href);
+                    return (
+                      <Link key={href} href={href} onClick={closeDrawer}
+                        style={{ touchAction: "manipulation" }}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors active:scale-95",
+                          active ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground"
+                        )}
+                      >
+                        <Icon className={cn("w-5 h-5", active ? "text-primary" : "text-muted-foreground")} />
+                        <span className="text-[11px] font-medium leading-tight">{label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
+  );
+}
+
 /* ─── Main Layout ─── */
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { t } = useLanguage();
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const openDrawer  = useCallback(() => setDrawerOpen(true),  []);
@@ -384,45 +520,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
-        {(user?.role === "lawyer" ? lawyerNav : clientNav).map((item) => {
-          const { href, icon: Icon } = item;
-          const active = href === "/" ? location === "/" : location.startsWith(href);
-          return (
-            <Link key={href} href={href}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl transition-all duration-200 active:scale-95",
-                active ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              <div className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-xl transition-all",
-                active ? "bg-primary/10" : ""
-              )}>
-                <Icon className={cn("w-[22px] h-[22px] transition-colors", active ? "text-primary" : "text-muted-foreground")} />
-              </div>
-              <span className={cn("text-[11px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>
-                {navLabel(item, t)}
-              </span>
-            </Link>
-          );
-        })}
-        <button
-          onPointerDown={openDrawer}
-          className="flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl active:scale-95 transition-all"
-        >
-          <div className={cn(
-            "flex items-center justify-center w-10 h-10 rounded-xl transition-all",
-            commonNav.some(s => location.startsWith(s.href)) ? "bg-primary/10" : ""
-          )}>
-            <Menu className={cn("w-[22px] h-[22px] transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
-          </div>
-          <span className={cn("text-[11px] font-medium leading-none", commonNav.some(s => location.startsWith(s.href)) ? "text-primary font-semibold" : "text-muted-foreground")}>
-            More
-          </span>
-        </button>
-      </nav>
+      <BottomTabBar location={location} user={user} />
     </div>
   );
 }

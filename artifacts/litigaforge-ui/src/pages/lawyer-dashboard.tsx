@@ -285,7 +285,13 @@ export default function LawyerDashboard() {
 
   const acceptLeadMut = useMutation({
     mutationFn: (matchId: number) => apiFetch(`/matches/${matchId}/accept`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["lawyer-matches"] }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["lawyer-matches"] });
+      qc.invalidateQueries({ queryKey: ["chat-threads"] });
+      if (data?.thread_id) {
+        setLocation(`/messages?thread=${data.thread_id}`);
+      }
+    },
   });
 
   const declineLeadMut = useMutation({

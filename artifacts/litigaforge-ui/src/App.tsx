@@ -58,6 +58,7 @@ const RefundPolicy        = lazy(() => import("@/pages/refund-policy"));
 const UsDemandLetter      = lazy(() => import("@/pages/us-demand-letter"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
 const ForgeWorkspace      = lazy(() => import("@/pages/workspace"));
+const MessagesPage        = lazy(() => import("@/pages/messages"));
 const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
 // DEV-only Case File OS gallery. import.meta.env.DEV is statically replaced by
 // Vite, so this whole branch (and its chunk) is tree-shaken out of prod builds.
@@ -330,6 +331,7 @@ function Router() {
               <Route path="/blog/:slug"    component={() => <ErrorBoundary section="blog-post"><BlogPost /></ErrorBoundary>} />
               <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
               <Route path="/workspace"    component={() => <ErrorBoundary section="workspace"><ProtectedRoute component={ForgeWorkspace} /></ErrorBoundary>} />
+              <Route path="/messages"    component={() => <ErrorBoundary section="messages"><ProtectedRoute component={MessagesPage} /></ErrorBoundary>} />
               <Route component={NotFound} />
             </Switch>
           </Layout>

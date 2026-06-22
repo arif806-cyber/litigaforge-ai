@@ -186,7 +186,7 @@ export default function ClientDashboard() {
   });
   const sendMsgMut = useMutation({
     mutationFn: ({ threadId, content }: { threadId: number; content: string }) =>
-      apiFetch(`/chat/messages/${threadId}`, { method: "POST", body: JSON.stringify({ content }) }),
+      apiFetch("/chat/messages", { method: "POST", body: JSON.stringify({ thread_id: threadId, content }) }),
     onSuccess: () => { setMessageText(""); setShowMessageModal(null); qc.invalidateQueries({ queryKey: ["chat-threads"] }); },
   });
 

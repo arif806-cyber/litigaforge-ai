@@ -173,15 +173,24 @@ async def list_chat_threads(current_user: Optional[dict] = Depends(get_current_u
     if not current_user:
         raise HTTPException(401, "Login required")
     rows = await fetch(
-        """SELECT t.id, t.title, t.created_at,
+        """SELECT t.id, t.match_id, t.title, t.created_at,
                   m.case_requirement_id, m.lawyer_id, m.client_id,
-                  c.title as case_title, l.name as lawyer_name
+                  c.title as case_title, l.name as lawyer_name,
+                  uc.name as client_name,
+                  (SELECT content FROM chat_messages
+                   WHERE thread_id = t.id ORDER BY created_at DESC LIMIT 1) as last_message,
+                  (SELECT created_at::text FROM chat_messages
+                   WHERE thread_id = t.id ORDER BY created_at DESC LIMIT 1) as last_message_at
            FROM chat_threads t
            JOIN matches m ON t.match_id = m.id
            JOIN case_requirements c ON m.case_requirement_id = c.id
            JOIN lawyers l ON m.lawyer_id = l.id
+           LEFT JOIN users uc ON uc.id = m.client_id
            WHERE m.client_id = $1 OR m.lawyer_id IN (SELECT id FROM lawyers WHERE user_id = $2)
-           ORDER BY t.created_at DESC""",
+           ORDER BY COALESCE(
+               (SELECT created_at FROM chat_messages WHERE thread_id = t.id ORDER BY created_at DESC LIMIT 1),
+               t.created_at
+           ) DESC""",
         current_user["id"], current_user["id"],
     )
     for r in rows:

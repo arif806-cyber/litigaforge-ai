@@ -519,7 +519,28 @@ async def accept_match(
         "UPDATE matches SET status='accepted', updated_at=CURRENT_TIMESTAMP WHERE id=$1",
         match_id,
     )
-    return {"message": "Match accepted"}
+
+    # Auto-create a chat thread for this match (idempotent)
+    existing_thread = await fetchrow(
+        "SELECT id FROM chat_threads WHERE match_id = $1", match_id
+    )
+    if existing_thread:
+        thread_id = existing_thread["id"]
+    else:
+        case_row = await fetchrow(
+            """SELECT cr.title FROM case_requirements cr
+               JOIN matches m ON m.case_requirement_id = cr.id
+               WHERE m.id = $1""",
+            match_id,
+        )
+        case_title = case_row["title"] if case_row else "Legal Consultation"
+        new_thread = await fetchrow(
+            "INSERT INTO chat_threads (match_id, title) VALUES ($1, $2) RETURNING id",
+            match_id, case_title,
+        )
+        thread_id = new_thread["id"] if new_thread else None
+
+    return {"message": "Match accepted", "thread_id": thread_id}
 
 
 @router.post("/matches/{match_id}/decline")
