@@ -329,6 +329,7 @@ export default function LawyerDashboard() {
 
   // ── Verification wall ──
   if (user?.role === "lawyer" && !user?.is_verified) {
+    const hasSubmittedProfile = !!user?.lawyer_status;
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center px-4"
@@ -348,73 +349,130 @@ export default function LawyerDashboard() {
             <span className="text-xl font-bold text-gray-900">LitigaForge AI</span>
           </div>
 
-          {/* Card */}
-          <div className="rounded-2xl bg-card shadow-lg border border-border px-8 py-10">
-            <motion.div
-              animate={{ rotate: [0, -8, 8, -8, 8, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-              style={{ background: "#EFF6FF", border: "1.5px solid #BFDBFE" }}
-            >
-              <Hourglass className="w-7 h-7 text-blue-500" />
-            </motion.div>
+          {hasSubmittedProfile ? (
+            /* ── State 2: Profile submitted, pending admin review ── */
+            <div className="rounded-2xl bg-card shadow-lg border border-border px-8 py-10">
+              <motion.div
+                animate={{ rotate: [0, -8, 8, -8, 8, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                style={{ background: "#EFF6FF", border: "1.5px solid #BFDBFE" }}
+              >
+                <Hourglass className="w-7 h-7 text-blue-500" />
+              </motion.div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Awaiting Verification</h1>
-            <p className="text-sm text-gray-500 leading-relaxed mb-6">
-              Your profile has been submitted. Our team will review your credentials and
-              verify your account — usually within 24 hours.
-            </p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Awaiting Verification</h1>
+              <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                Your profile has been submitted. Our team will review your credentials and
+                verify your account — usually within 24 hours.
+              </p>
 
-            {/* Steps */}
-            <div className="space-y-3 text-left mb-6">
-              {[
-                { label: "Profile submitted", done: true },
-                { label: "Credentials review", done: false, active: true },
-                { label: "Account activated", done: false },
-              ].map(({ label, done, active }) => (
-                <div key={label} className="flex items-center gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: done ? "#ECFDF5" : active ? "#EFF6FF" : "#F1F5F9",
-                      border: `1.5px solid ${done ? "#6EE7B7" : active ? "#93C5FD" : "#E2E8F0"}`,
-                    }}
-                  >
-                    {done ? (
-                      <Check className="w-3 h-3 text-emerald-500" />
-                    ) : active ? (
-                      <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
-                    ) : (
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                    )}
+              <div className="space-y-3 text-left mb-6">
+                {[
+                  { label: "Profile submitted", done: true },
+                  { label: "Credentials review", done: false, active: true },
+                  { label: "Account activated", done: false },
+                ].map(({ label, done, active }) => (
+                  <div key={label} className="flex items-center gap-3">
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: done ? "#ECFDF5" : active ? "#EFF6FF" : "#F1F5F9",
+                        border: `1.5px solid ${done ? "#6EE7B7" : active ? "#93C5FD" : "#E2E8F0"}`,
+                      }}
+                    >
+                      {done ? (
+                        <Check className="w-3 h-3 text-emerald-500" />
+                      ) : active ? (
+                        <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
+                      ) : (
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      )}
+                    </div>
+                    <span
+                      className="text-sm"
+                      style={{ color: done ? "#059669" : active ? "#2563EB" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
+                    >
+                      {label}
+                    </span>
                   </div>
-                  <span
-                    className="text-sm"
-                    style={{ color: done ? "#059669" : active ? "#2563EB" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
-                  >
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Polling notice */}
-            <div
-              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-blue-600 mb-4"
-              style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}
-            >
-              <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
-              <span>Checking for updates every 30 seconds — this page will refresh automatically once approved.</span>
-            </div>
+              <div
+                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-blue-600 mb-4"
+                style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}
+              >
+                <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+                <span>Checking for updates every 30 seconds — this page will refresh automatically once approved.</span>
+              </div>
 
-            <button
-              onClick={() => refreshUser()}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
-              style={{ background: "#1a2744", color: "#ffffff" }}
-            >
-              Check now
-            </button>
-          </div>
+              <button
+                onClick={() => refreshUser()}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{ background: "#1a2744", color: "#ffffff" }}
+              >
+                Check now
+              </button>
+            </div>
+          ) : (
+            /* ── State 1: Registered as lawyer but profile not yet submitted ── */
+            <div className="rounded-2xl bg-card shadow-lg border border-border px-8 py-10">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                style={{ background: "#FEF3C7", border: "1.5px solid #FDE68A" }}
+              >
+                <User className="w-7 h-7 text-amber-500" />
+              </div>
+
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Profile</h1>
+              <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                One more step! Submit your advocate profile — bar number, district, and practice areas — so our team can verify you and activate your account.
+              </p>
+
+              <div className="space-y-3 text-left mb-6">
+                {[
+                  { label: "Account created", done: true },
+                  { label: "Submit advocate profile", done: false, active: true },
+                  { label: "Admin verification", done: false },
+                  { label: "Account activated", done: false },
+                ].map(({ label, done, active }) => (
+                  <div key={label} className="flex items-center gap-3">
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: done ? "#ECFDF5" : active ? "#FEF3C7" : "#F1F5F9",
+                        border: `1.5px solid ${done ? "#6EE7B7" : active ? "#FDE68A" : "#E2E8F0"}`,
+                      }}
+                    >
+                      {done ? (
+                        <Check className="w-3 h-3 text-emerald-500" />
+                      ) : active ? (
+                        <PenSquare className="w-3 h-3 text-amber-500" />
+                      ) : (
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      )}
+                    </div>
+                    <span
+                      className="text-sm"
+                      style={{ color: done ? "#059669" : active ? "#D97706" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <Link href="/lawyers">
+                <button
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{ background: "#1a2744", color: "#ffffff" }}
+                >
+                  Submit Advocate Profile →
+                </button>
+              </Link>
+            </div>
+          )}
 
           {/* Footer */}
           <p className="mt-5 text-xs text-gray-400">

@@ -38,6 +38,7 @@ export interface User {
   role: "client" | "lawyer";
   created_at: string;
   is_verified?: boolean;
+  lawyer_status?: string | null;
   username?: string | null;
   is_profile_public?: boolean;
 }
