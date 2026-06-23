@@ -373,7 +373,7 @@ if (true) { // serve frontend in both dev and production when dist exists
     }
 
     // Bot user-agents that should receive plain HTML instead of the React SPA
-    const _botPattern = /GPTBot|ClaudeBot|Claude-Web|PerplexityBot|Googlebot|bingbot|Applebot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discord|AhrefsBot|SEMrushBot|MJ12bot|YandexBot|DuckDuckBot/i;
+    const _botPattern = /Mediapartners-Google|AdsBot-Google|GPTBot|ClaudeBot|Claude-Web|PerplexityBot|Googlebot|bingbot|Applebot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Discord|AhrefsBot|SEMrushBot|MJ12bot|YandexBot|DuckDuckBot/i;
 
     // --- Per-route SEO for bot-facing static HTML ----------------------------
     // Crawlers receive a route-specific <title>, description, canonical and

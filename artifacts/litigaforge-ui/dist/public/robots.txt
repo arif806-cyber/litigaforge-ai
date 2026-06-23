@@ -30,6 +30,8 @@ Disallow: /*/legal-chat
 # Search + AI crawlers are explicitly welcomed. They are grouped together so the
 # SAME private-area exclusions above also apply to them — a named user-agent
 # group otherwise ignores the "*" group entirely.
+User-agent: Mediapartners-Google
+User-agent: AdsBot-Google
 User-agent: Googlebot
 User-agent: Google-Extended
 User-agent: Bingbot
