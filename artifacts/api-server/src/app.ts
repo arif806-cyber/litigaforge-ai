@@ -607,6 +607,275 @@ if (true) { // serve frontend in both dev and production when dist exists
         "<p>Whether you have a support question, a partnership proposal or a media request, the LitigaForge AI team is glad to hear from you. Send us a message and we will get back to you as soon as we can.</p>",
     };
 
+    // ─── Per-route JSON-LD ────────────────────────────────────────────────────
+    // _jld: serialise an object as a <script type="application/ld+json"> block
+    // with < escaped so it is safe inside HTML.
+    const _jld = (obj: object): string =>
+      `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, "\\u003c")}</script>`;
+
+    // _bc2: BreadcrumbList for a two-level path (Home > Label)
+    const _bc2 = (path: string, label: string): string =>
+      _jld({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: _SITE_URL },
+          { "@type": "ListItem", position: 2, name: label, item: `${_SITE_URL}${path}` },
+        ],
+      });
+
+    // Each value is raw HTML (<script> blocks) injected before </head> for bots.
+    const _ROUTE_JSONLD: Record<string, string> = {
+
+      "/ask": [
+        _jld({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            { "@type": "Question", name: "What should I do if someone files a false FIR against me in India?", acceptedAnswer: { "@type": "Answer", text: "Immediately apply for anticipatory bail under Section 438 CrPC before arrest. File a complaint under Section 182 IPC (false information to a public servant) or Section 211 IPC (false charge of offence) against the complainant. Petition the relevant High Court under Section 482 CrPC to quash the FIR. Collect evidence disproving the allegations — CCTV footage, witnesses, phone records — and consult a criminal lawyer immediately." } },
+            { "@type": "Question", name: "How do I file a cheque bounce case under Section 138 of the Negotiable Instruments Act?", acceptedAnswer: { "@type": "Answer", text: "After receiving the bank's dishonour memo, send a legal demand notice to the drawer within 30 days. If the drawer does not pay within 15 days of receiving your notice, file a complaint in the Magistrate Court (where the cheque was drawn or presented) within 30 days of the 15-day deadline. Attach the original cheque, dishonour memo, demand notice, and proof of service. The drawer faces imprisonment up to 2 years or a fine up to twice the cheque amount. Settlement is possible at any stage." } },
+            { "@type": "Question", name: "How do I file a consumer complaint in India?", acceptedAnswer: { "@type": "Answer", text: "File with the Consumer Disputes Redressal Commission: District Commission for claims up to ₹50 lakh, State Commission for ₹50 lakh–₹2 crore, and NCDRC for claims above ₹2 crore. File online at edaakhil.nic.in within 2 years of the deficiency or defect. Attach purchase receipts, warranty documents, company correspondence, and evidence of loss." } },
+            { "@type": "Question", name: "Can I get a stay order to stop a property demolition in India?", acceptedAnswer: { "@type": "Answer", text: "Yes. File a writ petition or civil suit in the High Court or relevant civil court seeking a temporary injunction under Order 39 Rules 1 and 2 of CPC. You need to show a prima facie case, balance of convenience in your favour, and that irreparable harm will result without a stay. Courts can grant an ex parte interim stay immediately if urgency is shown. File within days of receiving a demolition notice — delay defeats the relief." } },
+            { "@type": "Question", name: "What are my rights if my employer does not pay my salary in India?", acceptedAnswer: { "@type": "Answer", text: "If your employer withholds salary: (1) send a legal demand notice, (2) file a complaint under the Payment of Wages Act with the Payment of Wages Authority (for salaries up to ₹24,000/month), (3) file a Labour Court application under Section 33C(2) of the Industrial Disputes Act, or (4) approach the State Labour Commissioner. You are entitled to payment with compensation for delay. Senior employees can file a civil suit for recovery of dues." } },
+            { "@type": "Question", name: "How do I respond to an income tax notice in India?", acceptedAnswer: { "@type": "Answer", text: "Identify the section: 143(1) (intimation), 143(2) (scrutiny), 148 (income escaping assessment), or 156 (demand). Respond by the due date — extensions can be requested. Attach all supporting documents: ITR, Form 16, bank statements, investment proofs. For complex cases, engage a CA or tax lawyer. Ignoring a notice can result in best judgment assessment, penalties, and prosecution." } },
+            { "@type": "Question", name: "How do I register a cybercrime complaint in India?", acceptedAnswer: { "@type": "Answer", text: "File online at cybercrime.gov.in (National Cybercrime Reporting Portal) or visit your nearest Cyber Crime Police Station. For financial fraud, call the National Cyber Crime Helpline 1930 immediately — early reporting can freeze fraudulent transactions. Preserve all evidence: screenshots, emails, transaction IDs, phone numbers. For hacking or data theft, also file an FIR under the Information Technology Act 2000." } },
+            { "@type": "Question", name: "What are the grounds for divorce in India under Hindu law?", acceptedAnswer: { "@type": "Answer", text: "Under the Hindu Marriage Act 1955, grounds include: cruelty (physical or mental), desertion for 2+ years, conversion to another religion, unsoundness of mind, virulent and incurable leprosy, venereal disease, renunciation of the world, and presumption of death (missing 7+ years). For mutual consent divorce under Section 13B, both parties must have lived separately for at least 1 year and agree on all terms including property, maintenance, and custody." } },
+            { "@type": "Question", name: "What happens if I ignore a legal notice sent to me?", acceptedAnswer: { "@type": "Answer", text: "Ignoring a legal notice typically leads to the sender filing a lawsuit. For cheque bounce notices, failing to respond within 15 days allows the sender to file a criminal complaint. For consumer disputes and employment claims, the other party can obtain an ex parte court order in your absence. Silence can be treated as admission in some contexts. Always consult a lawyer and send a formal reply within the specified time." } },
+            { "@type": "Question", name: "How do I claim compensation after a road accident in India?", acceptedAnswer: { "@type": "Answer", text: "File a claim petition with the Motor Accidents Claims Tribunal (MACT) in the jurisdiction where the accident occurred or where the claimant resides. Attach the FIR, medical reports, disability certificate, proof of income, and insurance details. Third-party insurance is mandatory under the Motor Vehicles Act — the insurer of the at-fault vehicle is liable. There is no limitation period for MACT claims but early filing is advisable." } },
+          ],
+        }),
+        _bc2("/ask", "Free Legal Q&A"),
+      ].join("\n"),
+
+      "/lawyers": [
+        _jld({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "LegalService",
+              name: "LitigaForge AI — Verified Lawyer Directory & AI Matching",
+              url: `${_SITE_URL}/lawyers`,
+              description: "Find and connect with verified, rated advocates across India, the US, UK, UAE, Australia, Canada, Singapore and Germany. AI lawyer matching with transparent 0–100 match scores and plain-language explanations.",
+              serviceType: ["Lawyer Matching", "Legal Consultation", "Advocate Directory"],
+              areaServed: ["India","United States","United Kingdom","Australia","Canada","Singapore","United Arab Emirates","Germany"],
+              provider: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
+              availableChannel: { "@type": "ServiceChannel", serviceUrl: `${_SITE_URL}/lawyers`, serviceType: "Online", availableLanguage: ["English","Hindi","Telugu"] },
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: [
+                { "@type": "Question", name: "How much does a lawyer cost in India?", acceptedAnswer: { "@type": "Answer", text: "Lawyer fees in India vary by city, specialization, and experience. Junior advocates charge ₹500–₹2,000 per consultation. Senior and specialist advocates charge ₹2,000–₹15,000 per hour. For full case representation, fees range from ₹10,000 to several lakhs depending on court level and complexity. High Court and Supreme Court advocates typically charge more. LitigaForge shows each lawyer's hourly rate so you can match within your budget." } },
+                { "@type": "Question", name: "What type of lawyer do I need for a property dispute in India?", acceptedAnswer: { "@type": "Answer", text: "For property disputes in India, you need a civil lawyer specializing in property law or real estate litigation. For RERA disputes (developer delays or defects), find a RERA specialist. For landlord-tenant disputes, a civil or rent control specialist is appropriate. For title fraud, a criminal lawyer with property experience may also be needed. LitigaForge AI automatically recommends the right specialization when you describe your case." } },
+                { "@type": "Question", name: "How do I verify a lawyer's credentials before hiring in India?", acceptedAnswer: { "@type": "Answer", text: "Verify a lawyer's Bar Council enrollment number on the State Bar Council website (e.g., barcouncilofap.org for Telangana and AP). On LitigaForge AI, every listed advocate displays their Bar enrollment number and a verification badge after our credential check — you see their practice areas, experience, client ratings and consultation fee before connecting." } },
+                { "@type": "Question", name: "Can I consult a lawyer online in India?", acceptedAnswer: { "@type": "Answer", text: "Yes. Online consultations are widely accepted in India. On LitigaForge AI, post your case, get matched with verified advocates, and communicate via secure in-platform chat. For initial advice, document review and legal notices, online consultations are fully effective. Physical court appearances by the lawyer are required for representation, but case strategy can be handled remotely." } },
+              ],
+            },
+          ],
+        }),
+        _bc2("/lawyers", "Find a Verified Lawyer"),
+      ].join("\n"),
+
+      "/judgments": [
+        _jld({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Dataset",
+              name: "LitigaForge AI — Indian Court Judgment Database",
+              url: `${_SITE_URL}/judgments`,
+              description: "Searchable database of Supreme Court of India and High Court judgments with AI-generated plain-language summaries. Updated daily via official legal databases.",
+              creator: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
+              inLanguage: ["en", "hi"],
+              keywords: ["Indian case law", "Supreme Court judgments", "High Court judgments", "legal precedents", "court decisions India"],
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: [
+                { "@type": "Question", name: "How do I find a Supreme Court judgment in India by keyword?", acceptedAnswer: { "@type": "Answer", text: "On LitigaForge AI's Judgment Finder, type the keyword, party names, legal principle or case number. The AI returns the most relevant Supreme Court and High Court judgments with plain-language summaries and citation links to IndianKanoon and the Supreme Court's official website (sci.gov.in). You can filter by court and year, and save results to your research portfolio." } },
+                { "@type": "Question", name: "Is a High Court judgment binding on lower courts in India?", acceptedAnswer: { "@type": "Answer", text: "Yes. A High Court judgment is binding on all subordinate courts within its jurisdiction under Article 227 of the Constitution. A Supreme Court judgment under Article 141 is binding on all courts in India. Judgments of coordinate benches (same court, same number of judges) are persuasive. High Court judgments from other states are persuasive authority only." } },
+                { "@type": "Question", name: "How do I cite an Indian court judgment correctly?", acceptedAnswer: { "@type": "Answer", text: "Standard Indian citation format: Party v. Party, (Year) Volume Reporter Page (Court). Example: Maneka Gandhi v. Union of India, (1978) 1 SCC 248 (SC). For AIR citations: Party v. Party, AIR Year Court Page. For unreported judgments, cite the case number and date. LitigaForge AI's Judgment Finder shows the correct citation for each case in the summary panel." } },
+              ],
+            },
+          ],
+        }),
+        _bc2("/judgments", "Judgment Finder"),
+      ].join("\n"),
+
+      "/legal-aid": [
+        _jld({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "GovernmentService",
+              name: "Free Legal Aid Finder — India & Worldwide",
+              url: `${_SITE_URL}/legal-aid`,
+              description: "Check eligibility for free legal aid under the Legal Services Authorities Act 1987 and find NALSA, TSLSA, DLSA contacts and toll-free helplines for your region.",
+              provider: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
+              serviceType: "Legal Aid",
+              areaServed: [{ "@type": "Country", name: "India" }],
+              serviceChannel: { "@type": "ServiceChannel", serviceUrl: `${_SITE_URL}/legal-aid`, serviceType: "Online" },
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: [
+                { "@type": "Question", name: "Who is eligible for free legal aid in India under NALSA?", acceptedAnswer: { "@type": "Answer", text: "Under the Legal Services Authorities Act 1987, free legal aid is available to: (1) Scheduled Caste and Scheduled Tribe members, (2) victims of trafficking or beggars, (3) women and children, (4) persons with disabilities, (5) persons in custody, (6) victims of mass disasters, caste atrocity, flood, or industrial disaster, (7) industrial workmen, and (8) persons with annual income below ₹1 lakh (limit varies by state). Call NALSA helpline 15100 (toll-free) to apply." } },
+                { "@type": "Question", name: "How do I apply for free legal aid in Telangana?", acceptedAnswer: { "@type": "Answer", text: "Contact the Telangana State Legal Services Authority (TSLSA) at 040-23450039 or visit your nearest District Legal Services Authority (DLSA) office. Submit an application with proof of identity, an income certificate, and case details. Legal aid includes court representation, document drafting, and legal advice. You can also apply through the NALSA mobile app or call 15100." } },
+                { "@type": "Question", name: "Is there free legal aid for domestic violence cases in India?", acceptedAnswer: { "@type": "Answer", text: "Yes. Under the Protection of Women from Domestic Violence Act 2005, victims are entitled to free legal services. The Protection Officer in your district is required to help you access legal aid. NALSA has dedicated schemes for women victims. All DLSAs provide free lawyers for DV cases. Call 15100 to be connected with the nearest domestic violence legal aid service." } },
+                { "@type": "Question", name: "What is Lok Adalat and how does it settle disputes faster?", acceptedAnswer: { "@type": "Answer", text: "Lok Adalat (People's Court) is a form of alternative dispute resolution under the Legal Services Authorities Act. Awards are treated as civil court decrees and are final — no appeal lies. No court fees are charged, and fees already paid are refunded if the case is settled. Lok Adalats are ideal for motor accident claims, matrimonial disputes (except divorce), labour disputes, and pre-litigation settlements. Contact your DLSA to schedule a Lok Adalat." } },
+              ],
+            },
+          ],
+        }),
+        _bc2("/legal-aid", "Free Legal Aid"),
+      ].join("\n"),
+
+      "/free-documents": [
+        _jld({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "ItemList",
+              name: "Free AI-Generated Legal Document Templates",
+              url: `${_SITE_URL}/free-documents`,
+              description: "10+ free legal document templates generated instantly by AI — rental agreements, legal notices, affidavits, employment letters, NDAs — customized for your jurisdiction.",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Rental Agreement", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 2, name: "Legal Notice", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 3, name: "Affidavit", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 4, name: "Non-Disclosure Agreement (NDA)", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 5, name: "Employment Appointment Letter", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 6, name: "Sale Agreement", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 7, name: "Demand Letter", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 8, name: "Partnership Agreement", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 9, name: "Power of Attorney", url: `${_SITE_URL}/free-documents` },
+                { "@type": "ListItem", position: 10, name: "Divorce Settlement Agreement", url: `${_SITE_URL}/free-documents` },
+              ],
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: [
+                { "@type": "Question", name: "Is a rental agreement on plain paper legally valid in India?", acceptedAnswer: { "@type": "Answer", text: "A rental agreement on plain paper is valid for tenancies up to 11 months — such agreements are not required to be registered and are enforceable. For tenancies of 12 months or more, the agreement must be on stamp paper of the appropriate denomination (varies by state) and registered with the Sub-Registrar's office to be admissible as evidence in court. LitigaForge AI generates correctly valued and formatted agreements for your state." } },
+                { "@type": "Question", name: "How do I write a valid legal notice in India?", acceptedAnswer: { "@type": "Answer", text: "A valid legal notice must include: (1) full names and addresses of sender and recipient, (2) facts giving rise to the cause of action, (3) the specific legal right violated or relief claimed, (4) the amount or action demanded, (5) a clear compliance deadline (typically 15–30 days), and (6) a statement that legal proceedings will follow if not complied with. For cheque bounce and consumer disputes, there are additional statutory requirements. Notices sent by a lawyer carry greater evidential weight." } },
+                { "@type": "Question", name: "What is the difference between an affidavit and a declaration?", acceptedAnswer: { "@type": "Answer", text: "An affidavit is a sworn written statement made on oath before a notary public or magistrate — it can be used as evidence in court proceedings. A declaration is a self-attested statement without an oath — it carries less legal weight and is typically used for administrative purposes such as government applications. For court use, probate, property disputes, and customs declarations, always use a notarized affidavit on the correct denomination of stamp paper." } },
+              ],
+            },
+          ],
+        }),
+        _bc2("/free-documents", "Free Legal Document Templates"),
+      ].join("\n"),
+
+      "/review": [
+        _jld({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "SoftwareApplication",
+              name: "LitigaForge AI Document Analyzer",
+              url: `${_SITE_URL}/review`,
+              applicationCategory: "LegalService",
+              operatingSystem: "Web",
+              description: "AI-powered legal document analysis tool. Paste any contract, agreement, FIR or court notice and receive an instant risk score (0–100), missing clause detection, and actionable recommendations. Free.",
+              offers: { "@type": "Offer", price: "0", priceCurrency: "INR", description: "Free document analysis — no account required" },
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: [
+                { "@type": "Question", name: "What makes a rental agreement risky in India?", acceptedAnswer: { "@type": "Answer", text: "High-risk clauses include: unlimited rent increases without notice, no termination notice period for the landlord, blanket permission for entry at any time, liability for pre-existing structural damage, forfeiture of full security deposit for any breach, and 'deemed renewal' lock-in clauses. Missing clauses that increase risk: no maintenance responsibility allocation, no definition of normal wear and tear, no dispute resolution mechanism." } },
+                { "@type": "Question", name: "What clauses should be in an employment contract in India?", acceptedAnswer: { "@type": "Answer", text: "A legally sound Indian employment contract must include: job title and responsibilities, full CTC breakup (fixed and variable), probation period, notice period (30–90 days), confidentiality and IP assignment clause, leave entitlement per the Shops and Establishments Act, grounds for termination, governing law, and dispute resolution. Watch for: unenforceable overly broad non-compete clauses, vague 'at will' termination, and missing gratuity or PF references." } },
+                { "@type": "Question", name: "What should I check before signing a property sale deed in India?", acceptedAnswer: { "@type": "Answer", text: "Before signing: (1) verify clear title chain for at least 30 years, (2) obtain an encumbrance certificate from the Sub-Registrar showing no mortgages or liens, (3) confirm property tax is up to date, (4) check RERA registration for under-construction property, (5) verify building plan sanction and occupancy certificate, (6) confirm correct stamp duty at state circle rate, (7) check mutation in local body records. A property lawyer's due-diligence report is essential." } },
+              ],
+            },
+          ],
+        }),
+        _bc2("/review", "AI Document Analyzer"),
+      ].join("\n"),
+
+      "/subscription": [
+        _jld({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            { "@type": "Question", name: "What is included in the free plan on LitigaForge AI?", acceptedAnswer: { "@type": "Answer", text: "The free plan includes: 5 AI legal Q&A queries per month, document analysis (risk scoring and missing clause detection), judgment search, the free legal aid finder, full access to the verified lawyer directory, and free legal document templates. No credit card required. The free plan is permanent — upgrade only when you need more AI queries or priority matching." } },
+            { "@type": "Question", name: "What does the Professional plan include?", acceptedAnswer: { "@type": "Answer", text: "Professional includes: unlimited AI legal Q&A queries, unlimited document analysis, priority lawyer matching (your case is shown to more advocates faster), document upload and management, and all free plan features. Pricing is in your local currency — INR, USD, GBP, EUR, AED, AUD, CAD, or SGD — shown at checkout." } },
+            { "@type": "Question", name: "What is the Advocate Pro plan and who needs it?", acceptedAnswer: { "@type": "Answer", text: "Advocate Pro is designed for practicing lawyers. It includes everything in Professional plus: full case management (CNR integration, hearing dates, case stage tracking), client document workspace, billing tools, hearing date reminders, and a public verified advocate profile visible to potential clients." } },
+            { "@type": "Question", name: "Can I get a refund if I cancel my LitigaForge AI subscription?", acceptedAnswer: { "@type": "Answer", text: "LitigaForge AI offers a prorated refund for unused days if you cancel within the first 7 days of a billing period. After 7 days, the subscription continues until the end of the cycle and is not refunded. To cancel or request a refund, email support@litigaforge.com." } },
+          ],
+        }),
+        _bc2("/subscription", "Pricing & Plans"),
+      ].join("\n"),
+
+      "/about": [
+        _jld({
+          "@context": "https://schema.org",
+          "@type": "AboutPage",
+          url: `${_SITE_URL}/about`,
+          name: "About LitigaForge AI",
+          description: "LitigaForge AI is an AI-powered legal platform founded in 2024. Our mission: make legal help affordable and accessible worldwide through AI lawyer matching, document analysis, free legal Q&A, and a free legal aid finder.",
+          mainEntity: {
+            "@type": "Organization",
+            name: "LitigaForge AI",
+            url: _SITE_URL,
+            foundingDate: "2024",
+            description: "LitigaForge AI combines artificial intelligence with verified lawyers to deliver instant, affordable legal guidance to individuals and businesses worldwide — spanning 8 countries and multiple languages.",
+            areaServed: ["India","United States","United Kingdom","Australia","Canada","Singapore","United Arab Emirates","Germany"],
+          },
+        }),
+        _bc2("/about", "About LitigaForge AI"),
+      ].join("\n"),
+
+      "/digest": [
+        _jld({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            { "@type": "Question", name: "What is the LitigaForge AI Daily Judgment Digest?", acceptedAnswer: { "@type": "Answer", text: "The Daily Judgment Digest is a free email newsletter delivering the 5 most important new Supreme Court and High Court judgments to your inbox every morning. Each judgment includes a concise plain-language summary and a link to the full analysis. It is free and you can unsubscribe at any time." } },
+            { "@type": "Question", name: "When is the daily judgment digest delivered?", acceptedAnswer: { "@type": "Answer", text: "The digest is delivered daily at approximately 7:00 AM IST. It covers significant judgments published by the Supreme Court of India, all High Courts, and key tribunals from the previous working day." } },
+            { "@type": "Question", name: "How do I subscribe to the free legal judgment digest?", acceptedAnswer: { "@type": "Answer", text: "Visit litigaforge.com/digest, enter your email address and confirm via the verification link sent to your inbox. No credit card or account required. Unsubscribe at any time using the one-click link in any digest email." } },
+          ],
+        }),
+        _bc2("/digest", "Daily Judgment Digest"),
+      ].join("\n"),
+
+      "/us-demand-letter": [
+        _jld({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "HowTo",
+              name: "How to Write and Send a Demand Letter in the United States",
+              description: "Step-by-step guide to drafting and sending an effective demand letter to resolve a U.S. dispute before court.",
+              totalTime: "PT20M",
+              step: [
+                { "@type": "HowToStep", position: 1, name: "Identify your legal claim", text: "State the specific legal basis — breach of contract, unpaid debt, security deposit withholding, or property damage. Include dates, amounts owed, and relevant contract clauses." },
+                { "@type": "HowToStep", position: 2, name: "Calculate the exact amount owed", text: "Add the principal amount, applicable interest per your contract or state law, late fees, and any provable consequential damages. Attach supporting documents." },
+                { "@type": "HowToStep", position: 3, name: "Draft the demand letter", text: "Use LitigaForge AI's demand letter generator — answer a short form about your claim, state, and recipient. The AI drafts a professional, state-specific letter with correct legal references and a firm tone." },
+                { "@type": "HowToStep", position: 4, name: "Set a firm deadline", text: "Give the recipient 10–30 days to comply. State that failure will result in legal action including small claims court or civil lawsuit, and that you will seek attorney fees where allowed by state law." },
+                { "@type": "HowToStep", position: 5, name: "Send by certified mail and preserve proof", text: "Send via USPS Certified Mail with return receipt, or by email with read receipt if specified in the contract. Keep all delivery proof for court filings." },
+              ],
+            },
+            {
+              "@type": "LegalService",
+              name: "U.S. Demand Letter Drafting — LitigaForge AI",
+              url: `${_SITE_URL}/us-demand-letter`,
+              description: "AI-drafted, state-specific U.S. demand letters for unpaid debts, contract breaches, security deposit disputes, and property damage claims. Preview free, pay on approval.",
+              serviceType: "Demand Letter Drafting",
+              areaServed: { "@type": "Country", name: "United States" },
+              provider: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
+            },
+          ],
+        }),
+        _bc2("/us-demand-letter", "U.S. Demand Letter"),
+      ].join("\n"),
+
+      "/register":    _bc2("/register", "Create Free Account"),
+      "/login":       _bc2("/login", "Sign In"),
+      "/contact":     _bc2("/contact", "Contact Us"),
+      "/privacy":     _bc2("/privacy", "Privacy Policy"),
+      "/privacy-policy": _bc2("/privacy-policy", "Privacy Policy"),
+      "/terms":       _bc2("/terms", "Terms of Service"),
+      "/refund-policy": _bc2("/refund-policy", "Refund Policy"),
+    };
+
     const _stripCountry = (p: string): string => {
       const parts = p.replace(/^\/+/, "").split("/");
       const first = (parts[0] ?? "").toLowerCase();
@@ -706,7 +975,11 @@ if (true) { // serve frontend in both dev and production when dist exists
         .replace(
           /<p>[\s\S]*?<\/p>/,
           () => `<p>${meta.intro}</p>${meta.bodyHtml ? `\n${meta.bodyHtml}` : ""}`,
-        );
+        )
+        .replace(/<\/head>/, () => {
+          const jsonld = _ROUTE_JSONLD[bare];
+          return jsonld ? `${jsonld}\n</head>` : "</head>";
+        });
     };
 
     const _esc = (s: unknown): string =>
