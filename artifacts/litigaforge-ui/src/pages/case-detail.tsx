@@ -101,21 +101,39 @@ function parseDescription(raw: string): ParsedDesc {
   return { mainText, qaItems };
 }
 
+const QA_PALETTES = [
+  { bg: "bg-amber-50",   border: "border-amber-200",  label: "text-amber-700",  value: "text-amber-900"  },
+  { bg: "bg-blue-50",    border: "border-blue-200",   label: "text-blue-700",   value: "text-blue-900"   },
+  { bg: "bg-emerald-50", border: "border-emerald-200",label: "text-emerald-700",value: "text-emerald-900" },
+  { bg: "bg-red-50",     border: "border-red-200",    label: "text-red-700",    value: "text-red-900"    },
+  { bg: "bg-purple-50",  border: "border-purple-200", label: "text-purple-700", value: "text-purple-900" },
+  { bg: "bg-indigo-50",  border: "border-indigo-200", label: "text-indigo-700", value: "text-indigo-900" },
+  { bg: "bg-rose-50",    border: "border-rose-200",   label: "text-rose-700",   value: "text-rose-900"   },
+  { bg: "bg-teal-50",    border: "border-teal-200",   label: "text-teal-700",   value: "text-teal-900"   },
+];
+
 function DescriptionBlock({ raw }: { raw: string }) {
   const { mainText, qaItems } = parseDescription(raw);
   return (
     <div className="space-y-3">
-      {mainText && <p className="text-sm text-gray-600 leading-relaxed">{mainText}</p>}
+      {mainText && (
+        <p className="text-sm text-gray-600 leading-relaxed">{mainText}</p>
+      )}
       {qaItems.length > 0 && (
-        <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100 text-sm overflow-hidden">
-          {qaItems.map((item, i) => (
-            <div key={i} className="grid grid-cols-5 gap-2 px-3.5 py-2.5">
-              <span className="col-span-2 text-gray-500 font-medium leading-snug">{item.q}</span>
-              <span className="col-span-3 text-gray-800 font-semibold leading-snug break-words">
-                {item.a || <span className="text-gray-400 font-normal italic">—</span>}
-              </span>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {qaItems.map((item, i) => {
+            const p = QA_PALETTES[i % QA_PALETTES.length];
+            return (
+              <div key={i} className={cn("rounded-xl border px-4 py-3 flex flex-col gap-1", p.bg, p.border)}>
+                <span className={cn("text-[11px] font-semibold uppercase tracking-wide leading-tight", p.label)}>
+                  {item.q}
+                </span>
+                <span className={cn("text-sm font-bold leading-snug break-words", p.value)}>
+                  {item.a || <span className="opacity-40 font-normal italic">Not provided</span>}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -146,6 +164,8 @@ export default function CaseDetail() {
   const [tab, setTab] = useState<TabKey>("overview");
   const [showEdit, setShowEdit] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [aiOverview, setAiOverview] = useState<string | null>(null);
+  const [loadingOverview, setLoadingOverview] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "", case_type: "", description: "", location: "", budget_range: "", is_anonymous: false,
   });
@@ -290,6 +310,19 @@ export default function CaseDetail() {
     } finally {
       setUploading(false);
       e.target.value = "";
+    }
+  }
+
+  async function generateOverview() {
+    if (!caseId) return;
+    setLoadingOverview(true);
+    try {
+      const res = await apiFetch(`/cases/requirements/${caseId}/ai-overview`, { method: "POST" });
+      setAiOverview(res.overview);
+    } catch (err: any) {
+      toast({ title: "AI overview failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingOverview(false);
     }
   }
 
@@ -439,8 +472,37 @@ export default function CaseDetail() {
           </div>
 
           {c.description && (
-            <div className="max-w-3xl">
+            <div className="space-y-4">
               <DescriptionBlock raw={c.description} />
+
+              {/* AI Overview */}
+              {aiOverview ? (
+                <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+                        <Sparkles className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <span className="text-sm font-bold text-purple-900">AI Legal Overview</span>
+                    </div>
+                    <button onClick={() => setAiOverview(null)}
+                      className="text-[10px] text-purple-400 hover:text-purple-600 font-medium transition-colors">
+                      Regenerate
+                    </button>
+                  </div>
+                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{aiOverview}</div>
+                </div>
+              ) : (
+                <button
+                  onClick={generateOverview}
+                  disabled={loadingOverview}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 shadow-sm"
+                >
+                  {loadingOverview
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating overview…</>
+                    : <><Sparkles className="w-3.5 h-3.5" /> Generate AI Overview</>}
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -256,6 +256,73 @@ async def update_case_requirement(
     return {"message": "Case requirement updated", "case": row}
 
 
+# ── AI Case Overview ─────────────────────────────────────────────────────────
+
+@router.post("/cases/requirements/{req_id}/ai-overview")
+async def case_ai_overview(
+    req_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    """Generate an AI legal overview for a case requirement."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    case = await fetchrow(
+        "SELECT * FROM case_requirements WHERE id = $1 AND user_id = $2",
+        req_id, current_user["id"],
+    )
+    if not case:
+        raise HTTPException(404, "Case requirement not found")
+
+    desc = (case.get("description") or "").strip()
+    prompt = f"""You are an expert Indian advocate specialising in Telangana and Andhra Pradesh law.
+Analyse the following client case and write a concise legal overview in plain English.
+
+Case Type: {case.get("case_type", "N/A")}
+Location: {case.get("location") or "Not specified"}
+Budget: {case.get("budget_range") or "Not specified"}
+Description: {desc or "Not provided"}
+
+Structure your response with EXACTLY these four sections (use the headings as shown):
+
+**Case Summary**
+Two to three sentences summarising what happened and what the client seeks.
+
+**Key Legal Issues**
+• Issue 1
+• Issue 2
+(max 4 bullet points)
+
+**Recommended Next Steps**
+• Step 1
+• Step 2
+(max 4 bullet points)
+
+**Relevant Laws & Sections**
+List any applicable Indian statutes, IPC sections, or civil/motor vehicle acts.
+
+Keep the entire response under 300 words. Be specific, practical, and jurisdiction-aware."""
+
+    overview = _ai(prompt, max_tokens=700)
+    if not overview:
+        ct = case.get("case_type", "legal matter")
+        loc = case.get("location", "the specified location")
+        overview = (
+            f"**Case Summary**\n"
+            f"This is a {ct} case based in {loc}. "
+            f"The client is seeking legal representation for the matter described above.\n\n"
+            f"**Key Legal Issues**\n"
+            f"• Determining liability and applicable legal provisions\n"
+            f"• Gathering documentary evidence to support the claim\n\n"
+            f"**Recommended Next Steps**\n"
+            f"• Consult a qualified advocate specialising in {ct} cases\n"
+            f"• Collect and preserve all relevant documents and evidence\n"
+            f"• File a formal complaint or plaint as appropriate\n\n"
+            f"**Relevant Laws & Sections**\n"
+            f"Applicable statutes will depend on the specific facts; your advocate will advise."
+        )
+    return {"overview": overview}
+
+
 # ── AI Matching Engine ──────────────────────────────────────────────────────
 
 class MatchRequest(BaseModel):
