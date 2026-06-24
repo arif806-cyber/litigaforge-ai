@@ -36,6 +36,7 @@ const LegalAid            = lazy(() => import("@/pages/legal-aid"));
 const NotFound            = lazy(() => import("@/pages/not-found"));
 const PostCase            = lazy(() => import("@/pages/post-case"));
 const MyCases             = lazy(() => import("@/pages/my-cases"));
+const CaseDetail          = lazy(() => import("@/pages/case-detail"));
 const Matches             = lazy(() => import("@/pages/matches"));
 const LegalChat           = lazy(() => import("@/pages/legal-chat"));
 const AdminPage           = lazy(() => import("@/pages/admin"));
@@ -320,6 +321,7 @@ function Router() {
               <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />
               <Route path="/legal-aid"    component={() => <ErrorBoundary section="legal-aid"><LegalAid /></ErrorBoundary>} />
               <Route path="/post-case"    component={() => <ErrorBoundary section="post-case"><ProtectedRoute component={PostCase} /></ErrorBoundary>} />
+              <Route path="/my-cases/:id"  component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
               <Route path="/my-cases"     component={() => <ErrorBoundary section="my-cases"><ProtectedRoute component={MyCases} /></ErrorBoundary>} />
               <Route path="/matches"      component={() => <ErrorBoundary section="matches"><ProtectedRoute component={Matches} /></ErrorBoundary>} />
               <Route path="/documents"    component={() => <ErrorBoundary section="documents"><ProtectedRoute component={DocumentsPage} /></ErrorBoundary>} />

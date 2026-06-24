@@ -174,6 +174,42 @@ class UpdateRequirementRequest(BaseModel):
     is_anonymous: bool = False
 
 
+@router.get("/cases/requirements/{req_id}")
+async def get_case_requirement(
+    req_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    row = await fetchrow(
+        """SELECT id, title, case_type, description, location,
+                  budget_range, is_anonymous, status, created_at
+           FROM case_requirements WHERE id = $1 AND user_id = $2""",
+        req_id, current_user["id"],
+    )
+    if not row:
+        raise HTTPException(404, "Case requirement not found")
+    row["created_at"] = str(row["created_at"])
+    return dict(row)
+
+
+@router.delete("/cases/requirements/{req_id}")
+async def delete_case_requirement(
+    req_id: int,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    existing = await fetchrow(
+        "SELECT id FROM case_requirements WHERE id = $1 AND user_id = $2",
+        req_id, current_user["id"],
+    )
+    if not existing:
+        raise HTTPException(404, "Case requirement not found")
+    await execute("DELETE FROM case_requirements WHERE id = $1", req_id)
+    return {"message": "Case requirement deleted"}
+
+
 @router.patch("/cases/requirements/{req_id}")
 async def update_case_requirement(
     req_id: int,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useLanguage } from "../hooks/useLanguage";
 import {
   FileText, MapPin, Clock, EyeOff, ArrowRight, Plus,
@@ -36,6 +36,7 @@ export default function MyCases() {
   const queryClient = useQueryClient();
   const { t } = useLanguage();
   const { activeCode } = useCountry();
+  const [, navigate] = useLocation();
   const [tab, setTab] = useState<"open" | "pending" | "closed">("open");
   const [search, setSearch] = useState("");
   const [editingCase, setEditingCase] = useState<any>(null);
@@ -155,7 +156,8 @@ export default function MyCases() {
             const st = STATUS_COLORS[c.status] || STATUS_COLORS.open;
             return (
               <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+                onClick={() => navigate(`/my-cases/${c.id}`)}
+                className="rounded-xl p-4 hover:shadow-md transition-all cursor-pointer" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
@@ -177,12 +179,13 @@ export default function MyCases() {
                     </div>
                   </div>
                   {/* Inline actions */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => { setEditingCase(c); setEditForm({ title: c.title||"", case_type: c.case_type||"", description: c.description||"", location: c.location||"", budget_range: c.budget_range||"", is_anonymous: c.is_anonymous||false }); }}
+                  <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={(e) => { e.stopPropagation(); setEditingCase(c); setEditForm({ title: c.title||"", case_type: c.case_type||"", description: c.description||"", location: c.location||"", budget_range: c.budget_range||"", is_anonymous: c.is_anonymous||false }); }}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
                       <PenSquare className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => {
+                    <button onClick={(e) => {
+                      e.stopPropagation();
                       const text = `Case: ${c.title}\nType: ${c.case_type}\nLocation: ${c.location||"N/A"}\nBudget: ${c.budget_range||"N/A"}\nStatus: ${c.status}\n\n— LitigaForge AI`;
                       if (navigator.share) navigator.share({ title: c.title, text });
                       else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
@@ -190,11 +193,11 @@ export default function MyCases() {
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Share">
                       <Share2 className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => { if (confirm("Delete this case requirement?")) deleteMutation.mutate(c.id); }}
+                    <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete this case requirement?")) deleteMutation.mutate(c.id); }}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                    <Link href={`/matches?case=${c.id}`}>
+                    <Link href={`/matches?case=${c.id}`} onClick={(e) => e.stopPropagation()}>
                       <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Find lawyers">
                         <Sparkles className="w-3.5 h-3.5" />
                       </button>
