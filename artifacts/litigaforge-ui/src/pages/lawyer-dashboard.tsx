@@ -21,13 +21,20 @@ import IncomingCaseFeed, { type CaseFeedItem } from "@/components/lawyer/Incomin
 
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
-const lawyerNav = [
-  { id: "chat",     label: "AI Legal Chat",       icon: Star,      href: "/legal-chat",  highlight: true },
-  { id: "cases",    label: "My Cases",            icon: Briefcase, href: "/cases" },
-  { id: "leads",    label: "Client Requests",     icon: Users,     href: "/matches" },
-  { id: "docs",     label: "Documents & Files",   icon: FileText,  href: "/review" },
-  { id: "research", label: "Research Assistant",  icon: BookOpen,  href: "/judgments" },
-  { id: "profile",  label: "Profile & Earnings", icon: User,      href: "/subscription" },
+const lawyerPortalNav = [
+  { id: "dashboard",  label: "Dashboard",         icon: Briefcase,    href: "/lawyer-dashboard" },
+  { id: "leads",      label: "Client Requests",   icon: Users,        href: "/matches" },
+  { id: "messages",   label: "Messages",          icon: MessageSquare, href: "/messages" },
+  { id: "docs",       label: "Document Analyzer", icon: FileSearch,   href: "/review" },
+  { id: "profile",    label: "Profile & Plans",   icon: User,         href: "/subscription" },
+];
+
+const legalToolsNav = [
+  { id: "chat",      label: "AI Legal Chat",    icon: Sparkles,   href: "/legal-chat",  badge: "AI" },
+  { id: "ask",       label: "Legal Q&A",        icon: MessageSquare, href: "/ask" },
+  { id: "analyzer",  label: "Document Analyzer", icon: FileText,  href: "/review" },
+  { id: "judgments", label: "Judgment Finder",  icon: Gavel,      href: "/judgments" },
+  { id: "workspace", label: "Forge Workspace",  icon: Star,       href: "/workspace", badge: "NEW" },
 ];
 
 const CASE_TYPES = [
@@ -65,8 +72,6 @@ interface LawyerDoc {
 // ── Sidebar ───────────────────────────────────────────────────────────────────────────────────
 function DashboardSidebar({ location, onNav }: { location: string; onNav?: () => void }) {
   const { user, logout } = useAuth();
-  const { activeCode } = useCountry();
-  const copy = LAWYER_DASHBOARD_COPY[activeCode.toUpperCase()] ?? LAWYER_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
@@ -75,56 +80,75 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
     setLocation("/login");
   };
 
+  const NavItem = ({ item }: { item: typeof lawyerPortalNav[0] & { badge?: string } }) => {
+    const Icon = item.icon;
+    const active = item.href === "/lawyer-dashboard"
+      ? location === "/lawyer-dashboard"
+      : location.startsWith(item.href);
+    return (
+      <Link key={item.id} href={item.href} onClick={onNav}
+        className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 cursor-pointer",
+          active
+            ? "bg-sidebar-accent text-sidebar-primary font-semibold"
+            : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+        )}
+      >
+        <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary" : "text-sidebar-foreground/40")} />
+        <span className="flex-1">{item.label}</span>
+        {item.badge && (
+          <span className={cn(
+            "text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none",
+            item.badge === "AI" ? "bg-amber-400 text-amber-900" : "bg-blue-500 text-white"
+          )}>{item.badge}</span>
+        )}
+      </Link>
+    );
+  };
+
+  const initials = (user?.name ?? "A").slice(0, 1).toUpperCase();
+
   return (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
+      {/* Logo */}
       <div className="px-5 py-5 flex items-center gap-3 flex-shrink-0 border-b border-sidebar-border">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-sidebar-primary">
           <Scale className="w-4 h-4 text-sidebar-primary-foreground" />
         </div>
-        <span className="font-bold text-base tracking-tight text-sidebar-foreground">LitigaForge AI</span>
+        <div>
+          <p className="font-bold text-sm tracking-tight text-sidebar-foreground leading-none">LitigaForge</p>
+          <p className="text-[9px] font-semibold tracking-widest text-sidebar-foreground/40 uppercase mt-0.5">Advocate</p>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Lawyer Portal</p>
-        {lawyerNav.map((item) => {
-          const Icon = item.icon;
-          const active = item.href === "/" ? location === "/lawyer-dashboard" : location.startsWith(item.href);
-          return (
-            <Link key={item.id} href={item.href} onClick={onNav}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 cursor-pointer group ${active ? "bg-sidebar-accent text-sidebar-primary" : item.highlight ? "text-sidebar-primary/75" : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"}`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" style={{ color: active || item.highlight ? "hsl(var(--sidebar-primary))" : "hsl(var(--sidebar-foreground) / 0.4)" }} />
-              <span className={cn("flex-1 font-medium", active && "font-semibold")}>{item.label}</span>
-              {item.highlight && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none bg-sidebar-primary text-sidebar-primary-foreground">AI</span>}
-            </Link>
-          );
-        })}
-        <div className="mt-5 mx-1 rounded-xl px-4 py-3 space-y-1.5 bg-sidebar-accent/40 border border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-xs font-semibold text-emerald-400">Bar Council Verified</span>
-          </div>
-          <p className="text-[11px] leading-relaxed text-sidebar-foreground/40">{copy.verifiedBy}</p>
-        </div>
-        <div className="mt-4 space-y-0.5">
-          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Quick Access</p>
-          <Link href="/ask" onClick={onNav} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"><MessageSquare className="w-3.5 h-3.5" /> Legal Q&amp;A</Link>
-          <Link href="/free-documents" onClick={onNav} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"><ExternalLink className="w-3.5 h-3.5" /> Free Documents</Link>
-        </div>
+        {/* Lawyer Portal */}
+        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Lawyer Portal</p>
+        {lawyerPortalNav.map((item) => <NavItem key={item.id} item={item} />)}
+
+        {/* Legal Tools */}
+        <p className="px-3 pt-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Legal Tools</p>
+        {legalToolsNav.map((item) => <NavItem key={item.id} item={item} />)}
       </nav>
 
+      {/* User section */}
       {user && (
-        <div className="flex-shrink-0 px-4 py-4 space-y-3 border-t border-sidebar-border">
+        <div className="flex-shrink-0 px-4 py-4 border-t border-sidebar-border space-y-2">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-sidebar-accent border border-sidebar-primary/30">
-              <User className="w-4 h-4 text-sidebar-primary" />
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-sidebar-primary/20 border border-sidebar-primary/30">
+              <span className="text-sm font-bold text-sidebar-primary">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-foreground truncate">{user.name}</p>
-              <p className="text-[11px] truncate text-sidebar-foreground/40">{user.email}</p>
+              <p className="text-[10px] truncate text-sidebar-foreground/40">{user.email}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs transition-all text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent/60">
+          <Link href="/settings" onClick={onNav}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
+            <Shield className="w-3.5 h-3.5" /> Account &amp; Privacy
+          </Link>
+          <button onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
             <LogOut className="w-3.5 h-3.5" /> Sign Out
           </button>
         </div>
@@ -181,6 +205,7 @@ export default function LawyerDashboard() {
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
+  const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
   const [statusMenuCaseId, setStatusMenuCaseId] = useState<number | null>(null);
   const [showCaseModal, setShowCaseModal] = useState(false);
   const [editingCase, setEditingCase] = useState<LawyerCase | null>(null);
@@ -227,11 +252,7 @@ export default function LawyerDashboard() {
   });
 
   const cases: LawyerCase[] = lawyerCases?.cases ?? [];
-  const activeCases = cases.filter((c) => c.status === "active");
   const docs: LawyerDoc[] = lawyerDocs?.documents ?? [];
-  const pendingLeads = Array.isArray(matchData)
-    ? matchData.filter((m: { status: string }) => m.status === "pending")
-    : [];
 
   // ── Mutations ──
   const createCaseMut = useMutation({
@@ -320,11 +341,16 @@ export default function LawyerDashboard() {
 
   const filteredCases = cases.filter((c) => c.status === caseTab);
 
+  const pendingLeads  = allLeads.filter((m: any) => m.status === "pending");
+  const acceptedLeads = allLeads.filter((m: any) => m.status === "accepted");
+  const declinedLeads = allLeads.filter((m: any) => m.status === "declined");
+  const completedCases = cases.filter((c) => c.status === "closed");
+
   const stats = [
-    { label: "Active Cases", value: cases.filter((c) => c.status === "active").length, sub: "in progress", iconEl: <Briefcase className="w-5 h-5" />, iconBg: "#EFF6FF", iconColor: "#2563EB", borderColor: "#DBEAFE" },
-    { label: "Pending", value: cases.filter((c) => c.status === "pending").length, sub: "awaiting action", iconEl: <Clock className="w-5 h-5" />, iconBg: "#FEF3C7", iconColor: "#D97706", borderColor: "#FDE68A" },
-    { label: "Closed", value: cases.filter((c) => c.status === "closed").length, sub: "resolved / archived", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "#ECFDF5", iconColor: "#059669", borderColor: "#D1FAE5" },
-    { label: "Documents", value: docs.length, sub: "uploaded files", iconEl: <FileText className="w-5 h-5" />, iconBg: "#F5F3FF", iconColor: "#7C3AED", borderColor: "#EDE9FE" },
+    { label: "Total Requests", value: allLeads.length, sub: "+12% this week", iconEl: <Users className="w-5 h-5" />, iconBg: "#EFF6FF", iconColor: "#2563EB", borderColor: "#DBEAFE" },
+    { label: "Pending", value: pendingLeads.length, sub: "Needs your response", iconEl: <Clock className="w-5 h-5" />, iconBg: "#FEF9C3", iconColor: "#D97706", borderColor: "#FDE68A" },
+    { label: "Accepted", value: acceptedLeads.length, sub: "Active matters", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "#ECFDF5", iconColor: "#059669", borderColor: "#D1FAE5" },
+    { label: "Completed", value: completedCases.length, sub: "This month", iconEl: <FileText className="w-5 h-5" />, iconBg: "#F5F3FF", iconColor: "#7C3AED", borderColor: "#EDE9FE" },
   ];
 
   // ── Verification wall ──
@@ -492,380 +518,277 @@ export default function LawyerDashboard() {
     );
   }
 
+  // ── Recent activity derived from match + doc data ──
+  const recentActivity = [
+    ...allLeads.slice(0, 3).map((m: any) => ({
+      id: `m-${m.id}`,
+      type: m.status === "accepted" ? "accepted" : "match",
+      title: m.status === "accepted" ? "Client request accepted" : `New match for ${m.case_title ?? "case"}`,
+      sub: m.case_title ?? "",
+      time: m.created_at,
+    })),
+    ...docs.slice(0, 2).map((d) => ({
+      id: `d-${d.id}`,
+      type: "doc",
+      title: "Document analyzed",
+      sub: d.filename,
+      time: d.created_at,
+    })),
+  ]
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    .slice(0, 4);
+
+  const visibleMatches = allLeads.filter((m: any) => m.status === matchTab);
+
+  function timeAgo(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const h = Math.floor(diff / 3600000);
+    if (h < 1) return "Just now";
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d}d ago`;
+    return `${Math.floor(d / 30)}mo ago`;
+  }
+
   return (
     <div className="flex min-h-full" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
 
       {/* ── Main Content ── */}
-      <main className="flex-1 min-w-0 px-4 md:px-6 py-5 space-y-5">
+      <main className="flex-1 min-w-0 px-4 md:px-8 py-6 space-y-6">
 
-              {/* Welcome */}
-              <div className="rounded-2xl px-5 py-4 border border-blue-100 bg-gradient-to-r from-white to-blue-50/60 flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Welcome back, {lawyerFirstName} 👋</h1>
-                  <p className="text-sm text-gray-500 mt-0.5">{copy.pageSubtitle}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {isAdvocatePro ? (
-                    <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}>
-                      <Shield className="w-3.5 h-3.5" /> Bar Council Verified
-                    </span>
-                  ) : (
-                    <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                      <Shield className="w-3.5 h-3.5" /> LitigaForge AI
-                    </span>
-                  )}
-                </div>
+              {/* ── Welcome ── */}
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+                  Welcome back, Advocate! 👋
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">{copy.pageSubtitle}</p>
               </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* ── 4 Stat Cards ── */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((s) => <StatCard key={s.label} {...s} />)}
               </div>
 
-              {/* ── Quick Action Pills ── */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                {[
-                  { label: "New Case", icon: Briefcase, action: () => setShowCaseModal(true), bg: "#EFF6FF", color: "#2563EB", border: "#DBEAFE" },
-                  { label: "Upload Doc", icon: FileText, action: () => setShowDocModal(true), bg: "#F5F3FF", color: "#7C3AED", border: "#EDE9FE" },
-                  { label: "AI Draft", icon: Sparkles, action: () => setLocation("/legal-chat"), bg: "#ECFDF5", color: "#059669", border: "#A7F3D0" },
-                  { label: "Find Client", icon: Users, action: () => setLocation("/matches"), bg: "#FEF3C7", color: "#D97706", border: "#FDE68A" },
-                ].map((pill) => (
-                  <motion.button key={pill.label} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
-                    onClick={pill.action} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap"
-                    style={{ background: pill.bg, color: pill.color, border: `1px solid ${pill.border}` }}>
-                    <pill.icon className="w-3.5 h-3.5" /> {pill.label}
-                  </motion.button>
-                ))}
-              </div>
+              {/* ── Two-column body ── */}
+              <div className="flex gap-6 items-start">
 
-              {/* ── Incoming Client Requests ── */}
-              {feedCases.length > 0 && (
-                <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
-                  <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">New Client Requests</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">Swipe right to accept · left to pass</p>
+                {/* Left column — Match Proposals */}
+                <div className="flex-1 min-w-0 space-y-6">
+
+                  {/* Match Proposals card */}
+                  <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                    {/* Header */}
+                    <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF2FF" }}>
+                          <Sparkles className="w-4.5 h-4.5 text-indigo-600" style={{ width: "18px", height: "18px" }} />
+                        </div>
+                        <div>
+                          <h2 className="font-bold text-gray-900 text-base leading-tight">Match Proposals</h2>
+                          <p className="text-[12px] text-gray-400 mt-0.5">AI-scored lawyer proposals for your cases.</p>
+                        </div>
+                      </div>
+                      {/* Filter tabs */}
+                      <div className="flex items-center gap-1 flex-shrink-0 rounded-xl p-1" style={{ background: "#F4F6FA" }}>
+                        {(["pending", "accepted", "declined"] as const).map((tab) => {
+                          const count = allLeads.filter((m: any) => m.status === tab).length;
+                          return (
+                            <button key={tab} onClick={() => setMatchTab(tab)}
+                              className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize",
+                                matchTab === tab
+                                  ? "bg-white shadow-sm text-gray-900"
+                                  : "text-gray-500 hover:text-gray-700"
+                              )}>
+                              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                              <span className={cn(
+                                "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
+                                matchTab === tab
+                                  ? tab === "pending" ? "bg-amber-100 text-amber-700"
+                                    : tab === "accepted" ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-red-100 text-red-600"
+                                  : "bg-gray-200 text-gray-500"
+                              )}>{count}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>
-                      {feedCases.length} pending
-                    </span>
-                  </div>
-                  <div className="px-4 pb-5">
-                    <IncomingCaseFeed
-                      cases={feedCases}
-                      onAccept={(id) => acceptLeadMut.mutate(id)}
-                      onDecline={(id) => declineLeadMut.mutate(id)}
-                      onView={(item) => {
-                        if (item.case_requirement_id) {
-                          apiFetch(`/cases/${item.case_requirement_id}/track-view`, { method: "POST" }).catch(() => {});
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
 
-              {/* ── Case Tabs + Search ── */}
-              <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="px-4 pt-4 pb-0 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex items-center gap-1 bg-muted/70 rounded-xl p-1 flex-shrink-0">
-                    {(["active","pending","closed"] as const).map((tab) => (
-                      <button key={tab} onClick={() => setCaseTab(tab)}
-                        className={cn("px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize",
-                          caseTab === tab ? "bg-card shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700")}>
-                        {tab} <span className="ml-0.5 opacity-60">({cases.filter((c) => c.status === tab).length})</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="relative flex-1 min-w-0">
-                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search cases by title, client, court..."
-                      className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20" style={{ borderColor: "#E2E8F0" }} />
-                  </div>
-                  <button onClick={() => setShowCaseModal(true)}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl flex-shrink-0 transition-all hover:shadow-sm" style={{ background: "#2563EB", color: "white" }}>
-                    <Plus className="w-3.5 h-3.5" /> Add Case
-                  </button>
-                </div>
-
-                {/* Case List */}
-                <div className="p-4 pt-3">
-                  {filteredCases.length === 0 ? (
-                    <div className="rounded-xl p-6 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-                      <FolderOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No {caseTab} cases. <button onClick={() => setShowCaseModal(true)} className="text-blue-600 font-semibold hover:underline">Add one</button></p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {filteredCases.filter((c) => {
-                        const q = searchQuery.toLowerCase();
-                        return !q || c.title.toLowerCase().includes(q) || c.client_name?.toLowerCase().includes(q) || c.court_name?.toLowerCase().includes(q) || c.case_type.toLowerCase().includes(q);
-                      }).map((c) => (
-                        <motion.div key={c.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-card rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
-                          style={{ border: "1px solid #F1F5F9", borderLeftColor: c.status === "active" ? "#10b981" : c.status === "pending" ? "#f59e0b" : "#94a3b8", borderLeftWidth: "3px" }}
-                          onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}>
-                          <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#EFF6FF" }}>
-                              <Briefcase className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-gray-900 text-sm">{c.title}</span>
-                                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{c.case_type}</span>
-                                {c.cnr_number && (
-                                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F0F9FF", color: "#0284C7", border: "1px solid #BAE6FD" }}>
-                                    <FileText className="w-2.5 h-2.5" /> {caseTerms(activeCode).short}: {c.cnr_number}
-                                  </span>
-                                )}
-                                {/* Status changer dropdown */}
-                                <div className="relative inline-block">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setStatusMenuCaseId(statusMenuCaseId === c.id ? null : c.id); }}
-                                    className={cn("flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors",
-                                      c.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100"
-                                        : c.status === "closed" ? "bg-muted text-gray-500 border border-border hover:bg-gray-200"
-                                        : "bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100")}>
-                                    {c.status.toUpperCase()} <ChevronDown className="w-2.5 h-2.5" />
-                                  </button>
-                                  {statusMenuCaseId === c.id && (
-                                    <div className="absolute top-full left-0 mt-1 z-20 bg-card rounded-lg shadow-lg border p-1 min-w-[110px]" style={{ borderColor: "#E2E8F0" }}>
-                                      {(["active","pending","closed"] as const).map((s) => (
-                                        <button key={s} onClick={(e) => { e.stopPropagation(); updateStatusMut.mutate({ caseId: c.id, status: s }); }}
-                                          disabled={updateStatusMut.isPending}
-                                          className={cn("w-full text-left text-[11px] font-semibold px-2.5 py-1.5 rounded-md capitalize transition-colors",
-                                            c.status === s ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-background")}>
-                                          {s}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                                {docs.filter((d) => d.case_id === c.id).length > 0 && (
-                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>
-                                    <FileText className="w-2.5 h-2.5" /> {docs.filter((d) => d.case_id === c.id).length} doc{docs.filter((d) => d.case_id === c.id).length > 1 ? "s" : ""}
-                                  </span>
+                    {/* Match list */}
+                    <div className="px-5 pb-2 space-y-3">
+                      {visibleMatches.length === 0 ? (
+                        <div className="rounded-xl py-10 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+                          <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">No {matchTab} proposals right now</p>
+                          {matchTab === "pending" && (
+                            <p className="text-xs text-gray-400 mt-1">New client matches will appear here</p>
+                          )}
+                        </div>
+                      ) : (
+                        visibleMatches.map((m: any) => {
+                          const score = Math.round((m.match_score ?? 0.75) * 100);
+                          const scoreColor = score >= 85 ? "#059669" : score >= 70 ? "#D97706" : "#6B7280";
+                          const scoreBg   = score >= 85 ? "#ECFDF5" : score >= 70 ? "#FEF9C3" : "#F1F5F9";
+                          return (
+                            <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                              className="flex items-center gap-4 rounded-xl p-4 hover:shadow-sm transition-shadow"
+                              style={{ border: "1px solid #EEF2FF", background: "#FAFBFF" }}>
+                              {/* Score badge */}
+                              <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-lg"
+                                style={{ background: scoreBg, color: scoreColor, border: `1.5px solid ${scoreColor}22` }}>
+                                {score}%
+                              </div>
+                              {/* Details */}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-sm truncate">{m.case_title ?? "Untitled Case"}</p>
+                                <p className="text-[12px] text-gray-500 mt-0.5">
+                                  {m.case_type ?? "Civil"}{m.location ? ` · ${m.location}` : ""}
+                                </p>
+                                {m.budget_range && (
+                                  <p className="text-[12px] text-gray-400 mt-0.5">₹{m.budget_range}</p>
                                 )}
                               </div>
-                              <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">{c.description || "No description added"}</p>
-                              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
-                                {c.client_name && <span className="flex items-center gap-1"><User className="w-3 h-3" />{c.client_name}</span>}
-                                {c.court_name && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{c.court_name}</span>}
-                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(c.created_at, activeCode)}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <button onClick={(e) => { e.stopPropagation(); setEditingCase(c); }} className="text-gray-300 hover:text-blue-600 transition-colors mt-1" title="Edit case">
-                                <PenSquare className="w-4 h-4" />
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }} className="text-gray-300 hover:text-blue-600 transition-colors mt-1" title="Upload document">
-                                <Upload className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Client Documents — grouped with case linkage */}
-              {docs.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h3 className="font-bold text-gray-900">Client Documents</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">Linked to cases — upload from any case card</p>
-                    </div>
-                    <button onClick={() => setShowDocModal(true)} className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
-                      <Plus className="w-3.5 h-3.5" /> Upload
-                    </button>
-                  </div>
-                  <div className="space-y-2.5">
-                    {docs.map((d) => {
-                      const linkedCase = cases.find((c) => c.id === d.case_id);
-                      return (
-                        <motion.div key={d.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-card rounded-xl p-4 shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
-                          <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
-                              <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-gray-900 text-sm">{d.filename}</span>
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{d.file_type.toUpperCase()}</span>
-                                {linkedCase ? (
-                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>
-                                    <Briefcase className="w-2.5 h-2.5" /> {linkedCase.title}
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0" }}>Unlinked</span>
-                                )}
-                              </div>
-                              {d.ai_summary ? (
-                                <p className="text-[12px] text-gray-500 mt-0.5 line-clamp-1">AI: {d.ai_summary}</p>
-                              ) : (
-                                <p className="text-[12px] text-gray-400 mt-0.5 line-clamp-1">{d.content_text?.slice(0, 80) || "No content preview"}{d.content_text && d.content_text.length > 80 ? "…" : ""}</p>
-                              )}
-                              <p className="text-[11px] text-gray-400 mt-1">{formatDate(d.created_at, activeCode)}</p>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              {!d.ai_summary && (
-                                <button onClick={() => { setAnalyzingDoc(d.id); analyzeDocMut.mutate(d.id, { onSettled: () => setAnalyzingDoc(null) }); }}
-                                  disabled={analyzeDocMut.isPending && analyzingDoc === d.id}
-                                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-60">
-                                  {analyzeDocMut.isPending && analyzingDoc === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                  Analyze
+                              {/* Time + action */}
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <span className="text-[11px] text-gray-400">
+                                  Requested {timeAgo(m.created_at)}
+                                </span>
+                                <button
+                                  onClick={() => setLocation(`/matches`)}
+                                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                  style={{ background: "#EEF2FF", color: "#4338CA" }}
+                                  data-testid={`match-view-${m.id}`}
+                                >
+                                  View Details
                                 </button>
-                              )}
+                              </div>
+                            </motion.div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* View all link */}
+                    {visibleMatches.length > 0 && (
+                      <div className="px-5 py-4 border-t" style={{ borderColor: "#F1F5F9" }}>
+                        <button onClick={() => setLocation("/matches")}
+                          className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                          View all proposals <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Why Advocates choose LitigaForge ── */}
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base mb-4">Why Advocates choose LitigaForge?</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[
+                        { icon: Users, color: "#4F46E5", bg: "#EEF2FF", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
+                        { icon: Shield, color: "#059669", bg: "#ECFDF5", label: "Verified Clients", sub: "All clients are verified for genuine legal needs" },
+                        { icon: Sparkles, color: "#0EA5E9", bg: "#E0F7FA", label: "Smart Tools", sub: "AI chat, document analysis, and legal research" },
+                        { icon: Award, color: "#E85D9C", bg: "#FDF2F8", label: "Grow Your Practice", sub: "Save time and focus on winning cases" },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <div key={item.label} className="bg-white rounded-xl p-4 space-y-3 hover:shadow-sm transition-shadow" style={{ border: "1px solid #EEF2FF" }}>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: item.bg }}>
+                              <Icon className="w-5 h-5" style={{ color: item.color }} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 leading-tight">{item.label}</p>
+                              <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{item.sub}</p>
                             </div>
                           </div>
-                        </motion.div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* Indian law hint */}
-              <div className="rounded-xl p-4 flex gap-3" style={{ background: "#EFF6FF", border: "1px solid #DBEAFE" }}>
-                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-blue-900">AI Legal Assistant</p>
-                  <p className="text-[12px] text-blue-700 mt-0.5 leading-relaxed">
-                    AI references relevant statutes, case law, and procedural rules. Always verify AI output before filing in any court.
-                  </p>
-                </div>
-              </div>
+                </div>{/* /left column */}
 
-              {/* Disclaimer */}
-              <div className="rounded-xl p-4 flex gap-3" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
-                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-[12px] text-amber-800 leading-relaxed">
-                  <strong>Disclaimer:</strong> LitigaForge AI assists lawyers but does not provide legal advice.
-                  All AI outputs must be reviewed and verified by a qualified advocate before use in court proceedings.
-                  The platform connects clients to lawyers and is not a substitute for professional legal counsel.
-                </p>
-              </div>
+                {/* Right column — Quick Actions + Recent Activity */}
+                <div className="hidden lg:flex flex-col w-64 xl:w-72 flex-shrink-0 space-y-4">
+
+                  {/* Quick Actions */}
+                  <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                    <p className="font-bold text-gray-900 text-sm mb-4">Quick Actions</p>
+                    <div className="space-y-2">
+                      {[
+                        { icon: Sparkles,  label: "AI Legal Chat",    sub: "Get instant legal insights",     href: "/legal-chat",  bg: "#EEF2FF", color: "#4F46E5" },
+                        { icon: FileSearch, label: "Document Analyzer", sub: "Upload and analyze documents", href: "/review",      bg: "#E0F7FA", color: "#0EA5E9" },
+                        { icon: Plus,       label: "Post a Case",      sub: "Get matched with clients",       href: "/post-case",   bg: "#ECFDF5", color: "#059669" },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <button key={item.label} onClick={() => setLocation(item.href)}
+                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                            style={{ border: "1px solid #F1F5F9" }}>
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: item.bg }}>
+                              <Icon className="w-4 h-4" style={{ color: item.color }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 leading-none">{item.label}</p>
+                              <p className="text-[11px] text-gray-400 mt-0.5">{item.sub}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Recent Activity */}
+                  <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="font-bold text-gray-900 text-sm">Recent Activity</p>
+                      <button onClick={() => setLocation("/matches")} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">View all</button>
+                    </div>
+                    <div className="space-y-3">
+                      {recentActivity.length === 0 ? (
+                        <p className="text-[12px] text-gray-400 text-center py-3">No recent activity</p>
+                      ) : recentActivity.map((item) => {
+                        const isMatch    = item.type === "match";
+                        const isAccepted = item.type === "accepted";
+                        const isDoc      = item.type === "doc";
+                        return (
+                          <div key={item.id} className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                              style={{ background: isMatch ? "#EEF2FF" : isAccepted ? "#ECFDF5" : "#F5F3FF" }}>
+                              {isMatch    && <Users      className="w-3.5 h-3.5 text-indigo-500" />}
+                              {isAccepted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                              {isDoc      && <FileText   className="w-3.5 h-3.5 text-violet-500" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[12px] font-semibold text-gray-800 leading-tight">{item.title}</p>
+                              {item.sub && <p className="text-[11px] text-gray-400 truncate mt-0.5">{item.sub}</p>}
+                              <p className="text-[10px] text-gray-300 mt-0.5">{timeAgo(item.time)}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Decorative illustration */}
+                  <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-[#1a2744] to-[#2d4a8a] p-5 flex flex-col items-center text-center"
+                    style={{ border: "1px solid #2d4a8a" }}>
+                    <Scale className="w-12 h-12 text-amber-400 mb-3" />
+                    <p className="text-sm font-bold text-white leading-tight">Grow Your Practice</p>
+                    <p className="text-[11px] text-blue-300 mt-1 leading-relaxed">Connect with verified clients and build your reputation</p>
+                    {!isAdvocatePro && (
+                      <button onClick={() => setLocation("/subscription")}
+                        className="mt-3 text-xs font-bold py-2 px-4 rounded-lg transition-colors bg-amber-400 hover:bg-amber-300 text-[#1a2744]">
+                        Upgrade — ₹2,499/mo
+                      </button>
+                    )}
+                  </div>
+
+                </div>{/* /right column */}
+              </div>{/* /two-column */}
 
             </main>
 
-            {/* ── Right Sidebar ── */}
-            <aside className="hidden xl:flex flex-col w-64 2xl:w-72 flex-shrink-0 overflow-auto px-4 py-5 space-y-4" style={{ borderLeft: "1px solid #F1F5F9", background: "#F8FAFC" }}>
-
-              {/* Upcoming Deadlines */}
-              <div className="bg-card rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#FEF3C7" }}>
-                    <Clock className="w-4 h-4" style={{ color: "#D97706" }} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Upcoming</p>
-                    <p className="text-[11px] text-gray-400">Hearings & deadlines</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {cases.filter((c) => c.status === "active").slice(0, 3).map((c) => (
-                    <button key={c.id} onClick={() => { setFolderCase(c); setFolderDocs(docs.filter((d) => d.case_id === c.id)); setShowFolder(true); }}
-                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-background transition-colors text-left">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#D97706" }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-medium text-gray-800 truncate">{c.title}</p>
-                        <p className="text-[11px] text-gray-400">{c.court_name || "Court TBD"}</p>
-                      </div>
-                    </button>
-                  ))}
-                  {cases.filter((c) => c.status === "active").length === 0 && (
-                    <p className="text-[12px] text-gray-400 text-center py-2">No upcoming hearings</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Recent Activity */}
-              <div className="bg-card rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#ECFDF5" }}>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <p className="text-sm font-bold text-gray-900">Recent Activity</p>
-                </div>
-                <div className="space-y-2.5">
-                  {docs.slice().reverse().slice(0, 3).map((d) => {
-                    const linkedCase = cases.find((c) => c.id === d.case_id);
-                    return (
-                      <div key={d.id} className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
-                          <FileText className="w-3 h-3" style={{ color: "#7C3AED" }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-medium text-gray-800 truncate">{d.filename}</p>
-                          <p className="text-[11px] text-gray-400">{linkedCase ? `Linked: ${linkedCase.title}` : "Unlinked document"}</p>
-                          <p className="text-[10px] text-gray-300">{formatDate(d.created_at, activeCode)}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {docs.length === 0 && (
-                    <p className="text-[12px] text-gray-400 text-center py-2">No documents yet</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick Research */}
-              <div className="bg-card rounded-2xl shadow-sm p-4" style={{ border: "1px solid #F1F5F9" }}>
-                <p className="text-sm font-bold text-gray-900 mb-3">Quick Research</p>
-                <div className="space-y-1">
-                  {[{ label: "Search Judgments", icon: Gavel, href: "/judgments" },
-                    { label: "Legal Q&A", icon: MessageSquare, href: "/ask" },
-                    { label: "Document Analyzer", icon: FileSearch, href: "/review" },
-                    { label: "Find Precedents", icon: BookOpen, href: "/judgments" },
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button key={item.label} onClick={() => setLocation(item.href)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-600 hover:text-blue-700 hover:bg-blue-50 transition-colors text-[12px] font-medium text-left">
-                        <Icon className="w-3.5 h-3.5 flex-shrink-0" /> {item.label} <ChevronRight className="w-3 h-3 ml-auto text-gray-300" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Upgrade */}
-              {!isAdvocatePro && (
-                <div className="rounded-2xl p-4 text-white bg-gradient-to-br from-[#1a2744] to-[#0f1a35] border border-white/10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Award className="w-5 h-5 text-amber-400" />
-                    <p className="font-bold text-sm">Upgrade to Advocate Pro</p>
-                  </div>
-                  <p className="text-[11px] mb-3 leading-relaxed text-blue-200">Unlimited AI credits, verified badge, priority client matches, WhatsApp alerts.</p>
-                  <button onClick={() => setLocation("/subscription")} className="w-full text-xs font-bold py-2.5 rounded-lg transition-colors bg-amber-400 hover:bg-amber-300 text-[#1a2744]">Upgrade — ₹2,499/mo</button>
-                </div>
-              )}
-
-              {/* Emergency Legal Aid (per country) */}
-              {activeConfig && (() => {
-                const tel = activeConfig.emergency_legal?.replace(/[^\d+]/g, "") ?? "";
-                const inner = (
-                  <>
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-4 h-4 text-emerald-700" />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-emerald-800">Free Legal Aid · {activeConfig.flag}</p>
-                      <p className="text-[11px] text-emerald-600 font-medium">{activeConfig.emergency_legal}</p>
-                    </div>
-                  </>
-                );
-                return tel ? (
-                  <a href={`tel:${tel}`} className="rounded-xl p-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">{inner}</a>
-                ) : (
-                  <div className="rounded-xl p-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-200">{inner}</div>
-                );
-              })()}
-
-      </aside>
 
       {/* ── Add Case Modal ── */}
       <Modal open={showCaseModal} onClose={() => setShowCaseModal(false)} title="Add New Case">
