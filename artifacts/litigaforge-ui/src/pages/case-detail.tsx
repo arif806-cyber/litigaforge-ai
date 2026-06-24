@@ -587,7 +587,7 @@ export default function CaseDetail() {
                 {/* Next Steps */}
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 mb-3">Next Steps</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {[
                       { icon: Users, label: "View Proposals", color: "#3B82F6", bg: "#EFF6FF", action: () => setTab("proposals"), testId: "next-view-proposals" },
                       { icon: Upload, label: "Upload Documents", color: "#F59E0B", bg: "#FFFBEB", action: () => setTab("documents"), testId: "next-upload-docs" },
