@@ -119,9 +119,10 @@ function PendingLawyersTab({
   setShowRejectInput: React.Dispatch<React.SetStateAction<number | null>>;
   queryClient: ReturnType<typeof useQueryClient>;
 }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-pending-lawyers"],
     queryFn: () => apiFetch("/admin/lawyers/pending"),
+    retry: 2,
   });
 
   const approveMutation = useMutation({
@@ -143,6 +144,23 @@ function PendingLawyersTab({
     );
   }
 
+  if (isError) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center py-16 gap-3"
+      >
+        <AlertTriangle className="w-10 h-10 text-destructive" />
+        <p className="text-base font-semibold text-destructive">Failed to load pending lawyers</p>
+        <p className="text-sm text-muted-foreground">{(error as Error)?.message || "Unknown error"}</p>
+        <Button size="sm" variant="outline" onClick={() => refetch()} className="mt-2 gap-1.5">
+          <RotateCcw className="w-3.5 h-3.5" /> Retry
+        </Button>
+      </motion.div>
+    );
+  }
+
   const lawyers: PendingLawyer[] = data?.lawyers || [];
 
   if (lawyers.length === 0) {
@@ -155,6 +173,9 @@ function PendingLawyersTab({
         <CheckCircle className="w-10 h-10 text-emerald-500" />
         <p className="text-lg font-medium">No pending verifications</p>
         <p className="text-sm">All advocate registrations have been reviewed.</p>
+        <Button size="sm" variant="outline" onClick={() => refetch()} className="mt-2 gap-1.5">
+          <RotateCcw className="w-3.5 h-3.5" /> Refresh
+        </Button>
       </motion.div>
     );
   }
