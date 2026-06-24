@@ -226,21 +226,24 @@ async def update_case_requirement(
         raise HTTPException(404, "Case requirement not found")
     fields = []
     params = []
-    if body.title:
-        fields.append(f"title = ${len(params)+1}")
-        params.append(sanitize_text(body.title, max_length=200, field_name="title"))
-    if body.case_type:
-        fields.append(f"case_type = ${len(params)+1}")
-        params.append(sanitize_text(body.case_type, max_length=100, field_name="case_type"))
-    if body.description != "":
-        fields.append(f"description = ${len(params)+1}")
-        params.append(sanitize_text(body.description, max_length=2000, field_name="description"))
-    if body.location != "":
-        fields.append(f"location = ${len(params)+1}")
-        params.append(sanitize_text(body.location, max_length=100, field_name="location"))
-    if body.budget_range != "":
-        fields.append(f"budget_range = ${len(params)+1}")
-        params.append(sanitize_text(body.budget_range, max_length=50, field_name="budget_range"))
+    try:
+        if body.title:
+            fields.append(f"title = ${len(params)+1}")
+            params.append(sanitize_text(body.title, max_length=200, field_name="title"))
+        if body.case_type:
+            fields.append(f"case_type = ${len(params)+1}")
+            params.append(sanitize_text(body.case_type, max_length=100, field_name="case_type"))
+        if body.description != "":
+            fields.append(f"description = ${len(params)+1}")
+            params.append(sanitize_text(body.description, max_length=5000, field_name="description"))
+        if body.location != "":
+            fields.append(f"location = ${len(params)+1}")
+            params.append(sanitize_text(body.location, max_length=100, field_name="location"))
+        if body.budget_range != "":
+            fields.append(f"budget_range = ${len(params)+1}")
+            params.append(sanitize_text(body.budget_range, max_length=50, field_name="budget_range"))
+    except ValueError as ve:
+        raise HTTPException(400, str(ve))
     if body.is_anonymous is not None:
         fields.append(f"is_anonymous = ${len(params)+1}")
         params.append(body.is_anonymous)

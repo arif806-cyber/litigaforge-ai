@@ -80,6 +80,48 @@ function SectionCard({ title, action, children }: {
   );
 }
 
+interface QAItem { q: string; a: string }
+interface ParsedDesc { mainText: string; qaItems: QAItem[] }
+
+function parseDescription(raw: string): ParsedDesc {
+  if (!raw) return { mainText: "", qaItems: [] };
+  const marker = "Additional details provided by the user:";
+  const idx = raw.indexOf(marker);
+  if (idx === -1) return { mainText: raw.trim(), qaItems: [] };
+  const mainText = raw.slice(0, idx).trim();
+  const qaRaw = raw.slice(idx + marker.length).trim();
+  const parts = qaRaw.split(/(?:^|\s)-\s+/).map(s => s.trim()).filter(Boolean);
+  const qaItems: QAItem[] = parts.map(part => {
+    const qIdx = part.lastIndexOf("?");
+    if (qIdx !== -1) return { q: part.slice(0, qIdx).trim(), a: part.slice(qIdx + 1).trim() };
+    const cIdx = part.indexOf(":");
+    if (cIdx !== -1) return { q: part.slice(0, cIdx).trim(), a: part.slice(cIdx + 1).trim() };
+    return { q: part, a: "" };
+  });
+  return { mainText, qaItems };
+}
+
+function DescriptionBlock({ raw }: { raw: string }) {
+  const { mainText, qaItems } = parseDescription(raw);
+  return (
+    <div className="space-y-3">
+      {mainText && <p className="text-sm text-gray-600 leading-relaxed">{mainText}</p>}
+      {qaItems.length > 0 && (
+        <div className="rounded-xl border border-gray-100 bg-gray-50/70 divide-y divide-gray-100 text-sm overflow-hidden">
+          {qaItems.map((item, i) => (
+            <div key={i} className="grid grid-cols-5 gap-2 px-3.5 py-2.5">
+              <span className="col-span-2 text-gray-500 font-medium leading-snug">{item.q}</span>
+              <span className="col-span-3 text-gray-800 font-semibold leading-snug break-words">
+                {item.a || <span className="text-gray-400 font-normal italic">—</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MatchScoreBar({ score }: { score: number }) {
   const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
   return (
@@ -134,7 +176,9 @@ export default function CaseDetail() {
     queryFn: () => apiFetch("/client/documents"),
     enabled: !!user,
   });
-  const allDocs: any[] = docsData?.documents ?? [];
+  const allDocs: any[] = (docsData?.documents ?? []).filter(
+    (d: any) => d.case_requirement_id === caseId || (!d.case_requirement_id && !d.case_id)
+  );
 
   const { data: threadsData } = useQuery({
     queryKey: ["chat-threads"],
@@ -225,22 +269,20 @@ export default function CaseDetail() {
 
   async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (acceptedMatches.length === 0) {
-      toast({ title: "Accept a match first", description: "Documents are uploaded per an accepted case.", variant: "destructive" });
-      return;
-    }
+    if (!file || !caseId) return;
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const caseRef = acceptedMatches[0];
-      const res = await fetch(`/litigaforge/client/cases/${caseRef.id}/documents`, {
+      const res = await fetch(`/litigaforge/cases/requirements/${caseId}/documents`, {
         method: "POST",
         credentials: "include",
         body: fd,
       });
-      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.detail || `Upload failed (${res.status})`);
+      }
       refetchDocs();
       toast({ title: "Document uploaded" });
     } catch (err: any) {
@@ -330,7 +372,7 @@ export default function CaseDetail() {
                 <Share2 className="w-3.5 h-3.5" /> Share Case
               </Button>
               <Button size="sm" className="gap-1.5 text-xs h-8" onClick={() => {
-                setEditForm({ title: c.title || "", case_type: c.case_type || "", description: c.description || "", location: c.location || "", budget_range: c.budget_range || "", is_anonymous: c.is_anonymous || false });
+                setEditForm({ title: c.title || "", case_type: c.case_type || "", description: parseDescription(c.description || "").mainText, location: c.location || "", budget_range: c.budget_range || "", is_anonymous: c.is_anonymous || false });
                 setShowEdit(true);
               }} data-testid="case-edit-btn">
                 <PenSquare className="w-3.5 h-3.5" /> Edit Case
@@ -397,7 +439,9 @@ export default function CaseDetail() {
           </div>
 
           {c.description && (
-            <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">{c.description}</p>
+            <div className="max-w-3xl">
+              <DescriptionBlock raw={c.description} />
+            </div>
           )}
         </div>
 
@@ -752,7 +796,7 @@ export default function CaseDetail() {
                   <div className="rounded-2xl border border-dashed border-gray-200 p-12 text-center">
                     <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
                     <p className="text-sm text-gray-400 mb-2">No documents uploaded yet</p>
-                    <p className="text-xs text-gray-300">Accept a match to upload documents for your case</p>
+                    <p className="text-xs text-gray-300">Upload PDFs, images, or Word documents for this case</p>
                   </div>
                 ) : (
                   <div className="space-y-2">

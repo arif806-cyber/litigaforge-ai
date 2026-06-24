@@ -560,6 +560,78 @@ async def upload_client_document(
     return {"message": "Document uploaded", "document": row}
 
 
+@router.post("/cases/requirements/{req_id}/documents")
+@limiter.limit("30/minute")
+async def upload_requirement_document(
+    req_id: int,
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user),
+    file: UploadFile = File(...),
+):
+    """Client uploads a document for their case requirement (no accepted match needed)."""
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    req = await fetchrow(
+        "SELECT id FROM case_requirements WHERE id = $1 AND user_id = $2",
+        req_id, current_user["id"],
+    )
+    if not req:
+        raise HTTPException(404, "Case requirement not found")
+
+    if not file.filename:
+        raise HTTPException(400, "No file provided")
+
+    safe_name = sanitize_text(file.filename, max_length=255, field_name="filename")
+    ext = ("." + safe_name.rsplit(".", 1)[-1].lower()) if "." in safe_name else ""
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(400, f"File type '{ext or 'unknown'}' not allowed. Accepted: PDF, DOC, DOCX, JPG, PNG, TXT, ODT")
+
+    declared_mime = (file.content_type or "").lower().split(";")[0].strip()
+    if declared_mime and declared_mime not in ALLOWED_UPLOAD_MIMES:
+        raise HTTPException(400, "File content type is not permitted")
+
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "File too large. Maximum allowed size is 25 MB")
+    if len(content) == 0:
+        raise HTTPException(400, "Uploaded file is empty")
+
+    file_size = len(content)
+    file_type = ext.lstrip(".")
+    unique_name = f"req_{req_id}_user_{current_user['id']}_{int(time.time())}_{safe_name}"
+    file_url = f"/secure-files/{unique_name}"
+
+    obj_key = f"uploads/{unique_name}"
+    stored_path = obj_key
+    try:
+        from replit.object_storage import Client as _OSClient
+        storage = _OSClient()
+        storage.upload_from_bytes(obj_key, content)
+    except Exception as ose:
+        logger.warning("Object storage unavailable (%s) — falling back to local disk", ose)
+        import pathlib as _pl
+        _script_dir = _pl.Path(os.path.dirname(os.path.abspath(__file__))).parent
+        uploads_dir = _script_dir / "uploads"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        file_path_local = uploads_dir / unique_name
+        with open(file_path_local, "wb") as f:
+            f.write(content)
+        stored_path = str(file_path_local)
+
+    row = await fetchrow(
+        """INSERT INTO client_documents
+               (case_id, client_id, filename, file_type, file_size, file_path, file_url, case_requirement_id)
+           VALUES (NULL, $1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, case_id, client_id, filename, file_type, file_size, file_path, file_url,
+                     case_requirement_id, created_at""",
+        current_user["id"], safe_name, file_type, file_size, stored_path, file_url, req_id,
+    )
+    row["created_at"] = str(row["created_at"])
+    logger.info("client %s uploaded document %s for requirement %s", current_user["id"], row["id"], req_id)
+    return {"message": "Document uploaded", "document": row}
+
+
 @router.get("/client/documents")
 async def list_all_client_documents(
     current_user: Optional[dict] = Depends(get_current_user),
@@ -569,7 +641,8 @@ async def list_all_client_documents(
         raise HTTPException(401, "Login required")
 
     rows = await fetch(
-        """SELECT d.id, d.case_id, d.client_id, d.filename, d.file_type, d.file_size, d.file_url, d.created_at,
+        """SELECT d.id, d.case_id, d.case_requirement_id, d.client_id, d.filename, d.file_type,
+                  d.file_size, d.file_url, d.created_at,
                   c.title as case_title, c.case_type
            FROM client_documents d
            LEFT JOIN lawyer_cases c ON d.case_id = c.id

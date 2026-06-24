@@ -647,6 +647,16 @@ async def lifespan(app: FastAPI):
         except Exception as me:
             logger.warning("Migration budget: %s", me)
 
+        # ── case_requirement_id on client_documents ───────────────────────────
+        try:
+            await conn.execute(
+                "ALTER TABLE client_documents ADD COLUMN IF NOT EXISTS "
+                "case_requirement_id INTEGER REFERENCES case_requirements(id) ON DELETE SET NULL"
+            )
+            logger.info("Migration: client_documents.case_requirement_id added")
+        except Exception as me:
+            logger.warning("Migration client_documents.case_requirement_id: %s", me)
+
         # ── Email verification on users ───────────────────────────────────────
         try:
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE")

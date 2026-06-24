@@ -25,6 +25,18 @@ export async function _tryRefresh(): Promise<boolean> {
 }
 
 export async function apiFetch(path: string, init?: RequestInit) {
+  const rawBody = (init as any)?.body;
+  const isPlainObject =
+    rawBody !== undefined &&
+    rawBody !== null &&
+    typeof rawBody === "object" &&
+    !(rawBody instanceof FormData) &&
+    !(rawBody instanceof Blob) &&
+    !(rawBody instanceof URLSearchParams) &&
+    !(rawBody instanceof ArrayBuffer);
+
+  const body = isPlainObject ? JSON.stringify(rawBody) : rawBody;
+
   // Cookie-only auth: browser sends httpOnly cookie automatically
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
@@ -33,6 +45,7 @@ export async function apiFetch(path: string, init?: RequestInit) {
       ...init?.headers,
     },
     ...init,
+    body,
   });
 
   if (res.status === 401) {
