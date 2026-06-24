@@ -478,7 +478,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Main content */}
         <main className="flex-1 overflow-auto relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background">
           {/* Desktop sticky header */}
-          <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card/80 backdrop-blur-md px-6 items-center justify-between sticky top-0 z-10">
+          <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card px-6 items-center justify-between sticky top-0 z-20">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Scale className="w-4 h-4 text-primary" />
               <span className="font-semibold text-foreground">LitigaForge AI</span>
