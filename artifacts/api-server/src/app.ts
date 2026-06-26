@@ -12,6 +12,20 @@ import { BLOG_REDIRECTS } from "./lib/blogRedirects";
 
 const app: Express = express();
 
+// ── Domain canonicalization ────────────────────────────────────────────────
+// Redirect www.litigaforge.com → litigaforge.com (301, permanent) so Google
+// never indexes both variants. Replit's TLS proxy sets X-Forwarded-Host;
+// the virtual hostname lives there, not in the bare Host header.
+app.use((req, res, next) => {
+  const fwd = req.headers["x-forwarded-host"];
+  const host = (Array.isArray(fwd) ? fwd[0] : fwd) ?? "";
+  if (host.startsWith("www.")) {
+    res.redirect(301, `https://litigaforge.com${req.originalUrl}`);
+    return;
+  }
+  next();
+});
+
 app.use(
   pinoHttp({
     logger,
@@ -932,12 +946,36 @@ if (true) { // serve frontend in both dev and production when dist exists
       return null;
     };
 
+    // ── hreflang helper ───────────────────────────────────────────────────────
+    // Generates <link rel="alternate" hreflang="..."> tags for all country
+    // variants so Google treats /in/ask, /us/ask etc. as region-targeted
+    // pages rather than duplicate content.
+    const _CC_HREFLANG: [string, string][] = [
+      ["in", "en-IN"], ["us", "en-US"], ["gb", "en-GB"], ["ae", "en-AE"],
+      ["au", "en-AU"], ["ca", "en-CA"], ["sg", "en-SG"], ["de", "en-DE"],
+    ];
+    const _hreflangTags = (bare: string): string => {
+      // Skip per-judgment detail pages; they are India-specific and don't
+      // have meaningful country variants.
+      if (/^\/judgments\/[^/]+\/\d{4}\/[^/]+$/.test(bare)) return "";
+      const barePath = bare === "/" ? "" : bare;
+      const base = `${_SITE_URL}${barePath}`;
+      return [
+        `<link rel="alternate" hreflang="en" href="${base}"/>`,
+        ..._CC_HREFLANG.map(
+          ([cc, lang]) =>
+            `<link rel="alternate" hreflang="${lang}" href="${_SITE_URL}/${cc}${barePath}"/>`,
+        ),
+        `<link rel="alternate" hreflang="x-default" href="${base}"/>`,
+      ].join("\n");
+    };
+
     const _botHtmlForPath = (reqPath: string): string => {
       if (!_staticBotHtml) return _indexHtml;
       let bare = _stripCountry(reqPath);
       if (bare.length > 1) bare = bare.replace(/\/+$/, "");
       const meta = _routeSeo(bare);
-      if (!meta) return _staticBotHtml; // homepage / unmapped routes
+      if (!meta) return _staticBotHtml; // homepage — hreflang in static HTML is already correct
       const canonical = `${_SITE_URL}${meta.canonicalPath}`;
       // Function replacers (not string replacers) so that any `$` in the copy
       // is treated literally and never interpreted as a replacement pattern.
@@ -970,6 +1008,13 @@ if (true) { // serve frontend in both dev and production when dist exists
         .replace(
           /<meta name="twitter:description"[^>]*>/,
           () => `<meta name="twitter:description" content="${meta.description}"/>`,
+        )
+        // Replace the homepage hreflang block (comment + link tags) baked into
+        // index-static.html with route-specific ones. Pattern matches the
+        // comment line followed by any number of consecutive hreflang link lines.
+        .replace(
+          /<!-- hreflang[^\n]*\n(?:<link rel="alternate" hreflang="[^"]*"[^\n]*\n)*/,
+          () => _hreflangTags(bare) + "\n",
         )
         .replace(/<h1>[\s\S]*?<\/h1>/, () => `<h1>${meta.h1}</h1>`)
         .replace(

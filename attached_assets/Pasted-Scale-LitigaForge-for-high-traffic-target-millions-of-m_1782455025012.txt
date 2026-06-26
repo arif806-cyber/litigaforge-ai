@@ -1,0 +1,32 @@
+Scale LitigaForge for high-traffic (target: millions of monthly pageviews over time) across 8 countries, 3 languages. Current state: React 19/Vite frontend, FastAPI/asyncpg backend, ~7 blog posts/day across 10 legal categories, 42+ posts live, multi-model AI cascade (Claude/Gemini/GPT via LiteLLM, Groq active). Assume the SEO/indexing fixes (canonicalization, prerendering, sitemap) are already in place.
+
+Do the following:
+
+1. PROGRAMMATIC SEO AT SCALE
+   - Build templated, auto-generated pages for every high-volume long-tail legal query pattern: "{legal-issue} in {city/state}", "{legal-issue} in {country}", "{document-type} template {jurisdiction}" — these are the pages that actually capture search volume at scale, not just blog posts
+   - Use the Indian Kanoon judgment ingestion pipeline to auto-generate a unique, indexable page for every ingested judgment (case name, court, summary, key holdings) — this alone can produce thousands of indexable pages
+   - Internal linking: every blog post and judgment page must link to 3-5 related pages (same jurisdiction, same legal category, same case type) to distribute link equity and keep crawlers moving through the site
+   - Generate and submit jurisdiction-specific sitemaps (sitemap-india.xml, sitemap-uk.xml, etc.) rather than one giant sitemap, so Search Console reporting stays diagnosable per country
+
+2. INFRASTRUCTURE FOR LOAD
+   - Audit current FastAPI/PostgreSQL setup for read-heavy traffic: add Redis caching in front of any DB-backed page render (blog posts, judgment pages, lawyer listings) since this content rarely changes after publish
+   - CDN-cache all static and prerendered HTML aggressively (Vercel Edge / Cloudflare) with proper cache headers; only API calls (auth, payments, real-time matching) should hit origin
+   - Load-test the homepage, a sample blog post, and the AI Legal Chat endpoint at 100, 1000, and 10000 concurrent users using a tool like k6 or Locust; report where it breaks first
+   - Confirm async DB connection pooling (asyncpg) is sized for concurrent load, not just dev defaults
+
+3. CONTENT VELOCITY WITHOUT QUALITY COLLAPSE
+   - Audit the current 7-posts/day pipeline: are posts genuinely differentiated per country/language, or near-duplicate templates with country names swapped? Near-duplicate content at scale triggers Google's helpful content/spam systems and can suppress the whole domain rather than just weak pages — check Search Console for any manual action or spam indicators before scaling output further
+   - If content depth is the bottleneck, prioritize the Indian Kanoon judgment pages and city-level programmatic pages (structured, factual, naturally unique) over more generic blog volume
+
+4. MULTI-LANGUAGE / MULTI-COUNTRY SEO HYGIENE
+   - Implement hreflang tags correctly across all language/country variants so Google doesn't see them as duplicate content competing against each other
+   - Verify each country/language version has its own Search Console property or is correctly segmented in the domain-level property
+
+5. AI/AGENTIC FEATURE SCALABILITY
+   - Audit LiteLLM cascade and Groq usage for cost-per-request at scale — what happens to inference costs if AI Legal Chat usage grows 100x? Model fallback order should be cost-aware, not just availability-aware
+   - Rate-limit free-tier AI features per user/IP to prevent cost blowouts before Razorpay paid tiers are even live
+
+6. REPORTING
+   - After implementing, report: total indexable pages created, estimated crawl budget needed, load test results, and current cost-per-1000-requests for the AI layer
+
+Be honest in your report about which of these will take weeks vs. months — don't claim a fix will produce "millions of hits" quickly. Flag any step that's high-effort/low-certainty so it can be sequenced correctly.

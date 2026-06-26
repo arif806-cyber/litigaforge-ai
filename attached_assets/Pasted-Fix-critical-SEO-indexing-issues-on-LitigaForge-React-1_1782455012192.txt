@@ -1,0 +1,34 @@
+Fix critical SEO/indexing issues on LitigaForge (React 19 + Vite frontend, FastAPI backend). Google Search Console data shows:
+- Site is splitting ranking signal across 3 URL variants: https://litigaforge.com/, http://litigaforge.com/, https://www.litigaforge.com/ — all indexed separately
+- Only ~10 of 42+ blog posts are getting any search impressions at all; the rest appear uncrawled/unindexed
+- 96% of impressions show as "(unknown)" query, suggesting weak/thin content signals
+- Zero clicks across all blog posts despite some ranking position 3-5
+
+Do the following, in order:
+
+1. DOMAIN CANONICALIZATION
+   - Force a single canonical domain: https://litigaforge.com (no www, no http)
+   - Add a 301 redirect at the server/edge level: http:// → https://, and www.litigaforge.com → litigaforge.com
+   - Add <link rel="canonical" href="https://litigaforge.com{path}"> dynamically on every page, matching the actual current URL path
+
+2. FIX SPA RENDERING FOR CRAWLERS
+   - Verify whether routes are server-side rendered or pre-rendered for bots. Test this yourself: curl -A "Googlebot" https://litigaforge.com/blog/some-post and check if the returned HTML contains the actual blog post content (title, body text) or just an empty <div id="root"></div> shell.
+   - If it's an empty shell, implement one of:
+     a) Prerendering at build time for all known routes (blog posts, judgment pages, static pages) using a tool like vite-plugin-ssr, vite-react-ssg, or a custom prerender script that renders each route's HTML and serves static files to crawlers
+     b) OR dynamic SSR via the FastAPI backend for bot user-agents, returning fully rendered HTML
+   - This must apply to ALL blog post routes (/blog/*), judgment pages (/judgments/*), and core pages — not just the homepage
+
+3. META TAGS PER PAGE
+   - Each page must have a unique <title> and <meta name="description"> reflecting actual page content (not the default homepage tags duplicated everywhere)
+   - Add Open Graph tags (og:title, og:description, og:url) per page
+
+4. SITEMAP AUDIT
+   - Regenerate sitemap.xml to include ALL published blog posts, judgment pages, and core routes — confirm count matches actual published content (should be 42+ blog URLs minimum)
+   - Verify sitemap.xml is reachable at https://litigaforge.com/sitemap.xml and lists only the canonical (https, non-www) URLs
+   - Check robots.txt doesn't block any of these routes and references the sitemap
+
+5. VERIFICATION
+   - After deploying, run curl -A "Googlebot" against 5 different blog post URLs and the homepage, and paste the returned HTML body content here so I can confirm real content (not an empty shell) is present
+   - Confirm the 301 redirects work: curl -I http://litigaforge.com and curl -I https://www.litigaforge.com should both return 301 to https://litigaforge.com
+
+Do not just patch the homepage — the priority is getting the 30+ unindexed blog posts crawlable, since that's where the volume opportunity is.
