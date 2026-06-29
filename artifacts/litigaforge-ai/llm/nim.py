@@ -21,7 +21,7 @@ logger = logging.getLogger("litigaforge.nim")
 NIM_API_KEY: Optional[str] = os.getenv("NIM_API_KEY")
 NIM_RERANK_MODEL: str = os.getenv(
     "NIM_RERANK_MODEL",
-    "nvidia/llama-3.2-nv-rerankqa-1b-v2",
+    "nvidia/nv-rerankqa-mistral-4b-v3",
 )
 NIM_RERANK_BASE = "https://integrate.api.nvidia.com/v1"
 NIM_TIMEOUT = float(os.getenv("NIM_TIMEOUT", "15"))

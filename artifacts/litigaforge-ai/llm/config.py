@@ -71,7 +71,7 @@ def provider_label() -> str:
 # lawyer matches.  NIM_RERANK_MODEL and NIM_TIMEOUT are optional overrides.
 # When the key is absent the reranker silently skips — zero breakage.
 #   NIM_API_KEY        nvapi-...                               (Replit Secret)
-#   NIM_RERANK_MODEL   nvidia/llama-3.2-nv-rerankqa-1b-v2     (default)
+#   NIM_RERANK_MODEL   nvidia/nv-rerankqa-mistral-4b-v3        (default — Mistral 4B, active)
 #   NIM_TIMEOUT        15                                      (seconds, default)
 
 
