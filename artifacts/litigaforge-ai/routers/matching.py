@@ -403,11 +403,23 @@ async def ai_match_lawyers(
                 return "AP"
         return ""
 
+    def _normalize_state_code(raw: str) -> str:
+        """Normalise various state-code forms to 'TS' or 'AP'."""
+        r = raw.strip().upper()
+        if r in ("TS", "TELANGANA", "TG"):
+            return "TS"
+        if r in ("AP", "ANDHRA PRADESH", "ANDHRAPRADESH"):
+            return "AP"
+        return ""
+
     # Compute match scores
     case_type = case.get("case_type", "").lower()
     case_location = case.get("location", "").lower()
     case_loc_parts = _parse_locations(case_location) if case_location else []
-    inferred_case_state = _case_state(case_location)
+    # Primary: state_code stored on the case (set by extraction/user input).
+    # Fallback: infer from the location string if state_code is absent/blank.
+    _raw_state = case.get("state_code") or ""
+    inferred_case_state = _normalize_state_code(_raw_state) if _raw_state else _case_state(case_location)
 
     scored = []
     for l in lawyers:
