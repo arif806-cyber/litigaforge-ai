@@ -1,16 +1,15 @@
 """
-LitigaForge — NVIDIA NIM reranker helper.
+LitigaForge — NVIDIA NIM reranker helper (future upgrade path).
 
-Adds semantic reranking on top of the deterministic 0-100 lawyer-match score.
-The combined score blends 60 % NIM semantic relevance + 40 % deterministic signal,
-producing matches that understand the actual *meaning* of the client's legal issue
-rather than relying on keyword overlap alone.
+NOTE (2026-06): The NVIDIA free-tier nvapi- key does NOT include reranking model
+access.  The /v1/ranking endpoint resolves and authenticates, but returns
+404 "Function not found for account" for reranking models.
 
-Activation:  set NIM_API_KEY=nvapi-... in Replit Secrets.
-             NIM_RERANK_MODEL can be changed (default uses the 1B rerankqa model).
+Current production path: Claude-based semantic reranking is integrated directly
+in routers/matching.py (single LLM call for all 10 candidates, 60/40 blend).
 
-Graceful degradation: if the key is missing OR the API call fails for any reason,
-rerank() returns the original list unchanged — zero impact on existing behaviour.
+This module is kept as the upgrade path for when a paid NIM account is available.
+To activate: set NIM_API_KEY + upgrade to an NVIDIA account with reranking access.
 """
 import logging
 import os

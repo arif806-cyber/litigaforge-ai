@@ -14,7 +14,6 @@ from database import fetchrow, fetch, execute, executemany
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt
 from logger import get_logger
-from llm.nim import arerank, nim_enabled
 
 logger = get_logger("litigaforge.matching")
 router = APIRouter(tags=["matching"])
@@ -494,38 +493,61 @@ async def ai_match_lawyers(
     scored.sort(key=lambda x: x["match_score"], reverse=True)
     top = scored[:10]
 
-    # ── NIM semantic reranking (optional, graceful fallback) ──────────────────
-    # If NIM_API_KEY is set, blend 60% semantic + 40% deterministic score.
-    # Falls back to deterministic order silently on any error or missing key.
-    if nim_enabled():
-        rerank_query = f"{case.get('case_type', '')} — {case.get('description', '')} — {case.get('location', '')}"
-        top = await arerank(rerank_query, top, det_weight=0.40)
-
-    # AI explanation for top 3
+    # ── Semantic reranking + AI explanations (single Claude call) ────────────
+    # Claude scores ALL top-10 lawyers for semantic fit (0–10) and writes
+    # explanations for the top 3 — blended 60 % semantic / 40 % deterministic.
+    # Falls back to deterministic order silently on any JSON parse error.
     if top:
-        top_3 = top[:3]
-        lawyer_summary = "\n".join(
-            f"- {l['name']} ({l['district']}, {l['experience_years']} yrs, rating {l['rating']}, practices: {', '.join(l['practice_areas'][:3])})"
-            for l in top_3
+        all_summary = "\n".join(
+            f"- id:{l['id']} {l['name']} ({l['district']}, "
+            f"{l['experience_years']} yrs, rating {l['rating']}, "
+            f"practices: {', '.join((l.get('practice_areas') or [])[:3])})"
+            for l in top
         )
-        prompt = f"""You are an AI legal assistant matching a client with lawyers.
+        rerank_prompt = f"""You are an AI legal assistant. A client has this legal need:
 
-Client needs: {case['case_type']} in {case.get('location', 'unspecified location')}
-Description: {case.get('description', 'No description')}
+Case type: {case.get('case_type', 'unspecified')}
+Location:  {case.get('location', 'unspecified')}
+Description: {case.get('description', 'No description provided')}
 
-Top matched lawyers:
-{lawyer_summary}
+Shortlisted lawyers (by keyword score):
+{all_summary}
 
-Write 2-3 sentences for EACH lawyer explaining why they are a good match, focusing on their expertise and location. Return ONLY a JSON array where each element is {{"lawyer_id": int, "explanation": str}}."""
+Tasks:
+1. Score EVERY lawyer 0.0–10.0 for semantic fit to this specific case (consider legal specialty, applicable Indian statutes, and jurisdiction).
+2. Write 2–3 sentences explaining why the 3 highest-scoring lawyers are the best match.
 
-        raw = _ai(prompt, 1500)
+Return ONLY a valid JSON object — no markdown, no commentary:
+{{
+  "scores": [{{"lawyer_id": <int>, "semantic_score": <float 0-10>}}, ...],
+  "explanations": [{{"lawyer_id": <int>, "explanation": "<string>"}}, ...]
+}}"""
+
+        raw = _ai(rerank_prompt, 2000)
         try:
-            explanations = _extract_json_array(raw)
-            for exp in explanations:
-                for l in top:
-                    if l["id"] == exp.get("lawyer_id"):
-                        l["ai_explanation"] = exp.get("explanation", "")
-                        break
+            import json as _json
+            m = re.search(r'\{.*\}', raw, re.DOTALL)
+            if m:
+                parsed = _json.loads(m.group())
+                sem_scores = {
+                    int(s["lawyer_id"]): float(s["semantic_score"])
+                    for s in parsed.get("scores", [])
+                    if "lawyer_id" in s and "semantic_score" in s
+                }
+                if sem_scores:
+                    for l in top:
+                        sem = sem_scores.get(l["id"], 5.0)
+                        sem_norm  = min(max(sem, 0.0), 10.0) / 10.0
+                        det_norm  = l["match_score"] / 100.0
+                        l["match_score"] = round((0.6 * sem_norm + 0.4 * det_norm) * 100)
+                    top.sort(key=lambda x: x["match_score"], reverse=True)
+
+                for exp in parsed.get("explanations", []):
+                    lid = exp.get("lawyer_id")
+                    for l in top:
+                        if l["id"] == lid:
+                            l["ai_explanation"] = exp.get("explanation", "")
+                            break
         except Exception:
             pass
 
