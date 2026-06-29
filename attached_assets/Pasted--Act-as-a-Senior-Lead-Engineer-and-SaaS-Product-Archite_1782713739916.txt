@@ -1,0 +1,17 @@
+​"Act as a Senior Lead Engineer and SaaS Product Architect. Your goal is to move LitigaForge AI from 'prototype' to a 'production-ready, high-revenue-generating platform' for the Indian legal market.
+​PHASE 1: RIGOROUS VERIFICATION (Simulate 5 Lawyers & 5 Clients)
+I need to verify the end-to-end user journey. Create a test script or automated 'seeding' function that initializes 5 realistic Lawyer profiles and 5 realistic Client case-requirements in the development database. Ensure these test entities cover:
+​Lawyers: Diverse practice areas (Civil, Criminal, Corporate, Family), various experience levels, and mixed 'verified/pending' statuses.
+​Clients: Diverse case types, different locations (Hyderabad, AP, Delhi), and varying budgets.
+​Validation: After seeding, perform a programmatic 'audit' to confirm that the matching algorithm (matching.py) successfully links these 5 clients to the most relevant lawyers based on your scoring logic. Report any mismatches or low-confidence results.
+​PHASE 2: FEATURE AUDIT & INNOVATION
+Iterate through every tab and UI component. For each feature, propose one 'Revenue-Accelerator' and one 'Trust-Signal' upgrade:
+​Revenue: How can we optimize the Razorpay flow, implement dynamic pricing, or add premium visibility for top-rated lawyers?
+​Trust: How can we surface 'Verified by Bar Council' status, display past case-resolution success rates, or enable a 'secure document room' for sensitive legal files?
+​UX/UI: Audit the responsiveness and accessibility. Ensure the interface is optimized for low-bandwidth mobile users in India.
+​PHASE 3: PRODUCTION SCALING & PERFORMANCE
+Prepare the environment for mass traffic.
+​Scalability: Optimize our PostgreSQL connection pool and implement caching (e.g., Redis) for high-frequency search queries.
+​Security: Implement PII-masking on all LLM calls to ensure sensitive data is never exposed.
+​SEO: Audit the current static-route generation for the /in directory. Ensure the metadata is dynamically populated for Googlebot to maximize organic search visibility for terms like 'Lawyer in Hyderabad' or 'BNS 2023 legal advice'.
+​FORMAT: Provide your response as a clear Action Plan. Start with the test script implementation, followed by the feature innovation list, and finally the technical hardening steps for production. I require a direct, engineering-focused tone with no hedging."

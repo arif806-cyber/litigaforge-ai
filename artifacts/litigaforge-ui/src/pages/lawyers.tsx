@@ -90,6 +90,7 @@ interface Lawyer {
   hourly_rate?: number;
   bio: string;
   verified: boolean;
+  subscription_tier?: string;
 }
 
 function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
@@ -101,12 +102,21 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col hover:border-primary/40 hover:shadow-md transition-all duration-300"
     >
+      {lawyer.subscription_tier === "advocate_pro" && (
+        <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-300 w-fit">
+          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+          <span className="text-xs font-bold text-amber-700 tracking-wide">Premium Advocate</span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
             <h3 className="font-bold text-lg text-foreground truncate">{lawyer.name}</h3>
             {lawyer.verified && (
-              <BadgeCheck className="w-5 h-5 text-primary flex-shrink-0" />
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 flex-shrink-0">
+                <BadgeCheck className="w-3.5 h-3.5" />
+                Bar Council Verified
+              </span>
             )}
           </div>
           <div className="flex items-center flex-wrap gap-y-1 gap-x-3 text-sm text-muted-foreground font-medium">
@@ -115,11 +125,16 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
             {lawyer.bar_number && (
               <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{dir.barLabel}: {lawyer.bar_number}</span>
             )}
+            {lawyer.hourly_rate && (
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                {dir.currency}{lawyer.hourly_rate.toLocaleString()}/hr
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-2 min-w-[56px] flex-shrink-0">
+        <div className="flex flex-col items-center justify-center bg-amber-50 border border-amber-200 rounded-xl p-2 min-w-[56px] flex-shrink-0">
            <Star className="w-4 h-4 text-amber-500 fill-amber-500 mb-1" />
-           <span className="text-sm font-bold text-amber-700 dark:text-amber-400 font-mono leading-none">{lawyer.rating}</span>
+           <span className="text-sm font-bold text-amber-700 font-mono leading-none">{lawyer.rating}</span>
         </div>
       </div>
 

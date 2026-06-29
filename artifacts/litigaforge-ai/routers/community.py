@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from auth import get_current_user, check_tier_usage
 from rate_limit import limiter
 from database import fetchrow, fetch, execute, fetchval
+from cache import cache_get, cache_set, cache_key
 from sanitizer import sanitize_text
 from alerts.email import smtp_configured, send_confirmation_email
 from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
@@ -801,35 +802,54 @@ async def list_lawyers(
     language: Optional[str] = None,
     search: Optional[str] = None,
 ):
-    response.headers["Cache-Control"] = "public, max-age=3600"
-    conds, params = ["verified = TRUE"], []
+    response.headers["Cache-Control"] = "public, max-age=300"
+
+    ck = cache_key("lawyers", country or "", district or "", practice_area or "", language or "", search or "")
+    cached = await cache_get(ck)
+    if cached is not None:
+        return cached
+
+    conds, params = ["l.verified = TRUE"], []
     if country:
-        conds.append("LOWER(country) = $" + str(len(params) + 1))
+        conds.append("LOWER(l.country) = $" + str(len(params) + 1))
         params.append(country.lower())
     if district:
-        conds.append("district ILIKE $" + str(len(params) + 1))
+        conds.append("l.district ILIKE $" + str(len(params) + 1))
         params.append(f"%{district}%")
     if practice_area:
-        conds.append("$" + str(len(params) + 1) + " = ANY(practice_areas)")
+        conds.append("$" + str(len(params) + 1) + " = ANY(l.practice_areas)")
         params.append(practice_area)
     if language:
-        conds.append("$" + str(len(params) + 1) + " = ANY(languages)")
+        conds.append("$" + str(len(params) + 1) + " = ANY(l.languages)")
         params.append(language)
     if search:
-        conds.append("(name ILIKE $" + str(len(params) + 1) + " OR bio ILIKE $" + str(len(params) + 2) + ")")
+        conds.append(
+            "(l.name ILIKE $" + str(len(params) + 1) +
+            " OR l.bio ILIKE $" + str(len(params) + 2) + ")"
+        )
         params.extend([f"%{search}%", f"%{search}%"])
 
     where = "WHERE " + " AND ".join(conds)
     rows = await fetch(
-        f"SELECT id, name, email, phone, bar_number, district, country, practice_areas, "
-        f"languages, experience_years, rating, bio, hourly_rate, availability, "
-        f"verification_status, verified, created_at "
-        f"FROM lawyers {where} ORDER BY verified DESC, rating DESC, experience_years DESC LIMIT 50",
+        f"SELECT l.id, l.name, l.email, l.phone, l.bar_number, l.district, l.country, "
+        f"l.practice_areas, l.languages, l.experience_years, l.rating, l.bio, "
+        f"l.hourly_rate, l.availability, l.verification_status, l.verified, l.created_at, "
+        f"u.subscription_tier "
+        f"FROM lawyers l "
+        f"LEFT JOIN users u ON u.id = l.user_id "
+        f"{where} "
+        f"ORDER BY "
+        f"  CASE WHEN u.subscription_tier = 'advocate_pro' THEN 0 ELSE 1 END, "
+        f"  l.verified DESC, l.rating DESC, l.experience_years DESC "
+        f"LIMIT 50",
         *params,
     )
     for r in rows:
         r["created_at"] = str(r["created_at"])
-    return {"total": len(rows), "lawyers": rows}
+
+    result = {"total": len(rows), "lawyers": rows}
+    await cache_set(ck, result, ttl=300)
+    return result
 
 
 @router.post("/lawyers/register")

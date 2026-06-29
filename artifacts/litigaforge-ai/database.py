@@ -16,9 +16,10 @@ async def get_pool() -> asyncpg.Pool:
     if _pool is None:
         _pool = await asyncpg.create_pool(
             dsn=DATABASE_URL,
-            min_size=2,
-            max_size=10,
+            min_size=5,
+            max_size=20,
             command_timeout=30,
+            max_inactive_connection_lifetime=300,
             statement_cache_size=0,  # required for pgbouncer / Replit
         )
     return _pool
