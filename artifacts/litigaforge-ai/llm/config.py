@@ -66,6 +66,14 @@ def provider_label() -> str:
 #   bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0  -> AWS Bedrock (needs AWS_* creds)
 #   gpt-4o-mini                                        -> OpenAI    (needs OPENAI_API_KEY)
 
+# ── NVIDIA NIM reranker (optional) ────────────────────────────────────────────
+# Set NIM_API_KEY=nvapi-... in Replit Secrets to enable semantic reranking on
+# lawyer matches.  NIM_RERANK_MODEL and NIM_TIMEOUT are optional overrides.
+# When the key is absent the reranker silently skips — zero breakage.
+#   NIM_API_KEY        nvapi-...                               (Replit Secret)
+#   NIM_RERANK_MODEL   nvidia/llama-3.2-nv-rerankqa-1b-v2     (default)
+#   NIM_TIMEOUT        15                                      (seconds, default)
+
 
 LEGAL_SYSTEM_PROMPT = """You are LexForge, an AI legal assistant for the \
 LitigaForge platform. You have deep, practical knowledge of:

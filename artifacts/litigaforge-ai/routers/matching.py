@@ -14,6 +14,7 @@ from database import fetchrow, fetch, execute, executemany
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt
 from logger import get_logger
+from llm.nim import arerank, nim_enabled
 
 logger = get_logger("litigaforge.matching")
 router = APIRouter(tags=["matching"])
@@ -492,6 +493,13 @@ async def ai_match_lawyers(
 
     scored.sort(key=lambda x: x["match_score"], reverse=True)
     top = scored[:10]
+
+    # ── NIM semantic reranking (optional, graceful fallback) ──────────────────
+    # If NIM_API_KEY is set, blend 60% semantic + 40% deterministic score.
+    # Falls back to deterministic order silently on any error or missing key.
+    if nim_enabled():
+        rerank_query = f"{case.get('case_type', '')} — {case.get('description', '')} — {case.get('location', '')}"
+        top = await arerank(rerank_query, top, det_weight=0.40)
 
     # AI explanation for top 3
     if top:
