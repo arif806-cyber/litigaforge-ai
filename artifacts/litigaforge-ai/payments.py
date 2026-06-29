@@ -4,11 +4,6 @@ import re as _re
 
 import razorpay
 
-_RAZORPAY_KEY_ID     = os.environ.get("RAZORPAY_KEY_ID", "")
-_RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
-
-client = razorpay.Client(auth=(_RAZORPAY_KEY_ID, _RAZORPAY_KEY_SECRET))
-
 PLAN_PRICES = {
     "professional": 99900,   # ₹999 in paise
     "advocate_pro": 249900,  # ₹2,499 in paise
@@ -21,6 +16,23 @@ COMMISSION_MAX    = 499900 # ₹4,999 maximum
 COMMISSION_DEFAULT= 99900  # ₹999 when budget is unspecified
 
 DEMO_TOKEN = "DEMO_LF_PAYMENT_V1"  # used in sandbox / no-key mode
+
+
+def _get_client() -> razorpay.Client:
+    """Return a Razorpay client using the current environment variables.
+    Reading at call-time (not import-time) ensures secrets added after startup are picked up."""
+    key_id     = os.environ.get("RAZORPAY_KEY_ID", "")
+    key_secret = os.environ.get("RAZORPAY_KEY_SECRET", "")
+    if not key_id or not key_secret:
+        raise RuntimeError(
+            "Razorpay keys are not configured. "
+            "Please add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Replit Secrets."
+        )
+    return razorpay.Client(auth=(key_id, key_secret))
+
+
+def _keys_present() -> bool:
+    return bool(os.environ.get("RAZORPAY_KEY_ID")) and bool(os.environ.get("RAZORPAY_KEY_SECRET"))
 
 
 def calc_commission_paise(budget_range: str, budget_min_rupees: int = 0) -> int:
@@ -44,7 +56,8 @@ def create_order(tier: str, user_id: int) -> dict:
     amount = PLAN_PRICES.get(tier)
     if not amount:
         raise ValueError(f"Invalid tier: {tier}")
-    order = client.order.create({
+    rz = _get_client()
+    order = rz.order.create({
         "amount": amount,
         "currency": "INR",
         "receipt": f"lf_{user_id}_{tier}",
@@ -56,14 +69,16 @@ def create_order(tier: str, user_id: int) -> dict:
 def create_match_order(match_id: int, client_id: int, amount_paise: int) -> dict:
     """Create a Razorpay order for a lawyer connection fee.
     Falls back to demo mode if Razorpay keys are not configured."""
-    if not _RAZORPAY_KEY_ID or not _RAZORPAY_KEY_SECRET:
+    if not _keys_present():
         return {
             "demo_mode": True,
             "amount": amount_paise,
             "currency": "INR",
             "demo_token": DEMO_TOKEN,
         }
-    order = client.order.create({
+    rz = _get_client()
+    key_id = os.environ.get("RAZORPAY_KEY_ID", "")
+    order = rz.order.create({
         "amount": amount_paise,
         "currency": "INR",
         "receipt": f"lf_match_{match_id}_c{client_id}",
@@ -73,7 +88,7 @@ def create_match_order(match_id: int, client_id: int, amount_paise: int) -> dict
             "purpose": "connection_fee",
         },
     })
-    order["key"] = _RAZORPAY_KEY_ID
+    order["key"] = key_id
     order["demo_mode"] = False
     return order
 
@@ -84,7 +99,8 @@ def verify_payment(
     razorpay_signature: str,
 ) -> bool:
     try:
-        client.utility.verify_payment_signature({
+        rz = _get_client()
+        rz.utility.verify_payment_signature({
             "razorpay_order_id": razorpay_order_id,
             "razorpay_payment_id": razorpay_payment_id,
             "razorpay_signature": razorpay_signature,
