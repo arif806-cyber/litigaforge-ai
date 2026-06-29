@@ -357,14 +357,64 @@ async def ai_match_lawyers(
     if not lawyers:
         return {"case_id": req.case_requirement_id, "matches": [], "message": "No verified lawyers available at the moment. Please try again later."}
 
+    # ── Location helpers ──────────────────────────────────────────────────────
+
+    _TS_DISTRICTS = {
+        "hyderabad", "secunderabad", "warangal", "hanamkonda", "karimnagar",
+        "nizamabad", "khammam", "nalgonda", "medak", "rangareddy", "sangareddy",
+        "siddipet", "mancherial", "mahabubabad", "suryapet", "yadadri",
+        "vikarabad", "narayanpet", "nagarkurnool", "wanaparthy", "gadwal",
+        "jogulamba", "kamareddy", "rajanna", "peddapalli", "bhadradri",
+        "mulugu", "asifabad", "kumuram", "jayashankar", "bhupalpally",
+        "jangaon", "adilabad", "nirmal", "ranga reddy",
+    }
+    _AP_DISTRICTS = {
+        "vijayawada", "visakhapatnam", "vizag", "guntur", "tirupati",
+        "kakinada", "nellore", "kurnool", "rajahmundry", "eluru",
+        "machilipatnam", "amaravati", "chittoor", "ongole", "srikakulam",
+        "vizianagaram", "bhimavaram", "tanuku", "narasaraopet", "tenali",
+        "bapatla", "markapur", "nandyal", "kadapa", "anantapur",
+        "hindupur", "proddatur", "dharmavaram", "tadpatri",
+    }
+
+    def _infer_state(district: str) -> str:
+        """Return 'TS', 'AP', or '' from a lawyer's district string."""
+        dl = district.lower()
+        if any(d in dl for d in _TS_DISTRICTS):
+            return "TS"
+        if any(d in dl for d in _AP_DISTRICTS):
+            return "AP"
+        return ""
+
+    def _parse_locations(loc: str) -> list[str]:
+        """Split a multi-district location string into individual tokens."""
+        import re as _re
+        parts = _re.split(r'\s+and\s+|[,;&/]', loc.lower())
+        return [p.strip() for p in parts if p.strip()]
+
+    def _case_state(location_str: str) -> str:
+        """Infer state code from case location string."""
+        ll = location_str.lower()
+        for d in _TS_DISTRICTS:
+            if d in ll:
+                return "TS"
+        for d in _AP_DISTRICTS:
+            if d in ll:
+                return "AP"
+        return ""
+
     # Compute match scores
     case_type = case.get("case_type", "").lower()
     case_location = case.get("location", "").lower()
+    case_loc_parts = _parse_locations(case_location) if case_location else []
+    inferred_case_state = _case_state(case_location)
 
     scored = []
     for l in lawyers:
         score = 0
         reasons = []
+
+        # ── practice_areas (max 40 pts) ──────────────────────────────────────
         pas = [p.lower() for p in l.get("practice_areas", [])]
         if case_type in pas:
             score += 40
@@ -372,18 +422,43 @@ async def ai_match_lawyers(
         elif any(ct in p for ct in case_type.split() for p in pas):
             score += 25
             reasons.append("Related practice area overlap")
+
+        # ── experience_years (max 20 pts) ────────────────────────────────────
         if l.get("experience_years", 0) >= 10:
             score += 20
             reasons.append(f"{l['experience_years']}+ years experience")
         elif l.get("experience_years", 0) >= 5:
             score += 10
             reasons.append(f"{l['experience_years']}+ years experience")
-        if case_location and l.get("district", "").lower() in case_location:
-            score += 20
-            reasons.append(f"Based in {l['district']}")
-        elif case_location and any(c in l.get("district", "").lower() for c in case_location.split()):
-            score += 10
-            reasons.append("Nearby location")
+
+        # ── district / cross-district (max 20 pts) ───────────────────────────
+        lawyer_district = l.get("district", "").lower()
+        if case_location and case_loc_parts:
+            # Cross-district: award points if lawyer matches ANY parsed segment
+            matched_segment = None
+            for seg in case_loc_parts:
+                if lawyer_district in seg or seg in lawyer_district:
+                    matched_segment = seg
+                    break
+            if matched_segment is None:
+                # word-level partial match across all segments
+                all_words = " ".join(case_loc_parts).split()
+                if any(w in lawyer_district for w in all_words):
+                    matched_segment = case_location  # partial
+
+            if matched_segment is not None:
+                if len(case_loc_parts) > 1:
+                    chosen = matched_segment.title() if matched_segment != case_location else l["district"]
+                    score += 20
+                    reasons.append(f"Based in {l['district']} (matched '{chosen}' from multi-district case)")
+                else:
+                    score += 20
+                    reasons.append(f"Based in {l['district']}")
+            elif case_location and any(w in lawyer_district for w in case_location.split()):
+                score += 10
+                reasons.append("Nearby location")
+
+        # ── rating (max 10 pts) ──────────────────────────────────────────────
         rating = float(l.get("rating", 0) or 0)
         if rating >= 4.5:
             score += 10
@@ -391,6 +466,13 @@ async def ai_match_lawyers(
         elif rating >= 4.0:
             score += 5
             reasons.append(f"Strong rating ({rating})")
+
+        # ── court-admission proxy +15 ────────────────────────────────────────
+        lawyer_state = _infer_state(lawyer_district)
+        if inferred_case_state and lawyer_state and lawyer_state == inferred_case_state:
+            hc_name = "Telangana High Court" if lawyer_state == "TS" else "Andhra Pradesh High Court"
+            score += 15
+            reasons.append(f"Admitted to {hc_name} (inferred)")
 
         l["match_score"] = min(score, 100)
         l["match_reasons"] = reasons
