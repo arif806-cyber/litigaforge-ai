@@ -1,0 +1,25 @@
+Here's a Replit-Agent-ready task spec, picking tools that directly fix the SEO problems already diagnosed (SPA crawler rendering, fragmented sitemap, no structured data, no monitoring loop):
+Task #100 — SEO open-source integrations
+NEW: seo/schema_generator.py
+Generates JSON-LD using schema.org vocab (Article, LegalService, FAQPage, BreadcrumbList, Organization) for blog posts, judgment pages, and pricing/product pages — based on the Merkle/TechnicalSEO.com generator pattern (free, MIT-style, no API).
+inject_schema(page_type, data) -> str returns a <script type="application/ld+json"> block.
+NEW: seo/sitemap_manager.py
+Replaces ad-hoc sitemap generation with a single source-of-truth generator covering main app + blog (Astro/Cloudflare) URLs in one merged sitemap index, since domain authority is currently fragmented across URL variants per your last audit.
+Auto-pings Google/Bing + IndexNow (you're already using IndexNow per the blog stack) on each deploy.
+NEW: seo/prerender_check.py
+Addresses the root-cause SPA crawler issue directly: fetches each route with a stripped UA (simulating Googlebot) and diffs the returned HTML against the React-rendered version. Flags any route where crawler-visible HTML ≠ user HTML (this is the exact bug already found — internal pages return identical HTML to crawlers).
+Run in CI on every deploy as a regression gate, not just a one-time fix.
+CHANGED: litigaforge-blog-work/pipeline.py
+Wire schema_generator.py into the Astro publish step — auto-attach Article + FAQPage schema to each of the 42+ posts.
+CHANGED: main.py (FastAPI)
+Add prerendering/SSR fallback for crawler UAs on key routes (Lawyer Connect, pricing, judgment pages) — using a lightweight Puppeteer/Playwright-based prerender cache (open-source: prerender.io's self-hosted OSS core, or a custom Playwright snapshot cache) rather than a full SSR rewrite, since that's cheaper than migrating off Vite/React for SSR.
+NEW: .github/workflows/seo-ci.yml
+CI job running prerender_check.py + a headless Lighthouse CI run (@lhci/cli, open source, Google-maintained) on PRs touching routing — catches the "all pages return identical HTML" class of bug before it ships again.
+NEW: seo/seo_drift_monitor.py
+Lightweight SQLite-based baseline (title tags, meta descriptions, canonical URLs, schema presence) checked against current state weekly via a cron/scheduled task — catches silent regressions (duplicate canonicals, missing schema) without needing a paid crawler subscription.
+Tools referenced (all free/open source, no new paid dependencies):
+schema.org JSON-LD spec + Google Rich Results Test for validation (manual QA step, not code dependency)
+IndexNow (already in use)
+Lighthouse CI (@lhci/cli) — Google open source
+Playwright (already likely available, used in similar form for OCR/scraping elsewhere in your stack)
+Want me to actually write schema_generator.py and prerender_check.py now (the two with no ambiguity about your schema), or hand the whole spec to Replit Agent as-is and have it report back what it built?
