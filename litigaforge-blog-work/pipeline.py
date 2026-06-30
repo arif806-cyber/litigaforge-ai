@@ -367,14 +367,49 @@ async def generate_article(post: dict) -> dict:
     }
 
 
+# ─── CITATION LINKIFICATION ─────────────────────────────────────────────────
+# Inline citation patterns so the blog pipeline has zero extra dependencies.
+# Converts Indian case citations to markdown [citation](IndianKanoon URL) links.
+_CITE_PATTERNS_BLOG = [
+    re.compile(r"\d{4}\s+SCC\s+OnLine\s+(?:SC|HC|Bom|Mad|Del|Cal|All|AP|Ker|Guj|Raj|MP|Pat|Ori|Pun|P&?H|Kar)\s+\d+", re.IGNORECASE),
+    re.compile(r"\(\d{4}\)\s*\d+\s+SCC\s+\d+"),
+    re.compile(r"\bAIR\s+\d{4}\s+(?:SC|HC|Bom|Mad|Del|Cal|All|AP|Ker|Guj|Raj|MP|Pat|Ori|Pun|P&?H|Kar)\s+\d+", re.IGNORECASE),
+    re.compile(r"\d{4}\s+(?:\(\d+\)\s+)?(?:BomLR|MLJ|DLT|KLT|GLR|ILR|APLJ|CLJ)\s+\d+", re.IGNORECASE),
+    re.compile(r"\bMANU/[A-Z]{1,10}/\d+/\d{4}\b"),
+]
+
+def _linkify_citations_md(text: str) -> str:
+    """Replace Indian legal citations with markdown hyperlinks to IndianKanoon."""
+    if not text:
+        return text
+    from urllib.parse import quote_plus
+    seen: set = set()
+    matches = []
+    for pat in _CITE_PATTERNS_BLOG:
+        for m in pat.finditer(text):
+            raw = m.group(0)
+            if raw not in seen:
+                seen.add(raw)
+                matches.append(raw)
+    if not matches:
+        return text
+    # Replace longest first to avoid partial double-substitution
+    matches.sort(key=len, reverse=True)
+    result = text
+    for raw in matches:
+        url = f"https://indiankanoon.org/search/?formInput={quote_plus(raw)}"
+        result = result.replace(raw, f"[{raw}]({url})")
+    return result
+
+
 # ─── STEP 3: BUILD MARKDOWN ──────────────────────────────────────────────────
 def build_markdown(article: dict, post: dict) -> str:
     sections_md = "\n\n".join(
-        f"## {s['h2']}\n\n{s['body']}\n\n> **Key takeaway:** {s['keyTakeaway']}"
+        f"## {s['h2']}\n\n{_linkify_citations_md(s['body'])}\n\n> **Key takeaway:** {s['keyTakeaway']}"
         for s in article.get("sections", [])
     )
     faq_md = "\n\n".join(
-        f"### {f['q']}\n\n{f['a']}"
+        f"### {f['q']}\n\n{_linkify_citations_md(f['a'])}"
         for f in article.get("faq", [])
     )
     tags_str = ", ".join(f'"{t}"' for t in article.get("tags", []))
@@ -397,7 +432,7 @@ schema: "FAQPage"
 
 # {article['title']}
 
-{article['intro']}
+{_linkify_citations_md(article.get('intro', ''))}
 
 {sections_md}
 

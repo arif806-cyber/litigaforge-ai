@@ -19,6 +19,7 @@ from typing import Optional
 from database import execute, fetch, fetchval
 from alerts.email import send_digest_email, smtp_configured
 from logger import get_logger
+from citation_extractor import extract_citations_sync
 
 logger = get_logger("litigaforge.digest")
 
@@ -99,6 +100,9 @@ async def select_top_judgments(limit: int = DIGEST_SIZE) -> list:
             "court": r["court"],
             "summary": _two_line_summary(r["summary_en"]),
             "url": _judgment_url(r["court_slug"], r["year"], r["slug"]),
+            # Top 3 cited cases extracted from the summary (IK links only — no DB
+            # lookup needed here; digest emails go to subscribers, not search bots).
+            "citations": extract_citations_sync(r.get("summary_en") or "")[:3],
         })
     return items
 

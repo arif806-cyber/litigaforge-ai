@@ -450,10 +450,6 @@ async def lifespan(app: FastAPI):
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower "
             "ON users (lower(username)) WHERE username IS NOT NULL"
         )
-        # ── matches: payment tracking columns ────────────────────────────────
-        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending_payment'")
-        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
-        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_payment_id TEXT")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
@@ -489,6 +485,10 @@ async def lifespan(app: FastAPI):
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # ── matches: payment tracking columns (must follow CREATE TABLE matches) ─
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending_payment'")
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_payment_id TEXT")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_threads (
                 id SERIAL PRIMARY KEY,

@@ -242,6 +242,39 @@ def send_digest_email(to_email: str, name: str, items: list, date_label: str,
             f'text-transform:uppercase;letter-spacing:0.4px;">{court_e}</p>'
             if court else ""
         )
+        # Citations block — rendered only when citations were found in the summary.
+        # Each citation links to IndianKanoon (or the internal judgment page when
+        # internal_path is set). URLs are scheme-validated via _safe_url().
+        citations = it.get("citations") or []
+        citations_html = ""
+        citations_text = ""
+        if citations:
+            cite_links = []
+            cite_labels = []
+            for c in citations:
+                raw = (c.get("raw") or "").strip()
+                if not raw:
+                    continue
+                url_c = c.get("internal_path")
+                if url_c:
+                    url_c = f"https://litigaforge.com{url_c}"
+                else:
+                    url_c = c.get("ik_link") or "#"
+                safe_c = _safe_url(url_c)
+                label_e = _html.escape(raw, quote=True)
+                cite_links.append(
+                    f'<a href="{safe_c}" style="color:#1a2744;font-weight:600;'
+                    f'text-decoration:underline;" target="_blank" rel="noopener noreferrer">'
+                    f'{label_e}</a>'
+                )
+                cite_labels.append(raw)
+            if cite_links:
+                joined = ' <span style="color:#cbd5e1;">&middot;</span> '.join(cite_links)
+                citations_html = (
+                    f'<p style="margin:0 0 12px;font-size:12px;color:#64748b;line-height:1.5;">'
+                    f'<strong>Referenced:</strong> {joined}</p>'
+                )
+                citations_text = "   Referenced: " + " | ".join(cite_labels) + "\n"
         rows_html.append(
             f'<table width="100%" cellpadding="0" cellspacing="0" '
             f'style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;margin:0 0 16px;">'
@@ -250,6 +283,7 @@ def send_digest_email(to_email: str, name: str, items: list, date_label: str,
             f'{i}. {case_name_e}</p>'
             f'{court_html}'
             f'<p style="margin:0 0 14px;font-size:14px;color:#475569;line-height:1.6;">{summary_e}</p>'
+            f'{citations_html}'
             f'<a href="{url_safe}" style="display:inline-block;background:#1a2744;color:#ffffff;'
             f'text-decoration:none;font-size:13px;font-weight:600;padding:9px 18px;border-radius:7px;">'
             f'Read Full Analysis &rarr;</a>'
@@ -257,7 +291,9 @@ def send_digest_email(to_email: str, name: str, items: list, date_label: str,
         )
         rows_text.append(
             f"{i}. {case_name}" + (f" ({court})" if court else "")
-            + f"\n   {summary}\n   Read: {url}\n"
+            + f"\n   {summary}\n"
+            + citations_text
+            + f"   Read: {url}\n"
         )
 
     items_html = "\n".join(rows_html)

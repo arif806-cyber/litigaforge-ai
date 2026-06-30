@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from database import fetch, fetchrow, fetchval
 from rate_limit import limiter
+from citation_extractor import extract_citations_sync, extract_citations
 
 logger = logging.getLogger("litigaforge.judgments")
 router = APIRouter(tags=["judgments"])
@@ -51,6 +52,10 @@ def _serialize(row: dict) -> dict:
     if "entities" in d:
         raw_ent = d.get("entities")
         d["entities"] = raw_ent if isinstance(raw_ent, dict) else None
+    # citations_count: regex-only, sync, cheap — suitable for list responses.
+    # The full citations_found list (with internal_path) is only added by
+    # the detail endpoint via extract_citations() (async + DB lookup).
+    d["citations_count"] = len(extract_citations_sync(d.get("summary_en") or ""))
     d["og_image_url"] = d.get("og_image_url") or _og_url(
         d["court_slug"], d["year"], d["slug"]
     )
@@ -194,6 +199,16 @@ async def get_judgment(request: Request, court_slug: str, year: int, slug: str):
     if not row:
         raise HTTPException(status_code=404, detail="Judgment not found")
     data = _serialize(row)
+    # Enrich detail with full citation list: regex + DB lookup for internal_path.
+    # Runs over both the summary and the first 4 kB of full_text.
+    try:
+        data["citations_found"] = await extract_citations(
+            data.get("summary_en") or "",
+            (row.get("full_text") or "")[:4000],
+        )
+    except Exception as _ce:
+        logger.warning("citations: enrichment failed for %s/%s/%s: %s", court_slug, year, slug, _ce)
+        data["citations_found"] = extract_citations_sync(data.get("summary_en") or "")
     related = await fetch(
         """SELECT case_name, court, court_slug, year, slug, outcome, judgment_date
            FROM judgments
