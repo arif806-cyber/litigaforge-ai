@@ -18,7 +18,7 @@ COMMISSION_DEFAULT= 99900  # ₹999 when budget is unspecified
 DEMO_TOKEN = "DEMO_LF_PAYMENT_V1"  # used in sandbox / no-key mode
 
 
-def _get_client() -> razorpay.Client:
+def get_client() -> razorpay.Client:
     """Return a Razorpay client using the current environment variables.
     Reading at call-time (not import-time) ensures secrets added after startup are picked up."""
     key_id     = os.environ.get("RAZORPAY_KEY_ID", "")
@@ -29,6 +29,9 @@ def _get_client() -> razorpay.Client:
             "Please add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Replit Secrets."
         )
     return razorpay.Client(auth=(key_id, key_secret))
+
+
+_get_client = get_client  # internal alias for backwards compatibility
 
 
 def _keys_present() -> bool:

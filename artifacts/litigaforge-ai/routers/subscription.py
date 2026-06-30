@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from auth import require_user
 from database import get_pool, SUBSCRIPTION_PLANS
-from payments import create_order, verify_payment, PLAN_PRICES
+from payments import create_order, verify_payment, get_client, PLAN_PRICES
 
 logger = logging.getLogger("litigaforge.api")
 router = APIRouter(tags=["subscription"])
@@ -56,7 +56,8 @@ async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(r
     # Fetch Razorpay order and verify amount matches expected tier price
     expected_amount = PLAN_PRICES[req.tier]
     try:
-        order = __import__("payments").client.order.fetch(req.razorpay_order_id)
+        rz = get_client()
+        order = rz.order.fetch(req.razorpay_order_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Failed to fetch order from payment provider")
     actual_amount = order.get("amount")
