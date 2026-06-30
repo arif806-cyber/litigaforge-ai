@@ -9,5 +9,9 @@ export const modules: ModuleMap = {
   "./components/mockups/dashboard/Pulse.tsx": () => import("../components/mockups/dashboard/Pulse.tsx"),
   "./components/mockups/whitelabel/AdminDashboard.tsx": () => import("../components/mockups/whitelabel/AdminDashboard.tsx"),
   "./components/mockups/whitelabel/ClientPortal.tsx": () => import("../components/mockups/whitelabel/ClientPortal.tsx"),
+  "./components/mockups/whitelabel/LDv1CommandCenter.tsx": () => import("../components/mockups/whitelabel/LDv1CommandCenter.tsx"),
+  "./components/mockups/whitelabel/LDv2TodayFocus.tsx": () => import("../components/mockups/whitelabel/LDv2TodayFocus.tsx"),
+  "./components/mockups/whitelabel/LDv3ClientCRM.tsx": () => import("../components/mockups/whitelabel/LDv3ClientCRM.tsx"),
+  "./components/mockups/whitelabel/LDv4AICopilot.tsx": () => import("../components/mockups/whitelabel/LDv4AICopilot.tsx"),
   "./components/mockups/whitelabel/LawyerDashboard.tsx": () => import("../components/mockups/whitelabel/LawyerDashboard.tsx")
 };
