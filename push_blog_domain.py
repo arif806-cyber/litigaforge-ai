@@ -13,7 +13,10 @@ import urllib.request
 import urllib.error
 
 REPO = "arif806-cyber/litigaforge-blog"
-PAT = os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN", "")
+PAT = (
+    os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE")
+    or os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN", "")
+)
 NEW_DOMAIN = "blog.litigaforge.com"
 OLD_DOMAIN = "litigaforge.com"
 

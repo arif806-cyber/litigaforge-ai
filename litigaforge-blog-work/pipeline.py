@@ -24,7 +24,12 @@ from datetime import datetime, timezone
 # ─── CONFIG FROM ENVIRONMENT ─────────────────────────────────────────────────
 GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "")
-GITHUB_TOKEN    = os.environ.get("GITHUB_TOKEN", "")
+GITHUB_TOKEN    = (
+    os.environ.get("GITHUB_TOKEN")
+    or os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN")
+    or os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE")
+    or ""
+)
 GITHUB_REPO     = os.environ.get("GITHUB_REPO", "arif806-cyber/litigaforge-blog")
 INDEXNOW_KEY    = os.environ.get("INDEXNOW_KEY", "")
 BLOG_DOMAIN     = os.environ.get("BLOG_DOMAIN", "blog.litigaforge.com")
