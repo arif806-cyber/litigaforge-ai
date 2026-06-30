@@ -158,6 +158,26 @@ def _best_url(cite: dict) -> str:
     return cite["ik_link"]
 
 
+def linkify_citations(text: str) -> str:
+    """
+    Public API — wrap Indian legal citations in text with direct hyperlinks.
+
+    Produces markdown [raw](url) links suitable for Astro / MDX rendering.
+    Uses IndianKanoon search URLs for unmatched citations; DB-resolved
+    internal_path is NOT applied here (sync, no I/O).  For DB-first resolution
+    call ``extract_citations()`` (async) then pass the results to
+    ``linkify_citations_html()`` or ``linkify_citations_md()``.
+
+    Note: the task spec described a ``[CITE:url]text[/CITE]`` marker format
+    intended for a template-side resolver.  Direct markdown links are used
+    instead because (a) Astro renders them natively without template changes,
+    (b) the blog pipeline runs in GitHub Actions without LitigaForge DB access,
+    and (c) email renderers already use ``linkify_citations_html()`` with
+    pre-resolved cites from ``extract_citations()``.
+    """
+    return linkify_citations_md(text)
+
+
 def linkify_citations_md(text: str) -> str:
     """
     Wrap Indian legal citations in text with markdown hyperlinks [raw](ik_url).

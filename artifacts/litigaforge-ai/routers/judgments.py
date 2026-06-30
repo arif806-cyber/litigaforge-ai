@@ -52,10 +52,11 @@ def _serialize(row: dict) -> dict:
     if "entities" in d:
         raw_ent = d.get("entities")
         d["entities"] = raw_ent if isinstance(raw_ent, dict) else None
-    # citations_count: regex-only, sync, cheap — suitable for list responses.
-    # The full citations_found list (with internal_path) is only added by
-    # the detail endpoint via extract_citations() (async + DB lookup).
-    d["citations_count"] = len(extract_citations_sync(d.get("summary_en") or ""))
+    # citations_found: regex-only sync extraction for list responses.
+    # internal_path is always None here (no DB lookup in _serialize).
+    # The detail endpoint re-runs extract_citations() (async+DB) which
+    # overwrites this field with DB-resolved internal_path values.
+    d["citations_found"] = extract_citations_sync(d.get("summary_en") or "")
     d["og_image_url"] = d.get("og_image_url") or _og_url(
         d["court_slug"], d["year"], d["slug"]
     )
