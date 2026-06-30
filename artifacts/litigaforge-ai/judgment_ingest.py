@@ -446,34 +446,37 @@ async def _embed_judgment(court_slug: str, year: int, slug: str, case_name: str,
         logger.warning("[IK] embed failed for '%s': %s", case_name[:60], e)
 
 
-async def _insert(row: dict, tid: Any) -> bool:
+async def _insert(row: dict, tid: Any) -> Optional[str]:
+    """Insert a judgment.  Returns the final slug used on success, or None if already exists."""
     try:
         new_id = await _insert_one(row)
         if new_id:
-            return True
+            return row["slug"]
         # Slug collided with a DIFFERENT case (source_url pre-check already ruled out
         # a true duplicate). Disambiguate with a short tid suffix and retry once.
         row2 = {**row, "slug": _disambiguate(row["slug"], tid)}
-        return bool(await _insert_one(row2))
+        new_id2 = await _insert_one(row2)
+        return row2["slug"] if new_id2 else None
     except UniqueViolation:
         # An out-of-band writer inserted this source_url between our pre-check and
         # this insert; the partial unique index on source_url rejected the dupe.
         # Treat as an existing row (dedup-safe), not a run-killing failure.
         logger.info("[IK] source_url already present (race) — skipping: %s",
                     row.get("source_url"))
-        return False
+        return None
 
 
 async def _insert_and_embed(row: dict, tid: Any, case_name: str, summary: dict) -> bool:
     """Insert a judgment and fire-and-forget an embedding task. Returns True on new insert."""
-    inserted = await _insert(row, tid)
-    if inserted:
+    final_slug = await _insert(row, tid)
+    if final_slug is not None:
         # Fire-and-forget: embed asynchronously so ingest is not blocked by NIM latency.
+        # Uses final_slug (not row["slug"]) in case slug was disambiguated on collision.
         asyncio.create_task(_embed_judgment(
-            row["court_slug"], row["year"], row["slug"],
+            row["court_slug"], row["year"], final_slug,
             case_name, summary.get("summary_en", ""),
         ))
-    return inserted
+    return final_slug is not None
 
 
 # ── Orchestration ──────────────────────────────────────────────────────────────
