@@ -863,54 +863,21 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
     # ── Step 2: keyword fallback if semantic search returned nothing ───────────
     if not db_results:
         db_results = await _search_judgments_keyword(safe_query, req.court or "")
-        search_source = "keyword" if db_results else "ai_generated"
+        search_source = "keyword"
 
-    # ── Step 3: AI-generated fallback (original behaviour) when DB has nothing ─
+    # ── No results: return empty rather than hallucinate ───────────────────────
     if not db_results:
-        search_source = "ai_generated"
-        courts = ", ".join(cfg.get("courts", [])) or "the relevant courts"
-        court_note = (
-            f" Prioritise {req.court} judgments." if req.court else
-            f" Include the apex and appellate courts of {cfg['name']} ({courts}) and landmark judgments."
-        )
-        prompt = f"""You are an expert in {cfg['name']} case law and legal research.
-
-SEARCH QUERY: {safe_query}{court_note}
-
-Return ONLY a valid JSON array of 5 highly relevant {cfg['name']} court judgments:
-[
-  {{
-    "case_name": "Full case title — Party A v Party B",
-    "citation": "a real citation in the standard {cfg['name']} format",
-    "court": "a real {cfg['name']} court",
-    "year": YYYY,
-    "holding": "The core legal principle settled by this case — 3 to 4 specific sentences",
-    "relevance": "Why this judgment directly applies to the query — 1 to 2 sentences",
-    "search_query": "2–4 word search term"
-  }}
-]
-
-Use real, verifiable {cfg['name']} citations where known. Prefer landmark judgments that lawyers actually cite."""
-
-        raw = _ai(wrap_user_prompt(prompt, req.country), 3000)
-        raw = validate_ai_response(raw)
-        try:
-            judgments = _extract_json_array(raw)
-        except Exception:
-            judgments = []
-
-        for j in judgments:
-            q = j.get("search_query") or j.get("ik_query") or j.get("case_name") or safe_query
-            j["ik_link"] = caselaw_link(req.country, q)
-            j["source_name"] = prov_name
-            j["search_source"] = "ai_generated"
-
         return {
             "query": safe_query,
-            "total": len(judgments),
+            "total": 0,
             "source_name": prov_name,
-            "search_source": search_source,
-            "judgments": judgments,
+            "search_source": "keyword",
+            "judgments": [],
+            "hint": (
+                "No matching judgments found in the database. "
+                "Run the admin embed-backfill to index judgments for semantic search, "
+                "or ingest more judgments via the IndianKanoon source."
+            ),
         }
 
     # ── Format DB results to match existing response shape ─────────────────────

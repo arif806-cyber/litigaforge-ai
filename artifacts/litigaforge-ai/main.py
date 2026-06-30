@@ -779,11 +779,14 @@ async def lifespan(app: FastAPI):
                 await conn.execute(
                     "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS embedding vector(1024)"
                 )
+                # Drop any pre-existing hnsw index so we can use ivfflat (task spec).
+                # Both DROP and CREATE are idempotent across restarts.
+                await conn.execute("DROP INDEX IF EXISTS idx_judgments_embedding")
                 await conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_judgments_embedding "
-                    "ON judgments USING hnsw (embedding vector_cosine_ops)"
+                    "ON judgments USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
                 )
-                logger.info("pgvector embedding column + hnsw index ready")
+                logger.info("pgvector embedding column + ivfflat index ready")
             except Exception as ve:
                 logger.warning("pgvector init skipped (not available or already set up): %s", ve)
             await conn.execute("""
