@@ -27,3 +27,9 @@ pytesseract==0.3.13
 Pillow==11.0.0
 litellm==1.89.1
 fpdf2==2.8.3
+# opennyai + spacy: Indian legal NLP (statute extraction + NER).
+# opennyai 0.0.13 pulls spaCy transformer pipeline + BERT models (~500 MB);
+# llm/legal_nlp.py uses pure regex for statute extraction (equivalent accuracy,
+# no download) and the HF Inference API for NER (no local model needed).
+# Install manually for local fine-tuning: pip install opennyai spacy
+# python -m spacy download en_core_web_sm

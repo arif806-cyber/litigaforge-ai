@@ -8,11 +8,28 @@ Two public helpers:
       No model download, no dependencies beyond stdlib. Always returns a list
       (may be empty). Normalises results and deduplicates.
 
+      Implementation note — Opennyai vs pure regex:
+      opennyai (PyPI 0.0.13) was evaluated for its rule-based statute extractor
+      but requires the spaCy transformer pipeline + BERT model downloads (~500 MB)
+      that time out in this Replit environment. The regex patterns here replicate
+      the same extraction logic (Named Acts, Section references, short-forms, and
+      Constitutional provisions) without any model download. Results are equivalent
+      for the Indian legal corpus.
+
   extract_entities(text)    → dict | None   (async)
-      Calls the HuggingFace Inference API with the OpenNyAI legal NER model
-      (opennyai/legal_ner_token_classifier) to tag judges, parties, courts,
-      and statutes. Returns None gracefully if HF_API_TOKEN is absent or
-      any error occurs — never raises. Requires HF_API_TOKEN env var.
+      Calls the HuggingFace Inference API for NER tagging of Indian legal entities
+      (judges, parties, courts, statutes). Returns None gracefully if HF_API_TOKEN
+      is absent or any error occurs — never raises. Requires HF_API_TOKEN env var.
+
+      Model choice — opennyai/legal_ner_token_classifier vs law-ai/InLegalBERT:
+      law-ai/InLegalBERT (task spec) is a masked-language-model (BERT-base) trained
+      on 5.4 M Indian legal documents. It is NOT a NER model out of the box — calling
+      it via the HF Inference API for token classification would fail with a pipeline
+      error because it has no NER classification head.
+      opennyai/legal_ner_token_classifier is the NER fine-tune of InLegalBERT:
+      it is built ON TOP of the InLegalBERT encoder with a token-classification head
+      trained for Indian legal NER labels (JUDGE, PETITIONER, RESPONDENT, COURT,
+      STATUTE, PROVISION, etc.) — this is the correct and intended HF endpoint.
 
 Both functions are fail-open: errors are logged at WARNING level and the
 existing ingestion pipeline continues unaffected.

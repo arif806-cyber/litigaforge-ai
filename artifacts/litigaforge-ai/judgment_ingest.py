@@ -466,15 +466,49 @@ async def _insert(row: dict, tid: Any) -> Optional[str]:
         return None
 
 
+async def _enrich_entities_judgment(
+    court_slug: str, year: int, slug: str, full_text: str
+) -> None:
+    """Fire-and-forget: run HF NER entity extraction and store in entities JSONB column.
+    Best-effort — never raises. No-op when HF_API_TOKEN is absent."""
+    try:
+        from llm.legal_nlp import extract_entities, legal_nlp_enabled
+        if not legal_nlp_enabled():
+            return
+        import json as _json
+        entities = await extract_entities(full_text)
+        if entities is None:
+            return
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE judgments SET entities = $1::jsonb "
+                "WHERE court_slug = $2 AND year = $3 AND slug = $4",
+                _json.dumps(entities), court_slug, year, slug,
+            )
+        logger.info("[IK] entities extracted: %s/%s/%s", court_slug, year, slug)
+    except Exception as e:
+        logger.warning(
+            "[IK] entity extraction failed for %s/%s/%s: %s", court_slug, year, slug, e
+        )
+
+
 async def _insert_and_embed(row: dict, tid: Any, case_name: str, summary: dict) -> bool:
-    """Insert a judgment and fire-and-forget an embedding task. Returns True on new insert."""
+    """Insert a judgment and fire-and-forget embedding + entity extraction tasks.
+    Returns True on new insert."""
     final_slug = await _insert(row, tid)
     if final_slug is not None:
-        # Fire-and-forget: embed asynchronously so ingest is not blocked by NIM latency.
+        # Fire-and-forget embedding: NIM latency must not block ingest.
         # Uses final_slug (not row["slug"]) in case slug was disambiguated on collision.
         asyncio.create_task(_embed_judgment(
             row["court_slug"], row["year"], final_slug,
             case_name, summary.get("summary_en", ""),
+        ))
+        # Fire-and-forget NLP entity extraction (HF Inference API) → entities JSONB column.
+        # No-op in dev/when HF_API_TOKEN is absent; never blocks ingestion.
+        asyncio.create_task(_enrich_entities_judgment(
+            row["court_slug"], row["year"], final_slug,
+            row.get("full_text") or "",
         ))
     return final_slug is not None
 
