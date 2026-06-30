@@ -239,6 +239,86 @@ async def admin_run_judgment_ingest(
     return {"success": True, "result": stats}
 
 
+@router.post("/admin/judgments/embed-backfill")
+async def admin_embed_backfill(
+    batch_size: int = 20,
+    limit: int = 0,
+    current_user: dict = Depends(get_superuser),
+):
+    """
+    Backfill NIM embeddings for all judgments that don't have one yet.
+
+    Iterates rows where ``embedding IS NULL``, embeds them in batches using
+    ``nvidia/nv-embedqa-e5-v5``, and stores the result.  Safe to re-run —
+    already-embedded rows are skipped.
+
+    Optional params:
+    - ``batch_size``: how many judgments to embed per NIM API call (default 20, max 20)
+    - ``limit``: stop after this many total judgments processed (0 = no limit)
+
+    Returns counts of processed / succeeded / failed rows and whether NIM is enabled.
+    """
+    from llm.nim_embed import aembed_passages, nim_embed_enabled, vec_to_str
+
+    if not nim_embed_enabled():
+        return {
+            "success": False,
+            "reason": "NIM_API_KEY not set — embeddings unavailable",
+            "nim_enabled": False,
+        }
+
+    real_batch = min(max(1, batch_size), 20)
+    rows = await fetch(
+        """SELECT id, court_slug, year, slug, case_name, summary_en
+           FROM judgments
+           WHERE embedding IS NULL AND status = 'published'
+           ORDER BY id""",
+    )
+    if limit > 0:
+        rows = rows[:limit]
+
+    processed = 0
+    succeeded = 0
+    failed = 0
+
+    for start in range(0, len(rows), real_batch):
+        batch = rows[start:start + real_batch]
+        texts = [f"{r['case_name']}. {r['summary_en'] or ''}" for r in batch]
+        results = await aembed_passages(texts)
+        if results is None:
+            failed += len(batch)
+            processed += len(batch)
+            logger.warning("embed-backfill: NIM call failed for batch starting at %d", start)
+            continue
+        for row, vec in zip(batch, results):
+            processed += 1
+            if vec is None:
+                failed += 1
+                continue
+            try:
+                await execute(
+                    "UPDATE judgments SET embedding = $1::vector WHERE id = $2",
+                    vec_to_str(vec), row["id"],
+                )
+                succeeded += 1
+            except Exception as e:
+                failed += 1
+                logger.warning("embed-backfill: store failed for id=%s: %s", row["id"], e)
+
+    logger.info(
+        "embed-backfill: done — %d processed, %d succeeded, %d failed",
+        processed, succeeded, failed,
+    )
+    return {
+        "success": True,
+        "nim_enabled": True,
+        "total_without_embedding": len(rows),
+        "processed": processed,
+        "succeeded": succeeded,
+        "failed": failed,
+    }
+
+
 @router.post("/admin/digest/send")
 async def admin_send_digest(current_user: dict = Depends(get_superuser)):
     """Manually trigger the daily judgment digest send (ops + verification).

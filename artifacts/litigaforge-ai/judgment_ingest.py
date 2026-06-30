@@ -424,6 +424,28 @@ async def _insert_one(row: dict) -> Optional[int]:
     )
 
 
+async def _embed_judgment(court_slug: str, year: int, slug: str, case_name: str, summary_en: str) -> None:
+    """Compute NIM embedding for a judgment and store it. Best-effort — never raises."""
+    try:
+        from llm.nim_embed import aembed_passages, nim_embed_enabled, vec_to_str
+        if not nim_embed_enabled():
+            return
+        text = f"{case_name}. {summary_en}"
+        results = await aembed_passages([text])
+        if not results or results[0] is None:
+            return
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE judgments SET embedding = $1::vector "
+                "WHERE court_slug = $2 AND year = $3 AND slug = $4",
+                vec_to_str(results[0]), court_slug, year, slug,
+            )
+        logger.info("[IK] embedded: %s", case_name[:60])
+    except Exception as e:
+        logger.warning("[IK] embed failed for '%s': %s", case_name[:60], e)
+
+
 async def _insert(row: dict, tid: Any) -> bool:
     try:
         new_id = await _insert_one(row)
@@ -440,6 +462,18 @@ async def _insert(row: dict, tid: Any) -> bool:
         logger.info("[IK] source_url already present (race) — skipping: %s",
                     row.get("source_url"))
         return False
+
+
+async def _insert_and_embed(row: dict, tid: Any, case_name: str, summary: dict) -> bool:
+    """Insert a judgment and fire-and-forget an embedding task. Returns True on new insert."""
+    inserted = await _insert(row, tid)
+    if inserted:
+        # Fire-and-forget: embed asynchronously so ingest is not blocked by NIM latency.
+        asyncio.create_task(_embed_judgment(
+            row["court_slug"], row["year"], row["slug"],
+            case_name, summary.get("summary_en", ""),
+        ))
+    return inserted
 
 
 # ── Orchestration ──────────────────────────────────────────────────────────────
@@ -508,7 +542,8 @@ async def _do_run(
                 "acts_cited": summary["acts_cited"], "outcome": summary["outcome"],
                 "source_url": source_url,
             }
-            if await _insert(row, tid):
+            inserted_id = await _insert_and_embed(row, tid, case_name, summary)
+            if inserted_id:
                 stats["inserted"] += 1
                 qstat["inserted"] += 1
                 remaining -= 1

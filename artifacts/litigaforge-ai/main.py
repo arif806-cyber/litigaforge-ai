@@ -769,6 +769,23 @@ async def lifespan(app: FastAPI):
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_judgments_source_url "
                 "ON judgments (source_url) WHERE source_url IS NOT NULL"
             )
+            # ── NIM semantic search (pgvector) ────────────────────────────────
+            # Enable the vector extension and add the embedding column for
+            # semantic similarity search.  Both are no-ops if already present.
+            # The hnsw index (pgvector ≥ 0.5) works on empty tables; wrapped in
+            # its own try/except so a missing extension never aborts table init.
+            try:
+                await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+                await conn.execute(
+                    "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS embedding vector(1024)"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_judgments_embedding "
+                    "ON judgments USING hnsw (embedding vector_cosine_ops)"
+                )
+                logger.info("pgvector embedding column + hnsw index ready")
+            except Exception as ve:
+                logger.warning("pgvector init skipped (not available or already set up): %s", ve)
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS digest_subscribers (
                     id SERIAL PRIMARY KEY,

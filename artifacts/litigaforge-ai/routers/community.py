@@ -726,6 +726,122 @@ class JudgmentSearchRequest(BaseModel):
     country: str = "IN"
 
 
+async def _search_judgments_semantic(
+    query: str, court_filter: str, limit: int = 10
+) -> list:
+    """
+    Semantic search: embed the query with NIM, find closest DB judgments by
+    cosine distance (embedding <=> query_vec).  Returns a list of serialised
+    judgment dicts, or an empty list if NIM is unavailable or no embeddings exist.
+    """
+    from llm.nim_embed import aembed_query, nim_embed_enabled, vec_to_str
+    from routers.judgments import _serialize
+
+    if not nim_embed_enabled():
+        return []
+
+    query_vec = await aembed_query(query)
+    if query_vec is None:
+        return []
+
+    vec_str = vec_to_str(query_vec)
+    try:
+        from database import fetch as db_fetch, fetchval as db_fetchval
+
+        # Only run vector search if there are actually embeddings stored.
+        embedded_count = await db_fetchval(
+            "SELECT COUNT(*) FROM judgments WHERE embedding IS NOT NULL AND status = 'published'"
+        )
+        if not embedded_count:
+            return []
+
+        if court_filter:
+            rows = await db_fetch(
+                """SELECT id, case_name, court, court_slug, bench, judgment_date, year, slug,
+                          summary_en, summary_hi, acts_cited, outcome, citation,
+                          source_name, source_url, og_image_url, created_at,
+                          1 - (embedding <=> $1::vector) AS similarity
+                   FROM judgments
+                   WHERE status = 'published' AND embedding IS NOT NULL
+                     AND (court ILIKE $3 OR court_slug ILIKE $3)
+                   ORDER BY embedding <=> $1::vector
+                   LIMIT $2""",
+                vec_str, limit, f"%{court_filter}%",
+            )
+        else:
+            rows = await db_fetch(
+                """SELECT id, case_name, court, court_slug, bench, judgment_date, year, slug,
+                          summary_en, summary_hi, acts_cited, outcome, citation,
+                          source_name, source_url, og_image_url, created_at,
+                          1 - (embedding <=> $1::vector) AS similarity
+                   FROM judgments
+                   WHERE status = 'published' AND embedding IS NOT NULL
+                   ORDER BY embedding <=> $1::vector
+                   LIMIT $2""",
+                vec_str, limit,
+            )
+
+        results = []
+        for r in rows:
+            d = _serialize(dict(r))
+            d["similarity"] = round(float(r.get("similarity") or 0.0), 4)
+            d["search_source"] = "nim_semantic"
+            results.append(d)
+        return results
+
+    except Exception as e:
+        import logging as _log
+        _log.getLogger("litigaforge.community").warning(
+            "semantic search failed: %s", e
+        )
+        return []
+
+
+async def _search_judgments_keyword(query: str, court_filter: str, limit: int = 10) -> list:
+    """
+    Keyword fallback: full-text ILIKE search across case_name, summary_en, outcome.
+    Returns serialised judgment dicts (may be empty).
+    """
+    from database import fetch as db_fetch
+    from routers.judgments import _serialize
+
+    try:
+        q = f"%{query}%"
+        if court_filter:
+            rows = await db_fetch(
+                """SELECT id, case_name, court, court_slug, bench, judgment_date, year, slug,
+                          summary_en, summary_hi, acts_cited, outcome, citation,
+                          source_name, source_url, og_image_url, created_at
+                   FROM judgments
+                   WHERE status = 'published'
+                     AND (court ILIKE $3 OR court_slug ILIKE $3)
+                     AND (case_name ILIKE $1 OR summary_en ILIKE $1 OR outcome ILIKE $1)
+                   ORDER BY judgment_date DESC NULLS LAST
+                   LIMIT $2""",
+                q, limit, f"%{court_filter}%",
+            )
+        else:
+            rows = await db_fetch(
+                """SELECT id, case_name, court, court_slug, bench, judgment_date, year, slug,
+                          summary_en, summary_hi, acts_cited, outcome, citation,
+                          source_name, source_url, og_image_url, created_at
+                   FROM judgments
+                   WHERE status = 'published'
+                     AND (case_name ILIKE $1 OR summary_en ILIKE $1 OR outcome ILIKE $1)
+                   ORDER BY judgment_date DESC NULLS LAST
+                   LIMIT $2""",
+                q, limit,
+            )
+        results = []
+        for r in rows:
+            d = _serialize(dict(r))
+            d["search_source"] = "keyword"
+            results.append(d)
+        return results
+    except Exception:
+        return []
+
+
 @router.post("/judgments/search")
 @limiter.limit("10/minute")
 async def search_judgments(req: JudgmentSearchRequest, request: Request):
@@ -739,11 +855,25 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
 
     cfg = get_config(req.country)
     prov_name, _ = caselaw_provider(req.country)
-    courts = ", ".join(cfg.get("courts", [])) or "the relevant courts"
-    court_note = f" Prioritise {req.court} judgments." if req.court else \
-        f" Include the apex and appellate courts of {cfg['name']} ({courts}) and landmark judgments."
 
-    prompt = f"""You are an expert in {cfg['name']} case law and legal research.
+    # ── Step 1: try NIM semantic search against real DB judgments ──────────────
+    db_results = await _search_judgments_semantic(safe_query, req.court or "")
+    search_source = "nim_semantic"
+
+    # ── Step 2: keyword fallback if semantic search returned nothing ───────────
+    if not db_results:
+        db_results = await _search_judgments_keyword(safe_query, req.court or "")
+        search_source = "keyword" if db_results else "ai_generated"
+
+    # ── Step 3: AI-generated fallback (original behaviour) when DB has nothing ─
+    if not db_results:
+        search_source = "ai_generated"
+        courts = ", ".join(cfg.get("courts", [])) or "the relevant courts"
+        court_note = (
+            f" Prioritise {req.court} judgments." if req.court else
+            f" Include the apex and appellate courts of {cfg['name']} ({courts}) and landmark judgments."
+        )
+        prompt = f"""You are an expert in {cfg['name']} case law and legal research.
 
 SEARCH QUERY: {safe_query}{court_note}
 
@@ -762,19 +892,57 @@ Return ONLY a valid JSON array of 5 highly relevant {cfg['name']} court judgment
 
 Use real, verifiable {cfg['name']} citations where known. Prefer landmark judgments that lawyers actually cite."""
 
-    raw = _ai(wrap_user_prompt(prompt, req.country), 3000)
-    raw = validate_ai_response(raw)
-    try:
-        judgments = _extract_json_array(raw)
-    except Exception:
-        judgments = []
+        raw = _ai(wrap_user_prompt(prompt, req.country), 3000)
+        raw = validate_ai_response(raw)
+        try:
+            judgments = _extract_json_array(raw)
+        except Exception:
+            judgments = []
 
-    for j in judgments:
-        q = j.get("search_query") or j.get("ik_query") or j.get("case_name") or safe_query
-        j["ik_link"] = caselaw_link(req.country, q)
-        j["source_name"] = prov_name
+        for j in judgments:
+            q = j.get("search_query") or j.get("ik_query") or j.get("case_name") or safe_query
+            j["ik_link"] = caselaw_link(req.country, q)
+            j["source_name"] = prov_name
+            j["search_source"] = "ai_generated"
 
-    return {"query": safe_query, "total": len(judgments), "source_name": prov_name, "judgments": judgments}
+        return {
+            "query": safe_query,
+            "total": len(judgments),
+            "source_name": prov_name,
+            "search_source": search_source,
+            "judgments": judgments,
+        }
+
+    # ── Format DB results to match existing response shape ─────────────────────
+    judgments = []
+    for r in db_results:
+        j = {
+            "case_name": r.get("case_name", ""),
+            "citation": r.get("citation") or "",
+            "court": r.get("court", ""),
+            "year": r.get("year"),
+            "holding": r.get("summary_en") or r.get("outcome") or "",
+            "relevance": r.get("outcome") or "",
+            "search_query": safe_query[:50],
+            "ik_link": caselaw_link(req.country, r.get("case_name") or safe_query),
+            "source_name": r.get("source_name") or prov_name,
+            "search_source": r.get("search_source", search_source),
+            "slug": r.get("slug"),
+            "court_slug": r.get("court_slug"),
+            "path": r.get("path"),
+            "url": r.get("url"),
+            "og_image_url": r.get("og_image_url"),
+            "similarity": r.get("similarity"),
+        }
+        judgments.append(j)
+
+    return {
+        "query": safe_query,
+        "total": len(judgments),
+        "source_name": prov_name,
+        "search_source": search_source,
+        "judgments": judgments,
+    }
 
 
 # ── Lawyer Directory ────────────────────────────────────────────────────────────────────
