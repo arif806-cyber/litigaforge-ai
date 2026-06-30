@@ -17,4 +17,5 @@
 - [Forge Canvas Phase 2 — dagre + cluster + hints](forge-canvas-phase2.md) — @dagrejs/dagre uses named exports {graphlib, layout}; impact flash via CSS animation injected in injectCSS(); cluster node hides members + reroutes edges; propagateImpact fires only on onConnectTyped (not score slider).
 - [LitigaForge presence WebSocket](litigaforge-presence-ws.md) — WS at /litigaforge/ws/cases/{id}; track-view POST fires presence; client-side 15 s expiry + 30 s ping; WS URL from window.location (no env var needed); hooks must live AFTER useQuery in component.
 - [LitigaForge lawyer matches shape](litigaforge-lawyer-matches.md) — /matches/lawyer returns {total, matches:[]}; now includes case_requirement_id; matchData?.matches (not Array.isArray) is the right accessor; pendingLeads array was always empty before this fix.
-- [LitigaForge NIM semantic judgment search](litigaforge-nim-embeddings.md) — pgvector hnsw on Replit PG; asyncpg needs string cast ($1::vector); asymmetric e5 input_type (query/passage); 3-tier cascade (NIM→keyword→AI); backfill endpoint in admin router.
+- [LitigaForge NIM embeddings + vision](litigaforge-nim-embeddings.md) — pgvector ivfflat on Replit PG; asyncpg $1::vector string cast; asymmetric e5 (query/passage); judgment search 2-tier cascade (NIM→keyword, no AI fallback); phi-3-vision for image doc analysis (one-shot extract+analyze).
+

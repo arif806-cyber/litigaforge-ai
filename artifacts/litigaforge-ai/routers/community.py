@@ -656,13 +656,48 @@ async def analyze_document_file(
         raise HTTPException(413, "File too large. Max 10MB.")
 
     extracted_text = ""
+    analysis_source = "text_extraction"
+
     if content_type == "application/pdf":
         extracted_text = _extract_text_from_pdf(data)
+        analysis_source = "text_extraction"
     elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         extracted_text = _extract_text_from_docx(data)
+        analysis_source = "text_extraction"
     elif content_type.startswith("text/"):
         extracted_text = data.decode("utf-8", errors="replace")[:8000]
+        analysis_source = "text_extraction"
     elif content_type.startswith("image/"):
+        # ── NIM Vision path: one-shot extraction + analysis ──────────────────
+        # Reads the image directly — understands stamps, handwriting, tables,
+        # and multi-column layouts that pytesseract misses. Falls back to
+        # pytesseract → Claude on any error (missing key, timeout, API failure).
+        from llm.nim_vision import analyze_image, nim_vision_enabled
+        cfg_now = get_config(country)
+
+        try:
+            safe_ctx_early = sanitize_text(context, max_length=1500, field_name="context") if context else ""
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+        if nim_vision_enabled():
+            nim_result = await analyze_image(
+                image_bytes=data,
+                content_type=content_type,
+                document_type=document_type,
+                jurisdiction=cfg_now["name"],
+                context=safe_ctx_early,
+            )
+            if nim_result is not None:
+                return {
+                    "analysis": nim_result,
+                    "document_type": document_type,
+                    "source": "nim_vision",
+                    "extracted_chars": 0,
+                }
+
+        # Tesseract fallback
+        analysis_source = "tesseract_fallback"
         try:
             import pytesseract
             from PIL import Image
@@ -673,7 +708,13 @@ async def analyze_document_file(
             extracted_text = ""
 
     if not extracted_text or len(extracted_text.strip()) < 50:
-        raise HTTPException(422, "Could not extract sufficient text from the file. Please paste the text directly or try a clearer document.")
+        raise HTTPException(
+            422,
+            "Could not extract sufficient text from the file. "
+            "Please paste the text directly or try a clearer document."
+            + (" NIM Vision is unavailable; pytesseract may not read handwritten or stamp-heavy images well."
+               if analysis_source == "tesseract_fallback" else ""),
+        )
 
     try:
         safe_context = sanitize_text(context, max_length=1500, field_name="context") if context else ""
@@ -715,7 +756,12 @@ Document text:
             "compliance_notes": "AI parsing failed — manual review recommended.",
             "summary": "Analysis could not be completed automatically.",
         }
-    return {"analysis": result, "document_type": document_type, "source": "upload", "extracted_chars": len(extracted_text)}
+    return {
+        "analysis": result,
+        "document_type": document_type,
+        "source": analysis_source,
+        "extracted_chars": len(extracted_text),
+    }
 
 
 # ── Judgment Finder ────────────────────────────────────────────────────────────────────
