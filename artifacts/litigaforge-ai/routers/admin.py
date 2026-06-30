@@ -319,6 +319,97 @@ async def admin_embed_backfill(
     }
 
 
+@router.post("/admin/judgments/enrich-nlp")
+async def admin_enrich_nlp(
+    batch_size: int = 50,
+    limit: int = 0,
+    current_user: dict = Depends(get_superuser),
+):
+    """Backfill deterministic NLP enrichment for existing judgments.
+
+    Processes rows that either have an empty ``acts_cited`` array or a NULL
+    ``entities`` column, running ``extract_acts()`` (always) and
+    ``extract_entities()`` (when HF_API_TOKEN is set) from ``llm/legal_nlp.py``.
+
+    Optional params:
+    - ``batch_size``: rows per iteration (default 50)
+    - ``limit``: stop after N rows processed (0 = no limit)
+
+    Returns counts of processed / enriched / failed rows.
+    """
+    from llm.legal_nlp import extract_acts, extract_entities, legal_nlp_enabled
+    import json
+
+    real_batch = min(max(1, batch_size), 200)
+    rows = await fetch(
+        """SELECT id, full_text, acts_cited, entities
+           FROM judgments
+           WHERE status = 'published'
+             AND (acts_cited = '{}' OR entities IS NULL)
+           ORDER BY id""",
+    )
+    if limit > 0:
+        rows = rows[:limit]
+
+    processed = 0
+    enriched = 0
+    failed = 0
+    hf_enabled = legal_nlp_enabled()
+
+    for start in range(0, len(rows), real_batch):
+        batch = rows[start:start + real_batch]
+        for row in batch:
+            processed += 1
+            full_text = row.get("full_text") or ""
+            if not full_text.strip():
+                continue
+            try:
+                # Always run regex act extraction
+                regex_acts = extract_acts(full_text)
+
+                # Merge with existing acts (dedup)
+                existing = list(row.get("acts_cited") or [])
+                existing_keys = {a.lower().strip() for a in existing}
+                for a in regex_acts:
+                    if a.lower().strip() not in existing_keys:
+                        existing.append(a)
+                        existing_keys.add(a.lower().strip())
+                merged = existing[:25]
+
+                # Optional: HF NER entities
+                entities = None
+                if hf_enabled and row.get("entities") is None:
+                    entities = await extract_entities(full_text)
+
+                if entities is not None:
+                    await execute(
+                        "UPDATE judgments SET acts_cited = $1, entities = $2::jsonb WHERE id = $3",
+                        merged, json.dumps(entities), row["id"],
+                    )
+                else:
+                    await execute(
+                        "UPDATE judgments SET acts_cited = $1 WHERE id = $2",
+                        merged, row["id"],
+                    )
+                enriched += 1
+            except Exception as e:
+                failed += 1
+                logger.warning("[admin] enrich-nlp failed for id=%s: %s", row["id"], e)
+
+    logger.info(
+        "enrich-nlp: done — %d processed, %d enriched, %d failed",
+        processed, enriched, failed,
+    )
+    return {
+        "success": True,
+        "hf_enabled": hf_enabled,
+        "total_rows": len(rows),
+        "processed": processed,
+        "enriched": enriched,
+        "failed": failed,
+    }
+
+
 @router.post("/admin/digest/send")
 async def admin_send_digest(current_user: dict = Depends(get_superuser)):
     """Manually trigger the daily judgment digest send (ops + verification).

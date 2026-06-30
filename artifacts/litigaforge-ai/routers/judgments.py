@@ -45,6 +45,12 @@ def _serialize(row: dict) -> dict:
             d[k] = str(d[k])
     if "acts_cited" in d:
         d["acts_cited"] = list(d.get("acts_cited") or [])
+    # entities is a JSONB field populated by legal_nlp.extract_entities();
+    # omit the key entirely on list responses (SELECT doesn't include it),
+    # and normalise to None when the column is present but NULL.
+    if "entities" in d:
+        raw_ent = d.get("entities")
+        d["entities"] = raw_ent if isinstance(raw_ent, dict) else None
     d["og_image_url"] = d.get("og_image_url") or _og_url(
         d["court_slug"], d["year"], d["slug"]
     )

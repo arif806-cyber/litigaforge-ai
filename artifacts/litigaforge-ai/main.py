@@ -789,6 +789,12 @@ async def lifespan(app: FastAPI):
                 logger.info("pgvector embedding column + ivfflat index ready")
             except Exception as ve:
                 logger.warning("pgvector init skipped (not available or already set up): %s", ve)
+            # entities JSONB column for deterministic NLP extraction results
+            # (acts, parties, judges, courts via legal_nlp.py). Added after
+            # initial release — safe to re-run via ADD COLUMN IF NOT EXISTS.
+            await conn.execute(
+                "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS entities JSONB DEFAULT NULL"
+            )
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS digest_subscribers (
                     id SERIAL PRIMARY KEY,

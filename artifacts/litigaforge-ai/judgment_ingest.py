@@ -531,10 +531,32 @@ async def _do_run(
                 stats["skipped_no_summary"] += 1
                 continue
 
+            # ── Pre-enrichment: deterministic statute extraction ──────────────
+            # Run regex-based Indian legal NLP before the AI summariser so the
+            # AI has an additional quality signal. Fail-open: if legal_nlp is
+            # unavailable the path continues unaffected.
+            regex_acts: list[str] = []
+            try:
+                from llm.legal_nlp import extract_acts
+                regex_acts = extract_acts(full_text)
+            except Exception as _nlp_err:
+                logger.debug("[IK] legal_nlp unavailable: %s", _nlp_err)
+
             summary = await _summarize(case_name, court, full_text)
             if not summary:
                 stats["skipped_no_summary"] += 1
                 continue
+
+            # Merge regex-extracted acts with AI-extracted acts, deduplicating
+            # by lowercase normalised key. Regex acts appended after AI acts so
+            # AI phrasing takes priority when both detect the same statute.
+            merged_acts = list(summary["acts_cited"])
+            existing_keys = {a.lower().strip() for a in merged_acts}
+            for a in regex_acts:
+                if a.lower().strip() not in existing_keys:
+                    merged_acts.append(a)
+                    existing_keys.add(a.lower().strip())
+            merged_acts = merged_acts[:25]
 
             row = {
                 "case_name": case_name, "court": court, "court_slug": court_slug,
@@ -542,7 +564,7 @@ async def _do_run(
                 "judgment_date": jdate, "year": year,
                 "slug": _case_slug(case_name), "full_text": full_text,
                 "summary_en": summary["summary_en"], "summary_hi": summary["summary_hi"],
-                "acts_cited": summary["acts_cited"], "outcome": summary["outcome"],
+                "acts_cited": merged_acts, "outcome": summary["outcome"],
                 "source_url": source_url,
             }
             inserted_id = await _insert_and_embed(row, tid, case_name, summary)
