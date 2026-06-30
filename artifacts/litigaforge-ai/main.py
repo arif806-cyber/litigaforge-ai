@@ -1049,37 +1049,64 @@ async def lifespan(app: FastAPI):
     from digest import start_scheduler as _start_digest_scheduler
     app.state.digest_scheduler = _start_digest_scheduler()
 
-    # Bot prerender cache — build minimal HTML pages with JSON-LD schema for key
-    # routes so Googlebot/Bingbot receive meaningful structured data instead of
-    # raw API JSON.  Gracefully disabled if the seo/ module is unavailable.
+    # Bot prerender cache — attempt Playwright-based SPA snapshots at startup;
+    # fall back to synthetic structured-data HTML if Playwright is not installed
+    # or the frontend is not yet available.  Gracefully disabled if the seo/
+    # module is unavailable.  Gate the Playwright import so startup never fails.
     try:
         from seo.schema_generator import inject_schema as _inject_schema
 
-        def _mk_bot_html(page_title: str, meta_desc: str, schema_type: str, schema_data: dict) -> str:
-            _block = _inject_schema(schema_type, schema_data)
-            _su = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com")
-            return (
-                f'<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
-                f'<meta name="viewport" content="width=device-width,initial-scale=1">'
-                f'<title>{page_title}</title>'
-                f'<meta name="description" content="{meta_desc}">'
-                f'<link rel="canonical" href="{_su}">'
-                f'<meta property="og:title" content="{page_title}">'
-                f'<meta property="og:description" content="{meta_desc}">'
-                f'{_block}</head><body>'
-                f'<h1>{page_title}</h1><p>{meta_desc}</p>'
-                f'<a href="{_su}">LitigaForge AI — AI-Powered Legal Platform</a>'
-                f'</body></html>'
-            )
+        async def _playwright_snapshot(_fe_path: str, _schema_html: str) -> "str | None":
+            """Render an SPA route via Playwright and inject schema into the HTML."""
+            try:
+                from playwright.async_api import async_playwright  # type: ignore[import]
+                _fe = os.getenv("FRONTEND_URL", "http://localhost:80")
+                _url = f"{_fe.rstrip('/')}{_fe_path}"
+                async with async_playwright() as _pw:
+                    _b = await _pw.chromium.launch(headless=True)
+                    _pg = await _b.new_page()
+                    await _pg.goto(_url, wait_until="networkidle", timeout=12000)
+                    _html = await _pg.content()
+                    await _b.close()
+                if _schema_html and "</head>" in _html:
+                    _html = _html.replace("</head>", f"{_schema_html}\n</head>", 1)
+                logger.info("bot-prerender: Playwright snapshot OK for %s", _fe_path)
+                return _html
+            except ImportError:
+                return None  # Playwright not installed; caller uses synthetic HTML
+            except Exception as _ppe:
+                logger.warning("bot-prerender: Playwright failed for %s: %s", _fe_path, _ppe)
+                return None
 
         _cache: dict = {}
+        _pw_count = 0
         for _p, (_st, _sd, _ti, _de) in _BOT_PRERENDER_ROUTES.items():
-            _cache[_p] = _mk_bot_html(_ti, _de, _st, _sd)
+            _schema_html = _inject_schema(_st, _sd)
+            # Frontend SPA path: strip one BASE_PATH prefix (backend route → SPA route)
+            _fe_path = _p[len(BASE_PATH):] if _p.startswith(BASE_PATH) else _p
+            _snap = await _playwright_snapshot(_fe_path, _schema_html)
+            if _snap is not None:
+                _cache[_p] = _snap
+                _pw_count += 1
+            else:
+                _cache[_p] = _build_prerender_html(_ti, _de, _schema_html)
         app.state.prerender_cache = _cache
-        logger.info("bot-prerender: cached %d routes", len(_cache))
+        _strategy = f"Playwright×{_pw_count}" if _pw_count else "synthetic"
+        logger.info("bot-prerender: cached %d routes (%s)", len(_cache), _strategy)
     except Exception as _pe:
         app.state.prerender_cache = {}
         logger.info("bot-prerender: disabled (seo module unavailable: %s)", _pe)
+
+    # Ping search engines after every production deploy so Google/Bing/IndexNow
+    # pick up new judgment pages and blog articles immediately.
+    # Uses REPLIT_DEPLOYMENT — same convention as judgment-ingest and digest.
+    if (os.getenv("REPLIT_DEPLOYMENT") or "").strip():
+        try:
+            from seo.sitemap_manager import notify_search_engines as _ping_engines
+            _ping_res = await _ping_engines()
+            logger.info("sitemap: search engine pings: %s", _ping_res)
+        except Exception as _pe2:
+            logger.warning("sitemap: search engine ping failed (non-fatal): %s", _pe2)
 
     yield
 
@@ -1162,7 +1189,7 @@ _BOT_PRERENDER_ROUTES: dict = {
             "Filter by practice area, language, and district."
         ),
     ),
-    f"{BASE_PATH}/subscription/plans": (
+    f"{BASE_PATH}/subscription": (
         "LegalService",
         {
             "name": "Subscription Plans — LitigaForge AI",
@@ -1208,6 +1235,61 @@ _BOT_PRERENDER_ROUTES: dict = {
 }
 
 
+def _build_prerender_html(page_title: str, meta_desc: str, schema_html: str) -> str:
+    """Minimal crawler-visible HTML with JSON-LD; used when Playwright is unavailable."""
+    _su = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com")
+    return (
+        f'<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+        f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+        f'<title>{page_title}</title>'
+        f'<meta name="description" content="{meta_desc}">'
+        f'<link rel="canonical" href="{_su}">'
+        f'<meta property="og:title" content="{page_title}">'
+        f'<meta property="og:description" content="{meta_desc}">'
+        f'{schema_html}</head><body>'
+        f'<h1>{page_title}</h1><p>{meta_desc}</p>'
+        f'<a href="{_su}">LitigaForge AI — AI-Powered Legal Platform</a>'
+        f'</body></html>'
+    )
+
+
+def _build_judgment_prerender(slug: str) -> str:
+    """On-demand Article-schema HTML for judgment detail bot hits.
+
+    Cached in app.state.prerender_cache after the first bot request so
+    subsequent crawls are instant.  Returns empty string on any failure
+    so the middleware can fall through to call_next gracefully.
+    """
+    try:
+        from seo.schema_generator import inject_schema as _isj
+        _su = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com")
+        _readable = slug.replace("-", " ").title()
+        _title = f"{_readable} | Case Law | LitigaForge AI"
+        _desc = (
+            f"Read the full text and AI summary of {_readable} on LitigaForge AI — "
+            "India's AI-powered legal research platform."
+        )
+        _schema = _isj("Article", {
+            "title": _title,
+            "description": _desc,
+            "url": f"{_su}/judgments/item/{slug}",
+            "date_published": "2024-01-01",
+        })
+        return _build_prerender_html(_title, _desc, _schema)
+    except Exception:
+        return ""
+
+
+_PRERENDER_SECURITY_HEADERS = {
+    "X-Prerender-Cache": "HIT",
+    "Cache-Control": "public, max-age=3600",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+}
+
+
 @app.middleware("http")
 async def bot_prerender_middleware(request: Request, call_next):
     """Serve pre-cached HTML with JSON-LD to known crawler UAs on key routes.
@@ -1241,17 +1323,23 @@ async def bot_prerender_middleware(request: Request, call_next):
     cache: dict = getattr(app.state, "prerender_cache", {})
     if path in cache:
         logger.info("bot-prerender: HIT %s (UA: %.60s)", path, ua)
-        return HTMLResponse(
-            content=cache[path],
-            headers={
-                "X-Prerender-Cache": "HIT",
-                "Cache-Control": "public, max-age=3600",
-                "X-Content-Type-Options": "nosniff",
-                "X-Frame-Options": "DENY",
-                "Referrer-Policy": "strict-origin-when-cross-origin",
-                "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-            },
-        )
+        return HTMLResponse(content=cache[path], headers=_PRERENDER_SECURITY_HEADERS)
+
+    # Wildcard: judgment detail pages — generated on first bot hit, then cached.
+    # Supports /litigaforge/judgments/item/{court}/{year}/{slug} and the shorter
+    # /litigaforge/judgments/item/{slug} used by the redirect layer.
+    _jdg_prefix = f"{BASE_PATH}/judgments/item/"
+    if path.startswith(_jdg_prefix):
+        _slug = path[len(_jdg_prefix):].strip("/").replace("/", "-")
+        if _slug:
+            _snap = _build_judgment_prerender(_slug)
+            if _snap:
+                cache[path] = _snap
+                logger.info("bot-prerender: MISS→built judgment slug=%s", _slug)
+                return HTMLResponse(
+                    content=_snap,
+                    headers={**_PRERENDER_SECURITY_HEADERS, "X-Prerender-Cache": "BUILT"},
+                )
 
     return await call_next(request)
 

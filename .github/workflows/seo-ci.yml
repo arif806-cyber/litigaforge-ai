@@ -1,6 +1,8 @@
 name: SEO Regression Gate
 
 on:
+  schedule:
+    - cron: '0 1 * * 1'  # Weekly, Mondays at 01:00 UTC (runs seo-drift-check)
   push:
     paths:
       - 'artifacts/litigaforge-ui/src/**'

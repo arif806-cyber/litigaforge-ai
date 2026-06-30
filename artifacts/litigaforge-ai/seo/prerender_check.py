@@ -9,6 +9,10 @@ Addresses the root-cause SPA crawler issue: if Googlebot sees the same empty
 HTML shell on every route, this check will detect the missing markers and fail
 the CI run before it ships again.
 
+Prerender routes (marked require_jsonld=True) additionally fail if the response
+does NOT contain a <script type="application/ld+json"> block — ensuring that
+structured data is always present for search-engine indexing.
+
 Usage (CLI):
     python3 -m seo.prerender_check --base-url https://litigaforge.com
 
@@ -32,18 +36,20 @@ GOOGLEBOT_UA = (
 )
 DEFAULT_BASE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com")
 
-# (path, required_markers)
+# (path, required_markers, require_jsonld)
 # Markers are case-insensitive substrings expected in the Googlebot-visible HTML.
 # Failing any marker means the SPA shell was returned unrendered.
-ROUTES_TO_CHECK: list[tuple[str, list[str]]] = [
-    ("/",             ["LitigaForge", "legal"]),
-    ("/lawyers",      ["LitigaForge", "lawyer"]),
-    ("/judgments",    ["LitigaForge", "judgment"]),
-    ("/ask",          ["LitigaForge", "legal"]),
-    ("/subscription", ["LitigaForge"]),
-    ("/legal-aid",    ["LitigaForge", "legal"]),
-    ("/about",        ["LitigaForge"]),
-    ("/contact",      ["LitigaForge"]),
+# require_jsonld=True means the route must contain application/ld+json or the
+# check fails — enforced for every route that has a bot prerender snapshot.
+ROUTES_TO_CHECK: list[tuple[str, list[str], bool]] = [
+    ("/",             ["LitigaForge", "legal"],      False),
+    ("/lawyers",      ["LitigaForge", "lawyer"],     True),   # prerender route
+    ("/judgments",    ["LitigaForge", "judgment"],   True),   # prerender route
+    ("/ask",          ["LitigaForge", "legal"],      True),   # prerender route
+    ("/subscription", ["LitigaForge"],               True),   # prerender route
+    ("/legal-aid",    ["LitigaForge", "legal"],      False),
+    ("/about",        ["LitigaForge"],               False),
+    ("/contact",      ["LitigaForge"],               False),
 ]
 
 GLOBAL_MARKERS = ["LitigaForge", "<title"]
@@ -56,24 +62,34 @@ class RouteResult:
     html_length: int = 0
     has_json_ld: bool = False
     has_og_tags: bool = False
+    require_jsonld: bool = False
     missing_markers: list[str] = field(default_factory=list)
     error: Optional[str] = None
     redirect_url: Optional[str] = None
 
     @property
     def passed(self) -> bool:
-        return (
-            self.error is None
-            and self.status_code in (200, 301, 302)
-            and not self.missing_markers
-        )
+        if self.error is not None:
+            return False
+        if self.status_code not in (200, 301, 302):
+            return False
+        if self.missing_markers:
+            return False
+        if self.require_jsonld and not self.has_json_ld:
+            return False
+        return True
 
     def summary(self) -> str:
         icon = "✓" if self.passed else "✗"
+        jsonld_tag = (
+            "JSON-LD ✓"
+            if self.has_json_ld
+            else ("JSON-LD ✗ [REQUIRED]" if self.require_jsonld else "JSON-LD ✗")
+        )
         parts = [
             f"HTTP {self.status_code}",
             f"{self.html_length} chars",
-            "JSON-LD ✓" if self.has_json_ld else "JSON-LD ✗",
+            jsonld_tag,
             "OG ✓" if self.has_og_tags else "OG ✗",
         ]
         if self.missing_markers:
@@ -88,9 +104,10 @@ async def _check_one(
     base_url: str,
     path: str,
     markers: list[str],
+    require_jsonld: bool = False,
 ) -> RouteResult:
     url = base_url.rstrip("/") + path
-    result = RouteResult(path=path)
+    result = RouteResult(path=path, require_jsonld=require_jsonld)
     try:
         r = await client.get(url, follow_redirects=True)
         result.status_code = r.status_code
@@ -110,7 +127,7 @@ async def _check_one(
 
 async def run_checks(
     base_url: str = DEFAULT_BASE_URL,
-    routes: Optional[list[tuple[str, list[str]]]] = None,
+    routes: Optional[list[tuple[str, list[str], bool]]] = None,
     timeout: float = 20.0,
 ) -> list[RouteResult]:
     """Run all route checks concurrently and return results."""
@@ -119,7 +136,10 @@ async def run_checks(
     headers = {"User-Agent": GOOGLEBOT_UA, "Accept": "text/html,*/*"}
     async with httpx.AsyncClient(headers=headers, timeout=timeout) as client:
         return list(await asyncio.gather(
-            *[_check_one(client, base_url, path, markers) for path, markers in routes]
+            *[
+                _check_one(client, base_url, path, markers, require_jsonld)
+                for path, markers, require_jsonld in routes
+            ]
         ))
 
 
@@ -142,6 +162,7 @@ def main() -> None:
                 "html_length": r.html_length,
                 "has_json_ld": r.has_json_ld,
                 "has_og_tags": r.has_og_tags,
+                "require_jsonld": r.require_jsonld,
                 "missing_markers": r.missing_markers,
                 "error": r.error,
             }
@@ -154,6 +175,21 @@ def main() -> None:
         passed = sum(1 for r in results if r.passed)
         failed = len(results) - passed
         print(f"\n{passed}/{len(results)} routes passed")
+        if failed:
+            # Detail the failures
+            print("\nFailures:")
+            for r in results:
+                if not r.passed:
+                    reasons = []
+                    if r.error:
+                        reasons.append(f"error: {r.error}")
+                    if r.status_code not in (200, 301, 302):
+                        reasons.append(f"HTTP {r.status_code}")
+                    if r.missing_markers:
+                        reasons.append(f"missing markers: {r.missing_markers}")
+                    if r.require_jsonld and not r.has_json_ld:
+                        reasons.append("JSON-LD missing (required for this prerender route)")
+                    print(f"  {r.path}: {'; '.join(reasons)}")
 
     if any(not r.passed for r in results):
         sys.exit(1)
