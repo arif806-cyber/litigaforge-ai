@@ -404,11 +404,15 @@ export default function Subscription() {
               {invoices.invoices.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
                   <div>
-                    <p className="text-sm font-medium capitalize">{inv.tier.replace("_", " ")} Plan</p>
-                    <p className="text-xs text-muted-foreground">{inv.started_at.split("T")[0]} &middot; {inv.status}</p>
+                    <p className="text-sm font-medium capitalize">{(inv.tier ?? "").replace("_", " ")} Plan</p>
+                    <p className="text-xs text-muted-foreground">{(inv.started_at ?? "").split("T")[0]} &middot; {inv.status ?? "—"}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground font-mono">{inv.payment_ref.slice(0, 12)}...</span>
+                    {inv.payment_ref ? (
+                      <span className="text-xs text-muted-foreground font-mono">{inv.payment_ref.slice(0, 12)}…</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Manual</span>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
