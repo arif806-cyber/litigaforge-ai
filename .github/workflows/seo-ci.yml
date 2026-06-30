@@ -1,0 +1,119 @@
+name: SEO Regression Gate
+
+on:
+  push:
+    paths:
+      - 'artifacts/litigaforge-ui/src/**'
+      - 'artifacts/litigaforge-ai/routers/**'
+      - 'artifacts/litigaforge-ai/main.py'
+      - 'artifacts/litigaforge-ai/seo/**'
+  pull_request:
+    paths:
+      - 'artifacts/litigaforge-ui/src/**'
+      - 'artifacts/litigaforge-ai/routers/**'
+      - 'artifacts/litigaforge-ai/main.py'
+      - 'artifacts/litigaforge-ai/seo/**'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to check (default: production)'
+        required: false
+        default: 'https://litigaforge.com'
+
+concurrency:
+  group: seo-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prerender-check:
+    name: Crawler visibility check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install seo check dependencies
+        run: pip install httpx
+
+      - name: Set base URL
+        id: base_url
+        run: |
+          BASE="${{ github.event.inputs.base_url || 'https://litigaforge.com' }}"
+          echo "url=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Run prerender check
+        run: |
+          cd artifacts/litigaforge-ai
+          python3 -m seo.prerender_check \
+            --base-url "${{ steps.base_url.outputs.url }}" \
+            --timeout 25
+        env:
+          PUBLIC_SITE_URL: ${{ steps.base_url.outputs.url }}
+
+  lighthouse-ci:
+    name: Lighthouse CI (optional)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Only run if LHCI_TOKEN is configured — fail-open so missing token doesn't block PRs
+    if: ${{ vars.RUN_LIGHTHOUSE == 'true' }}
+    needs: prerender-check
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun \
+            --collect.url="${{ vars.PROD_URL || 'https://litigaforge.com' }}" \
+            --collect.url="${{ vars.PROD_URL || 'https://litigaforge.com' }}/lawyers" \
+            --collect.url="${{ vars.PROD_URL || 'https://litigaforge.com' }}/judgments" \
+            --assert.assertions.categories:performance=warn \
+            --assert.assertions.categories:seo=error \
+            --assert.assertions.categories:accessibility=warn \
+            --upload.target=temporary-public-storage
+        env:
+          LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
+        continue-on-error: true
+
+  seo-drift-check:
+    name: SEO drift check (weekly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Triggered on schedule or manually; not on every PR
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install httpx
+
+      - name: Run SEO drift monitor
+        run: |
+          cd artifacts/litigaforge-ai
+          python3 -m seo.seo_drift_monitor \
+            --base-url "https://litigaforge.com" \
+            --db /tmp/seo_drift.db
+        env:
+          PUBLIC_SITE_URL: 'https://litigaforge.com'
+        continue-on-error: true

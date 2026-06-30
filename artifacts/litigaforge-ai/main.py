@@ -4,6 +4,7 @@ structured logging, request middleware, Sentry (conditional).
 """
 import asyncio
 import os
+import re as _re
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -1048,6 +1049,38 @@ async def lifespan(app: FastAPI):
     from digest import start_scheduler as _start_digest_scheduler
     app.state.digest_scheduler = _start_digest_scheduler()
 
+    # Bot prerender cache — build minimal HTML pages with JSON-LD schema for key
+    # routes so Googlebot/Bingbot receive meaningful structured data instead of
+    # raw API JSON.  Gracefully disabled if the seo/ module is unavailable.
+    try:
+        from seo.schema_generator import inject_schema as _inject_schema
+
+        def _mk_bot_html(page_title: str, meta_desc: str, schema_type: str, schema_data: dict) -> str:
+            _block = _inject_schema(schema_type, schema_data)
+            _su = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com")
+            return (
+                f'<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+                f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+                f'<title>{page_title}</title>'
+                f'<meta name="description" content="{meta_desc}">'
+                f'<link rel="canonical" href="{_su}">'
+                f'<meta property="og:title" content="{page_title}">'
+                f'<meta property="og:description" content="{meta_desc}">'
+                f'{_block}</head><body>'
+                f'<h1>{page_title}</h1><p>{meta_desc}</p>'
+                f'<a href="{_su}">LitigaForge AI — AI-Powered Legal Platform</a>'
+                f'</body></html>'
+            )
+
+        _cache: dict = {}
+        for _p, (_st, _sd, _ti, _de) in _BOT_PRERENDER_ROUTES.items():
+            _cache[_p] = _mk_bot_html(_ti, _de, _st, _sd)
+        app.state.prerender_cache = _cache
+        logger.info("bot-prerender: cached %d routes", len(_cache))
+    except Exception as _pe:
+        app.state.prerender_cache = {}
+        logger.info("bot-prerender: disabled (seo module unavailable: %s)", _pe)
+
     yield
 
     _sched = getattr(app.state, "judgment_scheduler", None)
@@ -1100,6 +1133,127 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
     max_age=600,
 )
+
+
+# ── Bot prerender — UA pattern and route manifest ────────────────────────────
+_BOT_UA_RE = _re.compile(
+    r"(?:Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot"
+    r"|facebot|facebookexternalhit|ia_archiver|AhrefsBot|SemrushBot|MJ12bot"
+    r"|Applebot|PetalBot|BingPreview|LinkedInBot|Twitterbot|Screaming Frog)",
+    _re.IGNORECASE,
+)
+
+# Maps Python API paths → (schema_type, schema_data, page_title, meta_description)
+_BOT_PRERENDER_ROUTES: dict = {
+    f"{BASE_PATH}/lawyers": (
+        "LegalService",
+        {
+            "name": "Find Verified Lawyers — LitigaForge AI",
+            "description": (
+                "Browse AI-verified advocates in Telangana and Andhra Pradesh. "
+                "Filter by practice area, language, and district."
+            ),
+            "service_type": "Lawyer Matching & Legal Services",
+            "area_served": ["Telangana", "Andhra Pradesh", "IN"],
+        },
+        "Find Verified Lawyers | LitigaForge AI",
+        (
+            "Browse AI-verified advocates in Telangana & AP. "
+            "Filter by practice area, language, and district."
+        ),
+    ),
+    f"{BASE_PATH}/subscription/plans": (
+        "LegalService",
+        {
+            "name": "Subscription Plans — LitigaForge AI",
+            "description": "AI-powered legal services for India from ₹0/month.",
+            "offers": [
+                {"name": "Free", "description": "Basic legal AI features", "price": 0, "currency": "INR"},
+                {"name": "Professional", "description": "Unlimited legal Q&A + document review", "price": 999, "currency": "INR"},
+                {"name": "Advocate Pro", "description": "Full platform + priority matching", "price": 2499, "currency": "INR"},
+            ],
+        },
+        "Pricing & Plans | LitigaForge AI",
+        "AI-powered legal services from ₹0/month. Unlimited Q&A, document analysis, and lawyer matching.",
+    ),
+    f"{BASE_PATH}/judgments": (
+        "Article",
+        {
+            "title": "Daily Judgment Digest — Supreme Court & High Court Rulings",
+            "description": (
+                "Daily digest of Supreme Court of India and High Court judgments "
+                "with AI-generated summaries in English and Hindi."
+            ),
+            "url": "https://litigaforge.com/judgments",
+            "date_published": "2024-01-01",
+        },
+        "Daily Judgment Digest | Supreme Court & High Court | LitigaForge AI",
+        "AI summaries of Supreme Court and Telangana & AP High Court rulings. Free daily digest.",
+    ),
+    f"{BASE_PATH}/ask": (
+        "FAQPage",
+        {
+            "questions": [
+                {"q": "Can I get free legal advice in India?",
+                 "a": "Yes. LitigaForge AI provides free AI-powered legal Q&A. For complex cases, NALSA provides free legal aid to eligible individuals."},
+                {"q": "How do I find a lawyer in Telangana?",
+                 "a": "Use LitigaForge AI to post your case and get AI-matched with verified advocates in Telangana based on practice area, language, and district."},
+                {"q": "What is LitigaForge AI?",
+                 "a": "LitigaForge AI is an AI-powered legal platform for Telangana & AP that matches clients with verified lawyers and provides instant legal analysis."},
+            ]
+        },
+        "Free Legal Q&A | LitigaForge AI",
+        "Get instant AI-powered answers to your legal questions. Free legal Q&A for India.",
+    ),
+}
+
+
+@app.middleware("http")
+async def bot_prerender_middleware(request: Request, call_next):
+    """Serve pre-cached HTML with JSON-LD to known crawler UAs on key routes.
+
+    Bots receive a lightweight, schema-enriched HTML page rather than raw API
+    JSON — improving Google / Bing structured-data coverage.  Non-bot UAs,
+    explicit application/json Accept headers, and uncached paths pass through
+    transparently.  Security headers are applied inline to prerender responses.
+    """
+    ua = request.headers.get("User-Agent", "")
+    if not _BOT_UA_RE.search(ua):
+        return await call_next(request)
+
+    if request.method != "GET":
+        return await call_next(request)
+
+    # Clients explicitly requesting JSON get the normal API payload
+    accept = request.headers.get("Accept", "")
+    if "application/json" in accept and "text/html" not in accept:
+        return await call_next(request)
+
+    # Replit's proxy prepends BASE_PATH when forwarding to the backend port,
+    # AND uvicorn has root_path=BASE_PATH, so request.url.path ends up as
+    # /litigaforge/litigaforge/lawyers (double prefix). Normalize it.
+    raw_path = request.scope.get("path", request.url.path)
+    double_prefix = BASE_PATH + BASE_PATH
+    if raw_path.startswith(double_prefix):
+        path = BASE_PATH + raw_path[len(double_prefix):]
+    else:
+        path = raw_path
+    cache: dict = getattr(app.state, "prerender_cache", {})
+    if path in cache:
+        logger.info("bot-prerender: HIT %s (UA: %.60s)", path, ua)
+        return HTMLResponse(
+            content=cache[path],
+            headers={
+                "X-Prerender-Cache": "HIT",
+                "Cache-Control": "public, max-age=3600",
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+                "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+            },
+        )
+
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -1174,22 +1328,39 @@ app.include_router(personalization_router,  prefix=BASE_PATH)
 app.include_router(presence_router,         prefix=BASE_PATH)
 app.include_router(cnr_router,              prefix=BASE_PATH)
 
-@app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
-async def serve_sitemap():
-    content = """<?xml version="1.0" encoding="UTF-8"?>
+# Static fallback used when sitemap_manager is unavailable
+_STATIC_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://litigaforge.com/</loc><lastmod>2026-06-08</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
-<url><loc>https://litigaforge.com/legal</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-<url><loc>https://litigaforge.com/document-analyzer</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-<url><loc>https://litigaforge.com/legal-qa</loc><lastmod>2026-06-08</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
-<url><loc>https://litigaforge.com/judgments</loc><lastmod>2026-06-08</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
-<url><loc>https://litigaforge.com/free-legal-aid</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-<url><loc>https://litigaforge.com/match-proposals</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+<url><loc>https://litigaforge.com/lawyers</loc><lastmod>2026-06-08</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+<url><loc>https://litigaforge.com/ask</loc><lastmod>2026-06-08</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+<url><loc>https://litigaforge.com/judgments</loc><lastmod>2026-06-08</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+<url><loc>https://litigaforge.com/subscription</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://litigaforge.com/legal-aid</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+<url><loc>https://litigaforge.com/free-documents</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://litigaforge.com/blog</loc><lastmod>2026-06-08</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-<url><loc>https://litigaforge.com/faq</loc><lastmod>2026-06-08</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
 <url><loc>https://litigaforge.com/about</loc><lastmod>2026-06-08</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+<url><loc>https://litigaforge.com/contact</loc><lastmod>2026-06-08</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>"""
-    return Response(content=content, media_type="application/xml")
+
+
+@app.get(f"{BASE_PATH}/sitemap.xml", include_in_schema=False)
+async def serve_sitemap():
+    """Dynamic merged sitemap: static app routes + live judgment pages + blog posts.
+    Falls back to the static manifest if sitemap_manager is unavailable.
+    Cached for 1 hour by CDN / proxy.
+    """
+    try:
+        from seo.sitemap_manager import build_sitemap_xml
+        content = await build_sitemap_xml()
+    except Exception as _e:
+        logger.warning("sitemap_manager unavailable — serving static fallback: %s", _e)
+        content = _STATIC_SITEMAP_XML
+    return Response(
+        content=content,
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @app.get(f"{BASE_PATH}/llms.txt", include_in_schema=False)

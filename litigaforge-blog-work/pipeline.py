@@ -367,6 +367,77 @@ async def generate_article(post: dict) -> dict:
     }
 
 
+# ─── JSON-LD SCHEMA INJECTION ───────────────────────────────────────────────
+# Inlined so the pipeline has zero dependencies on the LitigaForge Python package.
+# Generates Article + FAQPage JSON-LD blocks and embeds them in the markdown body
+# as raw <script> tags — Astro renders them verbatim inside the page HTML.
+
+def _build_article_jsonld(article: dict, post: dict, blog_domain: str) -> str:
+    """Build an Article JSON-LD dict and return it as a <script> block."""
+    import json
+    slug = article.get("slug", "")
+    url = f"https://{blog_domain}/blog/{slug}"
+    from datetime import datetime, timezone
+    pub_date = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": article.get("title", ""),
+        "description": article.get("metaDescription", ""),
+        "url": url,
+        "datePublished": pub_date,
+        "dateModified": pub_date,
+        "author": {
+            "@type": "Organization",
+            "name": "LitigaForge AI",
+            "url": "https://litigaforge.com",
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "LitigaForge AI",
+            "url": "https://litigaforge.com",
+            "logo": {"@type": "ImageObject", "url": "https://litigaforge.com/logo.png"},
+        },
+        "mainEntityOfPage": {"@type": "WebPage", "@id": url},
+        "keywords": ", ".join(article.get("tags", [])),
+        "inLanguage": "en",
+        "about": {"@type": "Thing", "name": article.get("legalArea", "Legal Services")},
+    }
+    return (
+        '<script type="application/ld+json">\n'
+        + json.dumps(schema, ensure_ascii=False, indent=2)
+        + "\n</script>"
+    )
+
+
+def _build_faq_jsonld(article: dict) -> str:
+    """Build a FAQPage JSON-LD dict and return it as a <script> block."""
+    import json
+    faqs = article.get("faq", [])
+    if not faqs:
+        return ""
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": f.get("q", ""),
+                "acceptedAnswer": {"@type": "Answer", "text": f.get("a", "")},
+            }
+            for f in faqs
+            if f.get("q") and f.get("a")
+        ],
+    }
+    if not schema["mainEntity"]:
+        return ""
+    return (
+        '<script type="application/ld+json">\n'
+        + json.dumps(schema, ensure_ascii=False, indent=2)
+        + "\n</script>"
+    )
+
+
 # ─── CITATION LINKIFICATION ─────────────────────────────────────────────────
 # Inline citation patterns so the blog pipeline has zero extra dependencies.
 # Converts Indian case citations to markdown [citation](IndianKanoon URL) links.
@@ -415,6 +486,14 @@ def build_markdown(article: dict, post: dict) -> str:
     tags_str = ", ".join(f'"{t}"' for t in article.get("tags", []))
     now = datetime.now(timezone.utc).isoformat()
 
+    # JSON-LD blocks injected directly into the markdown body.
+    # Astro passes raw HTML through to the rendered page, so these <script> tags
+    # will appear in the page <head> context via the Astro layout's slot, or
+    # inline in the body where Google also picks them up.
+    article_jsonld = _build_article_jsonld(article, post, BLOG_DOMAIN)
+    faq_jsonld = _build_faq_jsonld(article)
+    jsonld_block = "\n".join(filter(None, [article_jsonld, faq_jsonld]))
+
     return f"""---
 title: "{article['title']}"
 description: "{article['metaDescription']}"
@@ -427,8 +506,10 @@ readTime: "{article['readTime']}"
 author: "LitigaForge AI Editorial Team"
 authorUrl: "https://litigaforge.com/about"
 canonicalUrl: "https://{BLOG_DOMAIN}/blog/{article['slug']}"
-schema: "FAQPage"
+schema: "Article+FAQPage"
 ---
+
+{jsonld_block}
 
 # {article['title']}
 
