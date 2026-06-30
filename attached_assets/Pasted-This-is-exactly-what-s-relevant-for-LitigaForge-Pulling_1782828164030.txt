@@ -1,0 +1,19 @@
+This is exactly what's relevant for LitigaForge. Pulling out the highest-impact open-source pieces given where you are (India-focused, Forge Workspace, Indian Kanoon already integrated, NIM-based AI cascade):
+Indian-specific NLP/data (directly usable now)
+Opennyai — end-to-end Python pipeline for Indian legal docs (NER, rhetorical-role labeling, summarization). Built for exactly your jurisdiction.
+InLegalBERT (law-ai/InLegalBERT) — trained on 5.4M Indian legal documents; strong fit for clause/entity extraction on your Indian Kanoon corpus.
+IL-TUR dataset — Indian legal benchmark (NER, judgment prediction, statute ID, summarization) if you want to fine-tune or evaluate models against Indian-specific tasks.
+Aalap-Mistral-7B — Apache 2.0, OpenNyAI's Mistral model tuned for Indian paralegal tasks, reportedly competitive with GPT-3.5 on in-domain tests. Could be a cheaper background-task model alongside your NIM stack.
+CiteURL / Eyecite — citation extraction/linking; useful for auto-linking case citations in your blog and Opponent Intelligence outputs.
+Forge Workspace / agentic infra
+legal-tech-chat (CUAD → Neo4j → LangGraph) — a reference pipeline for building a knowledge-graph-backed agent, relevant to how Sim/Twin agents reason over case data.
+ContextGem — Python framework for LLM-based extraction with declarative schemas, could replace custom prompt engineering for structured extraction in Property Case Autopilot or Opponent Intelligence.
+adeu (Agentic DOCX Redlining Engine) — MCP server for injecting native Word Track Changes/Comments; directly useful for Auto Vakalatnama or any document-drafting feature.
+Document assembly
+Docassemble — the established open-source standard for guided legal interviews and document assembly; worth evaluating for Smart Client Intake instead of building custom intake logic.
+Accord Project Template Archive — smart legal contract templating (Cicero/Concerto), relevant if you formalize agreement templates across verticals.
+MCP servers (since you're already in the Claude/MCP ecosystem)
+agentic-ops/legal-mcp — connects AI assistants to legal databases and case management systems.
+Vaquill AI MCP / CourtListener MCP — useful if/when you expand beyond India for case law retrieval with citation verification.
+Given your validation-gate constraint, I'd flag Opennyai + InLegalBERT as the two with immediate ROI (they directly upgrade your existing Indian Kanoon pipeline and Opponent Intelligence without new infra), and Docassemble as worth a serious look for Smart Client Intake since it's a mature, widely-adopted standard rather than something you'd be building from scratch.
+Want me to go deeper on integrating any of these into your existing FastAPI/LiteLLM stack?
