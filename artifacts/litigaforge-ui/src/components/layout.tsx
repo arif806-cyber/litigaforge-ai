@@ -6,6 +6,7 @@ import {
   Crown, LogOut, User as UserIcon,
   Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper,
   Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users, Zap, Inbox,
+  CalendarSearch,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -48,6 +49,7 @@ const commonNav: NavEntry[] = [
   { href: "/legal-chat",     label: "AI Legal Chat",   icon: MessageSquareText, tKey: "legal_chat" },
   { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare,     tKey: "legal_qa" },
   { href: "/review",         label: "Doc Analyzer",    icon: FileSearch,        tKey: "doc_analyzer" },
+  { href: "/cnr-tracker",    label: "CNR Tracker",     icon: CalendarSearch },
   { href: "/judgments",      label: "Judgments",       icon: BookOpen,          tKey: "judgments" },
   { href: "/workspace",      label: "Forge Workspace", icon: Zap,               highlight: true },
   { href: "/free-documents", label: "Free Documents",  icon: FileCheck,         tKey: "free_documents" },
