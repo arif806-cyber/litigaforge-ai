@@ -72,6 +72,9 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         raise HTTPException(status_code=422, detail=str(e))
     if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', req.email):
         raise HTTPException(status_code=422, detail="Invalid email format")
+    # Role validation — only "client" or "lawyer" are valid; anything else defaults to "client"
+    safe_role = req.role if req.role in ("client", "lawyer") else "client"
+
     # reCAPTCHA v3 (non-blocking when RECAPTCHA_SECRET_KEY not configured)
     _recaptcha_secret = _os.getenv("RECAPTCHA_SECRET_KEY")
     if _recaptcha_secret and req.recaptcha_token:
@@ -94,7 +97,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
             email=req.email,
             name=safe_name,
             password_hash=hash_password(req.password),
-            role=req.role,
+            role=safe_role,  # "client" or "lawyer" — validated above
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

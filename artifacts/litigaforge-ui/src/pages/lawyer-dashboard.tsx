@@ -61,7 +61,8 @@ function getCourts(countryCode: string) {
 interface LawyerCase {
   id: number; lawyer_id: number; title: string; case_type: string;
   description: string; client_name: string; court_name: string;
-  cnr_number: string; status: string; created_at: string; documents?: LawyerDoc[];
+  cnr_number: string; hearing_date: string; case_stage: string;
+  status: string; created_at: string; documents?: LawyerDoc[];
 }
 
 interface LawyerDoc {
@@ -203,6 +204,7 @@ export default function LawyerDashboard() {
   const copy = LAWYER_DASHBOARD_COPY[activeCode.toUpperCase()] ?? LAWYER_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
+  const [activeSection, setActiveSection] = useState<"overview" | "cases" | "clients" | "documents" | "earnings">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
   const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
@@ -550,252 +552,732 @@ export default function LawyerDashboard() {
     return `${Math.floor(d / 30)}mo ago`;
   }
 
+  // ── Client list derived from accepted matches + lawyer cases ──
+  const clientList = (() => {
+    const seen = new Set<string>();
+    const clients: { key: string; name: string; email?: string; caseTitle: string; matchedAt: string; budget?: string }[] = [];
+    acceptedLeads.forEach((m: any) => {
+      const key = `match-${m.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        clients.push({ key, name: m.client_name ?? "Anonymous", email: m.client_email, caseTitle: m.case_title ?? "Untitled Case", matchedAt: m.created_at, budget: m.budget_range });
+      }
+    });
+    cases.forEach((c) => {
+      if (c.client_name) {
+        const key = `case-${c.id}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          clients.push({ key, name: c.client_name, caseTitle: c.title, matchedAt: c.created_at });
+        }
+      }
+    });
+    return clients;
+  })();
+
+  // ── CNR cases: cases with a CNR number, sorted by nearest hearing date first ──
+  const cnrCases = cases
+    .filter((c) => c.cnr_number?.trim())
+    .sort((a, b) => {
+      const aDate = a.hearing_date ? new Date(a.hearing_date).getTime() : Infinity;
+      const bDate = b.hearing_date ? new Date(b.hearing_date).getTime() : Infinity;
+      return aDate - bDate;
+    });
+
+  // ── Earnings estimate ──
+  const MONTHLY_RATE_ESTIMATE = 15000;
+  const thisMonth = new Date().getMonth();
+  const thisYear = new Date().getFullYear();
+  const acceptedThisMonth = acceptedLeads.filter((m: any) => {
+    const d = new Date(m.created_at);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).length;
+  const estimatedMonthlyEarnings = acceptedThisMonth * MONTHLY_RATE_ESTIMATE;
+  const estimatedTotalEarnings = acceptedLeads.length * MONTHLY_RATE_ESTIMATE;
+
+  const SECTION_TABS = [
+    { id: "overview",   label: "Overview",   icon: Briefcase },
+    { id: "cases",      label: "Cases",      icon: FileText, badge: cases.length },
+    { id: "clients",    label: "Clients",    icon: Users, badge: clientList.length },
+    { id: "documents",  label: "Documents",  icon: FolderOpen, badge: docs.length },
+    { id: "earnings",   label: "Earnings",   icon: Award },
+  ] as const;
+
   return (
     <div className="flex min-h-full" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
 
       {/* ── Main Content ── */}
       <main className="flex-1 min-w-0 px-4 md:px-8 py-6 space-y-6">
 
-              {/* ── Welcome ── */}
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
-                  Welcome back, Advocate! 👋
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">{copy.pageSubtitle}</p>
-              </div>
+        {/* ── Welcome ── */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+              Welcome back, {lawyerFirstName}! 👋
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">{copy.pageSubtitle}</p>
+          </div>
+          {/* Section quick actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button onClick={() => { setActiveSection("cases"); setShowCaseModal(true); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+              style={{ background: "#1a2744", color: "#fff" }}
+              data-testid="add-case-btn">
+              <Plus className="w-3.5 h-3.5" /> Add Case
+            </button>
+            <button onClick={() => { setActiveSection("documents"); setShowDocModal(true); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all bg-card"
+              style={{ borderColor: "#E2E8F0", color: "#374151" }}
+              data-testid="upload-doc-btn">
+              <Upload className="w-3.5 h-3.5" /> Upload Doc
+            </button>
+          </div>
+        </div>
 
-              {/* ── 4 Stat Cards ── */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((s) => <StatCard key={s.label} {...s} />)}
-              </div>
+        {/* ── Section Tabs ── */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none" style={{ borderBottom: "1px solid #E8EDF5" }}>
+          {SECTION_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeSection === tab.id;
+            return (
+              <button key={tab.id} onClick={() => setActiveSection(tab.id)}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-all border-b-2 -mb-px",
+                  isActive
+                    ? "border-[#1a2744] text-[#1a2744]"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                )}
+                data-testid={`tab-${tab.id}`}>
+                <Icon className="w-4 h-4" />
+                {tab.label}
+                {"badge" in tab && (tab.badge as number) > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none bg-gray-100 text-gray-600">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-              {/* ── Two-column body ── */}
-              <div className="flex gap-6 items-start">
+        {/* ── OVERVIEW ── */}
+        {activeSection === "overview" && (
+          <div className="space-y-6">
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {stats.map((s) => <StatCard key={s.label} {...s} />)}
+            </div>
 
-                {/* Left column — Match Proposals */}
-                <div className="flex-1 min-w-0 space-y-6">
-
-                  {/* Match Proposals card */}
-                  <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
-                    {/* Header */}
-                    <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF2FF" }}>
-                          <Sparkles className="w-4.5 h-4.5 text-indigo-600" style={{ width: "18px", height: "18px" }} />
-                        </div>
-                        <div>
-                          <h2 className="font-bold text-gray-900 text-base leading-tight">Match Proposals</h2>
-                          <p className="text-[12px] text-gray-400 mt-0.5">AI-scored lawyer proposals for your cases.</p>
-                        </div>
+            {/* Two-column body */}
+            <div className="flex gap-6 items-start">
+              {/* Left — Match proposals + feature cards */}
+              <div className="flex-1 min-w-0 space-y-6">
+                {/* Match Proposals */}
+                <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                  <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EEF2FF" }}>
+                        <Sparkles style={{ width: "18px", height: "18px", color: "#4338CA" }} />
                       </div>
-                      {/* Filter tabs */}
-                      <div className="flex items-center gap-1 flex-shrink-0 rounded-xl p-1" style={{ background: "#F4F6FA" }}>
-                        {(["pending", "accepted", "declined"] as const).map((tab) => {
-                          const count = allLeads.filter((m: any) => m.status === tab).length;
-                          return (
-                            <button key={tab} onClick={() => setMatchTab(tab)}
-                              className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize",
-                                matchTab === tab
-                                  ? "bg-white shadow-sm text-gray-900"
-                                  : "text-gray-500 hover:text-gray-700"
-                              )}>
-                              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                              <span className={cn(
-                                "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
-                                matchTab === tab
-                                  ? tab === "pending" ? "bg-amber-100 text-amber-700"
-                                    : tab === "accepted" ? "bg-emerald-100 text-emerald-700"
-                                    : "bg-red-100 text-red-600"
-                                  : "bg-gray-200 text-gray-500"
-                              )}>{count}</span>
-                            </button>
-                          );
-                        })}
+                      <div>
+                        <h2 className="font-bold text-gray-900 text-base leading-tight">Match Proposals</h2>
+                        <p className="text-[12px] text-gray-400 mt-0.5">AI-scored client matches for your expertise.</p>
                       </div>
                     </div>
-
-                    {/* Match list */}
-                    <div className="px-5 pb-2 space-y-3">
-                      {visibleMatches.length === 0 ? (
-                        <div className="rounded-xl py-10 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-                          <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                          <p className="text-sm text-gray-500">No {matchTab} proposals right now</p>
-                          {matchTab === "pending" && (
-                            <p className="text-xs text-gray-400 mt-1">New client matches will appear here</p>
-                          )}
-                        </div>
-                      ) : (
-                        visibleMatches.map((m: any) => {
-                          const score = Math.round((m.match_score ?? 0.75) * 100);
-                          const scoreColor = score >= 85 ? "#059669" : score >= 70 ? "#D97706" : "#6B7280";
-                          const scoreBg   = score >= 85 ? "#ECFDF5" : score >= 70 ? "#FEF9C3" : "#F1F5F9";
-                          return (
-                            <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center gap-4 rounded-xl p-4 hover:shadow-sm transition-shadow"
-                              style={{ border: "1px solid #EEF2FF", background: "#FAFBFF" }}>
-                              {/* Score badge */}
-                              <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-lg"
-                                style={{ background: scoreBg, color: scoreColor, border: `1.5px solid ${scoreColor}22` }}>
-                                {score}%
-                              </div>
-                              {/* Details */}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 text-sm truncate">{m.case_title ?? "Untitled Case"}</p>
-                                <p className="text-[12px] text-gray-500 mt-0.5">
-                                  {m.case_type ?? "Civil"}{m.location ? ` · ${m.location}` : ""}
-                                </p>
-                                {m.budget_range && (
-                                  <p className="text-[12px] text-gray-400 mt-0.5">₹{m.budget_range}</p>
-                                )}
-                              </div>
-                              {/* Time + action */}
-                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                <span className="text-[11px] text-gray-400">
-                                  Requested {timeAgo(m.created_at)}
-                                </span>
-                                <button
-                                  onClick={() => setLocation(`/matches`)}
-                                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                                  style={{ background: "#EEF2FF", color: "#4338CA" }}
-                                  data-testid={`match-view-${m.id}`}
-                                >
-                                  View Details
-                                </button>
-                              </div>
-                            </motion.div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    {/* View all link */}
-                    {visibleMatches.length > 0 && (
-                      <div className="px-5 py-4 border-t" style={{ borderColor: "#F1F5F9" }}>
-                        <button onClick={() => setLocation("/matches")}
-                          className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
-                          View all proposals <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Why Advocates choose LitigaForge ── */}
-                  <div>
-                    <h3 className="font-bold text-gray-900 text-base mb-4">Why Advocates choose LitigaForge?</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {[
-                        { icon: Users, color: "#4F46E5", bg: "#EEF2FF", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
-                        { icon: Shield, color: "#059669", bg: "#ECFDF5", label: "Verified Clients", sub: "All clients are verified for genuine legal needs" },
-                        { icon: Sparkles, color: "#0EA5E9", bg: "#E0F7FA", label: "Smart Tools", sub: "AI chat, document analysis, and legal research" },
-                        { icon: Award, color: "#E85D9C", bg: "#FDF2F8", label: "Grow Your Practice", sub: "Save time and focus on winning cases" },
-                      ].map((item) => {
-                        const Icon = item.icon;
+                    <div className="flex items-center gap-1 flex-shrink-0 rounded-xl p-1" style={{ background: "#F4F6FA" }}>
+                      {(["pending", "accepted", "declined"] as const).map((tab) => {
+                        const count = allLeads.filter((m: any) => m.status === tab).length;
                         return (
-                          <div key={item.label} className="bg-white rounded-xl p-4 space-y-3 hover:shadow-sm transition-shadow" style={{ border: "1px solid #EEF2FF" }}>
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: item.bg }}>
-                              <Icon className="w-5 h-5" style={{ color: item.color }} />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900 leading-tight">{item.label}</p>
-                              <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{item.sub}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                </div>{/* /left column */}
-
-                {/* Right column — Quick Actions + Recent Activity */}
-                <div className="hidden lg:flex flex-col w-64 xl:w-72 flex-shrink-0 space-y-4">
-
-                  {/* Quick Actions */}
-                  <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
-                    <p className="font-bold text-gray-900 text-sm mb-4">Quick Actions</p>
-                    <div className="space-y-2">
-                      {[
-                        { icon: Sparkles,  label: "AI Legal Chat",    sub: "Get instant legal insights",     href: "/legal-chat",  bg: "#EEF2FF", color: "#4F46E5" },
-                        { icon: FileSearch, label: "Document Analyzer", sub: "Upload and analyze documents", href: "/review",      bg: "#E0F7FA", color: "#0EA5E9" },
-                        { icon: Plus,       label: "Post a Case",      sub: "Get matched with clients",       href: "/post-case",   bg: "#ECFDF5", color: "#059669" },
-                      ].map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <button key={item.label} onClick={() => setLocation(item.href)}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
-                            style={{ border: "1px solid #F1F5F9" }}>
-                            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: item.bg }}>
-                              <Icon className="w-4 h-4" style={{ color: item.color }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 leading-none">{item.label}</p>
-                              <p className="text-[11px] text-gray-400 mt-0.5">{item.sub}</p>
-                            </div>
+                          <button key={tab} onClick={() => setMatchTab(tab)}
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize",
+                              matchTab === tab ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+                            )}>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            <span className={cn(
+                              "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
+                              matchTab === tab
+                                ? tab === "pending" ? "bg-amber-100 text-amber-700"
+                                  : tab === "accepted" ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-red-100 text-red-600"
+                                : "bg-gray-200 text-gray-500"
+                            )}>{count}</span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
-
-                  {/* Recent Activity */}
-                  <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="font-bold text-gray-900 text-sm">Recent Activity</p>
-                      <button onClick={() => setLocation("/matches")} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">View all</button>
+                  <div className="px-5 pb-2 space-y-3">
+                    {visibleMatches.length === 0 ? (
+                      <div className="rounded-xl py-10 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+                        <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">No {matchTab} proposals right now</p>
+                        {matchTab === "pending" && <p className="text-xs text-gray-400 mt-1">New client matches will appear here</p>}
+                      </div>
+                    ) : visibleMatches.map((m: any) => {
+                      const score = Math.round((m.match_score ?? 0.75) * 100);
+                      const scoreColor = score >= 85 ? "#059669" : score >= 70 ? "#D97706" : "#6B7280";
+                      const scoreBg   = score >= 85 ? "#ECFDF5" : score >= 70 ? "#FEF9C3" : "#F1F5F9";
+                      return (
+                        <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                          className="flex items-center gap-4 rounded-xl p-4 hover:shadow-sm transition-shadow"
+                          style={{ border: "1px solid #EEF2FF", background: "#FAFBFF" }}>
+                          <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-base"
+                            style={{ background: scoreBg, color: scoreColor, border: `1.5px solid ${scoreColor}22` }}>
+                            {score}%
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm truncate">{m.case_title ?? "Untitled Case"}</p>
+                            <p className="text-[12px] text-gray-500 mt-0.5">{m.case_type ?? "Civil"}{m.location ? ` · ${m.location}` : ""}</p>
+                            {m.budget_range && <p className="text-[12px] text-gray-400 mt-0.5">Budget: {m.budget_range}</p>}
+                          </div>
+                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                            <span className="text-[11px] text-gray-400">{timeAgo(m.created_at)}</span>
+                            <button onClick={() => setLocation("/matches")}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                              style={{ background: "#EEF2FF", color: "#4338CA" }}
+                              data-testid={`match-view-${m.id}`}>
+                              View Details
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                  {visibleMatches.length > 0 && (
+                    <div className="px-5 py-4 border-t" style={{ borderColor: "#F1F5F9" }}>
+                      <button onClick={() => setLocation("/matches")}
+                        className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                        View all proposals <ChevronRight className="w-4 h-4" />
+                      </button>
                     </div>
-                    <div className="space-y-3">
-                      {recentActivity.length === 0 ? (
-                        <p className="text-[12px] text-gray-400 text-center py-3">No recent activity</p>
-                      ) : recentActivity.map((item) => {
-                        const isMatch    = item.type === "match";
-                        const isAccepted = item.type === "accepted";
-                        const isDoc      = item.type === "doc";
-                        return (
-                          <div key={item.id} className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                              style={{ background: isMatch ? "#EEF2FF" : isAccepted ? "#ECFDF5" : "#F5F3FF" }}>
-                              {isMatch    && <Users      className="w-3.5 h-3.5 text-indigo-500" />}
-                              {isAccepted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-                              {isDoc      && <FileText   className="w-3.5 h-3.5 text-violet-500" />}
+                  )}
+                </div>
+
+                {/* Feature cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { icon: Users,    color: "#4F46E5", bg: "#EEF2FF", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
+                    { icon: Shield,   color: "#059669", bg: "#ECFDF5", label: "Verified Clients",    sub: "All clients are verified for genuine legal needs" },
+                    { icon: Sparkles, color: "#0EA5E9", bg: "#E0F7FA", label: "Smart Tools",         sub: "AI chat, document analysis, and legal research" },
+                    { icon: Award,    color: "#E85D9C", bg: "#FDF2F8", label: "Grow Your Practice",  sub: "Save time and focus on winning cases" },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className="bg-white rounded-xl p-4 space-y-3 hover:shadow-sm transition-shadow" style={{ border: "1px solid #EEF2FF" }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: item.bg }}>
+                          <Icon className="w-5 h-5" style={{ color: item.color }} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 leading-tight">{item.label}</p>
+                          <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{item.sub}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="hidden lg:flex flex-col w-64 xl:w-72 flex-shrink-0 space-y-4">
+                <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                  <p className="font-bold text-gray-900 text-sm mb-4">Quick Actions</p>
+                  <div className="space-y-2">
+                    {[
+                      { icon: Plus,       label: "Add Case",          sub: "Create a new case record",         action: () => { setActiveSection("cases"); setShowCaseModal(true); }, bg: "#ECFDF5", color: "#059669" },
+                      { icon: Upload,     label: "Upload Document",   sub: "Add docs to a case",               action: () => { setActiveSection("documents"); setShowDocModal(true); }, bg: "#F5F3FF", color: "#7C3AED" },
+                      { icon: Sparkles,   label: "AI Legal Chat",     sub: "Get instant legal insights",       action: () => setLocation("/legal-chat"), bg: "#EEF2FF", color: "#4F46E5" },
+                      { icon: FileSearch, label: "Document Analyzer", sub: "Analyze contracts & FIRs",         action: () => setLocation("/review"), bg: "#E0F7FA", color: "#0EA5E9" },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button key={item.label} onClick={item.action}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                          style={{ border: "1px solid #F1F5F9" }}>
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: item.bg }}>
+                            <Icon className="w-4 h-4" style={{ color: item.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 leading-none">{item.label}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{item.sub}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="font-bold text-gray-900 text-sm">Recent Activity</p>
+                    <button onClick={() => setLocation("/matches")} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">View all</button>
+                  </div>
+                  <div className="space-y-3">
+                    {recentActivity.length === 0 ? (
+                      <p className="text-[12px] text-gray-400 text-center py-3">No recent activity</p>
+                    ) : recentActivity.map((item) => {
+                      const isMatch    = item.type === "match";
+                      const isAccepted = item.type === "accepted";
+                      const isDoc      = item.type === "doc";
+                      return (
+                        <div key={item.id} className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                            style={{ background: isMatch ? "#EEF2FF" : isAccepted ? "#ECFDF5" : "#F5F3FF" }}>
+                            {isMatch    && <Users       className="w-3.5 h-3.5 text-indigo-500" />}
+                            {isAccepted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                            {isDoc      && <FileText    className="w-3.5 h-3.5 text-violet-500" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold text-gray-800 leading-tight">{item.title}</p>
+                            {item.sub && <p className="text-[11px] text-gray-400 truncate mt-0.5">{item.sub}</p>}
+                            <p className="text-[10px] text-gray-300 mt-0.5">{timeAgo(item.time)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {!isAdvocatePro && (
+                  <div className="rounded-2xl bg-gradient-to-br from-[#1a2744] to-[#2d4a8a] p-5 flex flex-col items-center text-center"
+                    style={{ border: "1px solid #2d4a8a" }}>
+                    <Scale className="w-10 h-10 text-amber-400 mb-3" />
+                    <p className="text-sm font-bold text-white leading-tight">Grow Your Practice</p>
+                    <p className="text-[11px] text-blue-300 mt-1 leading-relaxed">Unlock unlimited leads and AI tools</p>
+                    <button onClick={() => setLocation("/subscription")}
+                      className="mt-3 text-xs font-bold py-2 px-4 rounded-lg bg-amber-400 hover:bg-amber-300 text-[#1a2744] transition-colors">
+                      Upgrade — ₹2,499/mo
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── CASES ── */}
+        {activeSection === "cases" && (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Case Management</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Track, update, and manage your active matters</p>
+              </div>
+              <button onClick={() => setShowCaseModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: "#1a2744" }}
+                data-testid="cases-add-case-btn">
+                <Plus className="w-4 h-4" /> Add Case
+              </button>
+            </div>
+
+            {/* Status tabs */}
+            <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "#F4F6FA" }}>
+              {(["active", "pending", "closed"] as const).map((tab) => {
+                const count = cases.filter((c) => c.status === tab).length;
+                return (
+                  <button key={tab} onClick={() => setCaseTab(tab)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize",
+                      caseTab === tab ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+                    )}>
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    <span className={cn(
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
+                      caseTab === tab
+                        ? tab === "active" ? "bg-emerald-100 text-emerald-700"
+                          : tab === "closed" ? "bg-gray-200 text-gray-600"
+                          : "bg-amber-100 text-amber-700"
+                        : "bg-gray-200 text-gray-500"
+                    )}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Case cards */}
+            {filteredCases.length === 0 ? (
+              <div className="rounded-2xl py-16 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+                <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-gray-500">No {caseTab} cases</p>
+                <p className="text-xs text-gray-400 mt-1">Click "Add Case" to create your first case record</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredCases.map((c) => (
+                  <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer relative"
+                    style={{ border: "1px solid #E8EDF5" }}
+                    onClick={() => {
+                      setFolderCase(c);
+                      setFolderDocs(docs.filter((d) => d.case_id === c.id));
+                      setShowFolder(true);
+                    }}>
+                    {/* Status stripe */}
+                    <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl"
+                      style={{ background: c.status === "active" ? "#059669" : c.status === "closed" ? "#9CA3AF" : "#D97706" }} />
+
+                    <div className="p-5 pt-6 space-y-3">
+                      {/* Title + status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-bold text-gray-900 text-sm leading-snug flex-1">{c.title}</p>
+                        <span className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize flex-shrink-0",
+                          c.status === "active" ? "bg-emerald-100 text-emerald-700"
+                            : c.status === "closed" ? "bg-gray-100 text-gray-600"
+                            : "bg-amber-100 text-amber-700"
+                        )}>{c.status}</span>
+                      </div>
+
+                      {/* Case type */}
+                      <p className="text-[12px] text-gray-500">{c.case_type}</p>
+
+                      {/* Client */}
+                      {c.client_name && (
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <span className="text-[12px] text-gray-600 truncate">{c.client_name}</span>
+                        </div>
+                      )}
+
+                      {/* Court */}
+                      {c.court_name && (
+                        <div className="flex items-center gap-1.5">
+                          <Gavel className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <span className="text-[12px] text-gray-600 truncate">{c.court_name}</span>
+                        </div>
+                      )}
+
+                      {/* CNR Number */}
+                      {c.cnr_number && (
+                        <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ background: "#EFF6FF", border: "1px solid #DBEAFE" }}>
+                          <Shield className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                          <span className="text-[11px] font-mono font-semibold text-blue-700 truncate">{c.cnr_number}</span>
+                        </div>
+                      )}
+
+                      {/* Docs count + actions */}
+                      <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: "#F1F5F9" }}>
+                        <span className="text-[11px] text-gray-400">
+                          {docs.filter((d) => d.case_id === c.id).length} document{docs.filter((d) => d.case_id === c.id).length !== 1 ? "s" : ""}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); setEditingCase(c); }}
+                            className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors"
+                            data-testid={`edit-case-${c.id}`}>Edit</button>
+                          <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }}
+                            className="text-[11px] font-medium text-violet-600 hover:text-violet-800 px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                            data-testid={`upload-case-doc-${c.id}`}>+ Doc</button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* CNR Tracking section */}
+            {cnrCases.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                <div className="px-5 pt-5 pb-4 flex items-center gap-3 border-b" style={{ borderColor: "#F1F5F9" }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
+                    <Shield className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm">CNR Case Tracker</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Cases with registered CNR numbers</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {cnrCases.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{c.title}</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          {c.court_name || "Court TBD"} · {c.case_type}
+                          {c.hearing_date && (
+                            <span className="ml-2 text-amber-600 font-semibold">
+                              · Next hearing: {new Date(c.hearing_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: "#EFF6FF", color: "#1D4ED8" }}>
+                          {c.cnr_number}
+                        </span>
+                        <span className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize",
+                          c.status === "active" ? "bg-emerald-100 text-emerald-700"
+                            : c.status === "closed" ? "bg-gray-100 text-gray-600"
+                            : "bg-amber-100 text-amber-700"
+                        )}>{c.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CLIENTS ── */}
+        {activeSection === "clients" && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Client List</h2>
+              <p className="text-sm text-gray-500 mt-0.5">All clients from accepted matches and active cases</p>
+            </div>
+
+            {clientList.length === 0 ? (
+              <div className="rounded-2xl py-16 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+                <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-gray-500">No clients yet</p>
+                <p className="text-xs text-gray-400 mt-1">Accept match proposals to see clients here</p>
+                <button onClick={() => setActiveSection("overview")}
+                  className="mt-4 text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline transition-colors">
+                  View match proposals →
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: "1px solid #E8EDF5" }}>
+                <div className="px-5 py-3 border-b grid grid-cols-3 gap-4" style={{ borderColor: "#F1F5F9", background: "#F8FAFC" }}>
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Client</span>
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Case</span>
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-right">Since</span>
+                </div>
+                {clientList.map((client) => (
+                  <motion.div key={client.key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="px-5 py-4 border-b hover:bg-gray-50 transition-colors grid grid-cols-3 gap-4 items-center"
+                    style={{ borderColor: "#F8FAFC" }}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm"
+                        style={{ background: "#EEF2FF", color: "#4338CA" }}>
+                        {(client.name ?? "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{client.name}</p>
+                        {client.email && <p className="text-[11px] text-gray-400 truncate">{client.email}</p>}
+                      </div>
+                    </div>
+                    <p className="text-[12px] text-gray-600 truncate">{client.caseTitle}</p>
+                    <p className="text-[11px] text-gray-400 text-right">{formatDate(client.matchedAt, activeCode)}</p>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── DOCUMENTS ── */}
+        {activeSection === "documents" && (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Document Management</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Upload, analyze, and annotate case documents</p>
+              </div>
+              <button onClick={() => setShowDocModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: "#7C3AED" }}
+                data-testid="docs-upload-btn">
+                <Upload className="w-4 h-4" /> Upload Document
+              </button>
+            </div>
+
+            {docs.length === 0 ? (
+              <div className="rounded-2xl py-16 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
+                <FolderOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-gray-500">No documents yet</p>
+                <p className="text-xs text-gray-400 mt-1">Upload FIRs, charge sheets, contracts, and briefs</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search documents..."
+                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:border-violet-400 transition-colors"
+                    style={{ borderColor: "#E2E8F0" }} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {docs
+                    .filter((d) => !searchQuery || d.filename.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((d) => (
+                      <motion.div key={d.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                        className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all"
+                        style={{ border: "1px solid #E8EDF5" }}>
+                        <div className="flex items-start gap-3 p-4">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#F5F3FF" }}>
+                            <FileText className="w-5 h-5" style={{ color: "#7C3AED" }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-gray-900 text-sm truncate">{d.filename}</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>
+                                {d.file_type.toUpperCase()}
+                              </span>
+                              {d.ai_summary && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">AI Analyzed</span>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-semibold text-gray-800 leading-tight">{item.title}</p>
-                              {item.sub && <p className="text-[11px] text-gray-400 truncate mt-0.5">{item.sub}</p>}
-                              <p className="text-[10px] text-gray-300 mt-0.5">{timeAgo(item.time)}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{formatDate(d.created_at, activeCode)}</p>
+                            {d.ai_summary && (
+                              <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed line-clamp-2">{d.ai_summary}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 pb-4">
+                          {!d.ai_summary && (
+                            <button
+                              onClick={() => { setAnalyzingDoc(d.id); analyzeDocMut.mutate(d.id, { onSettled: () => setAnalyzingDoc(null) }); }}
+                              disabled={analyzeDocMut.isPending && analyzingDoc === d.id}
+                              className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                              style={{ background: "#EDE9FE", color: "#7C3AED" }}>
+                              {analyzeDocMut.isPending && analyzingDoc === d.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <Sparkles className="w-3 h-3" />}
+                              {analyzeDocMut.isPending && analyzingDoc === d.id ? "Analyzing…" : "AI Analyze"}
+                            </button>
+                          )}
+                          <button onClick={() => downloadDoc(d)}
+                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                            <Download className="w-3 h-3" /> Download
+                          </button>
+                          <button onClick={() => { setEditingNotesDocId(d.id); setNoteDraft(d.notes || ""); }}
+                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
+                            <StickyNote className="w-3 h-3" /> Notes
+                          </button>
+                        </div>
+                        {/* Notes inline editor */}
+                        {editingNotesDocId === d.id && (
+                          <div className="px-4 pb-4 space-y-2">
+                            <textarea value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} rows={3}
+                              placeholder="Add case notes, strategy reminders..."
+                              className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-amber-400 resize-none transition-colors"
+                              style={{ borderColor: "#E2E8F0" }} />
+                            <div className="flex gap-2">
+                              <button onClick={() => saveNotesMut.mutate({ docId: d.id, notes: noteDraft })}
+                                disabled={saveNotesMut.isPending}
+                                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-60">
+                                <Check className="w-3 h-3" /> Save
+                              </button>
+                              <button onClick={() => { setEditingNotesDocId(null); setNoteDraft(""); }}
+                                className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1.5 transition-colors">Cancel</button>
                             </div>
                           </div>
-                        );
-                      })}
+                        )}
+                      </motion.div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── EARNINGS ── */}
+        {activeSection === "earnings" && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Earnings Overview</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Revenue estimates based on your accepted cases</p>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "#ECFDF5" }}>
+                  <Award className="w-5 h-5 text-emerald-600" />
+                </div>
+                <p className="text-3xl font-black text-gray-900">₹{estimatedMonthlyEarnings.toLocaleString("en-IN")}</p>
+                <p className="text-sm font-medium text-gray-500 mt-1">Estimated This Month</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{acceptedThisMonth} case{acceptedThisMonth !== 1 ? "s" : ""} accepted this month</p>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "#EFF6FF" }}>
+                  <Briefcase className="w-5 h-5 text-blue-600" />
+                </div>
+                <p className="text-3xl font-black text-gray-900">₹{estimatedTotalEarnings.toLocaleString("en-IN")}</p>
+                <p className="text-sm font-medium text-gray-500 mt-1">All-Time Estimate</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{acceptedLeads.length} total accepted case{acceptedLeads.length !== 1 ? "s" : ""}</p>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: "1px solid #E8EDF5" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "#FEF3C7" }}>
+                  <Star className="w-5 h-5 text-amber-500" />
+                </div>
+                <p className="text-3xl font-black text-gray-900">{completedCases.length}</p>
+                <p className="text-sm font-medium text-gray-500 mt-1">Closed Cases</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Successfully completed matters</p>
+              </div>
+            </div>
+
+            {/* Estimate note */}
+            <div className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+              <Info className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <p className="text-[12px] text-emerald-700 leading-relaxed">
+                <strong>Estimate basis:</strong> ₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")} per accepted case (industry average for Telangana &amp; AP District Courts).
+                Actual earnings depend on your agreed fee with each client.
+                Connect your billing system or update your profile hourly rate for precise tracking.
+              </p>
+            </div>
+
+            {/* Accepted cases list for earnings */}
+            {acceptedLeads.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: "1px solid #E8EDF5" }}>
+                <div className="px-5 py-4 border-b" style={{ borderColor: "#F1F5F9" }}>
+                  <h3 className="font-bold text-gray-900 text-sm">Accepted Case Revenue Breakdown</h3>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {acceptedLeads.map((m: any, i: number) => (
+                    <div key={m.id} className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-[11px] font-bold text-gray-400 w-5 text-right flex-shrink-0">{i + 1}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{m.case_title ?? "Untitled Case"}</p>
+                          <p className="text-[11px] text-gray-500">{m.case_type ?? "Civil"} · {formatDate(m.created_at, activeCode)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-sm font-bold text-emerald-700">₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Accepted</span>
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+                <div className="px-5 py-4 border-t flex items-center justify-between" style={{ borderColor: "#F1F5F9", background: "#F8FAFC" }}>
+                  <span className="text-sm font-bold text-gray-700">Total Estimate</span>
+                  <span className="text-lg font-black text-gray-900">₹{estimatedTotalEarnings.toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+            )}
 
-                  {/* Decorative illustration */}
-                  <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-[#1a2744] to-[#2d4a8a] p-5 flex flex-col items-center text-center"
-                    style={{ border: "1px solid #2d4a8a" }}>
-                    <Scale className="w-12 h-12 text-amber-400 mb-3" />
-                    <p className="text-sm font-bold text-white leading-tight">Grow Your Practice</p>
-                    <p className="text-[11px] text-blue-300 mt-1 leading-relaxed">Connect with verified clients and build your reputation</p>
-                    {!isAdvocatePro && (
-                      <button onClick={() => setLocation("/subscription")}
-                        className="mt-3 text-xs font-bold py-2 px-4 rounded-lg transition-colors bg-amber-400 hover:bg-amber-300 text-[#1a2744]">
-                        Upgrade — ₹2,499/mo
-                      </button>
-                    )}
-                  </div>
+            {/* Upgrade CTA */}
+            {!isAdvocatePro && (
+              <div className="rounded-2xl p-6 flex items-center gap-5" style={{ background: "linear-gradient(135deg, #1a2744, #2d4a8a)", border: "1px solid #2d4a8a" }}>
+                <Scale className="w-12 h-12 text-amber-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-bold text-white">Unlock Advocate Pro</p>
+                  <p className="text-sm text-blue-300 mt-0.5">Unlimited leads, priority placement, and advanced AI tools to grow your earnings</p>
+                </div>
+                <button onClick={() => setLocation("/subscription")}
+                  className="flex-shrink-0 text-sm font-bold py-2.5 px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#1a2744] transition-colors">
+                  Upgrade ₹2,499/mo
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
-                </div>{/* /right column */}
-              </div>{/* /two-column */}
+      </main>
 
-            </main>
-
-
-      {/* ── Add Case Modal ── */}
+      {/* ── Modals ── */}
       <Modal open={showCaseModal} onClose={() => setShowCaseModal(false)} title="Add New Case">
         <CaseForm onSubmit={(data) => createCaseMut.mutate(data)} loading={createCaseMut.isPending} countryCode={activeCode} />
       </Modal>
 
-      {/* ── Edit Case Modal ── */}
       <Modal open={!!editingCase} onClose={() => setEditingCase(null)} title="Edit Case">
         <CaseForm
           initialCase={editingCase}
@@ -805,12 +1287,10 @@ export default function LawyerDashboard() {
         />
       </Modal>
 
-      {/* ── Upload Document Modal ── */}
-      <Modal open={showDocModal} onClose={() => { setShowDocModal(false); setPreselectedCaseId(""); }} title="Upload Client Document">
+      <Modal open={showDocModal} onClose={() => { setShowDocModal(false); setPreselectedCaseId(""); }} title="Upload Document">
         <DocForm cases={cases} preselectedCaseId={preselectedCaseId} onSubmit={(data) => createDocMut.mutate(data)} loading={createDocMut.isPending} />
       </Modal>
 
-      {/* ── Case Folder Modal ── */}
       <CaseFolderModal
         open={showFolder}
         onClose={() => setShowFolder(false)}
