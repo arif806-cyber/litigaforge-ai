@@ -5,7 +5,7 @@ import { StripeSync } from "stripe-replit-sync";
  * Fetches Stripe credentials from the Replit connection API.
  * Not cached -- tokens can rotate, so fetch fresh each time.
  */
-async function getStripeCredentials(): Promise<{
+export async function getStripeCredentials(): Promise<{
   secretKey: string;
   webhookSecret?: string;
 }> {

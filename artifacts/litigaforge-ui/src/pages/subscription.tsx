@@ -135,7 +135,33 @@ export default function Subscription() {
       }),
   });
 
+  const openStripePortal = async () => {
+    setDowngrading(true);
+    setSuccess(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data?.error || "Could not open subscription portal.");
+      }
+    } catch (e: any) {
+      setError(e.message || "Could not open subscription management.");
+      setDowngrading(false);
+    }
+  };
+
   const handleDowngrade = async () => {
+    if (!isIndia) {
+      void openStripePortal();
+      return;
+    }
     if (!confirm("Downgrade to Free? You will keep current benefits until the end of this billing period.")) return;
     setDowngrading(true);
     setSuccess(null);
@@ -241,7 +267,14 @@ export default function Subscription() {
       }
       const data = await res.json();
       if (data.url) {
+        // New subscriber → redirect to Stripe Checkout
         window.location.href = data.url;
+      } else if (data.upgraded) {
+        // Existing subscriber → in-place price swap with proration succeeded
+        await refreshUser();
+        queryClient.invalidateQueries({ queryKey: ["health"] });
+        setSuccess(TIER_LABELS[data.tier] ?? data.tier);
+        setUpgrading(null);
       } else {
         throw new Error("Checkout session could not be created.");
       }
@@ -376,7 +409,11 @@ export default function Subscription() {
           >
             <div className="flex items-center gap-3">
               <ArrowDownCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="font-medium text-sm">Not satisfied? You can downgrade to Free anytime. Benefits continue until the end of the billing period.</span>
+              <span className="font-medium text-sm">
+                {isIndia
+                  ? "Not satisfied? You can downgrade to Free anytime. Benefits continue until the end of the billing period."
+                  : "Manage your plan, update payment details, or cancel anytime via the Stripe billing portal."}
+              </span>
             </div>
             <Button
               variant="outline"
@@ -385,7 +422,7 @@ export default function Subscription() {
               disabled={downgrading}
               className="flex-shrink-0 border-amber-300 hover:bg-amber-100 text-amber-900"
             >
-              {downgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Downgrade"}
+              {downgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : isIndia ? "Downgrade" : "Manage Plan"}
             </Button>
           </motion.div>
         )}

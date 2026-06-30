@@ -77,9 +77,17 @@ export class Storage {
         `UPDATE users SET subscription_tier = $1 WHERE id = $2`,
         [tier, userId],
       );
+      // Cancel any previous active/pending_cancellation subscriptions before
+      // inserting the new one to avoid duplicate active rows.
+      await client.query(
+        `UPDATE subscriptions SET status = 'superseded'
+           WHERE user_id = $1 AND status IN ('active', 'pending_cancellation')`,
+        [userId],
+      );
       await client.query(
         `INSERT INTO subscriptions (user_id, tier, started_at, status, payment_ref)
-         VALUES ($1, $2, NOW(), 'active', $3)`,
+         VALUES ($1, $2, NOW(), 'active', $3)
+         ON CONFLICT DO NOTHING`,
         [userId, tier, paymentRef],
       );
       await client.query("COMMIT");
@@ -89,6 +97,18 @@ export class Storage {
     } finally {
       client.release();
     }
+  }
+
+  // Record that a user has requested cancellation at period end. The webhook
+  // handler will flip the status to 'cancelled' when Stripe fires the event.
+  async recordPendingCancellation(userId: number, subId: string): Promise<void> {
+    await pool.query(
+      `UPDATE subscriptions SET status = 'pending_cancellation'
+         WHERE user_id = $1
+           AND payment_ref = $2
+           AND status = 'active'`,
+      [userId, subId],
+    );
   }
 }
 

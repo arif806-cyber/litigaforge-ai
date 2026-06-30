@@ -69,8 +69,11 @@ router.get("/stripe/plans", async (req, res) => {
 });
 
 // POST /api/stripe/checkout  { tier, country }
-// Creates (or reuses) a Stripe customer for the authenticated user and returns
-// a Checkout session URL for the requested tier in the country's currency.
+// For NEW subscribers: creates (or reuses) a Stripe customer and returns a
+// Checkout session URL.
+// For EXISTING subscribers upgrading/downgrading: performs an in-place
+// subscription price-swap with proration so no second subscription is created
+// and no double-charge occurs.
 router.post("/stripe/checkout", async (req, res) => {
   const userId = getUserId(req);
   if (!userId) {
@@ -106,6 +109,7 @@ router.post("/stripe/checkout", async (req, res) => {
 
     const stripe = await getUncachableStripeClient();
 
+    // Ensure a Stripe customer exists for this user.
     let customerId = user.stripe_customer_id;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -117,6 +121,38 @@ router.post("/stripe/checkout", async (req, res) => {
       await storage.setStripeCustomerId(userId, customerId);
     }
 
+    // Check for an existing active (or scheduled-to-cancel) subscription.
+    // If one exists, swap the price in-place with proration instead of opening
+    // a second checkout session — avoiding double charges.
+    const existingSubs = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "active",
+      limit: 1,
+    });
+
+    const existingSub = existingSubs.data[0];
+    if (existingSub) {
+      const subItemId = existingSub.items.data[0]?.id;
+      if (!subItemId) {
+        return res.status(500).json({ error: "Could not read existing subscription." });
+      }
+
+      await stripe.subscriptions.update(existingSub.id, {
+        items: [{ id: subItemId, price: plan.priceId }],
+        proration_behavior: "always_invoice",
+        metadata: { lf_user_id: String(userId), lf_tier: tier },
+        cancel_at_period_end: false,
+      });
+
+      // Activate the new tier immediately — the webhook will confirm, but we
+      // also do it here so the user sees the change right away.
+      await storage.activateTier(userId, tier, existingSub.id);
+
+      res.json({ upgraded: true, tier });
+      return;
+    }
+
+    // No existing subscription — create a Checkout session for new subscribers.
     const origin =
       req.get("origin") ??
       `${req.protocol}://${req.get("host")}`;
@@ -188,6 +224,93 @@ router.post("/stripe/reconcile", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to reconcile Stripe subscription");
     res.status(500).json({ error: "Failed to confirm subscription." });
+    return;
+  }
+});
+
+// POST /api/stripe/portal
+// Creates a Stripe Billing Portal session so international subscribers can
+// self-manage their plan (cancel, update payment method, view invoices).
+router.post("/stripe/portal", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+
+  try {
+    const user = await storage.getUserById(userId);
+    if (!user?.stripe_customer_id) {
+      return res
+        .status(400)
+        .json({ error: "No Stripe subscription found for this account." });
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const origin =
+      req.get("origin") ?? `${req.protocol}://${req.get("host")}`;
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripe_customer_id,
+      return_url: `${origin}/subscription`,
+    });
+
+    res.json({ url: session.url });
+    return;
+  } catch (err) {
+    req.log.error({ err }, "Failed to create Stripe portal session");
+    res.status(500).json({ error: "Failed to open subscription management." });
+    return;
+  }
+});
+
+// POST /api/stripe/cancel
+// Schedules the Stripe subscription for cancellation at period end and records
+// a pending_cancellation row in the subscriptions table. The webhook resets the
+// tier to free when Stripe fires customer.subscription.deleted at period end.
+router.post("/stripe/cancel", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+
+  try {
+    const user = await storage.getUserById(userId);
+    if (!user?.stripe_customer_id) {
+      return res
+        .status(400)
+        .json({ error: "No active Stripe subscription found." });
+    }
+
+    const stripe = await getUncachableStripeClient();
+
+    const subs = await stripe.subscriptions.list({
+      customer: user.stripe_customer_id,
+      status: "active",
+      limit: 1,
+    });
+
+    const sub = subs.data[0];
+    if (!sub) {
+      return res.status(400).json({ error: "No active Stripe subscription found." });
+    }
+
+    await stripe.subscriptions.update(sub.id, {
+      cancel_at_period_end: true,
+    });
+
+    // Persist the pending-cancellation state so the billing history and any
+    // admin tooling know what the user requested. The webhook handler will
+    // flip this to 'cancelled' when Stripe fires the deletion event.
+    await storage.recordPendingCancellation(userId, sub.id);
+
+    res.json({
+      message:
+        "Your subscription will be cancelled at the end of the current billing period. You will keep your current benefits until then.",
+    });
+    return;
+  } catch (err) {
+    req.log.error({ err }, "Failed to cancel Stripe subscription");
+    res.status(500).json({ error: "Failed to cancel subscription." });
     return;
   }
 });
