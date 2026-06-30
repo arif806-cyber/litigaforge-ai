@@ -46,12 +46,12 @@ BLOG_DOMAIN      = blog.litigaforge.com
 
 `GITHUB_TOKEN` is automatic — no need to add it.
 
-### Step 3 — Set Up IndexNow Key File (2 min)
+### Step 3 — IndexNow Key File (already done ✓)
 
-1. Rename `public/indexnow-key.txt` to `public/{YOUR_KEY}.txt`
-2. File content = just your key, nothing else
-3. After deploy, verify: `https://blog.litigaforge.com/{YOUR_KEY}.txt`
-4. Update `INDEXNOW_KEY` in pipeline.py to match
+The key file is already in place:
+- `public/5a4662dfa9b58713797b87f6d724876f.txt` — contains only the key string
+- Set `INDEXNOW_KEY = 5a4662dfa9b58713797b87f6d724876f` in your GitHub repo secrets (Step 2)
+- After deploy, verify: `https://blog.litigaforge.com/5a4662dfa9b58713797b87f6d724876f.txt`
 
 ### Step 4 — Connect Cloudflare Pages (10 min)
 
