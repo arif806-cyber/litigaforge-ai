@@ -1,0 +1,38 @@
+Diagnose: per-route meta injection is not executing in production
+Symptom
+_spaHtmlForPath() was written to inject route-specific <title>, meta description,
+canonical URL, and OG tags per route. After deploying and redeploying, EVERY route
+(/lawyers, /ask, etc.) still returns 100% identical HTML to the homepage —
+same title, same canonical (https://litigaforge.com/), same description, same body
+content. Not partially wrong — completely unchanged, as if the function never runs.
+Verified via curl https://litigaforge.com/lawyers multiple times after redeploy —
+no difference from curl https://litigaforge.com/.
+What to check, in this exact order — report back what you find at each step, don't skip ahead
+Is _spaHtmlForPath called anywhere in the actual HTTP request handler?
+Search the entire codebase for every call site of _spaHtmlForPath. If it is
+defined but never invoked by the server's route/middleware chain (e.g. never
+called before res.send() / res.end() for HTML GET requests), that is the bug.
+Show me the exact file and line number where it IS called, or confirm it is
+called nowhere.
+Is this server the one actually serving production traffic at litigaforge.com?
+Confirm: what platform is currently live at litigaforge.com right now — Replit,
+Vercel, Railway, Cloudflare, or something else? If the middleware was added to a
+Replit-hosted server but production DNS/traffic actually points to Vercel (or any
+other host), the fix is running in a server nobody's requests ever reach. Show me
+the deployment/hosting config or DNS target that proves which server is live.
+If it IS wired in and IS the live server — is _routeSeo(bare) returning a value
+for /lawyers?
+Add a temporary console.log/print right before the if (!meta) return _indexHtml;
+line, log bare and meta, hit /lawyers in production, and show me the actual
+log output. This tells us if the route manifest lookup itself is failing (wrong key
+format, missing entry, or _stripCountry producing something unexpected like
+/lawyers/ with trailing slash, or a locale-prefixed path that doesn't match).
+Is there a caching layer serving stale HTML?
+Check if Cloudflare, a CDN, or a service worker is caching the old _indexHtml
+response independent of this code change. If so, purge cache for all paths and
+re-test with a cache-busting query string, e.g.
+curl https://litigaforge.com/lawyers?cachebust=1.
+Do not report "fixed" until this passes
+Bash
+These two commands MUST return different <title> values. Paste the actual terminal
+output here, not a description of what you expect it to show.
