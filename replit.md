@@ -161,7 +161,7 @@ Optional secrets (enable extra features):
 ## User preferences
 
 - Full mobile compatibility (Android + iOS)
-- Light/white UI with amber/gold accents and subtle particle animations
+- Dark fintech UI: bg `#0A0B10`, surface `#14151F`, amber `#F5B754` (client/primary), emerald `#34D399` (advocate), violet `#8B5CF6` (AI). Always-dark (`class="dark"` locked on `<html>`). Subtle particle animations.
 - Save all work to GitHub: repo `arif806-cyber/litigaforge-ai`, branch `feature/arifbase`
 
 ## Gotchas

@@ -190,7 +190,7 @@ export default function Login() {
 
       {/* Left: Hero panel — navy dark */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #1a2744 0%, #0f1a35 60%, #0a1020 100%)" }}>
+        style={{ background: "linear-gradient(160deg, #1a1b2e 0%, #0d0e1a 60%, #0A0B10 100%)" }}>
 
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.04]"

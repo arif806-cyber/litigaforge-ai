@@ -232,7 +232,7 @@ export default function ClientDashboard() {
         {/* ── Greeting Banner ─────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl overflow-hidden relative"
-          style={{ background: "linear-gradient(135deg, #1a2744 0%, #1e3a6e 60%, #163060 100%)" }}>
+          style={{ background: "linear-gradient(135deg, #14151F 0%, #1a1b2e 60%, #0e0f1a 100%)" }}>
           <div className="absolute inset-0 opacity-[0.04]"
             style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #f59e0b 0%, transparent 50%), radial-gradient(circle at 80% 20%, #10b981 0%, transparent 40%)" }} />
           <div className="relative px-5 py-5">
@@ -713,18 +713,18 @@ export default function ClientDashboard() {
             {/* Upgrade banner */}
             {user?.subscription_tier === "free" && (
               <div className="rounded-2xl p-4 border border-primary/20 overflow-hidden relative"
-                style={{ background: "linear-gradient(135deg, #1a2744 0%, #1e3a6e 100%)" }}>
+                style={{ background: "linear-gradient(135deg, #14151F 0%, #1a1b2e 100%)", border: "1px solid rgba(245,183,84,0.15)" }}>
                 <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10"
-                  style={{ background: "#f59e0b", transform: "translate(30%, -30%)" }} />
+                  style={{ background: "#F5B754", transform: "translate(30%, -30%)" }} />
                 <div className="flex items-center gap-2 mb-2">
                   <Award className="w-5 h-5 text-amber-400" />
                   <p className="font-bold text-sm text-white">Upgrade to Professional</p>
                 </div>
-                <p className="text-[11px] mb-3 leading-relaxed text-blue-300">
+                <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "rgba(245,183,84,0.7)" }}>
                   Priority matching · Unlimited AI · WhatsApp alerts
                 </p>
                 <button onClick={() => setLocation("/subscription")}
-                  className="w-full text-xs font-bold py-2.5 rounded-xl text-[#1a2744] transition-colors hover:opacity-90"
+                  className="w-full text-xs font-bold py-2.5 rounded-xl text-[#0A0B10] transition-colors hover:opacity-90"
                   style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)" }}>
                   Upgrade — ₹999/mo
                 </button>
@@ -738,16 +738,16 @@ export default function ClientDashboard() {
           {clientCases.filter((c) => c.hearing_date).length > 0 && (
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 border border-amber-100">
-                  <Calendar className="w-4 h-4 text-amber-600" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-400/10 border border-amber-400/20">
+                  <Calendar className="w-4 h-4 text-amber-400" />
                 </div>
                 <p className="text-[14px] font-semibold text-foreground">Upcoming Hearings</p>
               </div>
               <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {clientCases.filter((c) => c.hearing_date).slice(0, 4).map((c) => (
-                  <div key={c.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-100">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-100">
-                      <Bell className="w-3.5 h-3.5 text-amber-600" />
+                  <div key={c.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-400/8 border border-amber-400/15">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-400/15">
+                      <Bell className="w-3.5 h-3.5 text-amber-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-foreground truncate">{c.title}</p>
@@ -761,20 +761,20 @@ export default function ClientDashboard() {
 
           {user?.subscription_tier === "free" && (
             <div className="rounded-2xl p-5 overflow-hidden relative"
-              style={{ background: "linear-gradient(135deg, #1a2744 0%, #1e3a6e 100%)" }}>
+              style={{ background: "linear-gradient(135deg, #14151F 0%, #1a1b2e 100%)", border: "1px solid rgba(245,183,84,0.15)" }}>
               <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10"
-                style={{ background: "#f59e0b", transform: "translate(40%, -40%)" }} />
+                style={{ background: "#F5B754", transform: "translate(40%, -40%)" }} />
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-400/20 flex items-center justify-center">
                   <Award className="w-5 h-5 text-amber-400" />
                 </div>
                 <div>
                   <p className="font-bold text-white">Upgrade to Professional</p>
-                  <p className="text-[11px] text-blue-300">Priority matching + Unlimited AI</p>
+                  <p className="text-[11px]" style={{ color: "rgba(245,183,84,0.7)" }}>Priority matching + Unlimited AI</p>
                 </div>
               </div>
               <button onClick={() => setLocation("/subscription")}
-                className="w-full text-sm font-bold py-3 rounded-xl text-[#1a2744] transition-colors hover:opacity-90"
+                className="w-full text-sm font-bold py-3 rounded-xl text-[#0A0B10] transition-colors hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)" }}>
                 Upgrade Now — ₹999/month
               </button>
