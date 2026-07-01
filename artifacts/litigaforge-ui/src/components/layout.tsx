@@ -408,30 +408,8 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
 /* ─── Main Layout ─── */
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
-
-  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
-  const openDrawer  = useCallback(() => setDrawerOpen(true),  []);
-
-  /* Close when route changes */
-  useEffect(() => { closeDrawer(); }, [location, closeDrawer]);
-
-  /* Lock body scroll while drawer is open */
-  useEffect(() => {
-    if (drawerOpen) {
-      document.body.style.overflow = "hidden";
-      document.body.style.touchAction = "none";
-    } else {
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    };
-  }, [drawerOpen]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
@@ -460,13 +438,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           >
             {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          <button
-            className="flex items-center justify-center w-10 h-10 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors active:scale-95"
-            onPointerDown={openDrawer}
-            aria-label="Open menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
         </div>
       </header>
 
@@ -475,59 +446,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex-col relative z-10" style={{ boxShadow: "var(--cfos-elev-3)" }}>
           <SidebarContent location={location} user={user} />
         </aside>
-
-        {/* Mobile drawer — portalled to document.body so no overflow ancestor clips it */}
-        {typeof document !== "undefined" && createPortal(
-          <>
-            {/* Backdrop — plain div, onClick is most reliable cross-browser close */}
-            <AnimatePresence>
-              {drawerOpen && (
-                <motion.div
-                  key="backdrop"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  aria-label="Close menu"
-                  role="button"
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    backgroundColor: "rgba(0,0,0,0.65)",
-                    zIndex: 9998,
-                  }}
-                  onPointerDown={closeDrawer}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* Drawer panel */}
-            <AnimatePresence>
-              {drawerOpen && (
-                <motion.aside
-                  key="drawer"
-                  initial={{ x: "-100%" }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "-100%" }}
-                  transition={{ type: "spring", stiffness: 380, damping: 36 }}
-                  style={{ zIndex: 9999 }}
-                  className="fixed left-0 top-0 bottom-0 w-[280px] bg-sidebar border-r border-sidebar-border flex flex-col shadow-2xl"
-                >
-                  {/* Close button — top right of drawer */}
-                  <button
-                    className="absolute top-3.5 right-3.5 z-10 flex items-center justify-center w-9 h-9 rounded-full bg-sidebar-accent/80 text-sidebar-foreground active:scale-90 transition-transform"
-                    onPointerDown={closeDrawer}
-                    aria-label="Close menu"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <SidebarContent location={location} onNav={closeDrawer} user={user} />
-                </motion.aside>
-              )}
-            </AnimatePresence>
-          </>,
-          document.body
-        )}
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background">
