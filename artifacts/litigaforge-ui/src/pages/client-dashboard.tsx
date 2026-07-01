@@ -83,7 +83,7 @@ function CaseStageTimeline({ stage }: { stage: string }) {
         return (
           <div key={s} className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full transition-colors ${done ? "bg-emerald-500" : "bg-muted"}`} />
-            {isCurrent && <span className="text-[10px] font-semibold text-emerald-600 ml-0.5">{stageLabel(s)}</span>}
+            {isCurrent && <span className="text-[10px] font-semibold text-emerald-400 ml-0.5">{stageLabel(s)}</span>}
             {i < CASE_STAGES.length - 1 && <div className={`w-3 h-px ${done ? "bg-emerald-500/40" : "bg-border"}`} />}
           </div>
         );
@@ -216,10 +216,10 @@ export default function ClientDashboard() {
   const locale = localeFor(activeCode);
 
   const quickActions = [
-    { label: t.post_case,    icon: Plus,       iconColor: "text-blue-600",   bgColor: "bg-blue-50 border-blue-100",   action: () => setLocation("/post-case") },
-    { label: t.doc_analyzer, icon: FileSearch, iconColor: "text-violet-600", bgColor: "bg-violet-50 border-violet-100", action: () => setLocation("/review") },
-    { label: t.legal_qa,     icon: Gavel,      iconColor: "text-amber-600",  bgColor: "bg-amber-50 border-amber-100",  action: () => setLocation("/ask") },
-    { label: t.free_aid,     icon: Heart,      iconColor: "text-rose-600",   bgColor: "bg-rose-50 border-rose-100",    action: () => setLocation("/legal-aid") },
+    { label: t.post_case,    icon: Plus,       iconColor: "text-primary",   bgColor: "bg-primary/10 border-primary/20",   action: () => setLocation("/post-case") },
+    { label: t.doc_analyzer, icon: FileSearch, iconColor: "text-violet-400", bgColor: "bg-violet-500/10 border-violet-500/20", action: () => setLocation("/review") },
+    { label: t.legal_qa,     icon: Gavel,      iconColor: "text-amber-400",  bgColor: "bg-amber-500/10 border-amber-500/20",  action: () => setLocation("/ask") },
+    { label: t.free_aid,     icon: Heart,      iconColor: "text-rose-400",   bgColor: "bg-rose-500/10 border-rose-500/20",    action: () => setLocation("/legal-aid") },
   ];
 
   const caseTabLabels: Record<string, string> = { active: "Active", pending: "Pending", closed: "Closed" };
@@ -328,7 +328,7 @@ export default function ClientDashboard() {
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Top Services</p>
                   <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
                     {activeConfig.top_services!.map((s: string) => (
-                      <span key={s} className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      <span key={s} className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         {s}
                       </span>
                     ))}
@@ -340,7 +340,7 @@ export default function ClientDashboard() {
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Courts & Tribunals</p>
                   <div className="flex flex-wrap gap-1.5">
                     {activeConfig.courts!.slice(0, 4).map((c: string) => (
-                      <span key={c} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      <span key={c} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-primary/10 text-primary border border-primary/30">
                         {c}
                       </span>
                     ))}
@@ -378,8 +378,8 @@ export default function ClientDashboard() {
               <div className="px-5 py-4 border-b border-border">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 border border-blue-100">
-                      <FileCheck className="w-4 h-4 text-blue-600" />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
+                      <FileCheck className="w-4 h-4 text-primary" />
                     </div>
                     <div>
                       <h2 className="font-semibold text-foreground text-[15px]">{t.my_assigned_cases}</h2>
@@ -438,7 +438,7 @@ export default function ClientDashboard() {
                 {!casesLoading && clientCases.length === 0 && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="py-12 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
                       <Briefcase className="w-7 h-7 text-blue-400" />
                     </div>
                     <p className="font-semibold text-foreground text-base mb-1">{t.no_cases_yet}</p>
@@ -475,16 +475,16 @@ export default function ClientDashboard() {
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50 border border-blue-100">
-                              <Briefcase className="w-4 h-4 text-blue-600" />
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10 border border-primary/20">
+                              <Briefcase className="w-4 h-4 text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
                                 <span className="font-semibold text-foreground text-sm">{c.title}</span>
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{c.case_type}</span>
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{c.case_type}</span>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                  c.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                                  c.status === "pending" ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                  c.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                                  c.status === "pending" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
                                   "bg-muted text-muted-foreground"}`}>
                                   {c.status.toUpperCase()}
                                 </span>
@@ -494,7 +494,7 @@ export default function ClientDashboard() {
                                 {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
                                 {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{c.cnr_number}</span>}
                                 {c.hearing_date && (
-                                  <span className="flex items-center gap-1 text-amber-600 font-semibold">
+                                  <span className="flex items-center gap-1 text-amber-400 font-semibold">
                                     <Calendar className="w-3 h-3" />
                                     {new Date(c.hearing_date).toLocaleDateString(locale)}
                                   </span>
@@ -506,21 +506,21 @@ export default function ClientDashboard() {
                           {/* Action buttons */}
                           <div className="flex items-center gap-0.5 flex-shrink-0">
                             <button onClick={() => { setShowEditCase(c); setEditDesc(c.description || ""); setEditHearing(c.hearing_date || ""); }}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Edit">
                               <PenSquare className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => {
                               const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
                               if (navigator.share) navigator.share({ title: c.title, text });
                               else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Share">
+                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors" title="Share">
                               <Share2 className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => {
                               const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nStage: ${c.case_stage || "N/A"}\nDescription: ${c.description || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
                               const blob = new Blob([text], { type: "text/plain" });
                               const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `case-${c.id}.txt`; a.click();
-                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Download">
+                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-violet-400 hover:bg-violet-500/10 transition-colors" title="Download">
                               <Download className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => setShowCaseDetail(c)}
@@ -541,8 +541,8 @@ export default function ClientDashboard() {
               <div className="px-5 py-4 border-b border-border">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-50 border border-violet-100">
-                      <Sparkles className="w-4 h-4 text-violet-600" />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-500/10 border border-violet-500/20">
+                      <Sparkles className="w-4 h-4 text-violet-400" />
                     </div>
                     <div>
                       <h2 className="font-semibold text-foreground text-[15px]">{t.match_proposals}</h2>
@@ -550,7 +550,7 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   {pendingMatches > 0 && (
-                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
                       {pendingMatches} pending
                     </span>
                   )}
@@ -588,7 +588,7 @@ export default function ClientDashboard() {
                 {!matchLoading && filteredMatches.length === 0 && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="py-12 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center mb-4">
+                    <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4">
                       <Sparkles className="w-7 h-7 text-violet-400" />
                     </div>
                     <p className="font-semibold text-foreground mb-1">No {matchTab} proposals</p>
@@ -627,21 +627,21 @@ export default function ClientDashboard() {
             {/* Upcoming Hearings */}
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 border border-amber-100">
-                  <Calendar className="w-4 h-4 text-amber-600" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/20">
+                  <Calendar className="w-4 h-4 text-amber-400" />
                 </div>
                 <p className="text-[14px] font-semibold text-foreground">Upcoming Hearings</p>
               </div>
               <div className="p-3 space-y-2">
                 {clientCases.filter((c) => c.hearing_date).slice(0, 3).map((c) => (
-                  <div key={c.id} className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-100">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-100">
-                      <Bell className="w-3.5 h-3.5 text-amber-600" />
+                  <div key={c.id} className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-500/15">
+                      <Bell className="w-3.5 h-3.5 text-amber-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-foreground truncate">{c.title}</p>
                       <p className="text-[11px] text-muted-foreground">{c.court_name || "District Court"}</p>
-                      <p className="text-[11px] text-amber-600 font-bold mt-0.5">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
+                      <p className="text-[11px] text-amber-400 font-bold mt-0.5">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
                     </div>
                   </div>
                 ))}
@@ -654,8 +654,8 @@ export default function ClientDashboard() {
             {/* My Lawyers */}
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50 border border-emerald-100">
-                  <User className="w-4 h-4 text-emerald-600" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
+                  <User className="w-4 h-4 text-emerald-400" />
                 </div>
                 <p className="text-[14px] font-semibold text-foreground">My Lawyers</p>
               </div>
@@ -671,7 +671,7 @@ export default function ClientDashboard() {
                     </div>
                     {c.lawyer_phone && (
                       <a href={`tel:${c.lawyer_phone}`}
-                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 transition-colors text-muted-foreground">
+                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors text-muted-foreground">
                         <Phone className="w-3.5 h-3.5" />
                       </a>
                     )}
@@ -690,10 +690,10 @@ export default function ClientDashboard() {
               </div>
               <div className="p-2">
                 {[
-                  { label: "Document Analyzer", icon: FileText, href: "/review",    color: "text-violet-600", bg: "bg-violet-50" },
-                  { label: "Judgment Finder",   icon: Scale,    href: "/judgments", color: "text-blue-600",   bg: "bg-blue-50" },
-                  { label: "Legal Q&A",         icon: Gavel,    href: "/ask",       color: "text-amber-600",  bg: "bg-amber-50" },
-                  { label: "Free Legal Aid",    icon: Shield,   href: "/legal-aid", color: "text-emerald-600", bg: "bg-emerald-50" },
+                  { label: "Document Analyzer", icon: FileText, href: "/review",    color: "text-violet-400", bg: "bg-violet-500/10" },
+                  { label: "Judgment Finder",   icon: Scale,    href: "/judgments", color: "text-primary",   bg: "bg-primary/10" },
+                  { label: "Legal Q&A",         icon: Gavel,    href: "/ask",       color: "text-amber-400",  bg: "bg-amber-500/10" },
+                  { label: "Free Legal Aid",    icon: Shield,   href: "/legal-aid", color: "text-emerald-400", bg: "bg-emerald-500/10" },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -751,7 +751,7 @@ export default function ClientDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-foreground truncate">{c.title}</p>
-                      <p className="text-[11px] text-amber-600 font-bold">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
+                      <p className="text-[11px] text-amber-400 font-bold">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
                     </div>
                   </div>
                 ))}
@@ -816,7 +816,7 @@ export default function ClientDashboard() {
             <div className="rounded-xl p-3 bg-muted/40 border border-border">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[12px] font-semibold text-foreground">Case Documents</p>
-                <label className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white cursor-pointer transition-colors">
+                <label className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-primary/100 text-white cursor-pointer transition-colors">
                   <Upload className="w-3 h-3" />
                   {docUploading ? "Uploading…" : "Upload"}
                   <input type="file" className="hidden" disabled={docUploading}
@@ -854,8 +854,8 @@ export default function ClientDashboard() {
                     <motion.div key={doc.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="flex items-center justify-between rounded-xl p-2.5 bg-card border border-border">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-50">
-                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10">
+                          <FileText className="w-3.5 h-3.5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-medium text-foreground truncate">{doc.filename}</p>
@@ -863,14 +863,14 @@ export default function ClientDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <a href={doc.file_url} download={doc.filename} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                        <a href={doc.file_url} download={doc.filename} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                           <Download className="w-3.5 h-3.5" />
                         </a>
                         <button onClick={() => {
                           const text = `Case Document: ${doc.filename}\nCase: ${showCaseDetail.title}\n\nDownload: ${typeof window !== "undefined" ? window.location.origin : ""}${doc.file_url}\n\n— LitigaForge AI`;
                           if (navigator.share) navigator.share({ title: doc.filename, text });
                           else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                        }} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
+                        }} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors">
                           <Share2 className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={async () => {
@@ -879,7 +879,7 @@ export default function ClientDashboard() {
                             await apiFetch(`/client/documents/${doc.id}`, { method: "DELETE" });
                             setCaseDocs(prev => prev.filter(d => d.id !== doc.id));
                           } catch { alert("Failed to delete"); }
-                        }} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                        }} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>

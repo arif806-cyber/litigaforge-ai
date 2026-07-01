@@ -37,7 +37,7 @@ export default function DocumentsPage() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto" />
+          <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto" />
           <h2 className="text-xl font-semibold">Sign In Required</h2>
           <Button onClick={() => setLocation("/login")}>Sign In</Button>
         </div>
@@ -52,7 +52,7 @@ export default function DocumentsPage() {
   return (
     <PageShell title="Case Documents" subtitle="All your uploaded case files in one place.">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setLocation("/client-dashboard")} className="text-gray-400 hover:text-gray-600">
+        <button onClick={() => setLocation("/client-dashboard")} className="text-muted-foreground/60 hover:text-muted-foreground">
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
@@ -60,14 +60,14 @@ export default function DocumentsPage() {
       {/* ── Pinned User Guide ──────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl p-4 mb-4 flex items-center gap-4"
-        style={{ background: "linear-gradient(135deg,#fffbeb,#fef3c7)", border: "1px solid #fde68a" }}>
+        style={{ background: "rgba(245,183,84,0.08)", border: "1px solid rgba(245,183,84,0.25)" }}>
         <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "#f59e0b" }}>
-          <FileText className="w-5 h-5 text-white" />
+          style={{ background: "rgba(245,183,84,0.2)" }}>
+          <FileText className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-amber-900 text-sm">LitigaForge AI — User Guide</p>
-          <p className="text-[11px] text-amber-700 mt-0.5">
+          <p className="font-bold text-primary text-sm">LitigaForge AI — User Guide</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
             16-page guide covering all features — matching, AI agents, document analysis, legal aid &amp; more.
           </p>
         </div>
@@ -82,15 +82,15 @@ export default function DocumentsPage() {
         </a>
       </motion.div>
 
-      <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid #F1F5F9" }}>
+      <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
         {/* Header + Search */}
-        <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "#F1F5F9" }}>
+        <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "hsl(var(--border))" }}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F0F9FF" }}>
-              <FileText className="w-4 h-4 text-blue-600" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(139,92,246,0.12)" }}>
+              <FileText className="w-4 h-4 text-violet-400" />
             </div>
-            <h2 className="font-bold text-gray-900 text-sm">All Documents</h2>
-            <span className="text-[11px] text-gray-400">({data?.total ?? 0})</span>
+            <h2 className="font-bold text-foreground text-sm">All Documents</h2>
+            <span className="text-[11px] text-muted-foreground/60">({data?.total ?? 0})</span>
           </div>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white cursor-pointer transition-colors" style={{ background: "#2563EB" }}>
@@ -123,46 +123,46 @@ export default function DocumentsPage() {
             </label>
           </div>
         </div>
-        <div className="px-5 py-3 border-b" style={{ borderColor: "#F1F5F9" }}>
+        <div className="px-5 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
           <div className="flex items-center gap-2 bg-background rounded-lg px-3 py-2">
-            <Search className="w-4 h-4 text-gray-400" />
+            <Search className="w-4 h-4 text-muted-foreground/60" />
             <input type="text" placeholder="Search by filename or case name..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 outline-none" />
-            {search && <button onClick={() => setSearch("")} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none" />
+            {search && <button onClick={() => setSearch("")} className="text-muted-foreground/60 hover:text-muted-foreground"><X className="w-4 h-4" /></button>}
           </div>
         </div>
 
         {/* Document list */}
         <div className="p-4 space-y-2.5">
-          {isLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>}
+          {isLoading && <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground/60" /></div>}
           {!isLoading && docs.length === 0 && (
-            <div className="rounded-xl p-8 text-center" style={{ background: "#F8FAFC", border: "1px dashed #E2E8F0" }}>
-              <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No documents yet.</p>
-              <p className="text-xs text-gray-400 mt-1">Upload files from a case detail page.</p>
+            <div className="rounded-xl p-8 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
+              <FileText className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No documents yet.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Upload files from a case detail page.</p>
             </div>
           )}
           {docs.map((doc: any) => (
             <motion.div key={doc.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "#F8FAFC", border: "1px solid #F1F5F9" }}>
+              className="rounded-xl p-4 hover:shadow-sm transition-all" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
-                    <FileText className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+                    <FileText className="w-5 h-5 text-violet-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm">{doc.filename}</p>
-                    <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-400">
-                      <span className="text-blue-600 font-medium uppercase">{doc.file_type}</span>
+                    <p className="font-semibold text-foreground text-sm">{doc.filename}</p>
+                    <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground/60">
+                      <span className="text-primary font-medium uppercase">{doc.file_type}</span>
                       <span>{doc.file_size ? (doc.file_size / 1024).toFixed(1) + " KB" : "N/A"}</span>
                       <span>{formatDate(doc.created_at, activeCode)}</span>
-                      {doc.case_title && <span className="text-gray-500">Case: {doc.case_title}</span>}
+                      {doc.case_title && <span className="text-muted-foreground">Case: {doc.case_title}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <a href={doc.file_url} download={doc.filename}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Download">
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors" title="Download">
                     <Download className="w-3.5 h-3.5" />
                   </a>
                   <button onClick={() => {
@@ -170,14 +170,14 @@ export default function DocumentsPage() {
                     if (navigator.share) navigator.share({ title: doc.filename, text });
                     else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
                   }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Share">
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors" title="Share">
                     <Share2 className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => {
                     if (!confirm(`Delete "${doc.filename}"?`)) return;
                     deleteMut.mutate(doc.id);
                   }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

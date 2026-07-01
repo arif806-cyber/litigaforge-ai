@@ -272,7 +272,7 @@ export default function Judgments() {
                   </p>
                   <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-border/60">
                     {j.outcome && (
-                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full line-clamp-1">
+                      <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full line-clamp-1">
                         {j.outcome}
                       </span>
                     )}

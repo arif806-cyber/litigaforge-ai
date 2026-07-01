@@ -103,7 +103,7 @@ export default function PostCase() {
       <SEOHelmet title="Post a Case" description="Post your legal case requirements." canonical="/post-case" />
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto" />
+          <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto" />
           <h2 className="text-xl font-semibold">Sign In Required</h2>
           <Button onClick={() => setLocation("/login")}>Sign In</Button>
         </div>
@@ -115,14 +115,14 @@ export default function PostCase() {
     <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle}>
       <SEOHelmet title="Post a Case" description="Post your legal case requirements." canonical="/post-case" />
 
-      <div className="bg-card rounded-2xl shadow-sm p-6 space-y-6" style={{ border: "1px solid #F1F5F9" }}>
+      <div className="bg-card rounded-2xl shadow-sm p-6 space-y-6" style={{ border: "1px solid hsl(var(--border))" }}>
         {/* Title */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Case Title <span className="text-red-500">*</span></label>
           <input value={title} onChange={(e) => { setTitle(e.target.value); if (fieldErrors.title) setFieldErrors(p => ({ ...p, title: "" })); }}
             placeholder="e.g., Property dispute with neighbour in Banjara Hills"
             className={cn("w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2",
-              fieldErrors.title ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-blue-200")} />
+              fieldErrors.title ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-primary/30")} />
           {fieldErrors.title && <p className="text-xs text-red-500">{fieldErrors.title}</p>}
         </div>
 
@@ -133,10 +133,10 @@ export default function PostCase() {
             {CASE_TYPES.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => { setCaseType(id); if (fieldErrors.caseType) setFieldErrors(p => ({ ...p, caseType: "" })); }}
                 className={cn("flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-all",
-                  caseType === id ? "border-blue-500 bg-blue-50 text-blue-700 font-medium" : "border-border hover:border-gray-300 text-gray-600")}>
+                  caseType === id ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-border/60 text-muted-foreground")}>
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{label}</span>
-                {caseType === id && <Check className="w-3.5 h-3.5 ml-auto text-blue-600" />}
+                {caseType === id && <Check className="w-3.5 h-3.5 ml-auto text-primary" />}
               </button>
             ))}
           </div>
@@ -149,10 +149,10 @@ export default function PostCase() {
           <textarea value={description} onChange={(e) => { setDescription(e.target.value); if (fieldErrors.description) setFieldErrors(p => ({ ...p, description: "" })); }}
             placeholder="Describe the situation in detail. Include relevant dates, parties involved, and what outcome you seek."
             rows={5} className={cn("w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 resize-none",
-              fieldErrors.description ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-blue-200")} />
+              fieldErrors.description ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-primary/30")} />
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-400">Be specific. Lawyers need details to assess your case.</p>
-            <p className={cn("text-xs tabular-nums", description.length > 2000 ? "text-red-500 font-semibold" : "text-gray-400")}>{description.length} / 2,000</p>
+            <p className="text-xs text-muted-foreground/60">Be specific. Lawyers need details to assess your case.</p>
+            <p className={cn("text-xs tabular-nums", description.length > 2000 ? "text-red-500 font-semibold" : "text-muted-foreground/60")}>{description.length} / 2,000</p>
           </div>
           {fieldErrors.description && <p className="text-xs text-red-500">{fieldErrors.description}</p>}
         </div>
@@ -163,12 +163,12 @@ export default function PostCase() {
             <label className="text-sm font-medium flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Location</label>
             <input value={locationVal} onChange={(e) => setLocationVal(e.target.value)}
               placeholder={copy.locationPlaceholder}
-              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-1.5"><Coins className="w-3.5 h-3.5" /> Budget Range</label>
             <select value={budgetIdx} onChange={(e) => setBudgetIdx(e.target.value === "" ? "" : Number(e.target.value))}
-              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 bg-card">
+              className="w-full px-3 py-2.5 rounded-lg border border-border text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 bg-card">
               <option value="">Select budget...</option>
               {BUDGET_RANGES.map((b, i) => <option key={b.label} value={i}>{b.label}</option>)}
             </select>
@@ -176,7 +176,7 @@ export default function PostCase() {
         </div>
 
         {/* Anonymous */}
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border" style={{ background: "#F8FAFC", borderColor: "#F1F5F9" }}>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border" style={{ background: "hsl(var(--muted))", borderColor: "hsl(var(--border))" }}>
           <button onClick={() => setIsAnonymous(!isAnonymous)}
             className={cn("w-5 h-5 rounded border flex items-center justify-center transition-colors",
               isAnonymous ? "bg-primary border-primary" : "border-border bg-card")}>
@@ -184,11 +184,11 @@ export default function PostCase() {
           </button>
           <div>
             <p className="text-sm font-medium">Post Anonymously</p>
-            <p className="text-xs text-gray-400">Your name will be hidden until you accept a lawyer's proposal.</p>
+            <p className="text-xs text-muted-foreground/60">Your name will be hidden until you accept a lawyer's proposal.</p>
           </div>
         </div>
 
-        {error && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
+        {error && <div className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">{error}</div>}
 
         <Button onClick={handleSubmit} disabled={submitting} className="w-full">
           <Send className="w-4 h-4 mr-2" />

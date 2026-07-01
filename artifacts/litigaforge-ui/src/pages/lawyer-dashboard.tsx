@@ -100,7 +100,7 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
         {item.badge && (
           <span className={cn(
             "text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none",
-            item.badge === "AI" ? "bg-amber-400 text-amber-900" : "bg-blue-500 text-white"
+            item.badge === "AI" ? "bg-amber-400 text-[#0A0B10]" : "bg-blue-500 text-white"
           )}>{item.badge}</span>
         )}
       </Link>
@@ -349,10 +349,10 @@ export default function LawyerDashboard() {
   const completedCases = cases.filter((c) => c.status === "closed");
 
   const stats = [
-    { label: "Total Requests", value: allLeads.length, sub: "+12% this week", iconEl: <Users className="w-5 h-5" />, iconBg: "#EFF6FF", iconColor: "#2563EB", borderColor: "#DBEAFE" },
-    { label: "Pending", value: pendingLeads.length, sub: "Needs your response", iconEl: <Clock className="w-5 h-5" />, iconBg: "#FEF9C3", iconColor: "#D97706", borderColor: "#FDE68A" },
-    { label: "Accepted", value: acceptedLeads.length, sub: "Active matters", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "#ECFDF5", iconColor: "#059669", borderColor: "#D1FAE5" },
-    { label: "Completed", value: completedCases.length, sub: "This month", iconEl: <FileText className="w-5 h-5" />, iconBg: "#F5F3FF", iconColor: "#7C3AED", borderColor: "#EDE9FE" },
+    { label: "Total Requests", value: allLeads.length, sub: "+12% this week", iconEl: <Users className="w-5 h-5" />, iconBg: "rgba(139,92,246,0.12)", iconColor: "#8B5CF6", borderColor: "rgba(139,92,246,0.25)" },
+    { label: "Pending", value: pendingLeads.length, sub: "Needs your response", iconEl: <Clock className="w-5 h-5" />, iconBg: "rgba(245,183,84,0.12)", iconColor: "#F5B754", borderColor: "rgba(245,183,84,0.35)" },
+    { label: "Accepted", value: acceptedLeads.length, sub: "Active matters", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "rgba(52,211,153,0.12)", iconColor: "#34D399", borderColor: "rgba(52,211,153,0.25)" },
+    { label: "Completed", value: completedCases.length, sub: "This month", iconEl: <FileText className="w-5 h-5" />, iconBg: "rgba(139,92,246,0.12)", iconColor: "#8B5CF6", borderColor: "rgba(139,92,246,0.25)" },
   ];
 
   // ── Verification wall ──
@@ -384,9 +384,9 @@ export default function LawyerDashboard() {
                 animate={{ rotate: [0, -8, 8, -8, 8, 0] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                 className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: "#EFF6FF", border: "1.5px solid #BFDBFE" }}
+                style={{ background: "rgba(139,92,246,0.12)", border: "1.5px solid rgba(139,92,246,0.25)" }}
               >
-                <Hourglass className="w-7 h-7 text-blue-500" />
+                <Hourglass className="w-7 h-7 text-primary" />
               </motion.div>
 
               <h1 className="text-2xl font-bold text-foreground mb-2">Awaiting Verification</h1>
@@ -405,8 +405,8 @@ export default function LawyerDashboard() {
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{
-                        background: done ? "#ECFDF5" : active ? "#EFF6FF" : "#F1F5F9",
-                        border: `1.5px solid ${done ? "#6EE7B7" : active ? "#93C5FD" : "#E2E8F0"}`,
+                        background: done ? "rgba(52,211,153,0.12)" : active ? "rgba(139,92,246,0.12)" : "hsl(var(--muted))",
+                        border: `1.5px solid ${done ? "rgba(52,211,153,0.35)" : active ? "rgba(139,92,246,0.35)" : "hsl(var(--border))"}`,
                       }}
                     >
                       {done ? (
@@ -419,7 +419,7 @@ export default function LawyerDashboard() {
                     </div>
                     <span
                       className="text-sm"
-                      style={{ color: done ? "#059669" : active ? "#2563EB" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
+                      style={{ color: done ? "#34D399" : active ? "#8B5CF6" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
                     >
                       {label}
                     </span>
@@ -428,8 +428,8 @@ export default function LawyerDashboard() {
               </div>
 
               <div
-                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-blue-600 mb-4"
-                style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}
+                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-primary mb-4"
+                style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)" }}
               >
                 <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                 <span>Checking for updates every 30 seconds — this page will refresh automatically once approved.</span>
@@ -448,7 +448,7 @@ export default function LawyerDashboard() {
             <div className="rounded-2xl bg-card shadow-lg border border-border px-8 py-10">
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: "#FEF3C7", border: "1.5px solid #FDE68A" }}
+                style={{ background: "rgba(245,183,84,0.12)", border: "1.5px solid rgba(245,183,84,0.35)" }}
               >
                 <User className="w-7 h-7 text-amber-500" />
               </div>
@@ -469,8 +469,8 @@ export default function LawyerDashboard() {
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{
-                        background: done ? "#ECFDF5" : active ? "#FEF3C7" : "#F1F5F9",
-                        border: `1.5px solid ${done ? "#6EE7B7" : active ? "#FDE68A" : "#E2E8F0"}`,
+                        background: done ? "rgba(52,211,153,0.12)" : active ? "rgba(245,183,84,0.12)" : "hsl(var(--muted))",
+                        border: `1.5px solid ${done ? "rgba(52,211,153,0.35)" : active ? "rgba(245,183,84,0.35)" : "hsl(var(--border))"}`,
                       }}
                     >
                       {done ? (
@@ -483,7 +483,7 @@ export default function LawyerDashboard() {
                     </div>
                     <span
                       className="text-sm"
-                      style={{ color: done ? "#059669" : active ? "#D97706" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
+                      style={{ color: done ? "#34D399" : active ? "#F5B754" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
                     >
                       {label}
                     </span>
@@ -677,14 +677,14 @@ export default function LawyerDashboard() {
                   <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
-                        <Sparkles style={{ width: "18px", height: "18px", color: "#4338CA" }} />
+                        <Sparkles style={{ width: "18px", height: "18px", color: "#8B5CF6" }} />
                       </div>
                       <div>
                         <h2 className="font-bold text-foreground text-base leading-tight">Match Proposals</h2>
                         <p className="text-[12px] text-muted-foreground/60 mt-0.5">AI-scored client matches for your expertise.</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0 rounded-xl p-1" style={{ background: "#F4F6FA" }}>
+                    <div className="flex items-center gap-1 flex-shrink-0 rounded-xl p-1" style={{ background: "hsl(var(--muted))" }}>
                       {(["pending", "accepted", "declined"] as const).map((tab) => {
                         const count = allLeads.filter((m: any) => m.status === tab).length;
                         return (
@@ -697,9 +697,9 @@ export default function LawyerDashboard() {
                             <span className={cn(
                               "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
                               matchTab === tab
-                                ? tab === "pending" ? "bg-amber-100 text-amber-700"
-                                  : tab === "accepted" ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-red-100 text-red-600"
+                                ? tab === "pending" ? "bg-amber-500/15 text-amber-400"
+                                  : tab === "accepted" ? "bg-emerald-500/15 text-emerald-400"
+                                  : "bg-red-500/15 text-red-400"
                                 : "bg-muted text-muted-foreground"
                             )}>{count}</span>
                           </button>
@@ -710,14 +710,14 @@ export default function LawyerDashboard() {
                   <div className="px-5 pb-2 space-y-3">
                     {visibleMatches.length === 0 ? (
                       <div className="rounded-xl py-10 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
-                        <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">No {matchTab} proposals right now</p>
                         {matchTab === "pending" && <p className="text-xs text-muted-foreground/60 mt-1">New client matches will appear here</p>}
                       </div>
                     ) : visibleMatches.map((m: any) => {
                       const score = Math.round((m.match_score ?? 0.75) * 100);
-                      const scoreColor = score >= 85 ? "#059669" : score >= 70 ? "#D97706" : "#6B7280";
-                      const scoreBg   = score >= 85 ? "#ECFDF5" : score >= 70 ? "#FEF9C3" : "#F1F5F9";
+                      const scoreColor = score >= 85 ? "#34D399" : score >= 70 ? "#F5B754" : "#6B7280";
+                      const scoreBg   = score >= 85 ? "rgba(52,211,153,0.12)" : score >= 70 ? "rgba(245,183,84,0.12)" : "hsl(var(--muted))";
                       return (
                         <motion.div key={m.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                           className="flex items-center gap-4 rounded-xl p-4 hover:shadow-sm transition-shadow"
@@ -735,7 +735,7 @@ export default function LawyerDashboard() {
                             <span className="text-[11px] text-muted-foreground/60">{timeAgo(m.created_at)}</span>
                             <button onClick={() => setLocation("/matches")}
                               className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                              style={{ background: "rgba(139,92,246,0.12)", color: "#4338CA" }}
+                              style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}
                               data-testid={`match-view-${m.id}`}>
                               View Details
                             </button>
@@ -747,7 +747,7 @@ export default function LawyerDashboard() {
                   {visibleMatches.length > 0 && (
                     <div className="px-5 py-4 border-t" style={{ borderColor: "hsl(var(--border))" }}>
                       <button onClick={() => setLocation("/matches")}
-                        className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                        className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
                         View all proposals <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -757,10 +757,10 @@ export default function LawyerDashboard() {
                 {/* Feature cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { icon: Users,    color: "#4F46E5", bg: "#EEF2FF", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
-                    { icon: Shield,   color: "#059669", bg: "#ECFDF5", label: "Verified Clients",    sub: "All clients are verified for genuine legal needs" },
-                    { icon: Sparkles, color: "#0EA5E9", bg: "#E0F7FA", label: "Smart Tools",         sub: "AI chat, document analysis, and legal research" },
-                    { icon: Award,    color: "#E85D9C", bg: "#FDF2F8", label: "Grow Your Practice",  sub: "Save time and focus on winning cases" },
+                    { icon: Users,    color: "#4F46E5", bg: "rgba(139,92,246,0.12)", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
+                    { icon: Shield,   color: "#34D399", bg: "rgba(52,211,153,0.12)", label: "Verified Clients",    sub: "All clients are verified for genuine legal needs" },
+                    { icon: Sparkles, color: "#38BDF8", bg: "rgba(14,165,233,0.12)", label: "Smart Tools",         sub: "AI chat, document analysis, and legal research" },
+                    { icon: Award,    color: "#F472B6", bg: "rgba(236,72,153,0.12)", label: "Grow Your Practice",  sub: "Save time and focus on winning cases" },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -784,10 +784,10 @@ export default function LawyerDashboard() {
                   <p className="font-bold text-foreground text-sm mb-4">Quick Actions</p>
                   <div className="space-y-2">
                     {[
-                      { icon: Plus,       label: "Add Case",          sub: "Create a new case record",         action: () => { setActiveSection("cases"); setShowCaseModal(true); }, bg: "#ECFDF5", color: "#059669" },
-                      { icon: Upload,     label: "Upload Document",   sub: "Add docs to a case",               action: () => { setActiveSection("documents"); setShowDocModal(true); }, bg: "#F5F3FF", color: "#7C3AED" },
-                      { icon: Sparkles,   label: "AI Legal Chat",     sub: "Get instant legal insights",       action: () => setLocation("/legal-chat"), bg: "#EEF2FF", color: "#4F46E5" },
-                      { icon: FileSearch, label: "Document Analyzer", sub: "Analyze contracts & FIRs",         action: () => setLocation("/review"), bg: "#E0F7FA", color: "#0EA5E9" },
+                      { icon: Plus,       label: "Add Case",          sub: "Create a new case record",         action: () => { setActiveSection("cases"); setShowCaseModal(true); }, bg: "rgba(52,211,153,0.12)", color: "#34D399" },
+                      { icon: Upload,     label: "Upload Document",   sub: "Add docs to a case",               action: () => { setActiveSection("documents"); setShowDocModal(true); }, bg: "rgba(139,92,246,0.12)", color: "#8B5CF6" },
+                      { icon: Sparkles,   label: "AI Legal Chat",     sub: "Get instant legal insights",       action: () => setLocation("/legal-chat"), bg: "rgba(139,92,246,0.12)", color: "#4F46E5" },
+                      { icon: FileSearch, label: "Document Analyzer", sub: "Analyze contracts & FIRs",         action: () => setLocation("/review"), bg: "rgba(14,165,233,0.12)", color: "#38BDF8" },
                     ].map((item) => {
                       const Icon = item.icon;
                       return (
@@ -810,7 +810,7 @@ export default function LawyerDashboard() {
                 <div className="bg-card rounded-2xl p-5 shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
                   <div className="flex items-center justify-between mb-4">
                     <p className="font-bold text-foreground text-sm">Recent Activity</p>
-                    <button onClick={() => setLocation("/matches")} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">View all</button>
+                    <button onClick={() => setLocation("/matches")} className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors">View all</button>
                   </div>
                   <div className="space-y-3">
                     {recentActivity.length === 0 ? (
@@ -822,15 +822,15 @@ export default function LawyerDashboard() {
                       return (
                         <div key={item.id} className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                            style={{ background: isMatch ? "#EEF2FF" : isAccepted ? "#ECFDF5" : "#F5F3FF" }}>
-                            {isMatch    && <Users       className="w-3.5 h-3.5 text-indigo-500" />}
+                            style={{ background: isMatch ? "rgba(139,92,246,0.12)" : isAccepted ? "rgba(52,211,153,0.12)" : "rgba(139,92,246,0.12)" }}>
+                            {isMatch    && <Users       className="w-3.5 h-3.5 text-violet-400" />}
                             {isAccepted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
                             {isDoc      && <FileText    className="w-3.5 h-3.5 text-violet-500" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-semibold text-foreground leading-tight">{item.title}</p>
                             {item.sub && <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">{item.sub}</p>}
-                            <p className="text-[10px] text-gray-300 mt-0.5">{timeAgo(item.time)}</p>
+                            <p className="text-[10px] text-muted-foreground/40 mt-0.5">{timeAgo(item.time)}</p>
                           </div>
                         </div>
                       );
@@ -873,7 +873,7 @@ export default function LawyerDashboard() {
             </div>
 
             {/* Status tabs */}
-            <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "#F4F6FA" }}>
+            <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "hsl(var(--muted))" }}>
               {(["active", "pending", "closed"] as const).map((tab) => {
                 const count = cases.filter((c) => c.status === tab).length;
                 return (
@@ -886,9 +886,9 @@ export default function LawyerDashboard() {
                     <span className={cn(
                       "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
                       caseTab === tab
-                        ? tab === "active" ? "bg-emerald-100 text-emerald-700"
+                        ? tab === "active" ? "bg-emerald-500/15 text-emerald-400"
                           : tab === "closed" ? "bg-muted text-muted-foreground"
-                          : "bg-amber-100 text-amber-700"
+                          : "bg-amber-500/15 text-amber-400"
                         : "bg-muted text-muted-foreground"
                     )}>{count}</span>
                   </button>
@@ -899,7 +899,7 @@ export default function LawyerDashboard() {
             {/* Case cards */}
             {filteredCases.length === 0 ? (
               <div className="rounded-2xl py-16 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
-                <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <Briefcase className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-sm font-semibold text-muted-foreground">No {caseTab} cases</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">Click "Add Case" to create your first case record</p>
               </div>
@@ -916,7 +916,7 @@ export default function LawyerDashboard() {
                     }}>
                     {/* Status stripe */}
                     <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl"
-                      style={{ background: c.status === "active" ? "#059669" : c.status === "closed" ? "#9CA3AF" : "#D97706" }} />
+                      style={{ background: c.status === "active" ? "#34D399" : c.status === "closed" ? "#9CA3AF" : "#F5B754" }} />
 
                     <div className="p-5 pt-6 space-y-3">
                       {/* Title + status */}
@@ -924,9 +924,9 @@ export default function LawyerDashboard() {
                         <p className="font-bold text-foreground text-sm leading-snug flex-1">{c.title}</p>
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize flex-shrink-0",
-                          c.status === "active" ? "bg-emerald-100 text-emerald-700"
+                          c.status === "active" ? "bg-emerald-500/15 text-emerald-400"
                             : c.status === "closed" ? "bg-muted text-muted-foreground"
-                            : "bg-amber-100 text-amber-700"
+                            : "bg-amber-500/15 text-amber-400"
                         )}>{c.status}</span>
                       </div>
 
@@ -951,8 +951,8 @@ export default function LawyerDashboard() {
 
                       {/* CNR Number */}
                       {c.cnr_number && (
-                        <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ background: "#EFF6FF", border: "1px solid #DBEAFE" }}>
-                          <Shield className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)" }}>
+                          <Shield className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                           <span className="text-[11px] font-mono font-semibold text-blue-700 truncate">{c.cnr_number}</span>
                         </div>
                       )}
@@ -964,10 +964,10 @@ export default function LawyerDashboard() {
                         </span>
                         <div className="flex items-center gap-1">
                           <button onClick={(e) => { e.stopPropagation(); setEditingCase(c); }}
-                            className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors"
+                            className="text-[11px] font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors"
                             data-testid={`edit-case-${c.id}`}>Edit</button>
                           <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }}
-                            className="text-[11px] font-medium text-violet-600 hover:text-violet-800 px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                            className="text-[11px] font-medium text-violet-400 hover:text-violet-300 px-2 py-1 rounded-lg hover:bg-violet-500/10 transition-colors"
                             data-testid={`upload-case-doc-${c.id}`}>+ Doc</button>
                         </div>
                       </div>
@@ -981,8 +981,8 @@ export default function LawyerDashboard() {
             {cnrCases.length > 0 && (
               <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
                 <div className="px-5 pt-5 pb-4 flex items-center gap-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
-                    <Shield className="w-4 h-4 text-blue-600" />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+                    <Shield className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <h3 className="font-bold text-foreground text-sm">CNR Case Tracker</h3>
@@ -997,21 +997,21 @@ export default function LawyerDashboard() {
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           {c.court_name || "Court TBD"} · {c.case_type}
                           {c.hearing_date && (
-                            <span className="ml-2 text-amber-600 font-semibold">
+                            <span className="ml-2 text-amber-400 font-semibold">
                               · Next hearing: {new Date(c.hearing_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                             </span>
                           )}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: "#EFF6FF", color: "#1D4ED8" }}>
+                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}>
                           {c.cnr_number}
                         </span>
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize",
-                          c.status === "active" ? "bg-emerald-100 text-emerald-700"
+                          c.status === "active" ? "bg-emerald-500/15 text-emerald-400"
                             : c.status === "closed" ? "bg-muted text-muted-foreground"
-                            : "bg-amber-100 text-amber-700"
+                            : "bg-amber-500/15 text-amber-400"
                         )}>{c.status}</span>
                       </div>
                     </div>
@@ -1032,11 +1032,11 @@ export default function LawyerDashboard() {
 
             {clientList.length === 0 ? (
               <div className="rounded-2xl py-16 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
-                <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <Users className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-sm font-semibold text-muted-foreground">No clients yet</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">Accept match proposals to see clients here</p>
                 <button onClick={() => setActiveSection("overview")}
-                  className="mt-4 text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline transition-colors">
+                  className="mt-4 text-xs font-semibold text-primary hover:text-primary/80 underline transition-colors">
                   View match proposals →
                 </button>
               </div>
@@ -1050,10 +1050,10 @@ export default function LawyerDashboard() {
                 {clientList.map((client) => (
                   <motion.div key={client.key} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="px-5 py-4 border-b hover:bg-muted/50 transition-colors grid grid-cols-3 gap-4 items-center"
-                    style={{ borderColor: "#F8FAFC" }}>
+                    style={{ borderColor: "hsl(var(--muted))" }}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm"
-                        style={{ background: "rgba(139,92,246,0.12)", color: "#4338CA" }}>
+                        style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}>
                         {(client.name ?? "?").charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -1080,7 +1080,7 @@ export default function LawyerDashboard() {
               </div>
               <button onClick={() => setShowDocModal(true)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ background: "#7C3AED" }}
+                style={{ background: "#8B5CF6" }}
                 data-testid="docs-upload-btn">
                 <Upload className="w-4 h-4" /> Upload Document
               </button>
@@ -1088,7 +1088,7 @@ export default function LawyerDashboard() {
 
             {docs.length === 0 ? (
               <div className="rounded-2xl py-16 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
-                <FolderOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <FolderOpen className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-sm font-semibold text-muted-foreground">No documents yet</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">Upload FIRs, charge sheets, contracts, and briefs</p>
               </div>
@@ -1111,17 +1111,17 @@ export default function LawyerDashboard() {
                         className="bg-card rounded-2xl shadow-sm hover:shadow-md transition-all"
                         style={{ border: "1px solid hsl(var(--border))" }}>
                         <div className="flex items-start gap-3 p-4">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#F5F3FF" }}>
-                            <FileText className="w-5 h-5" style={{ color: "#7C3AED" }} />
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+                            <FileText className="w-5 h-5" style={{ color: "#8B5CF6" }} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-foreground text-sm truncate">{d.filename}</span>
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>
                                 {d.file_type.toUpperCase()}
                               </span>
                               {d.ai_summary && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">AI Analyzed</span>
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">AI Analyzed</span>
                               )}
                             </div>
                             <p className="text-[11px] text-muted-foreground/60 mt-0.5">{formatDate(d.created_at, activeCode)}</p>
@@ -1136,7 +1136,7 @@ export default function LawyerDashboard() {
                               onClick={() => { setAnalyzingDoc(d.id); analyzeDocMut.mutate(d.id, { onSettled: () => setAnalyzingDoc(null) }); }}
                               disabled={analyzeDocMut.isPending && analyzingDoc === d.id}
                               className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                              style={{ background: "#EDE9FE", color: "#7C3AED" }}>
+                              style={{ background: "rgba(139,92,246,0.25)", color: "#8B5CF6" }}>
                               {analyzeDocMut.isPending && analyzingDoc === d.id
                                 ? <Loader2 className="w-3 h-3 animate-spin" />
                                 : <Sparkles className="w-3 h-3" />}
@@ -1148,7 +1148,7 @@ export default function LawyerDashboard() {
                             <Download className="w-3 h-3" /> Download
                           </button>
                           <button onClick={() => { setEditingNotesDocId(d.id); setNoteDraft(d.notes || ""); }}
-                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
+                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/15 transition-colors">
                             <StickyNote className="w-3 h-3" /> Notes
                           </button>
                         </div>
@@ -1162,7 +1162,7 @@ export default function LawyerDashboard() {
                             <div className="flex gap-2">
                               <button onClick={() => saveNotesMut.mutate({ docId: d.id, notes: noteDraft })}
                                 disabled={saveNotesMut.isPending}
-                                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-60">
+                                className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-60">
                                 <Check className="w-3 h-3" /> Save
                               </button>
                               <button onClick={() => { setEditingNotesDocId(null); setNoteDraft(""); }}
@@ -1189,23 +1189,23 @@ export default function LawyerDashboard() {
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-card rounded-2xl p-6 shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "#ECFDF5" }}>
-                  <Award className="w-5 h-5 text-emerald-600" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(52,211,153,0.12)" }}>
+                  <Award className="w-5 h-5 text-emerald-400" />
                 </div>
                 <p className="text-3xl font-black text-foreground">₹{estimatedMonthlyEarnings.toLocaleString("en-IN")}</p>
                 <p className="text-sm font-medium text-muted-foreground mt-1">Estimated This Month</p>
                 <p className="text-[11px] text-muted-foreground/60 mt-0.5">{acceptedThisMonth} case{acceptedThisMonth !== 1 ? "s" : ""} accepted this month</p>
               </div>
               <div className="bg-card rounded-2xl p-6 shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "#EFF6FF" }}>
-                  <Briefcase className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(139,92,246,0.12)" }}>
+                  <Briefcase className="w-5 h-5 text-primary" />
                 </div>
                 <p className="text-3xl font-black text-foreground">₹{estimatedTotalEarnings.toLocaleString("en-IN")}</p>
                 <p className="text-sm font-medium text-muted-foreground mt-1">All-Time Estimate</p>
                 <p className="text-[11px] text-muted-foreground/60 mt-0.5">{acceptedLeads.length} total accepted case{acceptedLeads.length !== 1 ? "s" : ""}</p>
               </div>
               <div className="bg-card rounded-2xl p-6 shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "#FEF3C7" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(245,183,84,0.12)" }}>
                   <Star className="w-5 h-5 text-amber-500" />
                 </div>
                 <p className="text-3xl font-black text-foreground">{completedCases.length}</p>
@@ -1215,9 +1215,9 @@ export default function LawyerDashboard() {
             </div>
 
             {/* Estimate note */}
-            <div className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-              <Info className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <p className="text-[12px] text-emerald-700 leading-relaxed">
+            <div className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)" }}>
+              <Info className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[12px] text-emerald-400 leading-relaxed">
                 <strong>Estimate basis:</strong> ₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")} per accepted case (industry average for Telangana &amp; AP District Courts).
                 Actual earnings depend on your agreed fee with each client.
                 Connect your billing system or update your profile hourly rate for precise tracking.
@@ -1241,8 +1241,8 @@ export default function LawyerDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm font-bold text-emerald-700">₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Accepted</span>
+                        <span className="text-sm font-bold text-emerald-400">₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">Accepted</span>
                       </div>
                     </div>
                   ))}
@@ -1354,19 +1354,19 @@ function DocumentActions({
             className="absolute right-0 top-full mt-1 w-40 bg-card rounded-xl shadow-xl z-30 py-1"
             style={{ border: "1px solid hsl(var(--border))" }}
           >
-            <button onClick={() => { onDownload(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-blue-50 transition-colors text-left">
-              <Download className="w-3.5 h-3.5 text-blue-600" /> Download
+            <button onClick={() => { onDownload(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-primary/10 transition-colors text-left">
+              <Download className="w-3.5 h-3.5 text-primary" /> Download
             </button>
-            <button onClick={() => { onShare(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-blue-50 transition-colors text-left">
-              <Share2 className="w-3.5 h-3.5 text-emerald-600" /> Share / Forward
+            <button onClick={() => { onShare(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-primary/10 transition-colors text-left">
+              <Share2 className="w-3.5 h-3.5 text-emerald-400" /> Share / Forward
             </button>
-            <button onClick={() => { onNotes(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-blue-50 transition-colors text-left">
-              <StickyNote className="w-3.5 h-3.5 text-amber-600" /> Add Notes
+            <button onClick={() => { onNotes(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-primary/10 transition-colors text-left">
+              <StickyNote className="w-3.5 h-3.5 text-amber-400" /> Add Notes
             </button>
             {onAnalyze && !doc.ai_summary && (
               <button onClick={() => { onAnalyze(); setShowMenu(false); }} disabled={analyzing}
-                className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-blue-50 transition-colors text-left disabled:opacity-50">
-                <Sparkles className="w-3.5 h-3.5 text-violet-600" /> {analyzing ? "Analyzing..." : "AI Analyze"}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-primary/10 transition-colors text-left disabled:opacity-50">
+                <Sparkles className="w-3.5 h-3.5 text-violet-400" /> {analyzing ? "Analyzing..." : "AI Analyze"}
               </button>
             )}
           </motion.div>
@@ -1427,19 +1427,19 @@ function CaseFolderModal({
         {/* Header */}
         <div className="sticky top-0 bg-card z-10 px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: "hsl(var(--border))" }}>
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#EFF6FF" }}>
-              <FolderOpen className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+              <FolderOpen className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h3 className="font-bold text-foreground text-lg leading-tight">{caseData.title}</h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #DBEAFE" }}>{caseData.case_type}</span>
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>{caseData.case_type}</span>
                 <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                  caseData.status === "active" ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                  caseData.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : caseData.status === "closed" ? "bg-muted text-muted-foreground border border-border"
-                    : "bg-amber-50 text-amber-600 border border-amber-200")}>{caseData.status.toUpperCase()}</span>
+                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20")}>{caseData.status.toUpperCase()}</span>
                 {caseData.cnr_number && (
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#F0F9FF", color: "#0284C7", border: "1px solid #BAE6FD" }}>
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>
                     <FileText className="w-2.5 h-2.5" /> {caseTerms(countryCode).short}: {caseData.cnr_number}
                   </span>
                 )}
@@ -1450,9 +1450,9 @@ function CaseFolderModal({
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={onUpload} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white transition-colors" style={{ background: "#2563EB" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1D4ED8"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}>
+            <button onClick={onUpload} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white transition-colors" style={{ background: "#8B5CF6" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#8B5CF6"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#8B5CF6"; }}>
               <Plus className="w-3.5 h-3.5" /> Upload
             </button>
             <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors">
@@ -1469,9 +1469,9 @@ function CaseFolderModal({
 
           {docs.length === 0 ? (
             <div className="rounded-xl p-6 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
-              <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No documents in this case folder yet.</p>
-              <button onClick={onUpload} className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">Upload your first document →</button>
+              <button onClick={onUpload} className="mt-2 text-xs font-medium text-primary hover:text-blue-800 transition-colors">Upload your first document →</button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1479,20 +1479,20 @@ function CaseFolderModal({
                 <motion.div key={d.id} layout className="rounded-xl border overflow-hidden" style={{ borderColor: "hsl(var(--border))" }}>
                   {/* Doc header */}
                   <div className="flex items-start gap-3 p-3.5 bg-card">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#F5F3FF" }}>
-                      <FileText className="w-4 h-4" style={{ color: "#7C3AED" }} />
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(139,92,246,0.12)" }}>
+                      <FileText className="w-4 h-4" style={{ color: "#8B5CF6" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{d.filename}</span>
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "#F5F3FF", color: "#7C3AED", border: "1px solid #EDE9FE" }}>{d.file_type.toUpperCase()}</span>
-                        {d.ai_summary && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">AI Analyzed</span>}
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>{d.file_type.toUpperCase()}</span>
+                        {d.ai_summary && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">AI Analyzed</span>}
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 mt-0.5">{formatDate(d.created_at, countryCode)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button onClick={() => setExpandedDoc(expandedDoc === d.id ? null : d.id)}
-                        className="text-xs font-medium text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                        className="text-xs font-medium text-primary hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors">
                         {expandedDoc === d.id ? "Collapse" : "View"}
                       </button>
                       <DocumentActions
@@ -1510,7 +1510,7 @@ function CaseFolderModal({
                   <AnimatePresence>
                     {expandedDoc === d.id && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                        <div className="px-4 pb-4 pt-0 bg-card" style={{ borderTop: "1px solid #F8FAFC" }}>
+                        <div className="px-4 pb-4 pt-0 bg-card" style={{ borderTop: "1px solid hsl(var(--muted))" }}>
                           {/* Content preview */}
                           <div className="mt-3 rounded-lg p-3 font-mono text-[12px] leading-relaxed text-muted-foreground" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", maxHeight: "200px", overflow: "auto" }}>
                             {d.content_text || "No text content available."}
@@ -1520,7 +1520,7 @@ function CaseFolderModal({
                           {editingNotes === d.id ? (
                             <div className="mt-3 space-y-2">
                               <div className="flex items-center gap-2">
-                                <StickyNote className="w-3.5 h-3.5 text-amber-600" />
+                                <StickyNote className="w-3.5 h-3.5 text-amber-400" />
                                 <span className="text-xs font-semibold text-muted-foreground">Your Notes</span>
                               </div>
                               <textarea
@@ -1533,7 +1533,7 @@ function CaseFolderModal({
                               />
                               <div className="flex items-center gap-2">
                                 <button onClick={() => { onSaveNotes(d.id, noteText); setEditingNotes(null); }} disabled={notesPending}
-                                  className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-60">
+                                  className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-60">
                                   <Check className="w-3 h-3" /> Save Notes
                                 </button>
                                 <button onClick={() => { setEditingNotes(null); setNoteText(""); }}
@@ -1543,25 +1543,25 @@ function CaseFolderModal({
                               </div>
                             </div>
                           ) : d.notes ? (
-                            <div className="mt-3 rounded-lg p-3" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+                            <div className="mt-3 rounded-lg p-3" style={{ background: "rgba(245,183,84,0.08)", border: "1px solid rgba(245,183,84,0.35)" }}>
                               <div className="flex items-center gap-2 mb-1">
-                                <StickyNote className="w-3.5 h-3.5 text-amber-600" />
-                                <span className="text-xs font-semibold text-amber-800">Your Notes</span>
+                                <StickyNote className="w-3.5 h-3.5 text-amber-400" />
+                                <span className="text-xs font-semibold text-amber-400">Your Notes</span>
                                 <button onClick={() => { setEditingNotes(d.id); setNoteText(d.notes || ""); }}
-                                  className="ml-auto text-[10px] text-amber-600 hover:text-amber-800 font-medium">Edit</button>
+                                  className="ml-auto text-[10px] text-amber-400 hover:text-amber-400 font-medium">Edit</button>
                               </div>
-                              <p className="text-[12px] text-amber-700 leading-relaxed whitespace-pre-wrap">{d.notes}</p>
+                              <p className="text-[12px] text-amber-400 leading-relaxed whitespace-pre-wrap">{d.notes}</p>
                             </div>
                           ) : null}
 
                           {/* AI Summary */}
                           {d.ai_summary && (
-                            <div className="mt-3 rounded-lg p-3" style={{ background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+                            <div className="mt-3 rounded-lg p-3" style={{ background: "rgba(52,211,153,0.12)", border: "1px solid #A7F3D0" }}>
                               <div className="flex items-center gap-2 mb-1">
-                                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                                 <span className="text-xs font-semibold text-emerald-800">AI Analysis Summary</span>
                               </div>
-                              <p className="text-[12px] text-emerald-700 leading-relaxed">{d.ai_summary}</p>
+                              <p className="text-[12px] text-emerald-400 leading-relaxed">{d.ai_summary}</p>
                             </div>
                           )}
                         </div>
@@ -1616,7 +1616,7 @@ function CaseForm({ onSubmit, loading, initialCase, countryCode }: { onSubmit: (
             <div className="absolute z-10 mt-1 w-full bg-card rounded-lg shadow-lg border py-1" style={{ borderColor: "hsl(var(--border))", maxHeight: "200px", overflow: "auto" }}>
               {CASE_TYPES.map((t) => (
                 <button key={t} type="button" onClick={() => { setCaseType(t); setShowTypeDropdown(false); }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">{t}</button>
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 transition-colors">{t}</button>
               ))}
             </div>
           )}
@@ -1631,7 +1631,7 @@ function CaseForm({ onSubmit, loading, initialCase, countryCode }: { onSubmit: (
             <div className="absolute z-10 mt-1 w-full bg-card rounded-lg shadow-lg border py-1" style={{ borderColor: "hsl(var(--border))", maxHeight: "200px", overflow: "auto" }}>
               {courts.map((c) => (
                 <button key={c} type="button" onClick={() => { setCourtName(c); setShowCourtDropdown(false); }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">{c}</button>
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 transition-colors">{c}</button>
               ))}
             </div>
           )}
@@ -1660,9 +1660,9 @@ function CaseForm({ onSubmit, loading, initialCase, countryCode }: { onSubmit: (
             <button key={s} type="button" onClick={() => setStatus(s)}
               className={cn("text-[11px] font-bold px-2 py-2 rounded-lg capitalize transition-all",
                 status === s
-                  ? s === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  ? s === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : s === "closed" ? "bg-muted text-muted-foreground border border-border"
-                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                   : "bg-background text-muted-foreground/60 border border-border hover:border-border")}>
               {s}
             </button>
@@ -1712,7 +1712,7 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg p-1" style={{ background: "#F1F5F9" }}>
+      <div className="flex gap-1 rounded-lg p-1" style={{ background: "hsl(var(--muted))" }}>
         <button type="button" onClick={() => setTab("paste")} className={cn("flex-1 text-xs font-medium py-1.5 rounded-md transition-colors", tab === "paste" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-muted-foreground")}>Paste Text</button>
         <button type="button" onClick={() => setTab("upload")} className={cn("flex-1 text-xs font-medium py-1.5 rounded-md transition-colors", tab === "upload" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-muted-foreground")}>Upload File</button>
       </div>
@@ -1747,8 +1747,8 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
         <>
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1">Select File</label>
-            <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors hover:bg-violet-50 hover:border-violet-300"
-              style={{ borderColor: "#E9D5FF" }} onClick={() => fileRef.current?.click()}>
+            <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors hover:bg-violet-500/10 hover:border-violet-500/40"
+              style={{ borderColor: "rgba(139,92,246,0.35)" }} onClick={() => fileRef.current?.click()}>
               <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "#A78BFA" }} />
               <p className="text-sm font-medium text-muted-foreground">{filename || "Click to select .txt, .pdf, .doc"}</p>
               <p className="text-[11px] text-muted-foreground/60 mt-1">Max 25MB — text extracted for AI analysis</p>

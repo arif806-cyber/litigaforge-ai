@@ -103,9 +103,9 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
       className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col hover:border-primary/40 hover:shadow-md transition-all duration-300"
     >
       {lawyer.subscription_tier === "advocate_pro" && (
-        <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-300 w-fit">
+        <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 w-fit">
           <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-          <span className="text-xs font-bold text-amber-700 tracking-wide">Premium Advocate</span>
+          <span className="text-xs font-bold text-amber-400 tracking-wide">Premium Advocate</span>
         </div>
       )}
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -126,15 +126,15 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
               <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{dir.barLabel}: {lawyer.bar_number}</span>
             )}
             {lawyer.hourly_rate && (
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
                 {dir.currency}{lawyer.hourly_rate.toLocaleString()}/hr
               </span>
             )}
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center bg-amber-50 border border-amber-200 rounded-xl p-2 min-w-[56px] flex-shrink-0">
+        <div className="flex flex-col items-center justify-center bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 min-w-[56px] flex-shrink-0">
            <Star className="w-4 h-4 text-amber-500 fill-amber-500 mb-1" />
-           <span className="text-sm font-bold text-amber-700 font-mono leading-none">{lawyer.rating}</span>
+           <span className="text-sm font-bold text-amber-400 font-mono leading-none">{lawyer.rating}</span>
         </div>
       </div>
 

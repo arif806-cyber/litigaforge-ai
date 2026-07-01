@@ -248,70 +248,121 @@ function SidebarContent({
   );
 }
 
+/* ─── Mobile-only nav arrays (5-slot bottom bar) ─── */
+const clientMobileNav: NavEntry[] = [
+  { href: "/client-dashboard", label: "Dashboard", icon: Briefcase, tKey: "dashboard" },
+  { href: "/my-cases",         label: "Cases",     icon: FileText,  tKey: "my_cases"  },
+];
+const lawyerMobileNav: NavEntry[] = [
+  { href: "/lawyer-dashboard", label: "Dashboard", icon: Star  },
+  { href: "/matches",          label: "Cases",     icon: Users },
+];
+
 /* ─── Bottom Tab Bar ─── */
 function BottomTabBar({ location, user }: { location: string; user: User | null }) {
   const { t } = useLanguage();
   const unreadCount = useUnreadCount();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const openDrawer = useCallback(() => setDrawerOpen(true), []);
+  const openDrawer  = useCallback(() => setDrawerOpen(true),  []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
-
   useEffect(() => { closeDrawer(); }, [location, closeDrawer]);
+
+  const isLawyer  = user?.role === "lawyer";
+  const mobileNav = isLawyer ? lawyerMobileNav : clientMobileNav;
+  const fabHref   = isLawyer ? "/lawyer-dashboard" : "/post-case";
+
+  const extraNav: NavEntry[] = isLawyer
+    ? [
+        { href: "/review",       label: "Doc Analyzer",    icon: FileSearch, tKey: "doc_analyzer"  },
+        { href: "/subscription", label: "Profile & Plans", icon: Crown,      tKey: "profile_plans" },
+      ]
+    : [
+        { href: "/matches",   label: "Match Proposals", icon: Sparkles,  tKey: "match_proposals" },
+        { href: "/documents", label: "Documents",        icon: FileCheck, tKey: "documents"       },
+      ];
+
+  const msgsActive = location.startsWith("/messages");
+  const moreActive = [...extraNav, ...commonNav].some(s => location.startsWith(s.href));
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-1 z-30 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
-        {(user?.role === "lawyer" ? lawyerNav : clientNav).map((item) => {
-          const { href, icon: Icon } = item;
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 h-[68px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-2 z-30"
+        style={{ boxShadow: "0 -1px 0 rgba(255,255,255,0.06), 0 -8px 32px rgba(0,0,0,0.4)" }}
+      >
+        {/* Left 2 primary tabs */}
+        {mobileNav.map(({ href, icon: Icon, tKey, label }) => {
           const active = href === "/" ? location === "/" : location.startsWith(href);
-          const badge = item.href === "/messages" ? unreadCount : 0;
           return (
             <Link key={href} href={href}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl transition-all duration-200 active:scale-95",
-                active ? "text-primary" : "text-muted-foreground"
-              )}
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full active:scale-95 transition-all duration-150"
             >
-              <div className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-xl transition-all relative",
-                active ? "bg-primary/10" : ""
-              )}>
-                <Icon className={cn("w-[22px] h-[22px] transition-colors", active ? "text-primary" : "text-muted-foreground")} />
-                {badge > 0 && !active && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
-                    {badge > 9 ? "9+" : badge}
-                  </span>
-                )}
+              <div className={cn("flex items-center justify-center w-9 h-9 rounded-xl transition-all", active ? "bg-primary/15" : "")}>
+                <Icon className={cn("w-5 h-5 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
               </div>
-              <span className={cn("text-[11px] font-medium transition-colors leading-none", active ? "text-primary font-semibold" : "text-muted-foreground")}>
-                {navLabel(item, t)}
+              <span className={cn("text-[10px] font-medium leading-none transition-colors", active ? "text-primary font-semibold" : "text-muted-foreground")}>
+                {(tKey && t[tKey]) ? t[tKey] : label}
               </span>
             </Link>
           );
         })}
+
+        {/* Centre FAB */}
+        <Link href={fabHref}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full -mt-3 active:scale-90 transition-all duration-150"
+        >
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,#F5B754,#E09830)", boxShadow: "0 4px 16px rgba(245,183,84,0.40)" }}
+          >
+            <Plus className="w-6 h-6 text-[#0A0B10]" strokeWidth={2.5} />
+          </div>
+          <span className="text-[10px] font-semibold text-primary leading-none mt-0.5">
+            {isLawyer ? "Add" : "Post"}
+          </span>
+        </Link>
+
+        {/* Messages */}
+        <Link href="/messages"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full active:scale-95 transition-all duration-150"
+        >
+          <div className={cn("flex items-center justify-center w-9 h-9 rounded-xl transition-all relative", msgsActive ? "bg-primary/15" : "")}>
+            <Inbox className={cn("w-5 h-5 transition-colors", msgsActive ? "text-primary" : "text-muted-foreground")} />
+            {unreadCount > 0 && !msgsActive && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </div>
+          <span className={cn("text-[10px] font-medium leading-none transition-colors", msgsActive ? "text-primary font-semibold" : "text-muted-foreground")}>
+            Messages
+          </span>
+        </Link>
+
+        {/* More */}
         <button
           onPointerDown={openDrawer}
-          className="flex flex-col items-center justify-center gap-1 w-[72px] h-full rounded-2xl active:scale-95 transition-all"
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full active:scale-95 transition-all duration-150"
         >
-          <div className={cn(
-            "flex items-center justify-center w-10 h-10 rounded-xl transition-all",
-            commonNav.some(s => location.startsWith(s.href)) ? "bg-primary/10" : ""
-          )}>
-            <Menu className={cn("w-[22px] h-[22px] transition-colors", commonNav.some(s => location.startsWith(s.href)) ? "text-primary" : "text-muted-foreground")} />
+          <div className={cn("flex items-center justify-center w-9 h-9 rounded-xl transition-all", moreActive ? "bg-primary/15" : "")}>
+            <Menu className={cn("w-5 h-5 transition-colors", moreActive ? "text-primary" : "text-muted-foreground")} />
           </div>
-          <span className={cn("text-[11px] font-medium leading-none", commonNav.some(s => location.startsWith(s.href)) ? "text-primary font-semibold" : "text-muted-foreground")}>
+          <span className={cn("text-[10px] font-medium leading-none transition-colors", moreActive ? "text-primary font-semibold" : "text-muted-foreground")}>
             More
           </span>
         </button>
       </nav>
-      {/* Drawer for "More" on mobile */}
+
       {typeof document !== "undefined" && createPortal(
         <AnimatePresence>
           {drawerOpen && (
             <>
               <motion.div key="btm-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 9996 }}
+                style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 9996 }}
                 onPointerDown={closeDrawer}
               />
               <motion.div key="btm-drawer" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
@@ -320,13 +371,13 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
                 className="fixed bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-2xl shadow-2xl pb-safe"
               >
                 <div className="flex items-center justify-between px-5 pt-4 pb-2">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Legal Tools</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Menu</p>
                   <button onPointerDown={closeDrawer} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center">
                     <X className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
                 <div className="px-3 pb-6 grid grid-cols-3 gap-2">
-                  {commonNav.map((item) => {
+                  {[...extraNav, ...commonNav].map((item) => {
                     const { href, icon: Icon, label } = item;
                     const active = location.startsWith(href);
                     return (
@@ -334,11 +385,12 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
                         style={{ touchAction: "manipulation" }}
                         className={cn(
                           "flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors active:scale-95",
-                          active ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground"
+                          active ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground",
+                          item.highlight && !active ? "border border-teal-500/20" : ""
                         )}
                       >
-                        <Icon className={cn("w-5 h-5", active ? "text-primary" : "text-muted-foreground")} />
-                        <span className="text-[11px] font-medium leading-tight">{label}</span>
+                        <Icon className={cn("w-5 h-5", active ? "text-primary" : item.highlight ? "text-teal-400" : "text-muted-foreground")} />
+                        <span className={cn("text-[11px] font-medium leading-tight", item.highlight && !active ? "text-teal-400" : "")}>{label}</span>
                       </Link>
                     );
                   })}

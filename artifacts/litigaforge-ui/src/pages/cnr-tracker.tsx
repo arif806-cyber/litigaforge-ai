@@ -73,9 +73,9 @@ const SAMPLE_CNRS = [
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  pending:     { label: "Pending",     color: "text-amber-700 bg-amber-50 border-amber-200",  icon: Clock },
-  disposed:    { label: "Disposed",    color: "text-green-700 bg-green-50 border-green-200",  icon: CheckCircle2 },
-  transferred: { label: "Transferred", color: "text-blue-700 bg-blue-50 border-blue-200",     icon: RotateCcw },
+  pending:     { label: "Pending",     color: "text-amber-400 bg-amber-500/10 border-amber-500/20",  icon: Clock },
+  disposed:    { label: "Disposed",    color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",  icon: CheckCircle2 },
+  transferred: { label: "Transferred", color: "text-primary bg-primary/10 border-primary/20",     icon: RotateCcw },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -91,7 +91,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function InfoCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Scale }) {
   return (
-    <div className="bg-white border border-border/60 rounded-xl p-4 space-y-1 shadow-sm">
+    <div className="bg-card border border-border/60 rounded-xl p-4 space-y-1 shadow-sm">
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
         <Icon className="w-3.5 h-3.5" />
         {label}
@@ -129,7 +129,7 @@ function HearingTimeline({ hearings }: { hearings: HearingEntry[] }) {
                 {/* Dot */}
                 <div className="flex-none flex items-start pt-1">
                   <div className={cn(
-                    "w-10 h-10 rounded-full border-2 flex items-center justify-center z-10 bg-white shadow-sm",
+                    "w-10 h-10 rounded-full border-2 flex items-center justify-center z-10 bg-card shadow-sm",
                     past ? "border-muted text-muted-foreground" :
                     diff === 0 ? "border-amber-400 text-amber-600 animate-pulse" :
                     "border-primary text-primary",
@@ -147,8 +147,8 @@ function HearingTimeline({ hearings }: { hearings: HearingEntry[] }) {
                 <div className={cn(
                   "flex-1 border rounded-xl p-3.5 transition-colors",
                   past ? "bg-muted/30 border-border/40" :
-                  diff === 0 ? "bg-amber-50 border-amber-200 shadow-md" :
-                  "bg-white border-primary/20 shadow-sm",
+                  diff === 0 ? "bg-amber-500/10 border-amber-500/20 shadow-md" :
+                  "bg-card border-primary/20 shadow-sm",
                 )}>
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div>
@@ -158,7 +158,7 @@ function HearingTimeline({ hearings }: { hearings: HearingEntry[] }) {
                       )}>
                         {fmtDate(h.date)}
                         {diff === 0 && (
-                          <span className="ml-2 text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">TODAY</span>
+                          <span className="ml-2 text-xs font-bold text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full">TODAY</span>
                         )}
                         {diff !== null && diff > 0 && diff <= 7 && (
                           <span className="ml-2 text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
@@ -215,9 +215,9 @@ function UpcomingReminderBanner({ nextHearing }: { nextHearing: string }) {
       className={cn(
         "flex items-start gap-3 rounded-xl p-4 border",
         diff === 0
-          ? "bg-amber-50 border-amber-200 text-amber-800"
+          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
           : diff <= 3
-          ? "bg-red-50 border-red-200 text-red-800"
+          ? "bg-red-500/10 border-red-500/20 text-red-400"
           : "bg-primary/5 border-primary/20 text-primary",
       )}
     >
@@ -275,7 +275,7 @@ export default function CnrTracker() {
         icon={<FileSearch className="w-6 h-6 text-primary" />}
       >
         {/* Search form */}
-        <div className="bg-white border border-border/60 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+        <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
           <form onSubmit={handleSubmit} className="flex gap-2 flex-col sm:flex-row">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -343,7 +343,7 @@ export default function CnrTracker() {
               className="space-y-4"
             >
               {/* Header strip */}
-              <div className="bg-white border border-border/60 rounded-2xl p-5 md:p-6 shadow-sm">
+              <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -408,7 +408,7 @@ export default function CnrTracker() {
                     </div>
 
                     {/* Parties */}
-                    <div className="bg-white border border-border/60 rounded-xl p-4 shadow-sm space-y-3">
+                    <div className="bg-card border border-border/60 rounded-xl p-4 shadow-sm space-y-3">
                       <h3 className="text-sm font-semibold flex items-center gap-2">
                         <Users className="w-4 h-4 text-primary" />
                         Parties
