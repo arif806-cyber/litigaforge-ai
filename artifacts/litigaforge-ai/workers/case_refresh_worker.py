@@ -361,7 +361,135 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
         "Refresh complete — cases=%d events=%d errors=%d",
         summary["cases_checked"], summary["events_created"], summary["errors"],
     )
+
+    # Phase 3: update predictive next-hearing estimates after all diffs are done
+    try:
+        await _update_predictions()
+    except Exception as _pred_err:
+        logger.exception("prediction update failed (non-fatal): %s", _pred_err)
+
     return summary
+
+
+# ── Phase 3: predictive timeline ───────────────────────────────────────────────
+
+async def _update_predictions() -> None:
+    """
+    Heuristic predictive timeline — runs at end of each nightly refresh.
+
+    Algorithm:
+      1. Collect all consecutive hearing-date pairs per tracked case.
+      2. Group intervals by (case_type, court_name).
+      3. For groups with ≥3 interval data points, compute median interval.
+      4. predicted_next_hearing = last_known_hearing_date + median_interval.
+      5. Groups with <3 data points → set predicted_next_hearing = NULL
+         (never fabricate a date from insufficient data).
+    """
+    from collections import defaultdict
+    from datetime import timedelta as _td, date as _date
+
+    # All snapshots with a hearing date, for active tracked cases with known type+court
+    rows = await db_fetch(
+        """
+        SELECT tc.id::text  AS tracked_case_id,
+               tc.case_type,
+               tc.court_name,
+               cs.next_hearing_date
+        FROM   case_snapshots cs
+        JOIN   tracked_cases  tc ON tc.id = cs.tracked_case_id
+        WHERE  cs.next_hearing_date IS NOT NULL
+          AND  tc.is_active    = true
+          AND  tc.case_type    IS NOT NULL
+          AND  tc.court_name   IS NOT NULL
+        ORDER  BY tc.id, cs.fetched_at
+        """
+    )
+
+    if not rows:
+        logger.debug("predictions: no snapshot data to process")
+        return
+
+    # Build per-case sorted hearing-date lists
+    case_dates: dict[str, list[str]] = defaultdict(list)
+    case_group: dict[str, tuple[str, str]] = {}
+    for r in rows:
+        tc_id = r["tracked_case_id"]
+        d = r["next_hearing_date"]
+        ds = str(d) if d else None
+        if ds:
+            case_dates[tc_id].append(ds)
+        if tc_id not in case_group:
+            case_group[tc_id] = (r["case_type"], r["court_name"])
+
+    # Compute consecutive intervals per case, aggregate by group
+    group_intervals: dict[tuple[str, str], list[int]] = defaultdict(list)
+    for tc_id, dates in case_dates.items():
+        unique_sorted = sorted(set(dates))
+        if len(unique_sorted) < 2:
+            continue
+        grp = case_group.get(tc_id)
+        if not grp:
+            continue
+        for i in range(1, len(unique_sorted)):
+            d1 = _date.fromisoformat(unique_sorted[i - 1])
+            d2 = _date.fromisoformat(unique_sorted[i])
+            interval = (d2 - d1).days
+            if interval > 0:
+                group_intervals[grp].append(interval)
+
+    # Compute median per group that has ≥3 data points
+    group_median: dict[tuple[str, str], int] = {}
+    for grp, intervals in group_intervals.items():
+        if len(intervals) >= 3:
+            s = sorted(intervals)
+            group_median[grp] = s[len(s) // 2]
+
+    # Get last known hearing date per active case
+    last_rows = await db_fetch(
+        """
+        SELECT tc.id::text  AS tracked_case_id,
+               tc.case_type,
+               tc.court_name,
+               MAX(cs.next_hearing_date) AS last_date
+        FROM   tracked_cases  tc
+        JOIN   case_snapshots cs ON cs.tracked_case_id = tc.id
+        WHERE  tc.is_active   = true
+          AND  cs.next_hearing_date IS NOT NULL
+          AND  tc.case_type   IS NOT NULL
+          AND  tc.court_name  IS NOT NULL
+        GROUP  BY tc.id, tc.case_type, tc.court_name
+        """
+    )
+
+    updated = 0
+    nulled = 0
+    for r in last_rows:
+        grp = (r["case_type"], r["court_name"])
+        median_days = group_median.get(grp)
+        if median_days is None:
+            # Not enough system-wide data — leave NULL
+            await db_execute(
+                "UPDATE tracked_cases SET predicted_next_hearing = NULL "
+                "WHERE id = $1::uuid",
+                r["tracked_case_id"],
+            )
+            nulled += 1
+        else:
+            last = r["last_date"]
+            if isinstance(last, str):
+                last = _date.fromisoformat(last)
+            predicted = last + _td(days=median_days)
+            await db_execute(
+                "UPDATE tracked_cases SET predicted_next_hearing = $1 "
+                "WHERE id = $2::uuid",
+                predicted, r["tracked_case_id"],
+            )
+            updated += 1
+
+    logger.info(
+        "predictions: updated=%d null_kept=%d (groups_with_data=%d)",
+        updated, nulled, len(group_median),
+    )
 
 
 async def _diff_and_record(tracked_case_id: str, row: dict) -> int:

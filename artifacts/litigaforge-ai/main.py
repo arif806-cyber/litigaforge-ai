@@ -1108,7 +1108,26 @@ async def lifespan(app: FastAPI):
                 "case_tracking_emails BOOLEAN DEFAULT true"
             )
 
-            logger.info("court intelligence tables ready (Phase 1 + Phase 2)")
+            # Phase 3: opponent intelligence cache
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS opponent_profiles (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id) ON DELETE CASCADE,
+                    opponent_name   TEXT NOT NULL,
+                    total_cases_found INT DEFAULT 0,
+                    profile_json    JSONB,
+                    last_built_at   TIMESTAMPTZ DEFAULT now(),
+                    UNIQUE(tracked_case_id)
+                )
+            """)
+
+            # Phase 3: predictive next hearing date (nightly heuristic, nullable)
+            await conn.execute(
+                "ALTER TABLE tracked_cases ADD COLUMN IF NOT EXISTS "
+                "predicted_next_hearing DATE"
+            )
+
+            logger.info("court intelligence tables ready (Phase 1 + Phase 2 + Phase 3)")
         except Exception as _ci_err:
             logger.warning("court intelligence tables init: %s", _ci_err)
 

@@ -1,0 +1,199 @@
+# LitigaForge × eCourtsIndia — Phase 3
+### Opponent Intelligence + Predictive Timeline + Paid Tier Gating
+
+Prerequisite: Phase 2 checklist is green — RAG answers are correctly
+scoped per-case, and case-tracking emails respect notification
+preferences. Phase 3 is the monetization layer, so it should sit on top
+of a system you already trust.
+
+---
+
+## 1. What Phase 3 adds
+
+1. **Opponent Intelligence Graph** — on-demand litigation profile of the
+   opposing party
+2. **Predictive Timeline** — heuristic "typical next hearing" estimate
+3. **Paid tier gating** — free tier keeps basic case status only; events,
+   RAG, opponent intelligence, and predictions require the paid
+   "LiveTrack" tier
+
+This phase is explicitly the revenue wedge. Build the gating carefully —
+it's the difference between this being a feature and being a business.
+
+---
+
+## 2. Opponent Intelligence Graph
+
+Add to `CourtDataClient` (not built in Phase 1 or 2):
+
+```
+search_litigant(name: str, court: str | None = None) -> list[dict]
+```
+
+Logic, triggered manually by the user (never automatically — this is
+expensive and not time-sensitive):
+
+```
+1. User taps "Run Opponent Intelligence" on a tracked case, providing (or
+   confirming, if already known from the case record) the opponent's name
+2. search_litigant(opponent_name) -> list of their other cases
+3. Aggregate into a profile:
+   - total_cases_found
+   - breakdown by court
+   - breakdown by case_type
+   - rough adjournment_rate: adjournments observed / total hearings,
+     computed only from cases where we have enough snapshot history —
+     don't fabricate a rate from a single data point
+4. Store in opponent_profiles (already exists from Phase 1 schema):
+   tracked_case_id, opponent_name, total_cases_found, profile_json,
+   last_built_at
+5. Rebuild only when the user explicitly re-runs it — cache indefinitely
+   otherwise, no automatic refresh
+```
+
+Present this to the user as descriptive pattern data, not as a
+prediction about how they'll behave in *this* case — the UI copy should
+say things like "has appeared in 14 cases across 3 courts," not
+"is likely to delay this case."
+
+---
+
+## 3. Predictive Timeline
+
+Heuristic only — no ML model in v1.
+
+```
+1. Add column to tracked_cases: predicted_next_hearing DATE (nullable)
+2. In the nightly worker, after processing all diffs:
+   - Group all snapshots across all users by (case_type, court_name)
+   - For each group with 3+ hearing-date data points, compute the median
+     number of days between consecutive hearings
+   - For each active tracked_case in that group, set
+     predicted_next_hearing = last_known_hearing_date + median_interval
+3. If a case's (case_type, court_name) combination has fewer than 3 data
+   points anywhere in the system, leave predicted_next_hearing NULL —
+   the endpoint should return "not enough data yet," never a guess
+   dressed up as a number
+```
+
+Endpoint just reads the cached column — no live computation on request.
+
+---
+
+## 4. Paid tier gating
+
+Do not build a new subscription system. LitigaForge already has Razorpay
+live — find the existing subscription/plan check used on the Pricing
+page and reuse that same check here.
+
+```
+Gating rule, enforced at the API layer (not just hidden in the frontend):
+
+FREE tier, for any tracked_case:
+  - GET /timeline -> case_status and next_hearing_date only, strip out
+    detailed event history
+  - GET /events -> 402 Payment Required, with a clear error body pointing
+    to the pricing page
+  - POST /ask -> 402 Payment Required
+  - POST /opponent-scan -> 402 Payment Required
+  - GET /prediction -> 402 Payment Required
+
+LIVETRACK (paid) tier:
+  - Full access to all of the above
+```
+
+`tracked_cases.tier_gated` (already exists from Phase 1) should be set
+based on the user's current subscription status at read time — check it
+live against the subscription table, don't rely on a stale flag written
+once at case-creation time, since a user's plan can change after they've
+added cases.
+
+---
+
+## 5. Replit Agent prompt — paste this exactly
+
+```
+Phases 1 and 2 of the Live Case Intelligence system are working and
+verified. Now build ONLY Phase 3: Opponent Intelligence, Predictive
+Timeline, and paid tier gating. Do not modify Phase 1 or 2 logic except
+where explicitly noted below.
+
+1. Add a new method to services/court_data_client.py:
+   search_litigant(name, court=None) -> list of that person's other
+   cases, following the same rate-limiting and retry rules already used
+   by the other methods in that class.
+
+2. Create POST /api/cases/{id}/opponent-scan in
+   routes/court_intelligence.py:
+   - Verify the tracked_case belongs to the authenticated user
+   - Call search_litigant() with the opponent's name from the case record
+   - Aggregate results into: total_cases_found, breakdown by court,
+     breakdown by case_type, and an adjournment_rate ONLY if there's
+     enough snapshot history to compute one meaningfully — otherwise omit
+     that field rather than guessing
+   - Store in the existing opponent_profiles table
+     (tracked_case_id, opponent_name, total_cases_found, profile_json,
+     last_built_at)
+   - This should only run when the user explicitly calls it — do not add
+     it to the nightly worker
+
+   Create GET /api/cases/{id}/opponent to return the cached profile.
+
+3. Add a predicted_next_hearing DATE column (nullable) to tracked_cases.
+   In workers/case_refresh_worker.py, after the existing diff logic runs
+   for the night, add a step that:
+   - Groups hearing-date history across all tracked_cases by
+     (case_type, court_name)
+   - For groups with 3 or more data points, computes the median interval
+     between consecutive hearings and sets predicted_next_hearing for
+     each active case in that group
+   - Leaves predicted_next_hearing NULL for groups with fewer than 3 data
+     points — do not estimate from insufficient data
+
+   Create GET /api/cases/{id}/prediction that returns
+   predicted_next_hearing, or a clear "not enough data yet" response if
+   it's null.
+
+4. Add paid-tier gating to routes/court_intelligence.py. Find whatever
+   function or dependency we already use to check a user's subscription
+   status on the Pricing/Razorpay flow, and reuse it as a FastAPI
+   dependency on these routes:
+   - GET /api/cases/{id}/events -> require paid tier, else 402 with a
+     JSON body like { "error": "upgrade_required",
+     "message": "Case event history requires LiveTrack",
+     "upgrade_url": "/pricing" }
+   - POST /api/cases/{id}/ask -> same 402 gating
+   - POST /api/cases/{id}/opponent-scan and GET /opponent -> same gating
+   - GET /api/cases/{id}/prediction -> same gating
+   - GET /api/cases/{id}/timeline should remain accessible on the free
+     tier, but strip event details down to just case_status and
+     next_hearing_date for free-tier users — don't 402 the whole
+     endpoint, just reduce what it returns
+
+   Check subscription status live on each request, not a cached flag —
+   a user's plan can change after a case was added.
+
+5. No frontend changes in this pass.
+
+After building, show me: what GET /api/cases/{id}/events returns for a
+free-tier test user versus a LiveTrack test user, so I can confirm the
+gating is actually enforced server-side and not just hidden in the UI.
+```
+
+---
+
+## 6. What to check before calling this done
+
+- [ ] A free-tier user hitting `/events`, `/ask`, `/opponent-scan`, or
+      `/prediction` directly via curl (not just through the UI) gets a
+      402, not a 200 with data
+- [ ] `/timeline` still works for free-tier users but returns reduced
+      data — confirm event details are actually stripped, not just
+      hidden client-side
+- [ ] Predicted next-hearing date is NULL for a case type/court
+      combination with fewer than 3 historical data points — check this
+      doesn't silently show a fabricated date
+- [ ] Opponent scan doesn't run automatically anywhere — grep the
+      codebase to confirm it's only called from the manual endpoint
+- [ ] Downgrading a test user's subscription mid-session actually revokes
+      access on the next request, without needing to re-login

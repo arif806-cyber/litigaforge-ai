@@ -1,23 +1,32 @@
 """
-LitigaForge — Live Case Intelligence Router (Phase 1 + Phase 2)
+LitigaForge — Live Case Intelligence Router (Phase 1 + Phase 2 + Phase 3)
 
 Endpoints:
-  POST   /court-intel/track              Add a CNR to the watchlist + immediate refresh
-  GET    /court-intel/my-cases           List all cases the user is tracking
-  GET    /court-intel/{id}/timeline      Snapshots + events, newest first
-  GET    /court-intel/{id}/events        Classified events only
-  POST   /court-intel/{id}/ask           RAG: ask a question about this case's orders
-  DELETE /court-intel/{id}               Stop tracking (soft delete)
-  POST   /court-intel/worker/run         Superuser: manually trigger the diff worker
+  POST   /court-intel/track                Add a CNR + immediate refresh
+  GET    /court-intel/my-cases             List tracked cases
+  GET    /court-intel/{id}/timeline        Status + events (free: reduced, paid: full)
+  GET    /court-intel/{id}/events          Full event feed          [LiveTrack only]
+  POST   /court-intel/{id}/ask             RAG case companion       [LiveTrack only]
+  POST   /court-intel/{id}/opponent-scan   Build opponent profile   [LiveTrack only]
+  GET    /court-intel/{id}/opponent        Return cached profile    [LiveTrack only]
+  GET    /court-intel/{id}/prediction      Predicted next hearing   [LiveTrack only]
+  DELETE /court-intel/{id}                 Stop tracking
+  POST   /court-intel/worker/run           Superuser: manual refresh trigger
 
-Free tier: latest status only.
-LiveTrack (professional / advocate_pro): full events, timeline, predictions, /ask.
+Gating rule (enforced server-side on every request, not via cached flag):
+  FREE tier    → /timeline (reduced), everything else returns 402
+  LIVETRACK    → full access; tiers: professional | advocate_pro
+
+The live subscription check (_check_livetrack_live) queries the subscriptions
+table on every gated request so plan changes take effect immediately — no
+cache invalidation needed, no re-login required.
 
 Note: users.id is SERIAL INTEGER; tracked_cases.id is UUID.
-Scope rule: vector search ALWAYS filters by tracked_case_id — never cross-case.
+Scope rule: vector searches ALWAYS filter by tracked_case_id — never cross-case.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 from typing import Any
@@ -41,7 +50,7 @@ _BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 _LIVETRACK_TIERS = {"professional", "advocate_pro"}
 
-# ── CNR validation ─────────────────────────────────────────────────────────────
+# ── CNR validation ──────────────────────────────────────────────────────────────
 _CNR_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{4}\d{6}\d{4}$", re.IGNORECASE)
 
 
@@ -63,11 +72,62 @@ def _assert_owns(row: dict | None, user_id: int) -> dict:
     return row
 
 
+# ── Phase 3: live subscription gate ────────────────────────────────────────────
+
+async def _check_livetrack_live(user_id: int) -> bool:
+    """
+    Returns True if the user has an active LiveTrack subscription right now.
+    Queries the subscriptions table directly — never relies on the cached
+    users.subscription_tier column, so plan changes take effect immediately.
+    """
+    row = await db_fetchrow(
+        """
+        SELECT 1 FROM subscriptions
+        WHERE  user_id = $1
+          AND  status   = 'active'
+          AND  tier     = ANY($2::text[])
+          AND  (expires_at IS NULL OR expires_at > now())
+        LIMIT 1
+        """,
+        user_id,
+        list(_LIVETRACK_TIERS),
+    )
+    return row is not None
+
+
+_UPGRADE_DETAIL = {
+    "error": "upgrade_required",
+    "message": "This feature requires LiveTrack (Professional or Advocate Pro).",
+    "upgrade_url": "/subscription",
+}
+
+
+async def require_livetrack(user: dict = Depends(require_user)) -> dict:
+    """
+    FastAPI dependency: raises HTTP 402 if the user lacks a live LiveTrack subscription.
+    Use on routes that must be gated at the API layer regardless of UI state.
+    """
+    if not await _check_livetrack_live(int(user["id"])):
+        raise HTTPException(status_code=402, detail=_UPGRADE_DETAIL)
+    return user
+
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 class TrackRequest(BaseModel):
     cnr: str = Field(..., description="16-character eCourts CNR number")
     case_type: str | None = Field(None, description="e.g. civil, criminal, property")
+
+
+class AskRequest(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+
+
+class OpponentScanRequest(BaseModel):
+    opponent_name: str = Field(
+        ..., min_length=2, max_length=200,
+        description="Full name of the opposing party as it appears in court records",
+    )
 
 
 # ── Background refresh helper ──────────────────────────────────────────────────
@@ -85,7 +145,7 @@ async def _trigger_single_refresh(tracked_case_id: str, cnr: str) -> None:
 
 # ── POST /court-intel/track ────────────────────────────────────────────────────
 
-@router.post(f"{_BASE_PATH}/court-intel/track")
+@router.post("/court-intel/track")
 async def track_case(
     body: TrackRequest,
     background_tasks: BackgroundTasks,
@@ -124,7 +184,7 @@ async def track_case(
 
 # ── GET /court-intel/my-cases ──────────────────────────────────────────────────
 
-@router.get(f"{_BASE_PATH}/court-intel/my-cases")
+@router.get("/court-intel/my-cases")
 async def my_tracked_cases(user: dict = Depends(require_user)):
     user_id: int = int(user["id"])
     rows = await db_fetch(
@@ -148,8 +208,11 @@ async def my_tracked_cases(user: dict = Depends(require_user)):
 
 
 # ── GET /court-intel/{id}/timeline ────────────────────────────────────────────
+# Free tier: case_status + next_hearing_date only (no event history).
+# LiveTrack: full snapshots + events.
+# Uses _check_livetrack_live for a live subscription check — not cached field.
 
-@router.get(f"{_BASE_PATH}/court-intel/{{case_id}}/timeline")
+@router.get("/court-intel/{case_id}/timeline")
 async def get_timeline(case_id: str, user: dict = Depends(require_user)):
     row = await db_fetchrow(
         "SELECT id, user_id, cnr, case_type, court_name, last_refreshed, is_active "
@@ -158,8 +221,8 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
     )
     _assert_owns(row, int(user["id"]))
 
-    tier = user.get("subscription_tier", "free")
-    is_paid = tier in _LIVETRACK_TIERS
+    # Live subscription check — not from cached users.subscription_tier
+    is_paid = await _check_livetrack_live(int(user["id"]))
 
     latest_snap = await db_fetchrow(
         """
@@ -184,7 +247,7 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
     if not is_paid:
         result["upgrade_hint"] = (
             "Upgrade to Professional or Advocate Pro to unlock full timeline, "
-            "events, and AI insights."
+            "events, AI case companion, opponent intelligence, and predictions."
         )
         return result
 
@@ -211,21 +274,20 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
     return result
 
 
-# ── GET /court-intel/{id}/events ──────────────────────────────────────────────
+# ── GET /court-intel/{id}/events  [LiveTrack only] ────────────────────────────
 
-@router.get(f"{_BASE_PATH}/court-intel/{{case_id}}/events")
-async def get_events(case_id: str, user: dict = Depends(require_user)):
+@router.get("/court-intel/{case_id}/events")
+async def get_events(case_id: str, user: dict = Depends(require_livetrack)):
+    """
+    Returns 402 for free-tier users (checked server-side via require_livetrack).
+    Sample 402 body:
+      {"error": "upgrade_required", "message": "...", "upgrade_url": "/subscription"}
+    """
     row = await db_fetchrow(
         "SELECT id, user_id, cnr FROM tracked_cases WHERE id = $1::uuid",
         case_id,
     )
     _assert_owns(row, int(user["id"]))
-
-    if user.get("subscription_tier", "free") not in _LIVETRACK_TIERS:
-        raise HTTPException(
-            status_code=402,
-            detail="Full event feed requires Professional or Advocate Pro tier.",
-        )
 
     events = await db_fetch(
         """
@@ -239,34 +301,13 @@ async def get_events(case_id: str, user: dict = Depends(require_user)):
     return {"cnr": row["cnr"], "events": [dict(e) for e in events]}
 
 
-# ── DELETE /court-intel/{id} ──────────────────────────────────────────────────
+# ── POST /court-intel/{id}/ask  (Phase 2 RAG)  [LiveTrack only] ───────────────
 
-@router.delete(f"{_BASE_PATH}/court-intel/{{case_id}}")
-async def stop_tracking(case_id: str, user: dict = Depends(require_user)):
-    row = await db_fetchrow(
-        "SELECT id, user_id, cnr FROM tracked_cases WHERE id = $1::uuid",
-        case_id,
-    )
-    _assert_owns(row, int(user["id"]))
-    await db_execute(
-        "UPDATE tracked_cases SET is_active = false WHERE id = $1::uuid",
-        case_id,
-    )
-    logger.info("User %s stopped tracking CNR %s (id=%s)", user["id"], row["cnr"], case_id)
-    return {"status": "stopped", "cnr": row["cnr"]}
-
-
-# ── POST /court-intel/{id}/ask  (Phase 2 RAG) ─────────────────────────────────
-
-class AskRequest(BaseModel):
-    question: str = Field(..., min_length=3, max_length=500)
-
-
-@router.post(f"{_BASE_PATH}/court-intel/{{case_id}}/ask")
+@router.post("/court-intel/{case_id}/ask")
 async def ask_about_case(
     case_id: str,
     body: AskRequest,
-    user: dict = Depends(require_user),
+    user: dict = Depends(require_livetrack),
 ):
     """
     RAG endpoint: answer a question grounded only in this case's embedded court orders.
@@ -275,11 +316,10 @@ async def ask_about_case(
     WHERE tracked_case_id = {case_id} — one user's orders never leak into
     another user's answer.
 
-    Returns 402 for free-tier users (requires Professional or Advocate Pro).
+    Returns 402 for free-tier users (via require_livetrack dependency).
     Returns 403 if the case belongs to a different user.
     Returns 404 if no orders have been embedded yet.
     """
-    # 1. Ownership check — hard fail
     row = await db_fetchrow(
         "SELECT id, user_id, cnr, case_type, court_name "
         "FROM tracked_cases WHERE id = $1::uuid",
@@ -287,23 +327,13 @@ async def ask_about_case(
     )
     _assert_owns(row, int(user["id"]))
 
-    # 2. Tier gate — /ask is a LiveTrack feature
-    if user.get("subscription_tier", "free") not in _LIVETRACK_TIERS:
-        raise HTTPException(
-            status_code=402,
-            detail="AI case companion requires Professional or Advocate Pro tier.",
-        )
-
-    # 3. Embedding availability
     from llm.nim_embed import aembed_query, nim_embed_enabled
-
     if not nim_embed_enabled():
         raise HTTPException(
             status_code=503,
             detail="AI case companion is temporarily unavailable (embedding service offline).",
         )
 
-    # 4. Embed the question
     question_vec = await aembed_query(body.question)
     if question_vec is None:
         raise HTTPException(
@@ -313,8 +343,7 @@ async def ask_about_case(
 
     from llm.nim_embed import vec_to_str
 
-    # 5. Vector similarity search — MANDATORY scope filter: tracked_case_id = {case_id}
-    #    Never search across cases or users.
+    # Scope filter is MANDATORY — never search across cases
     chunks = await db_fetch(
         """
         SELECT order_date, order_text,
@@ -337,14 +366,11 @@ async def ask_about_case(
             ),
         )
 
-    # 6. Build prompt — strict "don't guess" instruction
     dated_excerpts = "\n\n".join(
-        f"[Order dated {row['order_date'] or 'unknown'}]\n{row['order_text']}"
-        for row in chunks
+        f"[Order dated {r['order_date'] or 'unknown'}]\n{r['order_text']}"
+        for r in chunks
     )
-    cited_dates: list[str] = [
-        str(row["order_date"]) for row in chunks if row["order_date"]
-    ]
+    cited_dates: list[str] = [str(r["order_date"]) for r in chunks if r["order_date"]]
 
     system_prompt = (
         "You are an AI assistant helping a litigant understand their own court case. "
@@ -356,7 +382,6 @@ async def ask_about_case(
         f"Court order excerpts:\n\n{dated_excerpts}"
     )
 
-    # 7. Call LiteLLM cascade
     answer = ""
     try:
         from llm.legal_llm import acomplete
@@ -365,9 +390,7 @@ async def ask_about_case(
         logger.warning("[/ask] LiteLLM failed; trying ai_brain cascade: %s", llm_err)
         try:
             from ai_brain import get_ai_response  # type: ignore[import]
-            answer = await get_ai_response(
-                system=system_prompt, prompt=body.question
-            )
+            answer = await get_ai_response(system=system_prompt, prompt=body.question)
         except Exception as fallback_err:
             logger.error("[/ask] Both LLM paths failed: %s", fallback_err)
             raise HTTPException(
@@ -388,9 +411,186 @@ async def ask_about_case(
     }
 
 
+# ── POST /court-intel/{id}/opponent-scan  [LiveTrack only] ────────────────────
+
+@router.post("/court-intel/{case_id}/opponent-scan")
+async def opponent_scan(
+    case_id: str,
+    body: OpponentScanRequest,
+    user: dict = Depends(require_livetrack),
+):
+    """
+    Build (or rebuild) an Opponent Intelligence profile on demand.
+    Calls search_litigant() to find the opponent's other cases across eCourts,
+    then stores an aggregated profile in opponent_profiles.
+
+    This endpoint runs ONLY when the user explicitly calls it — it is NOT wired
+    into any automatic or nightly workflow.
+
+    Profile data is descriptive ("has appeared in 14 cases across 3 courts"),
+    NOT predictive ("is likely to delay this case").
+    """
+    row = await db_fetchrow(
+        "SELECT id, user_id, cnr, case_type, court_name "
+        "FROM tracked_cases WHERE id = $1::uuid",
+        case_id,
+    )
+    _assert_owns(row, int(user["id"]))
+
+    opponent_name = body.opponent_name.strip()
+
+    from services.court_data_client import search_litigant
+    cases = await search_litigant(opponent_name, court=row.get("court_name"))
+
+    total = len(cases)
+    court_breakdown: dict[str, int] = {}
+    type_breakdown: dict[str, int] = {}
+
+    for c in cases:
+        court = (c.get("court_name") or c.get("court") or "Unknown").strip()
+        ctype = (c.get("case_type") or c.get("type") or "Unknown").strip()
+        court_breakdown[court] = court_breakdown.get(court, 0) + 1
+        type_breakdown[ctype]  = type_breakdown.get(ctype, 0) + 1
+
+    profile: dict[str, Any] = {
+        "total_cases_found": total,
+        "courts": court_breakdown,
+        "case_types": type_breakdown,
+    }
+
+    # Adjournment rate — only when we have ≥3 hearing-date data points in the
+    # eCourts API response for this opponent's cases.  We do NOT fabricate a
+    # rate from a single data point.
+    hearing_count = sum(
+        1 for c in cases
+        if c.get("hearings") and isinstance(c["hearings"], list) and len(c["hearings"]) >= 2
+    )
+    adj_count = sum(
+        1 for c in cases
+        for h in (c.get("hearings") or [])
+        if (h.get("outcome") or "").lower() in ("adjourned", "adj", "postponed")
+    )
+    total_hearings = sum(
+        len(c.get("hearings") or []) for c in cases
+        if isinstance(c.get("hearings"), list)
+    )
+    if total_hearings >= 3 and adj_count > 0:
+        profile["adjournment_rate"] = round(adj_count / total_hearings, 3)
+
+    await db_execute(
+        """
+        INSERT INTO opponent_profiles
+            (tracked_case_id, opponent_name, total_cases_found, profile_json, last_built_at)
+        VALUES ($1::uuid, $2, $3, $4::jsonb, now())
+        ON CONFLICT (tracked_case_id) DO UPDATE
+            SET opponent_name     = EXCLUDED.opponent_name,
+                total_cases_found = EXCLUDED.total_cases_found,
+                profile_json      = EXCLUDED.profile_json,
+                last_built_at     = now()
+        """,
+        case_id, opponent_name, total, json.dumps(profile),
+    )
+
+    logger.info(
+        "Opponent scan complete: case_id=%s opponent=%s total_cases=%d",
+        case_id, opponent_name, total,
+    )
+    return {"status": "built", "opponent_name": opponent_name, "profile": profile}
+
+
+# ── GET /court-intel/{id}/opponent  [LiveTrack only] ──────────────────────────
+
+@router.get("/court-intel/{case_id}/opponent")
+async def get_opponent_profile(case_id: str, user: dict = Depends(require_livetrack)):
+    """Return the cached Opponent Intelligence profile. 404 if not yet built."""
+    row = await db_fetchrow(
+        "SELECT id, user_id FROM tracked_cases WHERE id = $1::uuid",
+        case_id,
+    )
+    _assert_owns(row, int(user["id"]))
+
+    profile_row = await db_fetchrow(
+        """
+        SELECT opponent_name, total_cases_found, profile_json, last_built_at
+        FROM   opponent_profiles
+        WHERE  tracked_case_id = $1::uuid
+        """,
+        case_id,
+    )
+    if not profile_row:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No opponent profile has been built for this case yet. "
+                "Call POST /opponent-scan to generate one."
+            ),
+        )
+
+    return {
+        "opponent_name":     profile_row["opponent_name"],
+        "total_cases_found": profile_row["total_cases_found"],
+        "profile":           profile_row["profile_json"],
+        "last_built_at":     profile_row["last_built_at"].isoformat()
+                             if profile_row["last_built_at"] else None,
+    }
+
+
+# ── GET /court-intel/{id}/prediction  [LiveTrack only] ────────────────────────
+
+@router.get("/court-intel/{case_id}/prediction")
+async def get_prediction(case_id: str, user: dict = Depends(require_livetrack)):
+    """
+    Return the heuristic predicted_next_hearing date for this case.
+    Returns a clear 'not enough data' message when the value is NULL rather
+    than fabricating a number from insufficient history.
+    """
+    row = await db_fetchrow(
+        "SELECT id, user_id, cnr, case_type, court_name, predicted_next_hearing "
+        "FROM tracked_cases WHERE id = $1::uuid",
+        case_id,
+    )
+    _assert_owns(row, int(user["id"]))
+
+    predicted = row["predicted_next_hearing"]
+    if predicted is None:
+        return {
+            "predicted_next_hearing": None,
+            "status": "not_enough_data",
+            "message": (
+                "Not enough historical hearing data for this court and case type yet. "
+                "Predictions appear automatically once the system has seen 3 or more "
+                "consecutive hearing intervals for this combination."
+            ),
+        }
+
+    return {
+        "predicted_next_hearing": str(predicted),
+        "status": "available",
+        "case_type":  row["case_type"],
+        "court_name": row["court_name"],
+    }
+
+
+# ── DELETE /court-intel/{id} ──────────────────────────────────────────────────
+
+@router.delete("/court-intel/{case_id}")
+async def stop_tracking(case_id: str, user: dict = Depends(require_user)):
+    row = await db_fetchrow(
+        "SELECT id, user_id, cnr FROM tracked_cases WHERE id = $1::uuid",
+        case_id,
+    )
+    _assert_owns(row, int(user["id"]))
+    await db_execute(
+        "UPDATE tracked_cases SET is_active = false WHERE id = $1::uuid",
+        case_id,
+    )
+    logger.info("User %s stopped tracking CNR %s (id=%s)", user["id"], row["cnr"], case_id)
+    return {"status": "stopped", "cnr": row["cnr"]}
+
+
 # ── POST /court-intel/worker/run (superuser manual trigger) ───────────────────
 
-@router.post(f"{_BASE_PATH}/court-intel/worker/run")
+@router.post("/court-intel/worker/run")
 async def manual_run_worker(user: dict = Depends(require_user)):
     if not user.get("is_superuser"):
         raise HTTPException(status_code=403, detail="Superuser only.")

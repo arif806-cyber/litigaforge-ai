@@ -227,6 +227,30 @@ async def get_order_text(cnr: str, order_id: str) -> str | None:
         return None
 
 
+async def search_litigant(name: str, court: str | None = None) -> list[dict]:
+    """
+    Search eCourtsIndia for cases where the given person appears as a litigant.
+    Returns a list of case dicts (each has at minimum cnr/case_type/court_name).
+    Returns [] on any failure — callers must treat this as a soft error.
+    Follows the same rate-limiting and retry rules as other methods in this class.
+    """
+    try:
+        params: dict = {"name": name.strip()}
+        if court:
+            params["court"] = court.strip()
+        raw = await _request("GET", "/litigant/search", params=params)
+        cases = (
+            raw.get("cases")
+            or raw.get("data")
+            or raw.get("results")
+            or []
+        )
+        return cases if isinstance(cases, list) else []
+    except Exception as exc:
+        logger.warning("search_litigant failed for name=%s: %s", name, exc)
+        return []
+
+
 async def bulk_refresh(cases: list[dict]) -> dict[str, dict]:
     """
     Submit a batch refresh for up to 50 CNRs at a time.
