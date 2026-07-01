@@ -26,7 +26,20 @@ from logger import get_logger
 logger = get_logger("litigaforge.court_data_client")
 
 _API_BASE = os.getenv("ECOURTSINDIA_API_BASE", "https://api.ecourts.gov.in/api/ords/ecourt")
-_API_KEY  = os.getenv("ECOURTSINDIA_API_KEY", "")
+
+# Support dual-key rotation for extra rate-limit headroom.
+# ECOURTSINDIA_API_KEY is required; ECOURTSINDIA_API_KEY_2 is optional.
+_KEY_POOL: list[str] = [
+    k for k in [
+        os.getenv("ECOURTSINDIA_API_KEY", ""),
+        os.getenv("ECOURTSINDIA_API_KEY_2", ""),
+    ]
+    if k
+]
+_key_index = 0  # round-robin pointer (protected by _bucket._lock)
+
+# Keep backward-compat name used by _require_key()
+_API_KEY = _KEY_POOL[0] if _KEY_POOL else ""
 
 
 class _TokenBucket:
@@ -69,12 +82,25 @@ _bucket = _TokenBucket()
 
 
 def _require_key() -> str:
-    if not _API_KEY:
+    if not _KEY_POOL:
         raise RuntimeError(
             "ECOURTSINDIA_API_KEY is not set. "
             "Add it in Replit Secrets to enable live case tracking."
         )
-    return _API_KEY
+    return _KEY_POOL[0]
+
+
+def _next_key() -> str:
+    """Round-robin across the key pool. Call inside _bucket._lock for safety."""
+    global _key_index
+    if not _KEY_POOL:
+        raise RuntimeError(
+            "ECOURTSINDIA_API_KEY is not set. "
+            "Add it in Replit Secrets to enable live case tracking."
+        )
+    key = _KEY_POOL[_key_index % len(_KEY_POOL)]
+    _key_index = (_key_index + 1) % len(_KEY_POOL)
+    return key
 
 
 async def _request(
@@ -86,9 +112,10 @@ async def _request(
     retries: int = 3,
 ) -> dict:
     """Internal: rate-limited, retried HTTP call to eCourtsIndia."""
-    key = _require_key()
+    if not _KEY_POOL:
+        _require_key()  # raises with a clear message
     headers = {
-        "Authorization": f"Bearer {key}",
+        "Authorization": f"Bearer {_next_key()}",
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
