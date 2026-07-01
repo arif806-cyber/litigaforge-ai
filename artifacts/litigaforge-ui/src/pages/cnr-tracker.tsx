@@ -1,496 +1,533 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileSearch, Loader2, CalendarDays, Clock, CheckCircle2,
-  AlertCircle, ChevronDown, ChevronUp, Scale, Building2,
-  Users, Gavel, BookOpen, Info, Search, RotateCcw,
+  CalendarSearch, Plus, Trash2, ChevronDown, ChevronUp,
+  Loader2, AlertTriangle, Clock, Calendar, Building2,
+  RefreshCw, Sparkles, Lock, CheckCircle2, Activity,
+  X, Search, Info, Gavel,
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { Link } from "wouter";
 
-interface HearingEntry {
-  date: string;
-  purpose: string;
-  judge: string;
-  result: string | null;
-  next_date: string | null;
-}
-
-interface CnrResult {
-  cnr: string;
-  case_number: string;
-  case_type: string;
-  filing_date: string;
-  registration_date: string;
-  court: string;
-  district: string;
-  state: string;
-  judge: string;
-  status: string;
-  stage: string;
-  petitioner: string;
-  respondent: string;
-  advocate_petitioner: string | null;
-  advocate_respondent: string | null;
-  subject: string;
-  under_act: string | null;
-  under_section: string | null;
-  hearings: HearingEntry[];
-  next_hearing: string | null;
-  last_updated: string;
-  data_source: string;
-  disclaimer: string;
-}
-
-function fmtDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function isUpcoming(iso: string): boolean {
-  return new Date(`${iso}T00:00:00`) >= new Date(new Date().toDateString());
-}
-
-function isPast(iso: string): boolean {
-  return new Date(`${iso}T00:00:00`) < new Date(new Date().toDateString());
-}
-
-function daysUntil(iso: string): number {
-  const today = new Date(new Date().toDateString());
-  const d = new Date(`${iso}T00:00:00`);
-  return Math.round((d.getTime() - today.getTime()) / 86400000);
-}
-
-const SAMPLE_CNRS = [
-  "TLHC010012342023",
-  "APDC020056782022",
-  "TLHC030098762024",
+const CASE_TYPES = [
+  "Civil", "Criminal", "Family", "Property", "Consumer",
+  "Labour", "Tax", "Motor Accident", "Writ / PIL", "Other",
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  pending:     { label: "Pending",     color: "text-amber-400 bg-amber-500/10 border-amber-500/20",  icon: Clock },
-  disposed:    { label: "Disposed",    color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",  icon: CheckCircle2 },
-  transferred: { label: "Transferred", color: "text-primary bg-primary/10 border-primary/20",     icon: RotateCcw },
+const EVENT_ICONS: Record<string, { color: string; Icon: React.ElementType }> = {
+  hearing_scheduled: { Icon: Calendar,     color: "#F5B754" },
+  hearing_adjourned: { Icon: Clock,        color: "#8B5CF6" },
+  order_passed:      { Icon: Gavel,        color: "#34D399" },
+  status_changed:    { Icon: Activity,     color: "#60A5FA" },
+  case_disposed:     { Icon: CheckCircle2, color: "#34D399" },
+  default:           { Icon: Info,         color: "#8A8FA3" },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status.toLowerCase()] ?? STATUS_CONFIG.pending;
-  const Icon = cfg.icon;
+function eventMeta(type: string) {
+  return EVENT_ICONS[type] ?? EVENT_ICONS.default;
+}
+
+function StatusBadge({ status }: { status?: string }) {
+  if (!status) return null;
+  const s = status.toLowerCase();
+  const cfg =
+    s.includes("dispos") || s.includes("closed")
+      ? { bg: "rgba(52,211,153,0.12)",   color: "#34D399", border: "rgba(52,211,153,0.25)"  }
+      : s.includes("pending") || s.includes("admit")
+      ? { bg: "rgba(245,183,84,0.12)",   color: "#F5B754", border: "rgba(245,183,84,0.25)"  }
+      : s.includes("fresh") || s.includes("new")
+      ? { bg: "rgba(139,92,246,0.12)",   color: "#8B5CF6", border: "rgba(139,92,246,0.25)"  }
+      : { bg: "rgba(96,165,250,0.12)",   color: "#60A5FA", border: "rgba(96,165,250,0.25)"  };
+
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border", cfg.color)}>
-      <Icon className="w-3 h-3" />
-      {cfg.label}
+    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+      {status}
     </span>
   );
 }
 
-function InfoCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Scale }) {
+/* ── Add-CNR form ──────────────────────────────────────────────────────────── */
+function CnrInput({ onTracked }: { onTracked: () => void }) {
+  const [cnr,      setCnr]      = useState("");
+  const [caseType, setCaseType] = useState("");
+  const [err,      setErr]      = useState("");
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (body: { cnr: string; case_type?: string }) =>
+      apiFetch("/court-intel/track", { method: "POST", body }),
+    onSuccess: () => {
+      setCnr(""); setCaseType(""); setErr("");
+      queryClient.invalidateQueries({ queryKey: ["tracked-cases"] });
+      onTracked();
+    },
+    onError: (e: any) => {
+      setErr(e?.detail ?? e?.message ?? "Failed to add CNR. Check the number and try again.");
+    },
+  });
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const cleaned = cnr.replace(/[\s\-/]/g, "").toUpperCase();
+    if (cleaned.length !== 16) {
+      setErr("CNR must be exactly 16 characters — e.g. TLHC010012342023");
+      return;
+    }
+    setErr("");
+    mutation.mutate({ cnr: cleaned, case_type: caseType || undefined });
+  }
+
   return (
-    <div className="bg-card border border-border/60 rounded-xl p-4 space-y-1 shadow-sm">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-        <Icon className="w-3.5 h-3.5" />
-        {label}
-      </div>
-      <p className="text-sm font-semibold text-foreground leading-snug">{value || "—"}</p>
-    </div>
-  );
-}
-
-function HearingTimeline({ hearings }: { hearings: HearingEntry[] }) {
-  const [showAll, setShowAll] = useState(false);
-  const sorted = [...hearings].sort((a, b) => a.date.localeCompare(b.date));
-  const visible = showAll ? sorted : sorted.slice(0, 6);
-
-  return (
-    <div className="space-y-3">
-      <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-[19px] top-4 bottom-4 w-px bg-border/60" />
-
-        <div className="space-y-3">
-          {visible.map((h, idx) => {
-            const past = isPast(h.date);
-            const upcoming = isUpcoming(h.date);
-            const diff = upcoming ? daysUntil(h.date) : null;
-
-            return (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.04 }}
-                className="flex gap-3"
-              >
-                {/* Dot */}
-                <div className="flex-none flex items-start pt-1">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full border-2 flex items-center justify-center z-10 bg-card shadow-sm",
-                    past ? "border-muted text-muted-foreground" :
-                    diff === 0 ? "border-amber-400 text-amber-600 animate-pulse" :
-                    "border-primary text-primary",
-                  )}>
-                    {past
-                      ? <CheckCircle2 className="w-4 h-4 text-muted-foreground/60" />
-                      : diff === 0
-                      ? <Gavel className="w-4 h-4" />
-                      : <CalendarDays className="w-4 h-4" />
-                    }
-                  </div>
-                </div>
-
-                {/* Card */}
-                <div className={cn(
-                  "flex-1 border rounded-xl p-3.5 transition-colors",
-                  past ? "bg-muted/30 border-border/40" :
-                  diff === 0 ? "bg-amber-500/10 border-amber-500/20 shadow-md" :
-                  "bg-card border-primary/20 shadow-sm",
-                )}>
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div>
-                      <p className={cn(
-                        "text-sm font-semibold",
-                        past ? "text-muted-foreground" : "text-foreground",
-                      )}>
-                        {fmtDate(h.date)}
-                        {diff === 0 && (
-                          <span className="ml-2 text-xs font-bold text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full">TODAY</span>
-                        )}
-                        {diff !== null && diff > 0 && diff <= 7 && (
-                          <span className="ml-2 text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                            In {diff} day{diff > 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{h.purpose}</p>
-                    </div>
-                    {!past && upcoming && (
-                      <CalendarDays className="w-4 h-4 text-primary flex-none mt-0.5" />
-                    )}
-                  </div>
-
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    <span className="font-medium">Judge:</span> {h.judge}
-                  </p>
-
-                  {h.result && (
-                    <p className="text-xs mt-1.5 text-muted-foreground italic border-t border-border/40 pt-1.5">
-                      {h.result}
-                    </p>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
+    <form onSubmit={submit} className="rounded-2xl p-5 space-y-4"
+      style={{ background: "#14151F", border: "1px solid rgba(245,183,84,0.15)" }}>
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(245,183,84,0.12)" }}>
+          <Plus className="w-4 h-4 text-amber-400" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white">Track a New Case</p>
+          <p className="text-[11px] text-white/40">Enter the 16-character CNR from eCourts or your court notice</p>
         </div>
       </div>
 
-      {sorted.length > 6 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="w-full text-xs text-primary flex items-center justify-center gap-1 py-2 hover:underline"
-        >
-          {showAll
-            ? <><ChevronUp className="w-3.5 h-3.5" /> Show less</>
-            : <><ChevronDown className="w-3.5 h-3.5" /> Show {sorted.length - 6} more hearings</>
-          }
-        </button>
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* CNR input */}
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+          <input
+            data-testid="cnr-input"
+            type="text"
+            value={cnr}
+            onChange={(e) => { setCnr(e.target.value.toUpperCase()); setErr(""); }}
+            placeholder="e.g. TLHC010012342023"
+            maxLength={20}
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/30 text-white text-sm font-mono
+              placeholder:text-white/25 outline-none focus:ring-1 focus:ring-amber-400/30 transition-all"
+            style={{ border: "1px solid rgba(255,255,255,0.08)", letterSpacing: "0.05em" }}
+          />
+        </div>
+        {/* Case type */}
+        <select value={caseType} onChange={(e) => setCaseType(e.target.value)}
+          className="px-3 py-2.5 rounded-xl bg-black/30 text-sm text-white/70 outline-none
+            appearance-none min-w-[150px]"
+          style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          <option value="">Type (optional)</option>
+          {CASE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <Button type="submit" disabled={mutation.isPending || !cnr.trim()}
+          data-testid="track-btn"
+          className="font-semibold text-sm px-5 shrink-0"
+          style={{ background: "#F5B754", color: "#0A0B10" }}>
+          {mutation.isPending
+            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Tracking…</>
+            : <><Plus className="w-4 h-4 mr-2" />Track</>}
+        </Button>
+      </div>
+
+      <AnimatePresence>
+        {err && (
+          <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="text-xs text-red-400 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{err}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </form>
+  );
+}
+
+/* ── Timeline / events panel ───────────────────────────────────────────────── */
+function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
+  const isPaid = tier === "professional" || tier === "advocate_pro";
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["case-timeline", caseId],
+    queryFn: () => apiFetch(`/court-intel/${caseId}/timeline`),
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return (
+    <div className="py-6 flex justify-center">
+      <Loader2 className="w-5 h-5 animate-spin text-amber-400/60" />
+    </div>
+  );
+
+  if (isError || !data) return (
+    <div className="py-4 text-center text-xs text-white/40">
+      <AlertTriangle className="w-4 h-4 mx-auto mb-1 text-red-400/60" />
+      Could not load timeline.
+    </div>
+  );
+
+  /* Free tier — show latest snapshot + upgrade prompt */
+  if (!isPaid && data.upgrade_hint) return (
+    <div className="space-y-3">
+      {data.latest_status && (
+        <div className="rounded-xl p-3 space-y-1.5"
+          style={{ background: "rgba(245,183,84,0.06)", border: "1px solid rgba(245,183,84,0.12)" }}>
+          <p className="text-[11px] font-bold text-amber-400/60 uppercase tracking-wider">Latest Snapshot</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            {data.latest_status.case_status && <StatusBadge status={data.latest_status.case_status} />}
+            {data.latest_status.next_hearing_date && (
+              <span className="text-xs text-white/60 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-amber-400/60" />
+                Next: <span className="text-amber-400 font-semibold ml-0.5">{data.latest_status.next_hearing_date}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="rounded-xl p-4 text-center space-y-2.5"
+        style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+        <Lock className="w-5 h-5 text-violet-400 mx-auto" />
+        <p className="text-xs text-white/50 max-w-xs mx-auto">{data.upgrade_hint}</p>
+        <Link href="/subscription">
+          <Button size="sm" className="text-xs"
+            style={{ background: "rgba(139,92,246,0.2)", color: "#A78BFA", border: "1px solid rgba(139,92,246,0.3)" }}>
+            <Sparkles className="w-3 h-3 mr-1.5" />Upgrade to LiveTrack
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+
+  /* Paid tier — full timeline */
+  const events: any[] = data.events ?? [];
+
+  return (
+    <div className="space-y-4">
+      {data.latest_status && (
+        <div className="rounded-xl p-3 space-y-1.5"
+          style={{ background: "rgba(245,183,84,0.06)", border: "1px solid rgba(245,183,84,0.12)" }}>
+          <p className="text-[11px] font-bold text-amber-400/60 uppercase tracking-wider">Current Status</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            {data.latest_status.case_status && <StatusBadge status={data.latest_status.case_status} />}
+            {data.latest_status.next_hearing_date && (
+              <span className="text-xs text-white/60 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-amber-400/60" />
+                Next hearing: <span className="text-amber-400 font-semibold ml-0.5">{data.latest_status.next_hearing_date}</span>
+              </span>
+            )}
+            {data.latest_status.order_count > 0 && (
+              <span className="text-xs text-white/30">{data.latest_status.order_count} orders</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {events.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold text-white/30 uppercase tracking-wider">Event Log</p>
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
+            {events.map((ev: any, i: number) => {
+              const { Icon, color } = eventMeta(ev.event_type);
+              return (
+                <motion.div key={i}
+                  initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="flex items-start gap-3 rounded-lg p-3"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: `${color}18` }}>
+                    <Icon className="w-3.5 h-3.5" style={{ color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-white capitalize">
+                      {ev.event_type.replace(/_/g, " ")}
+                    </p>
+                    {ev.summary && (
+                      <p className="text-[11px] text-white/50 mt-0.5 leading-relaxed">{ev.summary}</p>
+                    )}
+                    <p className="text-[10px] text-white/25 mt-1">
+                      {new Date(ev.detected_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="py-4 text-center text-xs text-white/30">
+          <Activity className="w-4 h-4 mx-auto mb-1 text-white/20" />
+          No events detected yet — system checks nightly at 08:00 IST.
+        </div>
       )}
     </div>
   );
 }
 
-function UpcomingReminderBanner({ nextHearing }: { nextHearing: string }) {
-  const diff = daysUntil(nextHearing);
-  if (diff < 0) return null;
+/* ── Single tracked-case card ─────────────────────────────────────────────── */
+function TrackedCaseCard({ tc }: { tc: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/court-intel/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }),
+  });
+
+  const lastRefreshed = tc.last_refreshed
+    ? new Date(tc.last_refreshed).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })
+    : "Pending first fetch…";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "flex items-start gap-3 rounded-xl p-4 border",
-        diff === 0
-          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-          : diff <= 3
-          ? "bg-red-500/10 border-red-500/20 text-red-400"
-          : "bg-primary/5 border-primary/20 text-primary",
-      )}
-    >
-      <CalendarDays className="w-5 h-5 flex-none mt-0.5" />
-      <div>
-        <p className="text-sm font-semibold">
-          {diff === 0
-            ? "Hearing is TODAY"
-            : diff === 1
-            ? "Hearing is TOMORROW"
-            : `Next hearing in ${diff} days`}
-        </p>
-        <p className="text-xs mt-0.5 opacity-80">{fmtDate(nextHearing)}</p>
+    <motion.div layout
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.07)" }}>
+
+      {/* Header row */}
+      <div className="px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(96,165,250,0.1)" }}>
+            <CalendarSearch className="w-5 h-5 text-blue-400" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-sm font-bold text-white tracking-wider">{tc.cnr}</span>
+              {tc.case_status && <StatusBadge status={tc.case_status} />}
+            </div>
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              {tc.case_type && (
+                <span className="text-[11px] text-white/40 flex items-center gap-1">
+                  <Building2 className="w-3 h-3" />{tc.case_type}
+                </span>
+              )}
+              {tc.court_name && (
+                <span className="text-[11px] text-white/35 truncate max-w-[160px]">{tc.court_name}</span>
+              )}
+              {tc.next_hearing_date && (
+                <span className="text-[11px] text-amber-400/80 font-medium flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />{tc.next_hearing_date}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              <RefreshCw className="w-2.5 h-2.5 text-white/20" />
+              <span className="text-[10px] text-white/25">Updated {lastRefreshed}</span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button data-testid={`expand-${tc.cnr}`}
+              onClick={() => setExpanded((v) => !v)}
+              title={expanded ? "Hide timeline" : "View timeline"}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-white/5">
+              {expanded
+                ? <ChevronUp   className="w-4 h-4 text-white/40" />
+                : <ChevronDown className="w-4 h-4 text-white/40" />}
+            </button>
+            <button data-testid={`remove-${tc.cnr}`}
+              onClick={() => removeMutation.mutate(tc.id)}
+              disabled={removeMutation.isPending}
+              title="Stop tracking"
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all
+                hover:bg-red-500/10 text-white/30 hover:text-red-400">
+              {removeMutation.isPending
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Trash2  className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Timeline panel — slides open */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            className="overflow-hidden">
+            <div className="px-5 py-4">
+              <TimelinePanel caseId={tc.id} tier={user?.subscription_tier ?? "free"} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
+/* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function CnrTracker() {
-  const [cnrInput, setCnrInput] = useState("");
-  const [result, setResult] = useState<CnrResult | null>(null);
-  const [activeTab, setActiveTab] = useState<"details" | "hearings">("details");
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [toast, setToast] = useState("");
 
-  const lookup = useMutation({
-    mutationFn: (cnr: string) =>
-      apiFetch("/cnr/lookup", {
-        method: "POST",
-        body: JSON.stringify({ cnr }),
-        headers: { "Content-Type": "application/json" },
-      }),
-    onSuccess: (data: CnrResult) => {
-      setResult(data);
-      setActiveTab("details");
-    },
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ["tracked-cases"],
+    queryFn: () => apiFetch("/court-intel/my-cases"),
+    enabled: !!user,
+    staleTime: 60_000,
   });
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const val = cnrInput.trim().replace(/[\s\-/]/g, "").toUpperCase();
-    if (!val) return;
-    lookup.mutate(val);
+  const cases: any[] = data?.cases ?? [];
+
+  function handleTracked() {
+    setToast("Case added — fetching live data in background…");
+    setTimeout(() => setToast(""), 4000);
   }
 
-  const upcomingHearings = result?.hearings.filter(h => isUpcoming(h.date)) ?? [];
+  if (!user) return (
+    <>
+      <SEOHelmet title="CNR Case Tracker" description="Track live court cases via eCourts India." canonical="/cnr-tracker" />
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="text-center space-y-4">
+          <CalendarSearch className="w-12 h-12 text-white/20 mx-auto" />
+          <h2 className="text-xl font-semibold text-white">Sign in to track cases</h2>
+          <Button onClick={() => (window.location.href = "/login")}
+            style={{ background: "#F5B754", color: "#0A0B10" }}>Sign in</Button>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <>
       <SEOHelmet
-        title="CNR Case Tracker — LitigaForge AI"
-        description="Track your eCourts case status, hearing dates, and timeline by CNR number"
+        title="CNR Case Tracker — Live eCourts Intelligence"
+        description="Track court cases in real-time via eCourts India. Get alerts on hearing dates, orders, and status changes."
+        canonical="/cnr-tracker"
       />
       <PageShell
         title="CNR Case Tracker"
-        subtitle="Enter a CNR number to fetch case status, parties, and full hearing calendar"
-        icon={<FileSearch className="w-6 h-6 text-primary" />}
-      >
-        {/* Search form */}
-        <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-          <form onSubmit={handleSubmit} className="flex gap-2 flex-col sm:flex-row">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={cnrInput}
-                onChange={e => setCnrInput(e.target.value)}
-                placeholder="e.g. TLHC010012342023"
-                className="w-full pl-9 pr-4 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono uppercase tracking-wider"
-                maxLength={20}
-                data-testid="cnr-input"
-                spellCheck={false}
-                autoComplete="off"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={lookup.isPending || !cnrInput.trim()}
-              data-testid="cnr-search-btn"
-              className="shrink-0"
-            >
-              {lookup.isPending
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Looking up…</>
-                : "Track Case"
-              }
-            </Button>
-          </form>
+        subtitle="Live court intelligence — paste a CNR to watch hearings, orders and status changes."
+        action={
+          <button onClick={() => refetch()} disabled={isFetching} data-testid="refresh-btn"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+              text-white/50 hover:text-white/80"
+            style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+            <RefreshCw className={cn("w-3.5 h-3.5", isFetching && "animate-spin")} />
+            Refresh
+          </button>
+        }>
 
-          {/* Sample CNRs */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">Try:</span>
-            {SAMPLE_CNRS.map(cnr => (
-              <button
-                key={cnr}
-                onClick={() => { setCnrInput(cnr); lookup.mutate(cnr); }}
-                className="text-xs font-mono text-primary hover:underline bg-primary/5 px-2 py-0.5 rounded"
-              >
-                {cnr}
-              </button>
-            ))}
+        <div className="space-y-5 pb-20 md:pb-0">
+          {/* Add-CNR form */}
+          <CnrInput onTracked={handleTracked} />
+
+          {/* Success toast */}
+          <AnimatePresence>
+            {toast && (
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium"
+                style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)", color: "#34D399" }}>
+                <CheckCircle2 className="w-4 h-4 shrink-0" />{toast}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Upgrade nudge for free users who have cases */}
+          {user.subscription_tier === "free" && cases.length > 0 && (
+            <div className="flex items-start gap-3 rounded-xl px-4 py-3"
+              style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.18)" }}>
+              <Sparkles className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-violet-300">
+                Free plan shows latest status only.{" "}
+                <Link href="/subscription" className="underline underline-offset-2 hover:text-violet-200">
+                  Upgrade to LiveTrack
+                </Link>{" "}
+                for full event history, hearing alerts &amp; AI predictions.
+              </p>
+            </div>
+          )}
+
+          {/* Cases list */}
+          <div className="space-y-3">
+            <div className="px-1 flex items-center justify-between">
+              <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest">
+                Tracked Cases{cases.length > 0 && <span className="ml-2 text-white/20">({cases.length})</span>}
+              </p>
+            </div>
+
+            {isLoading && (
+              <div className="py-12 flex justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-amber-400/40" />
+              </div>
+            )}
+
+            {isError && (
+              <div className="rounded-2xl p-8 flex flex-col items-center gap-3 text-center"
+                style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <AlertTriangle className="w-8 h-8 text-red-400/60" />
+                <p className="text-sm text-white/50">Could not load tracked cases.</p>
+                <Button size="sm" variant="ghost" onClick={() => refetch()}
+                  className="text-white/40 hover:text-white/70 text-xs">Try again</Button>
+              </div>
+            )}
+
+            <AnimatePresence mode="popLayout">
+              {!isLoading && !isError && cases.map((tc: any) => (
+                <TrackedCaseCard key={tc.id} tc={tc} />
+              ))}
+            </AnimatePresence>
+
+            {/* Empty state */}
+            {!isLoading && !isError && cases.length === 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="rounded-2xl p-10 flex flex-col items-center gap-4 text-center"
+                style={{ background: "#14151F", border: "1px dashed rgba(255,255,255,0.08)" }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                  style={{ background: "rgba(245,183,84,0.08)" }}>
+                  <CalendarSearch className="w-8 h-8 text-amber-400/30" />
+                </div>
+                <div>
+                  <p className="text-base font-bold text-white/60">No cases tracked yet</p>
+                  <p className="text-sm text-white/30 mt-1 max-w-xs">
+                    Enter a CNR above to start tracking live hearing dates, orders, and status changes from eCourts India.
+                  </p>
+                </div>
+                <p className="text-xs text-white/20 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5" />
+                  Find your CNR on your court notice or at{" "}
+                  <a href="https://ecourts.gov.in" target="_blank" rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-white/40">
+                    ecourts.gov.in
+                  </a>
+                </p>
+              </motion.div>
+            )}
           </div>
 
-          {/* Error */}
-          {lookup.isError && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3"
-            >
-              <AlertCircle className="w-4 h-4 flex-none" />
-              {(lookup.error as any)?.detail ??
-                "Could not look up this CNR. Please check the format and try again."}
-            </motion.div>
-          )}
-        </div>
-
-        {/* Result */}
-        <AnimatePresence mode="wait">
-          {result && (
-            <motion.div
-              key={result.cnr}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="space-y-4"
-            >
-              {/* Header strip */}
-              <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-sm">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                        {result.cnr}
-                      </span>
-                      <StatusBadge status={result.status} />
+          {/* How it works (shown only when empty) */}
+          {!isLoading && cases.length === 0 && (
+            <div className="rounded-2xl p-5 space-y-4"
+              style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest">How It Works</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { Icon: Plus,      color: "#F5B754", title: "Add CNR",      desc: "Paste your 16-character Case Number from eCourts or court notice" },
+                  { Icon: RefreshCw, color: "#34D399", title: "Auto Refresh", desc: "Polls eCourts nightly at 08:00 IST — or tap Refresh anytime" },
+                  { Icon: Activity,  color: "#8B5CF6", title: "Get Alerts",   desc: "Hearing rescheduled, order passed? You're notified first" },
+                ].map(({ Icon, color, title, desc }) => (
+                  <div key={title} className="flex flex-col items-center text-center gap-2 p-3 rounded-xl"
+                    style={{ background: "rgba(255,255,255,0.02)" }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      style={{ background: `${color}12` }}>
+                      <Icon className="w-4 h-4" style={{ color }} />
                     </div>
-                    <h2 className="text-lg font-bold text-foreground leading-snug">
-                      {result.petitioner} <span className="text-muted-foreground font-normal text-base">v.</span> {result.respondent}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">{result.case_type} · {result.case_number}</p>
+                    <p className="text-xs font-bold text-white/60">{title}</p>
+                    <p className="text-[11px] text-white/30 leading-relaxed">{desc}</p>
                   </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    <p>Stage: <span className="font-medium text-foreground">{result.stage}</span></p>
-                    <p className="mt-0.5">Filed: {fmtDate(result.filing_date)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Upcoming reminder banner */}
-              {result.next_hearing && (
-                <UpcomingReminderBanner nextHearing={result.next_hearing} />
-              )}
-
-              {/* Tabs */}
-              <div className="flex border-b border-border/60">
-                {(["details", "hearings"] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={cn(
-                      "px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
-                      activeTab === tab
-                        ? "border-primary text-primary"
-                        : "border-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                    data-testid={`tab-${tab}`}
-                  >
-                    {tab === "details" ? "Case Details" : `Hearings (${result.hearings.length})`}
-                  </button>
                 ))}
               </div>
-
-              <AnimatePresence mode="wait">
-                {activeTab === "details" && (
-                  <motion.div
-                    key="details"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="space-y-4"
-                  >
-                    {/* Info grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      <InfoCard label="Court"          value={result.court}           icon={Building2} />
-                      <InfoCard label="District"       value={result.district}        icon={Scale} />
-                      <InfoCard label="Judge"          value={result.judge}           icon={Gavel} />
-                      <InfoCard label="Subject"        value={result.subject}         icon={BookOpen} />
-                      <InfoCard label="Under Act"      value={result.under_act ?? "—"} icon={Scale} />
-                      <InfoCard label="Next Hearing"   value={result.next_hearing ? fmtDate(result.next_hearing) : "None scheduled"} icon={CalendarDays} />
-                    </div>
-
-                    {/* Parties */}
-                    <div className="bg-card border border-border/60 rounded-xl p-4 shadow-sm space-y-3">
-                      <h3 className="text-sm font-semibold flex items-center gap-2">
-                        <Users className="w-4 h-4 text-primary" />
-                        Parties
-                      </h3>
-                      <div className="grid md:grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Petitioner / Plaintiff</p>
-                          <p className="font-semibold text-foreground">{result.petitioner}</p>
-                          {result.advocate_petitioner && (
-                            <p className="text-xs text-muted-foreground">Adv: {result.advocate_petitioner}</p>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Respondent / Defendant</p>
-                          <p className="font-semibold text-foreground">{result.respondent}</p>
-                          {result.advocate_respondent && (
-                            <p className="text-xs text-muted-foreground">Adv: {result.advocate_respondent}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Upcoming hearings mini list */}
-                    {upcomingHearings.length > 0 && (
-                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2">
-                        <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
-                          <CalendarDays className="w-4 h-4" />
-                          Upcoming Hearings
-                        </h3>
-                        <div className="space-y-2">
-                          {upcomingHearings.slice(0, 3).map((h, i) => (
-                            <div key={i} className="flex items-center justify-between text-sm">
-                              <span className="font-medium text-foreground">{fmtDate(h.date)}</span>
-                              <span className="text-muted-foreground text-xs">{h.purpose}</span>
-                            </div>
-                          ))}
-                        </div>
-                        {upcomingHearings.length > 3 && (
-                          <button
-                            onClick={() => setActiveTab("hearings")}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            View all {upcomingHearings.length} upcoming →
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {activeTab === "hearings" && (
-                  <motion.div
-                    key="hearings"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <HearingTimeline hearings={result.hearings} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Disclaimer */}
-              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 border border-border/40 rounded-lg px-4 py-3">
-                <Info className="w-3.5 h-3.5 flex-none mt-0.5" />
-                <span>{result.disclaimer}</span>
-              </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
-
-        {/* Empty state */}
-        {!result && !lookup.isPending && (
-          <div className="text-center py-16 text-muted-foreground space-y-3">
-            <FileSearch className="w-12 h-12 mx-auto opacity-30" />
-            <p className="text-sm font-medium">Enter a CNR number above to track your case</p>
-            <p className="text-xs max-w-sm mx-auto leading-relaxed">
-              Your CNR is printed on every court notice and order sheet.
-              It looks like <span className="font-mono bg-muted px-1 rounded">TLHC010012342023</span>.
-            </p>
-          </div>
-        )}
+        </div>
       </PageShell>
     </>
   );
