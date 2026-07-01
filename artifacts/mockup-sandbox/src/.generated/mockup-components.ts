@@ -7,6 +7,7 @@ export const modules: ModuleMap = {
   "./components/mockups/case-file-os/ShowcaseDark.tsx": () => import("../components/mockups/case-file-os/ShowcaseDark.tsx"),
   "./components/mockups/dashboard/Aurora.tsx": () => import("../components/mockups/dashboard/Aurora.tsx"),
   "./components/mockups/dashboard/Pulse.tsx": () => import("../components/mockups/dashboard/Pulse.tsx"),
+  "./components/mockups/lf-dark-mobile/Dashboard.tsx": () => import("../components/mockups/lf-dark-mobile/Dashboard.tsx"),
   "./components/mockups/whitelabel/AdminDashboard.tsx": () => import("../components/mockups/whitelabel/AdminDashboard.tsx"),
   "./components/mockups/whitelabel/ClientPortal.tsx": () => import("../components/mockups/whitelabel/ClientPortal.tsx"),
   "./components/mockups/whitelabel/LDv1CommandCenter.tsx": () => import("../components/mockups/whitelabel/LDv1CommandCenter.tsx"),
