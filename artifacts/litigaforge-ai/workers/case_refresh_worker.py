@@ -1,26 +1,73 @@
 """
-LitigaForge — Live Case Intelligence Diff Engine
+LitigaForge — Live Case Intelligence Diff Engine  (Phase 1 + Phase 2)
 
 Nightly worker (+ on-demand trigger) that:
   1. Fetches all active tracked_cases
   2. Calls bulk_refresh() in batches of 50
   3. Diffs each new snapshot against the previous one
   4. Writes exactly one case_event per detected change (no event if nothing changed)
-  5. Queues in-app notifications for each event
+  5. Queues in-app + email notifications for each event
+  6. Embeds new order text into case_order_embeddings on order_passed events
 
-This is the heart of the system. The critical rule:
+Phase 2 additions (do not remove Phase 1 logic):
+  - _embed_new_orders(): embeds new court orders via NIM into case_order_embeddings
+  - _chunk_text():        sentence-boundary splitter targeting ~500 tokens
+  - _send_case_event_email(): immediate email dispatch with retry-on-failure fallback
+  - run_notification_retry(): hourly job that retries pending email notifications
+
+Critical rules:
   NO DIFF = NO EVENT.  Duplicate / noisy events mean users stop trusting the feed.
+  Scope filter is MANDATORY in all vector searches — never cross-case.
 """
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import date, datetime
 from typing import Any
 
-from database import fetch as db_fetch, execute as db_execute, fetchval as db_fetchval
+from database import fetch as db_fetch, execute as db_execute, fetchval as db_fetchval, fetchrow as db_fetchrow
 from logger import get_logger
 
 logger = get_logger("litigaforge.case_refresh_worker")
+
+
+# ── Text chunking ───────────────────────────────────────────────────────────────
+
+def _chunk_text(text: str, chunk_size: int = 400) -> list[str]:
+    """
+    Split text into chunks of approximately chunk_size words on sentence boundaries.
+    Targets ~500 tokens per chunk (400 words ≈ 533 tokens at 1.33 tokens/word).
+    Falls back to word-boundary splitting for very long sentences.
+    """
+    if not text:
+        return []
+
+    # Split on sentence boundaries (., !, ? followed by space/newline)
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    chunks: list[str] = []
+    current: list[str] = []
+    current_words = 0
+
+    for sentence in sentences:
+        words = len(sentence.split())
+        if current_words + words > chunk_size and current:
+            chunks.append(" ".join(current))
+            current = []
+            current_words = 0
+        # If a single sentence exceeds chunk_size, split by words
+        if words > chunk_size:
+            sentence_words = sentence.split()
+            for i in range(0, len(sentence_words), chunk_size):
+                chunks.append(" ".join(sentence_words[i : i + chunk_size]))
+        else:
+            current.append(sentence)
+            current_words += words
+
+    if current:
+        chunks.append(" ".join(current))
+
+    return [c for c in chunks if c.strip()]
 
 
 # ── Diff logic ─────────────────────────────────────────────────────────────────
@@ -47,7 +94,6 @@ def _classify_event(prev: dict, curr: dict) -> list[tuple[str, str]]:
         return events  # nothing else matters once disposed
 
     # ── Court transferred ───────────────────────────────────────────────────────
-    # court_name comes from the raw_response stored fields via court_intelligence router
     prev_court = (prev.get("court_name") or "").strip()
     curr_court = (curr.get("court_name") or "").strip()
     if curr_court and prev_court and curr_court != prev_court:
@@ -66,9 +112,7 @@ def _classify_event(prev: dict, curr: dict) -> list[tuple[str, str]]:
                 f"Next hearing date set to {curr_date}.",
             ))
         else:
-            # Determine adjournment vs new date
             try:
-                # Convert to date objects for comparison
                 prev_d = prev_date if isinstance(prev_date, date) else date.fromisoformat(str(prev_date))
                 curr_d = curr_date if isinstance(curr_date, date) else date.fromisoformat(str(curr_date))
                 if curr_d > prev_d:
@@ -100,6 +144,161 @@ def _classify_event(prev: dict, curr: dict) -> list[tuple[str, str]]:
     return events
 
 
+# ── Phase 2: order embedding ────────────────────────────────────────────────────
+
+async def _embed_new_orders(tracked_case_id: str, cnr: str) -> None:
+    """
+    Fetch new orders for this case and embed them into case_order_embeddings.
+    Called as a fire-and-forget task after an order_passed event.
+    Failure is fully soft — logs and returns, retried on next nightly run.
+    """
+    try:
+        from llm.nim_embed import aembed_passages, nim_embed_enabled, vec_to_str
+        if not nim_embed_enabled():
+            logger.info("embed_new_orders: NIM_API_KEY not set — skipping for tc=%s", tracked_case_id)
+            return
+
+        from services.court_data_client import get_case_orders, get_order_text
+
+        # Which order_ids have already been embedded for this case?
+        existing_rows = await db_fetch(
+            "SELECT DISTINCT order_id FROM case_order_embeddings "
+            "WHERE tracked_case_id = $1::uuid AND order_id IS NOT NULL",
+            tracked_case_id,
+        )
+        already_embedded: set[str] = {r["order_id"] for r in existing_rows}
+
+        orders = await get_case_orders(cnr)
+        if not orders:
+            logger.info(
+                "embed_new_orders: get_case_orders returned empty for cnr=%s — "
+                "will retry on next nightly run", cnr,
+            )
+            return
+
+        embedded_count = 0
+        for order in orders:
+            order_id = order.get("order_id") or order.get("orderId") or order.get("id")
+            if not order_id:
+                continue
+            order_id = str(order_id)
+
+            if order_id in already_embedded:
+                continue  # already processed
+
+            order_date_raw = order.get("order_date") or order.get("orderDate")
+            # Prefer inline text from bulk response; fall back to per-order API call
+            text = (
+                order.get("order_text")
+                or order.get("text")
+                or order.get("content")
+                or order.get("order_content")
+                or ""
+            ).strip()
+            if not text:
+                text_fetched = await get_order_text(cnr, order_id)
+                if not text_fetched:
+                    logger.warning(
+                        "embed_new_orders: no text for order_id=%s cnr=%s — "
+                        "will retry on next nightly run", order_id, cnr,
+                    )
+                    continue
+                text = text_fetched
+
+            chunks = _chunk_text(text)
+            if not chunks:
+                continue
+
+            vecs = await aembed_passages(chunks)
+            if vecs is None:
+                logger.warning(
+                    "embed_new_orders: embedding call failed for order_id=%s", order_id,
+                )
+                continue
+
+            for chunk_text, vec in zip(chunks, vecs):
+                if vec is None:
+                    continue
+                try:
+                    await db_execute(
+                        """
+                        INSERT INTO case_order_embeddings
+                            (tracked_case_id, order_id, order_date, order_text, embedding)
+                        VALUES ($1::uuid, $2, $3::date, $4, $5::vector)
+                        """,
+                        tracked_case_id,
+                        order_id,
+                        order_date_raw or None,
+                        chunk_text,
+                        vec_to_str(vec),
+                    )
+                except Exception as insert_err:
+                    logger.warning(
+                        "embed_new_orders: insert failed for order_id=%s: %s", order_id, insert_err,
+                    )
+
+            embedded_count += 1
+            already_embedded.add(order_id)
+
+        logger.info(
+            "embed_new_orders: tc=%s cnr=%s — embedded %d new order(s)",
+            tracked_case_id, cnr, embedded_count,
+        )
+
+    except Exception as exc:
+        logger.exception(
+            "embed_new_orders: unexpected error for tc=%s cnr=%s: %s",
+            tracked_case_id, cnr, exc,
+        )
+
+
+# ── Phase 2: email dispatch ─────────────────────────────────────────────────────
+
+async def _send_case_event_email(
+    notif_id: str,
+    user_email: str,
+    user_name: str,
+    event_type: str,
+    summary_text: str,
+    case_type: str | None,
+    court_name: str | None,
+    tracked_case_id: str,
+) -> None:
+    """
+    Attempt an immediate case-event email send, then update the notification status.
+    Leaves status='pending' on failure so the hourly retry job can pick it up.
+    """
+    try:
+        from alerts.email import send_case_event_email as _send_email
+        result = _send_email(
+            to_email=user_email,
+            name=user_name,
+            event_type=event_type,
+            case_type=case_type or "Case",
+            court_name=court_name or "Court",
+            summary=summary_text,
+            case_link=f"/cnr-tracker",
+        )
+        if result.get("success"):
+            await db_execute(
+                "UPDATE case_notifications SET status = 'sent', sent_at = now() "
+                "WHERE id = $1::uuid",
+                notif_id,
+            )
+            logger.info(
+                "case email sent: notif_id=%s to=%s event=%s", notif_id, user_email, event_type,
+            )
+        else:
+            logger.warning(
+                "case email failed (will retry): notif_id=%s error=%s",
+                notif_id, result.get("error"),
+            )
+    except Exception as exc:
+        logger.warning(
+            "case email dispatch error (will retry): notif_id=%s: %s", notif_id, exc,
+        )
+
+
 # ── Main worker ────────────────────────────────────────────────────────────────
 
 async def run_refresh(*, cnr_filter: str | None = None) -> dict:
@@ -108,13 +307,10 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
     cnr_filter: if provided, only refresh that single CNR (for on-demand triggers).
     Returns summary dict for logging / API response.
     """
-    # Avoid importing at module level so the worker can be imported before the
-    # API key is checked (import doesn't require a live key, only calls do).
     from services.court_data_client import bulk_refresh, get_case_by_cnr
 
     summary = {"cases_checked": 0, "events_created": 0, "errors": 0}
 
-    # 1. Fetch active tracked cases
     if cnr_filter:
         rows = await db_fetch(
             "SELECT id, cnr, case_type, court_name, user_id "
@@ -134,15 +330,12 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
     logger.info("Starting refresh for %d tracked cases", len(rows))
     summary["cases_checked"] = len(rows)
 
-    # 2. Batch into 50s and call bulk_refresh
     batch_input = [{"tracked_case_id": str(r["id"]), "cnr": r["cnr"]} for r in rows]
-    id_map = {str(r["id"]): r for r in rows}  # tracked_case_id -> row
+    id_map = {str(r["id"]): r for r in rows}
 
     try:
-        # bulk_refresh persists raw snapshots internally before returning
         _results = await bulk_refresh(batch_input)
     except RuntimeError as exc:
-        # API key not set or similar — abort gracefully
         logger.error("Court data client error: %s", exc)
         summary["errors"] = len(rows)
         return summary
@@ -151,13 +344,11 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
         summary["errors"] = len(rows)
         return summary
 
-    # 3. For each case, diff the latest two snapshots and classify events
     for tc_id_str, row in id_map.items():
         try:
             events_created = await _diff_and_record(tc_id_str, row)
             summary["events_created"] += events_created
 
-            # Update last_refreshed timestamp
             await db_execute(
                 "UPDATE tracked_cases SET last_refreshed = now() WHERE id = $1::uuid",
                 tc_id_str,
@@ -176,7 +367,8 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
 async def _diff_and_record(tracked_case_id: str, row: dict) -> int:
     """
     Fetch the two most recent snapshots for this case, diff them, and write
-    classified events.  Returns the number of events written (0 = no change).
+    classified events + notifications (in-app + email).
+    Returns the number of events written (0 = no change).
     """
     snapshots = await db_fetch(
         """
@@ -196,19 +388,26 @@ async def _diff_and_record(tracked_case_id: str, row: dict) -> int:
     curr_snap = dict(snapshots[0])
     prev_snap = dict(snapshots[1])
 
-    # Enrich with court_name from the tracked_cases row (not in snapshots schema)
     curr_snap["court_name"] = row.get("court_name", "")
     prev_snap["court_name"] = row.get("court_name", "")
 
-    # Detect changes
     changes = _classify_event(prev_snap, curr_snap)
 
     if not changes:
         logger.debug("tracked_case_id=%s — no changes detected", tracked_case_id)
         return 0
 
-    # Write events and queue notifications
-    user_id = str(row["user_id"])
+    # Fetch user info for email notifications (one DB call per case, not per event)
+    user_id_int: int = int(row["user_id"])
+    user_info = await db_fetchrow(
+        "SELECT email, name, case_tracking_emails FROM users WHERE id = $1",
+        user_id_int,
+    )
+    send_email = (
+        user_info is not None
+        and user_info.get("case_tracking_emails", True) is not False
+    )
+
     events_written = 0
     for event_type, summary_text in changes:
         event_id = await db_fetchval(
@@ -225,15 +424,132 @@ async def _diff_and_record(tracked_case_id: str, row: dict) -> int:
             tracked_case_id, event_type, event_id,
         )
 
-        # Queue in-app notification
+        # ── In-app notification (always) ────────────────────────────────────────
+        # FIX: user_id is INTEGER — do not cast as ::uuid
         await db_execute(
             """
             INSERT INTO case_notifications
                 (user_id, case_event_id, channel, status)
-            VALUES ($1::uuid, $2::uuid, 'in_app', 'pending')
+            VALUES ($1, $2::uuid, 'in_app', 'pending')
             """,
-            user_id, str(event_id),
+            user_id_int, str(event_id),
         )
+
+        # ── Email notification (respects opt-out) ──────────────────────────────
+        if send_email:
+            notif_id = await db_fetchval(
+                """
+                INSERT INTO case_notifications
+                    (user_id, case_event_id, channel, status)
+                VALUES ($1, $2::uuid, 'email', 'pending')
+                RETURNING id::text
+                """,
+                user_id_int, str(event_id),
+            )
+            if notif_id:
+                asyncio.ensure_future(
+                    _send_case_event_email(
+                        notif_id=str(notif_id),
+                        user_email=user_info["email"],
+                        user_name=user_info.get("name") or "there",
+                        event_type=event_type,
+                        summary_text=summary_text,
+                        case_type=row.get("case_type"),
+                        court_name=row.get("court_name"),
+                        tracked_case_id=tracked_case_id,
+                    )
+                )
+
+        # ── Order embedding (fire-and-forget on order_passed) ──────────────────
+        if event_type == "order_passed":
+            asyncio.ensure_future(
+                _embed_new_orders(tracked_case_id, row["cnr"])
+            )
+
         events_written += 1
 
     return events_written
+
+
+# ── Phase 2: hourly notification retry ─────────────────────────────────────────
+
+async def run_notification_retry() -> dict:
+    """
+    Pick up any case_notifications with channel='email' and status='pending'
+    and attempt to resend them.  Called by the hourly retry scheduler in main.py.
+    Returns a summary dict.
+    """
+    summary = {"checked": 0, "sent": 0, "failed": 0}
+
+    pending = await db_fetch(
+        """
+        SELECT
+            cn.id::text          AS notif_id,
+            cn.user_id,
+            cn.case_event_id::text,
+            ce.event_type,
+            ce.summary,
+            ce.tracked_case_id::text,
+            tc.cnr,
+            tc.case_type,
+            tc.court_name,
+            u.email,
+            u.name,
+            u.case_tracking_emails
+        FROM   case_notifications cn
+        JOIN   case_events   ce ON ce.id = cn.case_event_id
+        JOIN   tracked_cases tc ON tc.id = ce.tracked_case_id
+        JOIN   users          u ON u.id  = cn.user_id
+        WHERE  cn.channel = 'email'
+          AND  cn.status  = 'pending'
+        ORDER  BY cn.id
+        LIMIT  100
+        """,
+    )
+
+    for row in pending:
+        summary["checked"] += 1
+        # Honour opt-out (in case preference changed since original attempt)
+        if row.get("case_tracking_emails") is False:
+            await db_execute(
+                "UPDATE case_notifications SET status = 'skipped' WHERE id = $1::uuid",
+                row["notif_id"],
+            )
+            continue
+
+        try:
+            from alerts.email import send_case_event_email as _send_email
+            result = _send_email(
+                to_email=row["email"],
+                name=row.get("name") or "there",
+                event_type=row["event_type"],
+                case_type=row.get("case_type") or "Case",
+                court_name=row.get("court_name") or "Court",
+                summary=row["summary"],
+                case_link="/cnr-tracker",
+            )
+            if result.get("success"):
+                await db_execute(
+                    "UPDATE case_notifications SET status = 'sent', sent_at = now() "
+                    "WHERE id = $1::uuid",
+                    row["notif_id"],
+                )
+                summary["sent"] += 1
+                logger.info(
+                    "retry: email sent notif_id=%s to=%s", row["notif_id"], row["email"],
+                )
+            else:
+                summary["failed"] += 1
+                logger.warning(
+                    "retry: email still failing notif_id=%s: %s",
+                    row["notif_id"], result.get("error"),
+                )
+        except Exception as exc:
+            summary["failed"] += 1
+            logger.warning("retry: error for notif_id=%s: %s", row["notif_id"], exc)
+
+    logger.info(
+        "notification retry done — checked=%d sent=%d failed=%d",
+        summary["checked"], summary["sent"], summary["failed"],
+    )
+    return summary

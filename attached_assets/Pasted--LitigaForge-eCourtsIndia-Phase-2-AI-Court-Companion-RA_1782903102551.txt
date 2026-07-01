@@ -1,0 +1,159 @@
+# LitigaForge × eCourtsIndia — Phase 2
+### AI Court Companion (RAG) + Email Notifications
+
+Prerequisite: Phase 1 checklist is green — the diff engine produces zero
+duplicate events on a clean re-run, and at least one real `order_passed`
+event has fired. If that's not true yet, fix Phase 1 first; RAG on top of a
+broken event feed just produces confident-sounding wrong answers.
+
+---
+
+## 1. What Phase 2 adds
+
+1. **Order embedding pipeline** — when the Phase 1 worker detects
+   `order_passed`, pull the order text and embed it
+2. **RAG query endpoint** — `/api/cases/{id}/ask`, grounded only in that
+   case's own order text
+3. **Email notifications** — reuse the existing Judgment Digest email
+   pipeline, don't build a second one
+
+---
+
+## 2. Embedding pipeline
+
+Trigger point: inside `workers/case_refresh_worker.py`, whenever it writes an
+`order_passed` event.
+
+```
+1. get_order_text(cnr, order_id) via CourtDataClient
+2. Chunk order_text (target ~500 tokens per chunk, simple sentence-boundary
+   split — no need for anything fancier in v1)
+3. Embed each chunk using the SAME embedding call already used elsewhere in
+   the LiteLLM abstraction layer (do not introduce a second embedding
+   provider)
+4. Insert into case_order_embeddings: tracked_case_id, order_date,
+   order_text (the chunk), embedding
+```
+
+Failure handling: if `get_order_text` fails (order not yet OCR'd on
+eCourtsIndia's side, common for very recent orders), log it and retry once on
+the next nightly run rather than blocking the rest of the batch.
+
+---
+
+## 3. RAG query endpoint
+
+```
+POST /api/cases/{id}/ask
+Body: { "question": "what happened in my last hearing?" }
+
+1. Verify tracked_case belongs to the authenticated user — hard fail if not
+2. Embed the question
+3. Vector similarity search on case_order_embeddings WHERE
+   tracked_case_id = {id} — this scope filter is not optional, it is what
+   prevents one user's case from leaking into another's answer
+4. Take top 5 chunks by similarity
+5. Build a prompt for the existing LiteLLM cascade:
+   - System: "Answer only using the provided court order excerpts. If the
+     excerpts don't contain the answer, say so plainly — do not guess."
+   - Context: the 5 retrieved chunks, each labeled with its order_date
+   - User question
+6. Return: { answer, cited_order_dates: [...] }
+```
+
+The system prompt's "don't guess" instruction matters more than usual here —
+this is legal information about a real, ongoing case, and a fluent wrong
+answer is worse than "I don't have that in the case record yet."
+
+---
+
+## 4. Email notifications
+
+Do not build a new email service. LitigaForge already has one for the
+Judgment Digest subscription — extend that.
+
+```
+1. New template: case_event_notification.html — subject line built from
+   event_type (e.g. "New order in your case — [case_type], [court_name]")
+2. Worker, after writing a case_notifications row with channel = 'email':
+   - Call the existing email-sending function used by Judgment Digest
+   - Pass event summary + a link to /cases/{id} in the app
+3. Mark case_notifications.status = 'sent' and sent_at on success; leave as
+   'pending' on failure so a retry job (simple, run hourly) can pick it up
+4. Respect any existing unsubscribe/notification-preference flags already on
+   the user record — do not send if the user has opted out of case emails
+   specifically, even if they haven't opted out of Judgment Digest
+```
+
+---
+
+## 5. Replit Agent prompt — paste this exactly
+
+```
+Phase 1 of the Live Case Intelligence system is working — tracked_cases,
+case_snapshots, case_events, and the nightly diff worker are live and
+verified. Now build ONLY Phase 2: the AI Court Companion (RAG) and email
+notifications. Do not touch Phase 1 code except where noted below. Do not
+build Opponent Intelligence or Predictive Timeline yet.
+
+1. Add embedding logic to the existing workers/case_refresh_worker.py:
+   whenever it writes an event with event_type = 'order_passed', call a new
+   method get_order_text(cnr, order_id) on CourtDataClient, chunk the
+   returned text into ~500-token pieces on sentence boundaries, and embed
+   each chunk using the SAME embedding function already used elsewhere in
+   our LiteLLM abstraction layer — do not add a second embedding provider.
+   Store each chunk in the case_order_embeddings table (already exists:
+   tracked_case_id, order_date, order_text, embedding vector(1536)).
+
+   If get_order_text fails for an order, log it and skip — do not fail the
+   whole worker run. Retry failed ones on the next nightly run.
+
+2. Create POST /api/cases/{id}/ask in routes/court_intelligence.py:
+   - Body: { "question": string }
+   - First verify the tracked_case belongs to the authenticated user; return
+     403 if not
+   - Embed the question, run a pgvector similarity search on
+     case_order_embeddings filtered to WHERE tracked_case_id = {id} — this
+     filter is mandatory, never search across cases or users
+   - Take the top 5 chunks by similarity
+   - Call our existing LiteLLM cascade with a system prompt instructing it
+     to answer ONLY from the provided excerpts and to say plainly if the
+     excerpts don't cover the question, rather than guessing
+   - Return { answer, cited_order_dates }
+
+3. For email notifications: find the existing email-sending function we use
+   for the Judgment Digest subscription feature and reuse it — do not build
+   a new email pipeline. Add a new template, case_event_notification, with
+   subject line built from the event's event_type and case_type/court_name.
+   When the worker writes a case_notifications row with channel = 'email',
+   call the reused email function, then set status = 'sent' and sent_at on
+   success. Check the user's notification preferences first — if they've
+   opted out of case-tracking emails specifically, skip sending even if
+   they're still subscribed to Judgment Digest.
+
+4. Add a simple hourly retry job for any case_notifications still in
+   'pending' status after their first attempt.
+
+5. No frontend UI changes in this pass — I'll handle the chat interface for
+   /ask separately once this is verified.
+
+After building, show me: a sample curl for POST /api/cases/{id}/ask against
+a case that already has embedded orders, and confirm what happens (which
+error, which status code) if I call /ask on a case that belongs to a
+different user.
+```
+
+---
+
+## 6. What to check before moving to Phase 3
+
+- [ ] `case_order_embeddings` gets new rows automatically after a real or
+      test `order_passed` event — no manual trigger needed
+- [ ] Asking a question about Case A never returns content from Case B, even
+      when both belong to the same user (test this explicitly)
+- [ ] Asking about something not in the order text gets an honest "not in
+      the case record" answer, not a fabricated one
+- [ ] A test user with case-tracking emails switched off in preferences does
+      not receive one, even when an event fires
+- [ ] The 403 on cross-user `/ask` access actually works — try it with a
+      second test account

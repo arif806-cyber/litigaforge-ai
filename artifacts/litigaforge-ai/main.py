@@ -1084,7 +1084,31 @@ async def lifespan(app: FastAPI):
                     status          VARCHAR(20) DEFAULT 'pending'
                 )
             """)
-            logger.info("court intelligence tables ready")
+
+            # Phase 2: order embeddings table (1024-dim matches NIM nv-embedqa-e5-v5)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS case_order_embeddings (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id) ON DELETE CASCADE,
+                    order_id        TEXT,
+                    order_date      DATE,
+                    order_text      TEXT NOT NULL,
+                    embedding       vector(1024),
+                    embedded_at     TIMESTAMPTZ DEFAULT now()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_case_order_emb_tc "
+                "ON case_order_embeddings (tracked_case_id)"
+            )
+
+            # Phase 2: case-tracking email preference on users (default opt-in)
+            await conn.execute(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+                "case_tracking_emails BOOLEAN DEFAULT true"
+            )
+
+            logger.info("court intelligence tables ready (Phase 1 + Phase 2)")
         except Exception as _ci_err:
             logger.warning("court intelligence tables init: %s", _ci_err)
 
@@ -1198,6 +1222,25 @@ async def lifespan(app: FastAPI):
     _ci_sched = asyncio.ensure_future(_case_refresh_loop())
     app.state.court_intel_scheduler = _ci_sched
 
+    # ── Hourly notification retry (Phase 2) ───────────────────────────────────
+    async def _notification_retry_loop():
+        import asyncio as _aio
+        while True:
+            try:
+                await _aio.sleep(3600)  # run once per hour
+                logger.info("court-intel: starting hourly notification retry")
+                from workers.case_refresh_worker import run_notification_retry
+                result = await run_notification_retry()
+                logger.info("court-intel: notification retry done: %s", result)
+            except _aio.CancelledError:
+                break
+            except Exception as _e:
+                logger.exception("court-intel: notification retry error: %s", _e)
+                await _aio.sleep(300)  # back off 5 min on error
+
+    _notif_retry_sched = asyncio.ensure_future(_notification_retry_loop())
+    app.state.notif_retry_scheduler = _notif_retry_sched
+
     yield
 
     _sched = getattr(app.state, "judgment_scheduler", None)
@@ -1218,6 +1261,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("court-intel: scheduler shutdown error: %s", e)
+    _notif_retry_sched2 = getattr(app.state, "notif_retry_scheduler", None)
+    if _notif_retry_sched2 is not None:
+        _notif_retry_sched2.cancel()
+        try:
+            await _notif_retry_sched2
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("court-intel: notif-retry scheduler shutdown error: %s", e)
     _dsched = getattr(app.state, "digest_scheduler", None)
     if _dsched is not None:
         _dsched.cancel()

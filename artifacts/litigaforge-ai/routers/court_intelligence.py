@@ -1,18 +1,20 @@
 """
-LitigaForge — Live Case Intelligence Router (Phase 1)
+LitigaForge — Live Case Intelligence Router (Phase 1 + Phase 2)
 
 Endpoints:
   POST   /court-intel/track              Add a CNR to the watchlist + immediate refresh
   GET    /court-intel/my-cases           List all cases the user is tracking
   GET    /court-intel/{id}/timeline      Snapshots + events, newest first
   GET    /court-intel/{id}/events        Classified events only
+  POST   /court-intel/{id}/ask           RAG: ask a question about this case's orders
   DELETE /court-intel/{id}               Stop tracking (soft delete)
   POST   /court-intel/worker/run         Superuser: manually trigger the diff worker
 
 Free tier: latest status only.
-LiveTrack (professional / advocate_pro): full events, timeline, predictions.
+LiveTrack (professional / advocate_pro): full events, timeline, predictions, /ask.
 
 Note: users.id is SERIAL INTEGER; tracked_cases.id is UUID.
+Scope rule: vector search ALWAYS filters by tracked_case_id — never cross-case.
 """
 from __future__ import annotations
 
@@ -252,6 +254,138 @@ async def stop_tracking(case_id: str, user: dict = Depends(require_user)):
     )
     logger.info("User %s stopped tracking CNR %s (id=%s)", user["id"], row["cnr"], case_id)
     return {"status": "stopped", "cnr": row["cnr"]}
+
+
+# ── POST /court-intel/{id}/ask  (Phase 2 RAG) ─────────────────────────────────
+
+class AskRequest(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
+
+
+@router.post(f"{_BASE_PATH}/court-intel/{{case_id}}/ask")
+async def ask_about_case(
+    case_id: str,
+    body: AskRequest,
+    user: dict = Depends(require_user),
+):
+    """
+    RAG endpoint: answer a question grounded only in this case's embedded court orders.
+
+    Security invariant: the pgvector similarity search is ALWAYS scoped to
+    WHERE tracked_case_id = {case_id} — one user's orders never leak into
+    another user's answer.
+
+    Returns 402 for free-tier users (requires Professional or Advocate Pro).
+    Returns 403 if the case belongs to a different user.
+    Returns 404 if no orders have been embedded yet.
+    """
+    # 1. Ownership check — hard fail
+    row = await db_fetchrow(
+        "SELECT id, user_id, cnr, case_type, court_name "
+        "FROM tracked_cases WHERE id = $1::uuid",
+        case_id,
+    )
+    _assert_owns(row, int(user["id"]))
+
+    # 2. Tier gate — /ask is a LiveTrack feature
+    if user.get("subscription_tier", "free") not in _LIVETRACK_TIERS:
+        raise HTTPException(
+            status_code=402,
+            detail="AI case companion requires Professional or Advocate Pro tier.",
+        )
+
+    # 3. Embedding availability
+    from llm.nim_embed import aembed_query, nim_embed_enabled
+
+    if not nim_embed_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="AI case companion is temporarily unavailable (embedding service offline).",
+        )
+
+    # 4. Embed the question
+    question_vec = await aembed_query(body.question)
+    if question_vec is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Failed to embed question — please try again in a moment.",
+        )
+
+    from llm.nim_embed import vec_to_str
+
+    # 5. Vector similarity search — MANDATORY scope filter: tracked_case_id = {case_id}
+    #    Never search across cases or users.
+    chunks = await db_fetch(
+        """
+        SELECT order_date, order_text,
+               1 - (embedding <=> $1::vector) AS similarity
+        FROM   case_order_embeddings
+        WHERE  tracked_case_id = $2::uuid
+        ORDER  BY embedding <=> $1::vector
+        LIMIT  5
+        """,
+        vec_to_str(question_vec), case_id,
+    )
+
+    if not chunks:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No court orders have been indexed for this case yet. "
+                "Orders are embedded automatically when detected — "
+                "check back after the next nightly refresh."
+            ),
+        )
+
+    # 6. Build prompt — strict "don't guess" instruction
+    dated_excerpts = "\n\n".join(
+        f"[Order dated {row['order_date'] or 'unknown'}]\n{row['order_text']}"
+        for row in chunks
+    )
+    cited_dates: list[str] = [
+        str(row["order_date"]) for row in chunks if row["order_date"]
+    ]
+
+    system_prompt = (
+        "You are an AI assistant helping a litigant understand their own court case. "
+        "Answer ONLY using the provided court order excerpts below. "
+        "If the excerpts do not contain the answer, say so plainly — do not guess, "
+        "infer, or draw on general legal knowledge. "
+        "This is legal information about a real, ongoing case; a wrong answer is "
+        "worse than an honest 'I don't have that in the case record yet.'\n\n"
+        f"Court order excerpts:\n\n{dated_excerpts}"
+    )
+
+    # 7. Call LiteLLM cascade
+    answer = ""
+    try:
+        from llm.legal_llm import acomplete
+        answer = await acomplete(system_prompt, body.question, temperature=0.1)
+    except Exception as llm_err:
+        logger.warning("[/ask] LiteLLM failed; trying ai_brain cascade: %s", llm_err)
+        try:
+            from ai_brain import get_ai_response  # type: ignore[import]
+            answer = await get_ai_response(
+                system=system_prompt, prompt=body.question
+            )
+        except Exception as fallback_err:
+            logger.error("[/ask] Both LLM paths failed: %s", fallback_err)
+            raise HTTPException(
+                status_code=503,
+                detail="AI service temporarily unavailable — please try again shortly.",
+            )
+
+    if not answer:
+        raise HTTPException(
+            status_code=503,
+            detail="AI returned an empty response — please try again shortly.",
+        )
+
+    return {
+        "answer": answer,
+        "cited_order_dates": sorted(set(cited_dates)),
+        "chunks_used": len(chunks),
+    }
 
 
 # ── POST /court-intel/worker/run (superuser manual trigger) ───────────────────

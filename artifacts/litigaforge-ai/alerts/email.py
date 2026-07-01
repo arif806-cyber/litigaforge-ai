@@ -348,6 +348,111 @@ def send_digest_email(to_email: str, name: str, items: list, date_label: str,
     return _send(to_email, subject, body_html, text)
 
 
+_EVENT_TYPE_LABELS: dict[str, str] = {
+    "hearing_adjourned": "Hearing adjourned",
+    "next_date_fixed":   "Next hearing date set",
+    "order_passed":      "New court order passed",
+    "case_disposed":     "Case disposed",
+    "court_transferred": "Court transferred",
+}
+
+_CASE_EVENT_HTML = """\
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr><td style="background:#1a2744;padding:24px 28px;border-radius:12px 12px 0 0;">
+          <p style="margin:0;color:#f0a500;font-size:20px;font-weight:700;letter-spacing:-0.3px;">
+            ⚖️ LitigaForge AI</p>
+          <p style="margin:6px 0 0;color:#cbd5e1;font-size:13px;">Live Case Intelligence</p>
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:28px 28px 20px;">
+          <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#b45309;
+                    text-transform:uppercase;letter-spacing:0.5px;">{event_label_e}</p>
+          <p style="margin:0 0 18px;font-size:22px;font-weight:700;color:#0f172a;line-height:1.3;">
+            Update in your {case_type_e} — {court_name_e}</p>
+          <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
+            Hi {greeting},</p>
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="background:#f8fafc;border-left:4px solid #f0a500;
+                        border-radius:0 8px 8px 0;margin:0 0 20px;">
+            <tr><td style="padding:16px 20px;">
+              <p style="margin:0;font-size:15px;color:#0f172a;line-height:1.65;">{summary_e}</p>
+            </td></tr>
+          </table>
+          <a href="{case_link_safe}"
+             style="display:inline-block;background:#1a2744;color:#ffffff;
+                    text-decoration:none;font-size:14px;font-weight:600;
+                    padding:12px 28px;border-radius:8px;letter-spacing:0.2px;">
+            View case tracker &rarr;</a>
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:16px 28px 28px;border-radius:0 0 12px 12px;
+                       border-top:1px solid #f1f5f9;">
+          <p style="margin:0 0 6px;font-size:12px;color:#94a3b8;line-height:1.6;">
+            You're receiving this because you opted in to live case tracking alerts on
+            LitigaForge AI. To stop these notifications, update your preferences in the app.
+          </p>
+          <p style="margin:0;font-size:11px;color:#cbd5e1;line-height:1.6;">
+            LitigaForge AI provides legal information, not legal advice.
+            Always verify with a qualified advocate.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def send_case_event_email(
+    to_email: str,
+    name: str,
+    event_type: str,
+    case_type: str,
+    court_name: str,
+    summary: str,
+    case_link: str,
+) -> dict:
+    """
+    Send a case-tracking event notification email.
+
+    Reuses the existing _send() pipeline — no new SMTP code.
+    All user-supplied values are HTML-escaped before interpolation.
+    """
+    greeting_raw = (name or "").strip() or "there"
+    greeting = _html.escape(greeting_raw, quote=True)
+    event_label = _EVENT_TYPE_LABELS.get(event_type, event_type.replace("_", " ").title())
+    event_label_e = _html.escape(event_label, quote=True)
+    case_type_e  = _html.escape((case_type or "case").strip(), quote=True)
+    court_name_e = _html.escape((court_name or "court").strip(), quote=True)
+    summary_e    = _html.escape((summary or "").strip(), quote=True)
+    case_link_safe = _safe_url(case_link or "#")
+
+    subject = f"⚖️ {event_label} — {case_type}, {court_name}"
+
+    body_html = _CASE_EVENT_HTML.format(
+        event_label_e=event_label_e,
+        case_type_e=case_type_e,
+        court_name_e=court_name_e,
+        greeting=greeting,
+        summary_e=summary_e,
+        case_link_safe=case_link_safe,
+    )
+    text = (
+        f"{event_label} — {case_type}, {court_name}\n\n"
+        f"Hi {greeting_raw},\n\n"
+        f"{summary}\n\n"
+        f"View your case tracker: {case_link}\n\n"
+        "To stop these notifications, update your preferences in the app.\n\n"
+        "LitigaForge AI provides legal information, not legal advice.\n"
+        "— LitigaForge AI"
+    )
+    return _send(to_email, subject, body_html, text)
+
+
 def send_confirmation_email(to_email: str, name: str, confirm_link: str) -> dict:
     """Send the double opt-in confirmation email for the daily judgment digest.
 

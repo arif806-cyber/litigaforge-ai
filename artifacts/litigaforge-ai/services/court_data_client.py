@@ -187,6 +187,46 @@ async def get_case_by_cnr(tracked_case_id: str, cnr: str) -> dict:
     return raw
 
 
+async def get_case_orders(cnr: str) -> list[dict]:
+    """
+    Fetch the list of orders for a case.
+    Returns a list of order dicts (order_id, order_date, order_text / text, etc.).
+    Returns [] on any failure — callers must treat this as a soft error.
+    """
+    try:
+        raw = await _request("GET", f"/case/cnr/{cnr}/orders")
+        orders = raw.get("orders") or raw.get("data") or []
+        if not isinstance(orders, list):
+            return []
+        return orders
+    except Exception as exc:
+        logger.warning("get_case_orders failed for cnr=%s: %s", cnr, exc)
+        return []
+
+
+async def get_order_text(cnr: str, order_id: str) -> str | None:
+    """
+    Fetch the full text for a specific order by its eCourts order_id.
+    Returns the text string, or None if unavailable (e.g. OCR not yet done).
+    Failure is soft — callers should log and retry on the next nightly run.
+    """
+    try:
+        raw = await _request("GET", f"/case/cnr/{cnr}/orders/{order_id}")
+        text = (
+            raw.get("order_text")
+            or raw.get("text")
+            or raw.get("content")
+            or raw.get("order_content")
+            or ""
+        )
+        return text.strip() or None
+    except Exception as exc:
+        logger.warning(
+            "get_order_text failed for cnr=%s order_id=%s: %s", cnr, order_id, exc
+        )
+        return None
+
+
 async def bulk_refresh(cases: list[dict]) -> dict[str, dict]:
     """
     Submit a batch refresh for up to 50 CNRs at a time.
