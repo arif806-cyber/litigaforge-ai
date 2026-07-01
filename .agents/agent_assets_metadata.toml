@@ -89,3 +89,9 @@ id = "z2OEk8IB_EvEw3X7g_3h5"
 uri = "file://litigaforge_user_guide.pdf"
 type = "pdf"
 title = "LitigaForge AI — Complete User Guide"
+
+[[outputs]]
+id = "hqC0yY_GxL1qPjNDILEYP"
+uri = "file://.local/seo-diagnosis-report.md"
+type = "text"
+title = "SEO Diagnosis & Fix Report"
