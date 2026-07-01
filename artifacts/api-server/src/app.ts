@@ -365,11 +365,19 @@ if (true) { // serve frontend in both dev and production when dist exists
       _indexHtml = _raw
         .replace(
           /<title>.*?<\/title>/,
-          "<title>LitigaForge AI \u2014 Global AI Legal Platform | Legal Help Worldwide</title>",
+          "<title>LitigaForge AI \u2014 Global Legal Platform</title>",
         )
         .replace(
           /<meta name="description"[^>]*>/,
-          '<meta name="description" content="LitigaForge AI provides instant AI-powered legal guidance, document analysis, lawyer matching and free legal aid \u2014 available globally in English, Hindi and Telugu. Trusted across India, USA, UK, UAE and worldwide." />',
+          '<meta name="description" content="AI-powered lawyer matching, legal Q&amp;A, document analysis and free legal aid \u2014 available globally across India, US, UK, UAE, Australia and more." />',
+        )
+        .replace(
+          /<meta property="og:image"[^>]*>/,
+          '<meta property="og:image" content="https://litigaforge.com/opengraph.jpg" />',
+        )
+        .replace(
+          /<meta name="twitter:image"[^>]*>/,
+          '<meta name="twitter:image" content="https://litigaforge.com/opengraph.jpg" />',
         );
       logger.info({ path: _frontendDist }, "Frontend dist found — serving with meta injection");
     } catch (err) {
@@ -415,46 +423,46 @@ if (true) { // serve frontend in both dev and production when dist exists
 
     const _ROUTE_SEO: Record<string, RouteSeoEntry> = {
       "/ask": {
-        title: "Free Legal Q&amp;A — Ask AI Legal Questions Instantly | LitigaForge AI",
-        ogTitle: "Free Legal Q&amp;A — Ask AI Legal Questions Instantly",
+        title: "Free Legal Q&amp;A — Instant AI Answers | LitigaForge AI",
+        ogTitle: "Free Legal Q&amp;A — Instant AI Answers",
         description:
-          "Ask any legal question and get an instant, plain-language AI answer grounded in your country's laws. Free legal Q&amp;A across property, family, criminal, consumer and employment law.",
+          "Instant AI answers to legal questions, grounded in your laws. Free Q&amp;A — property, family, criminal, consumer and employment.",
         h1: "Ask a Legal Question — Get an Instant AI Answer",
         intro:
           "Type any legal question and LitigaForge AI gives you a clear, plain-language answer grounded in your jurisdiction's laws — free and instant. Browse a growing knowledge base of answered questions across property, family, criminal, consumer and employment law.",
       },
       "/review": {
-        title: "AI Legal Document Analyzer — Risk Score &amp; Missing Clauses | LitigaForge AI",
-        ogTitle: "AI Legal Document Analyzer — Free Risk Check",
+        title: "AI Document Analyzer — Risk Score | LitigaForge AI",
+        ogTitle: "AI Document Analyzer — Free Risk Check",
         description:
-          "Paste any contract, agreement, FIR or court notice and get an instant AI risk score (0–100), a list of missing clauses, and actionable recommendations. Free document analysis.",
+          "Get an AI risk score (0–100), missing clauses and recommendations for any contract, agreement, FIR or court notice. Free document analysis.",
         h1: "Analyze a Legal Document with AI",
         intro:
           "Upload or paste any legal document — rental agreement, employment contract, FIR, court notice or sale deed — and receive an AI risk score (0–100), a list of missing clauses, and clear recommendations. Free and instant.",
       },
       "/lawyers": {
-        title: "Find &amp; Hire Verified Lawyers — AI Lawyer Matching | LitigaForge AI",
-        ogTitle: "Find Verified Lawyers — AI Lawyer Matching",
+        title: "Verified Lawyers — AI Lawyer Matching | LitigaForge AI",
+        ogTitle: "Verified Lawyers — AI Lawyer Matching",
         description:
-          "Search verified, rated lawyers and get matched with the right advocate for your case. AI lawyer matching with transparent 0–100 match scores and plain-language explanations.",
+          "Verified lawyers matched by AI — 0–100 scores, plain-language explanations. Property, family, criminal, consumer and employment.",
         h1: "Find a Verified Lawyer for Your Case",
         intro:
           "Browse verified, rated advocates or post your case and let LitigaForge AI match you with the right lawyer — each scored 0–100 with a plain-language explanation of why they fit your legal issue, location and budget.",
       },
       "/judgments": {
-        title: "Judgment Finder — Search Case Law &amp; Court Precedents | LitigaForge AI",
+        title: "Judgment Finder — Search Case Law | LitigaForge AI",
         ogTitle: "Judgment Finder — Search Case Law",
         description:
-          "Search court judgments and case law by keyword, court name or case number. LitigaForge AI returns the most relevant precedents with citation links for your jurisdiction.",
+          "Search judgments by keyword, court or case number. Relevant precedents with citation links — free case law research.",
         h1: "Search Judgments &amp; Case Law",
         intro:
           "Find relevant court judgments and precedents by keyword, court name or case number. LitigaForge AI surfaces the most relevant case law with citation links so you can research your matter quickly.",
       },
       "/legal-aid": {
-        title: "Free Legal Aid Finder — Check Eligibility &amp; Helplines | LitigaForge AI",
+        title: "Free Legal Aid Finder — Eligibility &amp; Helplines | LitigaForge AI",
         ogTitle: "Free Legal Aid Finder — Eligibility &amp; Helplines",
         description:
-          "Check your eligibility for free legal aid and find legal aid contacts and toll-free helplines for your region. Legal help for everyone, regardless of income.",
+          "Check eligibility for free legal aid and find contacts and helplines for your region. Legal help for everyone, regardless of income.",
         h1: "Find Free Legal Aid Near You",
         intro:
           "Check whether you qualify for free legal aid and get contact details and toll-free helplines for legal aid services in your region. Everyone deserves legal help, regardless of income.",
@@ -463,16 +471,16 @@ if (true) { // serve frontend in both dev and production when dist exists
         title: "Free Legal Document Templates — AI-Generated | LitigaForge AI",
         ogTitle: "Free Legal Document Templates — AI-Generated",
         description:
-          "Generate free legal documents instantly — rental agreements, legal notices, affidavits, employment letters and NDAs — each customized for your jurisdiction with AI.",
+          "Generate free legal documents instantly — rental agreements, notices, affidavits, employment letters and NDAs, customized for your jurisdiction.",
         h1: "Free Legal Document Templates",
         intro:
           "Generate 10+ legal document templates instantly — rental agreements, legal notices, affidavits, employment letters and NDAs — each AI-generated and customized for your jurisdiction. Free to download, share and print.",
       },
       "/subscription": {
-        title: "Pricing &amp; Plans — Free, Professional &amp; Advocate Pro | LitigaForge AI",
+        title: "LitigaForge AI Plans — Free, Professional &amp; Advocate Pro",
         ogTitle: "LitigaForge AI Pricing &amp; Plans",
         description:
-          "Compare LitigaForge AI plans: free legal tools to start, Professional for unlimited AI and priority lawyer matching, and Advocate Pro for full practice management.",
+          "Compare plans: free legal tools, Professional for unlimited AI and priority matching, Advocate Pro for full lawyer practice management.",
         h1: "Plans &amp; Pricing",
         intro:
           "Start free with legal Q&amp;A, document analysis and judgment search. Upgrade to Professional for unlimited AI and priority lawyer matching, or Advocate Pro for full practice and case management.",
@@ -481,7 +489,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         title: "About LitigaForge AI — Our Mission &amp; Global Legal Platform",
         ogTitle: "About LitigaForge AI",
         description:
-          "Learn about LitigaForge AI — an AI-powered legal platform making legal help affordable and accessible worldwide through lawyer matching, document analysis and free legal aid.",
+          "LitigaForge AI makes legal help affordable worldwide — AI lawyer matching, document analysis, instant Q&amp;A and free legal aid.",
         h1: "About LitigaForge AI",
         intro:
           "LitigaForge AI is on a mission to make legal help affordable and accessible to everyone. We combine AI with verified lawyers to deliver instant guidance, document analysis, case-law search and free legal aid worldwide.",
@@ -496,10 +504,10 @@ if (true) { // serve frontend in both dev and production when dist exists
           "Have a question, partnership idea or support request? Reach out to the LitigaForge AI team and we will get back to you. We are here to help you get the legal support you need.",
       },
       "/digest": {
-        title: "Daily Judgment Digest — Top 5 Judgments by Email | LitigaForge AI",
+        title: "Daily Judgment Digest — Top 5 by Email | LitigaForge AI",
         ogTitle: "Daily Judgment Digest — Free Email",
         description:
-          "Subscribe to the free LitigaForge AI daily digest and get the 5 most important new Supreme Court and High Court judgments in your inbox every morning, each with a plain-language summary.",
+          "Subscribe free — get the 5 most important new judgments in your inbox each morning, each with a plain-language summary.",
         h1: "Get the Top 5 Judgments in Your Inbox Daily",
         intro:
           "Subscribe to the free daily judgment digest and receive the 5 most important new Supreme Court and High Court judgments every morning — each with a concise, plain-language summary and a link to the full analysis.",
@@ -527,7 +535,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         title: "Terms of Service | LitigaForge AI",
         ogTitle: "Terms of Service — LitigaForge AI",
         description:
-          "The terms of service governing your use of LitigaForge AI, including acceptable use, disclaimers, and the limits of the AI-generated legal information we provide.",
+          "Terms governing your use of LitigaForge AI — acceptable use, disclaimers and the limits of AI-generated legal information.",
         h1: "Terms of Service",
         intro:
           "These terms govern your use of LitigaForge AI. They cover acceptable use, important disclaimers, and the limits of the AI-generated legal information provided on this platform.",
@@ -542,10 +550,10 @@ if (true) { // serve frontend in both dev and production when dist exists
           "This page explains how LitigaForge AI handles subscription billing, cancellations and refunds for our Professional and Advocate Pro plans.",
       },
       "/us-demand-letter": {
-        title: "U.S. Demand Letter — Draft &amp; Send in Minutes | LitigaForge AI",
-        ogTitle: "U.S. Demand Letter — Draft &amp; Send in Minutes",
+        title: "U.S. Demand Letter — Draft &amp; Send | LitigaForge AI",
+        ogTitle: "U.S. Demand Letter — Draft &amp; Send",
         description:
-          "Create a professional, state-specific U.S. demand letter for unpaid debts, broken contracts, deposits, or damages. AI-drafted, ready to send. Pay only when you're happy.",
+          "Draft a professional, state-specific U.S. demand letter for unpaid debts, broken contracts or damages. AI-drafted, ready to send.",
         h1: "U.S. Demand Letter",
         intro:
           "Owed money or wronged? Generate a firm, professional, state-specific demand letter that gets results — often resolving disputes before you ever go to court. Preview free, pay only when you're happy.",
