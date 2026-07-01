@@ -1,0 +1,82 @@
+# LitigaForge — Fix SPA Prerendering / SEO Root Cause
+
+## Context (paste this in as-is)
+
+This is a React 19 + Vite + Tailwind SPA (client-side rendered). Right now, EVERY route
+(`/`, `/ask`, `/lawyers`, `/review`, `/judgments`, etc.) returns the exact same raw HTML
+to any crawler, curl request, or social link-preview bot — same `<title>`, same
+`<meta description>`, same `<link rel="canonical" href="https://litigaforge.com/">`.
+This is because content is injected client-side by JavaScript, and nothing distinguishes
+routes at the HTML level before hydration.
+
+Consequences: Google has only indexed 1 page (the homepage) out of 8+ routes. Every
+social share, SEO crawl, and quick technical review of the site sees only the generic
+"Ask a legal question" homepage messaging — not the differentiated features
+(Lawyer Matching, Document Analyzer, Judgment Search).
+
+## Goal
+
+Every route must serve **unique, pre-rendered, crawlable HTML** — unique `<title>`,
+unique `<meta name="description">`, correct self-referencing `<link rel="canonical">`,
+Open Graph tags, and visible (not JS-only) text content in the initial HTML response —
+without breaking the existing React client-side app or requiring a full framework
+migration (no Next.js rewrite — budget and time do not allow it).
+
+## Required approach: build-time prerendering (react-snap)
+
+1. Install `react-snap` as a dev dependency.
+2. Add a `postbuild` script to `package.json` that runs `react-snap` after `vite build`.
+3. Configure `reactSnap` in `package.json` with the full list of routes to crawl:
+   `/`, `/ask`, `/lawyers`, `/review`, `/judgments`, `/pricing`, and any other real routes
+   — get the full route list from `src/App.tsx` or the router config first, don't guess.
+4. Ensure the app's `index.html` mount point is compatible with react-snap's puppeteer-based
+   crawl (i.e., the app must fully render its main content within a few seconds with no
+   required user interaction, for at least the above-the-fold content).
+5. For each route, before build, ensure the React component sets **unique** document head
+   tags using `react-helmet-async` (install if not present):
+   - `<title>` — unique per page, e.g. "Find Verified Lawyers | LitigaForge"
+   - `<meta name="description">` — unique, feature-specific, 150-160 chars
+   - `<link rel="canonical" href="https://litigaforge.com/<route>">` — self-referencing,
+     NOT pointing back to `/`
+   - Open Graph tags (`og:title`, `og:description`, `og:url`, `og:image`) — unique per route
+6. Add JSON-LD structured data (`schema.org/LegalService` or `SoftwareApplication`) to the
+   homepage, and route-appropriate schema (`schema.org/Service`) to `/lawyers`, `/review`,
+   `/judgments`.
+
+## Also required
+
+7. Regenerate `sitemap.xml` dynamically from the actual route list (not hardcoded), and
+   confirm every route in the sitemap returns a 200 with unique content post-prerender.
+8. Verify `robots.txt` allows crawling of all these routes (no accidental disallow rules).
+9. Do NOT remove or break the existing client-side hydration — the prerendered HTML must
+   hydrate cleanly into the same React app for logged-in/interactive use.
+
+## Acceptance criteria (test before calling this done)
+
+Run these and paste the output back to me — don't mark this complete without doing this:
+
+```bash
+curl -s https://litigaforge.com/ | grep -o '<title>.*</title>'
+curl -s https://litigaforge.com/lawyers | grep -o '<title>.*</title>'
+curl -s https://litigaforge.com/ask | grep -o '<title>.*</title>'
+curl -s https://litigaforge.com/review | grep -o '<title>.*</title>'
+```
+
+Each command must return a **different** `<title>` value. If any two are identical, the
+fix is not done.
+
+Also confirm:
+- `curl -s https://litigaforge.com/lawyers | grep canonical` shows
+  `href="https://litigaforge.com/lawyers"`, not `href="https://litigaforge.com/"`
+- Each route's prerendered HTML contains visible text specific to that feature
+  (e.g. `/lawyers` HTML contains the words "verified lawyers" or "lawyer matching"
+  somewhere in the raw, pre-hydration HTML — not just injected by JS after load)
+- `sitemap.xml` lists all real routes with correct URLs
+- Social preview: paste `https://litigaforge.com/lawyers` into
+  https://www.opengraph.xyz/ and confirm it shows lawyer-matching content, not the
+  generic homepage card
+
+## After deploy
+
+Submit each newly-distinguishable URL individually via Google Search Console's URL
+Inspection tool and request indexing, rather than waiting for organic re-crawl.

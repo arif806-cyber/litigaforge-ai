@@ -1144,6 +1144,28 @@ if (true) { // serve frontend in both dev and production when dist exists
         );
     };
 
+    // Per-route SPA meta injection for ALL user agents (not just bots).
+    // Reuses the _routeSeo manifest so every request — curl, unfurlers,
+    // JS-disabled crawlers — gets route-specific title/description/canonical/OG
+    // tags in the initial HTML, not just the cached homepage defaults.
+    const _spaHtmlForPath = (reqPath: string): string => {
+      let bare = _stripCountry(reqPath);
+      if (bare.length > 1) bare = bare.replace(/\/+$/, "");
+      const meta = _routeSeo(bare);
+      if (!meta) return _indexHtml; // homepage or unrecognised path — already correct
+      const canonical = `${_SITE_URL}${meta.canonicalPath}`;
+      const ogUrl = `${_SITE_URL}${bare}`;
+      return _indexHtml
+        .replace(/<title>[^<]*<\/title>/, () => `<title>${meta.title}</title>`)
+        .replace(/<meta name="description"[^>]*>/, () => `<meta name="description" content="${meta.description}"/>`)
+        .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${canonical}"/>`)
+        .replace(/<meta property="og:url"[^>]*>/, () => `<meta property="og:url" content="${ogUrl}"/>`)
+        .replace(/<meta property="og:title"[^>]*>/, () => `<meta property="og:title" content="${meta.ogTitle}"/>`)
+        .replace(/<meta property="og:description"[^>]*>/, () => `<meta property="og:description" content="${meta.description}"/>`)
+        .replace(/<meta name="twitter:title"[^>]*>/, () => `<meta name="twitter:title" content="${meta.ogTitle}"/>`)
+        .replace(/<meta name="twitter:description"[^>]*>/, () => `<meta name="twitter:description" content="${meta.description}"/>`);
+    };
+
     if (_indexHtml) {
       const _sendIndex = (req: express.Request, res: express.Response): void => {
         const ua = req.headers["user-agent"] ?? "";
@@ -1155,7 +1177,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         }
         res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
         res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.send(_indexHtml);
+        res.send(_spaHtmlForPath(req.path));
       };
 
       // Serve static assets (JS, CSS, fonts, images) — index:false so we

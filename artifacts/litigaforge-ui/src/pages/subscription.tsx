@@ -341,7 +341,12 @@ export default function Subscription() {
   const used = user?.cases_this_month ?? 0;
 
   return (<>
-      <SEOHelmet title="Subscription Plans" description="Upgrade to Professional or Advocate Pro plans." canonical="/subscription" />
+      <SEOHelmet
+        title="Pricing Plans — Free & Professional Legal AI | LitigaForge AI"
+        description="Compare LitigaForge AI plans: Free (5 queries/month), Professional (₹999/month, unlimited queries), and Advocate Pro (₹2,499/month, full practice management). Start free today."
+        canonical="/subscription"
+        keywords="litigaforge pricing, legal ai plans, lawyer matching subscription, legal ai free, professional legal help india"
+      />
     <PageShell title="Subscription Plans" subtitle="Choose the plan that fits your practice. Upgrade or downgrade anytime." icon={<Crown className="w-6 h-6 text-primary" />}>
       <div className="space-y-10">
         {user && (
