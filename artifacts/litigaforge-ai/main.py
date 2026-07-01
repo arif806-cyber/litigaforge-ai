@@ -1028,6 +1028,66 @@ async def lifespan(app: FastAPI):
                     )
         except Exception as pe:
             logger.warning("Admin password reset skipped: %s", pe)
+
+        # ── Live Case Intelligence (Phase 1) ──────────────────────────────
+        try:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS tracked_cases (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    cnr             VARCHAR(20) NOT NULL,
+                    case_type       VARCHAR(50),
+                    court_name      TEXT,
+                    added_at        TIMESTAMPTZ DEFAULT now(),
+                    last_refreshed  TIMESTAMPTZ,
+                    is_active       BOOLEAN DEFAULT true,
+                    tier_gated      BOOLEAN DEFAULT true,
+                    UNIQUE(user_id, cnr)
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS case_snapshots (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id) ON DELETE CASCADE,
+                    raw_response    JSONB NOT NULL,
+                    case_status     VARCHAR(50),
+                    next_hearing_date DATE,
+                    order_count     INT DEFAULT 0,
+                    fetched_at      TIMESTAMPTZ DEFAULT now()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_case_snapshots_tc_fetched "
+                "ON case_snapshots (tracked_case_id, fetched_at DESC)"
+            )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS case_events (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id) ON DELETE CASCADE,
+                    event_type      VARCHAR(30) NOT NULL,
+                    summary         TEXT,
+                    detected_at     TIMESTAMPTZ DEFAULT now(),
+                    notified        BOOLEAN DEFAULT false
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_case_events_tc_detected "
+                "ON case_events (tracked_case_id, detected_at DESC)"
+            )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS case_notifications (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    case_event_id   UUID REFERENCES case_events(id) ON DELETE SET NULL,
+                    channel         VARCHAR(20) DEFAULT 'in_app',
+                    sent_at         TIMESTAMPTZ,
+                    status          VARCHAR(20) DEFAULT 'pending'
+                )
+            """)
+            logger.info("court intelligence tables ready")
+        except Exception as _ci_err:
+            logger.warning("court intelligence tables init: %s", _ci_err)
+
     except Exception as e:
         logger.warning("DB init check: %s", e)
     finally:
@@ -1108,6 +1168,36 @@ async def lifespan(app: FastAPI):
         except Exception as _pe2:
             logger.warning("sitemap: search engine ping failed (non-fatal): %s", _pe2)
 
+    # ── Nightly case refresh scheduler ────────────────────────────────────────
+    async def _case_refresh_loop():
+        import asyncio as _aio
+        from datetime import datetime as _dt, timezone as _tz
+        while True:
+            try:
+                now = _dt.now(_tz.utc)
+                # Fire at 02:30 UTC (08:00 IST) every day
+                next_run_h, next_run_m = 2, 30
+                seconds_until = (
+                    ((next_run_h - now.hour) % 24) * 3600
+                    + ((next_run_m - now.minute) % 60) * 60
+                    - now.second
+                )
+                if seconds_until <= 0:
+                    seconds_until += 86400
+                await _aio.sleep(seconds_until)
+                logger.info("court-intel: starting nightly case refresh")
+                from workers.case_refresh_worker import run_refresh
+                summary = await run_refresh()
+                logger.info("court-intel: nightly refresh done: %s", summary)
+            except _aio.CancelledError:
+                break
+            except Exception as _e:
+                logger.exception("court-intel: nightly refresh error: %s", _e)
+                await _aio.sleep(3600)  # back off 1h on error
+
+    _ci_sched = asyncio.ensure_future(_case_refresh_loop())
+    app.state.court_intel_scheduler = _ci_sched
+
     yield
 
     _sched = getattr(app.state, "judgment_scheduler", None)
@@ -1119,6 +1209,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("judgment-ingest: scheduler shutdown error: %s", e)
+    _ci_sched2 = getattr(app.state, "court_intel_scheduler", None)
+    if _ci_sched2 is not None:
+        _ci_sched2.cancel()
+        try:
+            await _ci_sched2
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("court-intel: scheduler shutdown error: %s", e)
     _dsched = getattr(app.state, "digest_scheduler", None)
     if _dsched is not None:
         _dsched.cancel()
@@ -1387,6 +1486,7 @@ from routers import (
     judgments_router, research_router,
     llm_router, workspace_router, personalization_router,
     presence_router, cnr_router,
+    court_intelligence_router,
 )
 from country_router import router as country_router
 
@@ -1415,6 +1515,7 @@ app.include_router(workspace_router,        prefix=BASE_PATH)
 app.include_router(personalization_router,  prefix=BASE_PATH)
 app.include_router(presence_router,         prefix=BASE_PATH)
 app.include_router(cnr_router,              prefix=BASE_PATH)
+app.include_router(court_intelligence_router, prefix=BASE_PATH)
 
 # Static fallback used when sitemap_manager is unavailable
 _STATIC_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>

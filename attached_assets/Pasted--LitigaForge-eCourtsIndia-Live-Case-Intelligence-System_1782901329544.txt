@@ -1,0 +1,288 @@
+# LitigaForge × eCourtsIndia — Live Case Intelligence System
+### Technical Spec & Replit Build Prompt
+
+---
+
+## 1. What we're building
+
+Five connected subsystems, all powered by one data spine (the eCourtsIndia API):
+
+1. **Live Case Intelligence Engine** — tracks CNRs, detects real changes, logs events
+2. **AI Court Companion** — RAG chat grounded in the user's own case orders
+3. **Opponent Intelligence Graph** — litigation profile of the opposing party
+4. **Predictive Timeline** — estimated next-hearing window based on historical pace
+5. **Notification Mesh** — hearing reminders, order alerts, daily digest
+
+Everything downstream (RAG, opponent graph, predictions, notifications) depends on subsystem 1 working correctly. **Build in that order. Do not parallelize phases.**
+
+---
+
+## 2. Database schema
+
+```sql
+-- Master watchlist: one row per case a user is tracking
+CREATE TABLE tracked_cases (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    cnr             VARCHAR(20) NOT NULL,
+    case_type       VARCHAR(50),          -- 'property', 'criminal', 'civil', etc.
+    court_name      TEXT,
+    added_at        TIMESTAMPTZ DEFAULT now(),
+    last_refreshed  TIMESTAMPTZ,
+    is_active       BOOLEAN DEFAULT true,
+    tier_gated      BOOLEAN DEFAULT true, -- true = requires paid LiveTrack tier
+    UNIQUE(user_id, cnr)
+);
+
+-- Full snapshot from every API pull — append-only, never updated in place
+CREATE TABLE case_snapshots (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id),
+    raw_response    JSONB NOT NULL,       -- full API payload, unmodified
+    case_status     VARCHAR(50),
+    next_hearing_date DATE,
+    order_count     INT,
+    fetched_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- Classified diffs between consecutive snapshots — this is what the UI reads
+CREATE TABLE case_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id),
+    event_type      VARCHAR(30) NOT NULL, -- 'hearing_adjourned' | 'order_passed' |
+                                           -- 'case_disposed' | 'court_transferred' |
+                                           -- 'next_date_fixed'
+    summary         TEXT,                 -- human-readable, AI-generated
+    detected_at     TIMESTAMPTZ DEFAULT now(),
+    notified        BOOLEAN DEFAULT false
+);
+
+-- Order text + embeddings for the AI Court Companion (RAG)
+CREATE TABLE case_order_embeddings (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id),
+    order_date      DATE,
+    order_text      TEXT,
+    embedding       VECTOR(1536),         -- pgvector
+    created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- Opposing-party litigation profiles
+CREATE TABLE opponent_profiles (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tracked_case_id UUID NOT NULL REFERENCES tracked_cases(id),
+    opponent_name   TEXT NOT NULL,
+    total_cases_found INT,
+    profile_json    JSONB,                -- courts, case types, adjournment rate
+    last_built_at   TIMESTAMPTZ,
+    UNIQUE(tracked_case_id, opponent_name)
+);
+
+-- Notification queue
+CREATE TABLE case_notifications (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    case_event_id   UUID REFERENCES case_events(id),
+    channel         VARCHAR(20),          -- 'in_app' | 'email' | 'push'
+    sent_at         TIMESTAMPTZ,
+    status          VARCHAR(20) DEFAULT 'pending'
+);
+```
+
+---
+
+## 3. `CourtDataClient` — backend service wrapper
+
+Single responsibility: talk to eCourtsIndia, nothing else. No business logic here.
+
+```
+services/court_data_client.py
+├── get_case_by_cnr(cnr) -> dict
+├── bulk_refresh(cnr_list: list[str]) -> dict   # async job, batches of 50
+├── search_litigant(name, court=None) -> list   # for Opponent Intelligence
+├── get_cause_list(court_id, date) -> list
+└── get_order_text(cnr, order_id) -> str
+```
+
+Requirements:
+- Bearer token from environment variable `ECOURTSINDIA_API_KEY`, never hardcoded
+- Rate limiter: max 100 req/min, 3000/hr, 50000/day — use a token-bucket wrapper, log when throttled
+- Every response written to `case_snapshots` as raw JSON **before** any parsing — raw data is the source of truth, parsing bugs shouldn't lose data
+- Retry with exponential backoff (3 attempts) on 5xx or timeout; do not retry on 4xx
+- Bulk-refresh is async on eCourtsIndia's side — poll for completion, don't assume synchronous return
+
+---
+
+## 4. Nightly worker — diff engine
+
+Runs once nightly (cron on Railway), plus on-demand when a user adds a new CNR.
+
+```
+workers/case_refresh_worker.py
+
+1. Fetch all tracked_cases where is_active = true
+2. Batch into groups of 50, call bulk_refresh()
+3. For each returned case:
+   a. Insert new row into case_snapshots
+   b. Fetch the previous snapshot for that tracked_case_id
+   c. Diff the two:
+      - case_status changed?        -> event: case_disposed (if new status = disposed)
+      - next_hearing_date changed?  -> event: hearing_adjourned OR next_date_fixed
+      - order_count increased?      -> event: order_passed
+                                        -> trigger get_order_text() + embed into
+                                           case_order_embeddings
+      - court_name changed?         -> event: court_transferred
+   d. Write classified event(s) to case_events
+   e. Queue case_notifications for the user (channel = in_app + email)
+4. Update tracked_cases.last_refreshed
+```
+
+No diff = no event = no notification. This is the single most important rule — it's what makes this a "changed something" feed instead of a noisy daily reminder people learn to ignore.
+
+---
+
+## 5. AI Court Companion (RAG)
+
+```
+1. On order_passed event -> get_order_text() -> chunk -> embed -> store in
+   case_order_embeddings (reuse existing LiteLLM embedding call)
+2. On user query ("what happened in my last hearing?"):
+   a. Embed the query
+   b. Vector search case_order_embeddings scoped to tracked_case_id
+      (never cross-user, never cross-case)
+   c. Pass top-k chunks + query to the existing LiteLLM cascade
+   d. Return grounded answer, cite the order date
+```
+
+This reuses the existing multi-model cascade — only new pieces are the embedding step and the scoped retrieval.
+
+---
+
+## 6. Opponent Intelligence Graph
+
+```
+1. Triggered manually ("Run Opponent Intelligence") or on case add
+2. search_litigant(opponent_name) -> list of their other cases
+3. Aggregate: total case count, courts appeared in, case type breakdown,
+   rough adjournment rate (adjournments / total hearings across their cases)
+4. Store as opponent_profiles.profile_json
+5. Rebuild on demand only (not nightly — this is expensive and low-urgency)
+```
+
+---
+
+## 7. Predictive Timeline
+
+Simple heuristic, not ML — do not overbuild this in v1:
+
+```
+avg_interval_days = median(days between consecutive hearing dates)
+                     grouped by case_type + court_name,
+                     computed across all tracked_cases with 3+ snapshots
+
+predicted_next_hearing = last_hearing_date + avg_interval_days
+```
+
+Display as: *"Cases like this typically move again in ~34 days"* — never as a guarantee.
+
+---
+
+## 8. API endpoints (FastAPI, new router `court_intelligence.py`)
+
+```
+POST   /api/cases/track              { cnr, case_type }        -> add to watchlist
+GET    /api/cases/{id}/timeline      -> snapshots + events, newest first
+GET    /api/cases/{id}/events        -> classified events only
+POST   /api/cases/{id}/ask           { question }               -> RAG answer
+POST   /api/cases/{id}/opponent-scan -> triggers opponent profile build
+GET    /api/cases/{id}/opponent      -> returns opponent_profiles
+GET    /api/cases/{id}/prediction    -> predicted next hearing
+DELETE /api/cases/{id}                -> stop tracking
+```
+
+All routes check `tracked_cases.tier_gated` against the user's subscription before returning anything beyond basic status — free tier gets case status only, paid "LiveTrack" tier unlocks events, RAG, opponent intelligence, and predictions.
+
+---
+
+## 9. Phased build order
+
+**Phase 1 (MVP — build this first, nothing else):**
+Schema + `CourtDataClient` + nightly worker + diff engine + `/track`, `/timeline`, `/events` endpoints + basic in-app notification. No RAG, no opponent intelligence, no predictions yet.
+
+**Phase 2:** AI Court Companion (RAG) + email notifications.
+
+**Phase 3:** Opponent Intelligence Graph + Predictive Timeline + paid tier gating.
+
+Do not start Phase 2 until Phase 1's diff engine is producing correct, deduplicated events for at least 3 real tracked cases.
+
+---
+
+## 10. Replit Agent prompt — paste this exactly
+
+```
+I'm adding a Live Case Intelligence system to LitigaForge, built on top of the
+eCourtsIndia API (API key already added to Replit Secrets as
+ECOURTSINDIA_API_KEY). Build ONLY Phase 1 in this pass — do not build the AI
+Court Companion, Opponent Intelligence, or Predictive Timeline yet.
+
+Phase 1 scope:
+
+1. Create these Postgres tables exactly as specified (use my existing asyncpg
+   setup): tracked_cases, case_snapshots, case_events. Use UUID primary keys
+   and timestamptz columns as shown below.
+
+[paste the tracked_cases, case_snapshots, case_events table definitions from
+section 2 above]
+
+2. Create services/court_data_client.py — a class that wraps the
+   eCourtsIndia API with these methods: get_case_by_cnr(cnr),
+   bulk_refresh(cnr_list). Requirements:
+   - Read the API key from ECOURTSINDIA_API_KEY env var, never hardcode it
+   - Rate limit to 100 requests/minute using a token-bucket approach, and log
+     a warning when a request is throttled
+   - Retry up to 3 times with exponential backoff on 5xx errors or timeouts;
+     do NOT retry on 4xx errors
+   - Always write the raw JSON response to case_snapshots BEFORE parsing
+     anything out of it
+
+3. Create workers/case_refresh_worker.py as a scheduled job (nightly, plus
+   callable on-demand) that:
+   - Fetches all tracked_cases where is_active = true
+   - Calls bulk_refresh() in batches of 50 CNRs
+   - For each case, compares the new snapshot to the immediately previous
+     one for that tracked_case_id and classifies exactly one of these event
+     types if something changed: hearing_adjourned, order_passed,
+     case_disposed, court_transferred, next_date_fixed
+   - If nothing changed between snapshots, write NO event row — this is
+     important, do not create duplicate or empty events
+   - Writes classified events to case_events
+
+4. Create a new FastAPI router at routes/court_intelligence.py with these
+   endpoints only:
+   - POST /api/cases/track — body: { cnr, case_type }, adds a row to
+     tracked_cases for the authenticated user, and immediately triggers one
+     refresh for that CNR so the user isn't staring at empty data
+   - GET /api/cases/{id}/timeline — returns snapshots and events for that
+     tracked case, newest first, only if it belongs to the authenticated user
+   - GET /api/cases/{id}/events — returns classified events only
+   - DELETE /api/cases/{id} — sets is_active = false, does not hard-delete
+
+5. Do not touch any existing routes, tables, or the current Judgment Finder
+   / Indian Kanoon integration — this is additive, not a replacement.
+
+6. Do not build any frontend UI yet in this pass — backend and worker only.
+   I'll handle the frontend separately once this is verified working.
+
+After building, show me: the exact curl command to test POST
+/api/cases/track with a sample CNR, and confirm the nightly worker can be
+triggered manually for testing without waiting for the cron schedule.
+```
+
+---
+
+## 11. What to check before moving to Phase 2
+
+- [ ] A test CNR added via `/track` produces a row in `case_snapshots` within seconds
+- [ ] Running the worker twice in a row with no real-world change produces **zero** new `case_events` rows (this is the check that catches a broken diff engine)
+- [ ] Manually causing a change (or waiting for a real hearing date to pass) produces exactly one correctly-classified event, not duplicates
+- [ ] Rate limiter actually throttles — test by tracking 60+ cases and confirming refresh doesn't exceed 100 req/min
