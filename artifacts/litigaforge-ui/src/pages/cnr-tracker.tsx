@@ -286,6 +286,21 @@ function TrackedCaseCard({ tc }: { tc: any }) {
       className="rounded-2xl overflow-hidden"
       style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.07)" }}>
 
+      {/* Demo data banner */}
+      {tc.data_source?.toLowerCase().includes("demo") && (
+        <div className="px-4 pt-3">
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] text-amber-400/80"
+            style={{ background: "rgba(245,183,84,0.08)", border: "1px solid rgba(245,183,84,0.15)" }}>
+            <AlertTriangle className="w-3 h-3 shrink-0 text-amber-400" />
+            <span>Live eCourts data unavailable — illustrative data shown. Visit{" "}
+              <a href="https://ecourts.gov.in" target="_blank" rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-amber-300">ecourts.gov.in</a>{" "}
+              for real-time status.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Header row */}
       <div className="px-5 py-4">
         <div className="flex items-start gap-3">

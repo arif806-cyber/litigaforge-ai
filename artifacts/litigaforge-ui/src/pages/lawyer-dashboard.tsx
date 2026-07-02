@@ -18,6 +18,7 @@ import { LAWYER_DASHBOARD_COPY } from "@/lib/country-copy";
 import { formatDate, caseTerms } from "@/lib/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import IncomingCaseFeed, { type CaseFeedItem } from "@/components/lawyer/IncomingCaseFeed";
+import { useToast } from "@/hooks/use-toast";
 
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
@@ -219,7 +220,7 @@ export default function LawyerDashboard() {
   const [showFolder, setShowFolder] = useState(false);
   const [editingNotesDocId, setEditingNotesDocId] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
-  const [notesSaveError, setNotesSaveError] = useState("");
+  const { toast } = useToast();
 
 
   // ── Verification polling ──
@@ -306,7 +307,7 @@ export default function LawyerDashboard() {
       setNoteDraft("");
     },
     onError: (e: any) => {
-      setNotesSaveError(e?.detail ?? e?.message ?? "Failed to save notes. Please try again.");
+      toast({ title: "Save failed", description: e?.detail ?? e?.message ?? "Failed to save notes. Please try again.", variant: "destructive" });
     },
   });
 
@@ -1188,18 +1189,13 @@ export default function LawyerDashboard() {
                               className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-amber-400 resize-none transition-colors"
                               style={{ borderColor: "hsl(var(--border))" }} />
                             <div className="flex gap-2 items-center flex-wrap">
-                              <button onClick={() => { setNotesSaveError(""); saveNotesMut.mutate({ docId: d.id, notes: noteDraft }); }}
+                              <button onClick={() => saveNotesMut.mutate({ docId: d.id, notes: noteDraft })}
                                 disabled={saveNotesMut.isPending}
                                 className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-60">
                                 <Check className="w-3 h-3" /> Save
                               </button>
-                              <button onClick={() => { setEditingNotesDocId(null); setNoteDraft(""); setNotesSaveError(""); }}
+                              <button onClick={() => { setEditingNotesDocId(null); setNoteDraft(""); }}
                                 className="text-xs text-muted-foreground hover:text-muted-foreground px-2 py-1.5 transition-colors">Cancel</button>
-                              {notesSaveError && (
-                                <span className="text-xs text-red-400 flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 shrink-0" />{notesSaveError}
-                                </span>
-                              )}
                             </div>
                           </div>
                         )}

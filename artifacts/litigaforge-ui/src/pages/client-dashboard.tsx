@@ -21,6 +21,7 @@ import { ScoreRing } from "@/components/case-file-os";
 import CaseProgressRail from "@/components/CaseProgressRail";
 import { LawyerMatchCard } from "@/components/LawyerMatchCard";
 import { useLawyerPresence } from "@/hooks/useLawyerPresence";
+import { useToast } from "@/hooks/use-toast";
 
 interface MyRequirement {
   id: number; title: string; case_type: string; description: string;
@@ -144,10 +145,9 @@ export default function ClientDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [caseDocs, setCaseDocs] = useState<any[]>([]);
   const [docUploading, setDocUploading] = useState(false);
-  const [docOpError, setDocOpError] = useState("");
+  const { toast } = useToast();
 
   useEffect(() => {
-    setDocOpError("");
     if (!showCaseDetail) { setCaseDocs([]); return; }
     apiFetch(`/client/cases/${showCaseDetail.id}/documents`)
       .then((res: any) => setCaseDocs(res.documents || []))
@@ -839,7 +839,7 @@ export default function ClientDashboard() {
                         const data = await res.json();
                         setCaseDocs(prev => [data.document, ...prev]);
                       } catch (err) {
-                        setDocOpError(err instanceof Error ? err.message : "Upload failed");
+                        toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Could not upload document. Please try again.", variant: "destructive" });
                       } finally {
                         setDocUploading(false);
                         e.target.value = "";
@@ -848,13 +848,6 @@ export default function ClientDashboard() {
                   />
                 </label>
               </div>
-              {docOpError && (
-                <div className="flex items-center gap-1.5 text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5 mb-2">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span className="flex-1">{docOpError}</span>
-                  <button onClick={() => setDocOpError("")} className="ml-1 hover:text-red-300">✕</button>
-                </div>
-              )}
               {caseDocs.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground text-center py-3">No documents yet. Upload case files here.</p>
               ) : (
@@ -887,7 +880,7 @@ export default function ClientDashboard() {
                           try {
                             await apiFetch(`/client/documents/${doc.id}`, { method: "DELETE" });
                             setCaseDocs(prev => prev.filter(d => d.id !== doc.id));
-                          } catch { setDocOpError("Failed to delete document"); }
+                          } catch { toast({ title: "Delete failed", description: "Could not delete document. Please try again.", variant: "destructive" }); }
                         }} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

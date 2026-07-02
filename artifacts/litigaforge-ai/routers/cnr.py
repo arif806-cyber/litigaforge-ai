@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from rate_limit import limiter
 from sanitizer import sanitize_text
+from services import court_data_client
 
 logger = logging.getLogger("litigaforge.cnr")
 router = APIRouter(tags=["cnr"])
@@ -230,6 +231,61 @@ def _make_mock(cnr: str) -> CnrLookupResponse:
     )
 
 
+# ── Live API helper ───────────────────────────────────────────────────────────
+
+async def _fetch_live_cnr(cnr: str) -> Optional[CnrLookupResponse]:
+    """
+    Attempt a live eCourtsIndia lookup via court_data_client.
+    Returns a populated CnrLookupResponse on success, or None when the API key
+    is absent or the upstream call fails — callers fall back to _make_mock().
+    """
+    if not court_data_client._KEY_POOL:
+        return None
+    try:
+        raw = await court_data_client.lookup_cnr(cnr)
+        hearings_raw = raw.get("hearings") or raw.get("case_hearings") or []
+        hearings = [
+            HearingEntry(
+                date=str(h.get("hearing_date") or h.get("date") or ""),
+                purpose=str(h.get("purpose") or h.get("business") or "Hearing"),
+                judge=str(h.get("judge") or h.get("judge_name") or ""),
+                result=h.get("result") or h.get("order_passed"),
+                next_date=h.get("next_date") or h.get("next_hearing_date"),
+            )
+            for h in hearings_raw if isinstance(h, dict)
+        ]
+        return CnrLookupResponse(
+            cnr=cnr,
+            case_number=raw.get("case_number") or raw.get("caseNumber") or cnr,
+            case_type=raw.get("case_type") or raw.get("caseType") or "Unknown",
+            filing_date=str(raw.get("filing_date") or raw.get("filingDate") or ""),
+            registration_date=str(raw.get("registration_date") or raw.get("registrationDate") or ""),
+            court=raw.get("court_name") or raw.get("courtName") or raw.get("court") or "",
+            district=raw.get("district") or "",
+            state=raw.get("state") or "",
+            judge=raw.get("judge_name") or raw.get("judge") or "",
+            status=raw.get("case_status") or raw.get("status") or "pending",
+            stage=raw.get("case_stage") or raw.get("stage") or "",
+            petitioner=raw.get("petitioner_name") or raw.get("petitioner") or "",
+            respondent=raw.get("respondent_name") or raw.get("respondent") or "",
+            advocate_petitioner=raw.get("advocate_petitioner"),
+            advocate_respondent=raw.get("advocate_respondent"),
+            subject=raw.get("subject") or raw.get("under_act") or "",
+            under_act=raw.get("under_act") or raw.get("act"),
+            under_section=raw.get("under_section") or raw.get("section"),
+            hearings=hearings,
+            next_hearing=raw.get("next_hearing_date") or raw.get("nextHearingDate"),
+            last_updated=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            data_source="eCourts India (live)",
+            disclaimer="",
+        )
+    except Exception as exc:
+        logger.warning(
+            "Live CNR lookup failed for %s: %s — falling back to demo data", cnr, exc
+        )
+        return None
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 class CnrLookupRequest(BaseModel):
@@ -242,30 +298,18 @@ async def cnr_lookup(request: Request, body: CnrLookupRequest):
     """
     Look up an Indian eCourts CNR (Case Number Record).
 
-    Live eCourts API integration requires institutional credentials (CAPTCHA-gated).
-    Returns 503 until a valid API key is configured.
+    Attempts a live eCourtsIndia API call when ECOURTSINDIA_API_KEY is configured.
+    Falls back to clearly-labelled demo data on upstream failure or absent key.
     """
-    _validate_cnr(sanitize_text(body.cnr))
-    raise HTTPException(
-        status_code=503,
-        detail=(
-            "Live eCourts data is not available. "
-            "The official eCourts API requires institutional credentials. "
-            "Visit ecourts.gov.in or the eCourts Services app for real-time case status."
-        ),
-    )
+    cleaned = _validate_cnr(sanitize_text(body.cnr))
+    live = await _fetch_live_cnr(cleaned)
+    return live if live is not None else _make_mock(cleaned)
 
 
 @router.get("/cnr/lookup/{cnr}", response_model=CnrLookupResponse)
 @limiter.limit("30/minute")
 async def cnr_lookup_get(cnr: str, request: Request):
-    """GET variant for shareable links — returns 503 until live API is wired."""
-    _validate_cnr(sanitize_text(cnr))
-    raise HTTPException(
-        status_code=503,
-        detail=(
-            "Live eCourts data is not available. "
-            "The official eCourts API requires institutional credentials. "
-            "Visit ecourts.gov.in or the eCourts Services app for real-time case status."
-        ),
-    )
+    """GET variant for shareable links — live data when key present, demo data as fallback."""
+    cleaned = _validate_cnr(sanitize_text(cnr))
+    live = await _fetch_live_cnr(cleaned)
+    return live if live is not None else _make_mock(cleaned)

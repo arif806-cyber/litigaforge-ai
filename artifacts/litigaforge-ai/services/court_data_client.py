@@ -299,3 +299,13 @@ async def _poll_bulk_job(job_id: str, max_polls: int = 20, interval: int = 5) ->
         logger.debug("Bulk job %s still %s (poll %d/%d)", job_id, status, poll + 1, max_polls)
     logger.warning("Bulk job %s did not complete after %d polls", job_id, max_polls)
     return []
+
+
+async def lookup_cnr(cnr: str) -> dict:
+    """
+    Direct CNR lookup — returns raw eCourtsIndia payload without persisting a snapshot.
+    Use this for on-demand queries (e.g. the /cnr/lookup REST endpoint) where there is
+    no associated tracked_case_id.  Raises on any network / auth / upstream error so
+    callers can fall back to demo data.
+    """
+    return await _request("GET", f"/case/cnr/{cnr}")
