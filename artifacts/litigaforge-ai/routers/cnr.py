@@ -242,19 +242,30 @@ async def cnr_lookup(request: Request, body: CnrLookupRequest):
     """
     Look up an Indian eCourts CNR (Case Number Record).
 
-    Returns case details, parties, and full hearing history including
-    upcoming hearing dates. Currently returns realistic demo data matching
-    the eCourts response schema; wire up the official eCourts REST API
-    credentials to activate live data.
+    Live eCourts API integration requires institutional credentials (CAPTCHA-gated).
+    Returns 503 until a valid API key is configured.
     """
-    cleaned = _validate_cnr(sanitize_text(body.cnr))
-    result = _make_mock(cleaned)
-    return result
+    _validate_cnr(sanitize_text(body.cnr))
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "Live eCourts data is not available. "
+            "The official eCourts API requires institutional credentials. "
+            "Visit ecourts.gov.in or the eCourts Services app for real-time case status."
+        ),
+    )
 
 
 @router.get("/cnr/lookup/{cnr}", response_model=CnrLookupResponse)
 @limiter.limit("30/minute")
 async def cnr_lookup_get(cnr: str, request: Request):
-    """GET variant for shareable links like /cnr/lookup/TLHC010012342023"""
-    cleaned = _validate_cnr(sanitize_text(cnr))
-    return _make_mock(cleaned)
+    """GET variant for shareable links — returns 503 until live API is wired."""
+    _validate_cnr(sanitize_text(cnr))
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "Live eCourts data is not available. "
+            "The official eCourts API requires institutional credentials. "
+            "Visit ecourts.gov.in or the eCourts Services app for real-time case status."
+        ),
+    )

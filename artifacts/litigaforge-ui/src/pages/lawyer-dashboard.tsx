@@ -219,6 +219,7 @@ export default function LawyerDashboard() {
   const [showFolder, setShowFolder] = useState(false);
   const [editingNotesDocId, setEditingNotesDocId] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [notesSaveError, setNotesSaveError] = useState("");
 
 
   // ── Verification polling ──
@@ -229,7 +230,7 @@ export default function LawyerDashboard() {
   }, [user?.role, user?.is_verified, refreshUser]);
 
   // ── Queries ──
-  const { data: lawyerCases } = useQuery({
+  const { data: lawyerCases, isLoading: casesLoading, isError: casesError } = useQuery({
     queryKey: ["lawyer-cases"],
     queryFn: () => apiFetch("/lawyer/cases"),
     enabled: !!user,
@@ -237,7 +238,7 @@ export default function LawyerDashboard() {
     retry: 1,
   });
 
-  const { data: lawyerDocs } = useQuery({
+  const { data: lawyerDocs, isLoading: docsLoading, isError: docsError } = useQuery({
     queryKey: ["lawyer-documents"],
     queryFn: () => apiFetch("/lawyer/documents"),
     enabled: !!user,
@@ -245,7 +246,7 @@ export default function LawyerDashboard() {
     retry: 1,
   });
 
-  const { data: matchData } = useQuery({
+  const { data: matchData, isLoading: matchLoading, isError: matchError } = useQuery({
     queryKey: ["lawyer-matches"],
     queryFn: () => apiFetch("/matches/lawyer"),
     enabled: !!user,
@@ -303,6 +304,9 @@ export default function LawyerDashboard() {
       qc.invalidateQueries({ queryKey: ["lawyer-documents"] });
       setEditingNotesDocId(null);
       setNoteDraft("");
+    },
+    onError: (e: any) => {
+      setNotesSaveError(e?.detail ?? e?.message ?? "Failed to save notes. Please try again.");
     },
   });
 
@@ -664,8 +668,23 @@ export default function LawyerDashboard() {
         {activeSection === "overview" && (
           <div className="space-y-6">
             {/* Stat cards */}
+            {(casesError || matchError) && (
+              <div className="flex items-center gap-2 text-xs text-red-400 rounded-lg px-3 py-2"
+                style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                Some data could not be loaded — showing cached results.
+              </div>
+            )}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((s) => <StatCard key={s.label} {...s} />)}
+              {(casesLoading || matchLoading)
+                ? stats.map((s) => (
+                    <div key={s.label} className="rounded-xl bg-card p-4 shadow-sm overflow-hidden relative animate-pulse"
+                      style={{ border: `1px solid ${s.borderColor}` }}>
+                      <div className="h-8 w-12 bg-muted rounded mb-2" />
+                      <div className="h-3 w-20 bg-muted rounded" />
+                    </div>
+                  ))
+                : stats.map((s) => <StatCard key={s.label} {...s} />)}
             </div>
 
             {/* Two-column body */}
@@ -708,7 +727,16 @@ export default function LawyerDashboard() {
                     </div>
                   </div>
                   <div className="px-5 pb-2 space-y-3">
-                    {visibleMatches.length === 0 ? (
+                    {matchLoading ? (
+                      <div className="py-10 flex justify-center">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+                      </div>
+                    ) : matchError ? (
+                      <div className="rounded-xl py-8 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
+                        <AlertTriangle className="w-6 h-6 text-red-400/60 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Could not load match proposals</p>
+                      </div>
+                    ) : visibleMatches.length === 0 ? (
                       <div className="rounded-xl py-10 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
                         <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">No {matchTab} proposals right now</p>
@@ -1159,14 +1187,19 @@ export default function LawyerDashboard() {
                               placeholder="Add case notes, strategy reminders..."
                               className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-amber-400 resize-none transition-colors"
                               style={{ borderColor: "hsl(var(--border))" }} />
-                            <div className="flex gap-2">
-                              <button onClick={() => saveNotesMut.mutate({ docId: d.id, notes: noteDraft })}
+                            <div className="flex gap-2 items-center flex-wrap">
+                              <button onClick={() => { setNotesSaveError(""); saveNotesMut.mutate({ docId: d.id, notes: noteDraft }); }}
                                 disabled={saveNotesMut.isPending}
                                 className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-60">
                                 <Check className="w-3 h-3" /> Save
                               </button>
-                              <button onClick={() => { setEditingNotesDocId(null); setNoteDraft(""); }}
+                              <button onClick={() => { setEditingNotesDocId(null); setNoteDraft(""); setNotesSaveError(""); }}
                                 className="text-xs text-muted-foreground hover:text-muted-foreground px-2 py-1.5 transition-colors">Cancel</button>
+                              {notesSaveError && (
+                                <span className="text-xs text-red-400 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 shrink-0" />{notesSaveError}
+                                </span>
+                              )}
                             </div>
                           </div>
                         )}

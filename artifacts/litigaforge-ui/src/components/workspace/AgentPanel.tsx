@@ -189,7 +189,9 @@ function AgentCard({
   const [askText,       setAskText]       = useState("");
   const [invoiceOpen,   setInvoiceOpen]   = useState(false);
   const [pdfLoading,    setPdfLoading]    = useState(false);
+  const [pdfError,      setPdfError]      = useState("");
   const [invLoading,    setInvLoading]    = useState(false);
+  const [invError,      setInvError]      = useState("");
   const [invClient,     setInvClient]     = useState("");
   const [invLawyer,     setInvLawyer]     = useState("");
   const [invFirm,       setInvFirm]       = useState("");
@@ -240,7 +242,7 @@ function AgentCard({
       const a    = document.createElement("a");
       a.href = url; a.download = "LitigaForge_Package.pdf"; a.click();
       URL.revokeObjectURL(url);
-    } catch { /* silent — server errors logged backend-side */ }
+    } catch (e: any) { setPdfError(e?.message ?? "PDF export failed — please try again."); }
     finally { setPdfLoading(false); }
   }
 
@@ -274,7 +276,7 @@ function AgentCard({
       a.href = url; a.download = `LitigaForge_Invoice_${safe}.pdf`; a.click();
       URL.revokeObjectURL(url);
       setInvoiceOpen(false);
-    } catch { /* silent */ }
+    } catch (e: any) { setInvError(e?.message ?? "Invoice generation failed — please try again."); }
     finally { setInvLoading(false); }
   }
 
@@ -557,6 +559,12 @@ function AgentCard({
               {pdfLoading ? "⟳" : "📄 PDF"}
             </button>
           )}
+          {pdfError && (
+            <span style={{ fontSize: 9, color: "#f87171", display: "flex", alignItems: "center", gap: 3 }}>
+              ⚠ {pdfError}
+              <button onClick={() => setPdfError("")} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 9, padding: 0 }}>✕</button>
+            </span>
+          )}
 
           {/* Invoice PDF button — drafting agent, requires sessionId */}
           {def.id === "drafting" && state.text && sessionId && (
@@ -721,6 +729,12 @@ function AgentCard({
                 >
                   {invLoading ? "⟳ Generating…" : "📥 Download Invoice PDF"}
                 </button>
+                {invError && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9.5, color: "#f87171", marginTop: 4 }}>
+                    <span>⚠ {invError}</span>
+                    <button onClick={() => setInvError("")} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 9, padding: 0 }}>✕</button>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
