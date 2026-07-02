@@ -64,5 +64,7 @@ ADMIN_EMAILS = "arif.806@gmail.com"
 SMTP_USER = "arif.806@gmail.com"
 INDEXNOW_KEY = "5a4662dfa9b58713797b87f6d724876f"
 
+[userenv.development]
+
 [nix]
 channel = "stable-25_05"

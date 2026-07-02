@@ -1152,6 +1152,26 @@ async def lifespan(app: FastAPI):
     from digest import start_scheduler as _start_digest_scheduler
     app.state.digest_scheduler = _start_digest_scheduler()
 
+    # ── ForgeOS (multi-agent orchestration subsystem) — fully gated ──────────
+    # Inert unless FORGEOS_ENABLED is set: no tables, no seed data, no
+    # scheduler when the flag is off/unset (default), so this never touches
+    # existing functionality.
+    from forgeos.config import FORGEOS_ENABLED as _FORGEOS_ENABLED
+    app.state.forgeos_scheduler = None
+    if _FORGEOS_ENABLED:
+        try:
+            from forgeos.schema import init_forgeos_tables
+            from forgeos.seed import seed_agents
+            await init_forgeos_tables()
+            await seed_agents()
+            from forgeos.scheduler import start_scheduler as _start_forgeos_scheduler
+            app.state.forgeos_scheduler = _start_forgeos_scheduler()
+            logger.info("forgeos: subsystem enabled — tables ready, agents seeded, scheduler started")
+        except Exception as _fe:
+            logger.error("forgeos: startup failed: %s", _fe, exc_info=True)
+    else:
+        logger.info("forgeos: FORGEOS_ENABLED not set — subsystem disabled (inert)")
+
     # Bot prerender cache — attempt Playwright-based SPA snapshots at startup;
     # fall back to synthetic structured-data HTML if Playwright is not installed
     # or the frontend is not yet available.  Gracefully disabled if the seo/
@@ -1298,6 +1318,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("digest: scheduler shutdown error: %s", e)
+    _forgeos_sched = getattr(app.state, "forgeos_scheduler", None)
+    if _forgeos_sched is not None:
+        _forgeos_sched.cancel()
+        try:
+            await _forgeos_sched
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("forgeos: scheduler shutdown error: %s", e)
     await close_pool()
 
 
@@ -1561,6 +1590,13 @@ from routers import (
 )
 from country_router import router as country_router
 
+# ForgeOS router is imported ONLY when FORGEOS_ENABLED is set — keeps the
+# subsystem fully inert (no import, no routes) when disabled/unset.
+from forgeos.config import FORGEOS_ENABLED as _FORGEOS_ROUTER_ENABLED
+forgeos_router = None
+if _FORGEOS_ROUTER_ENABLED:
+    from forgeos.router import router as forgeos_router
+
 @app.get(f"{BASE_PATH}/healthz", tags=["health"])
 async def healthz():
     return {"status": "ok", "service": "litigaforge-ai"}
@@ -1587,6 +1623,8 @@ app.include_router(personalization_router,  prefix=BASE_PATH)
 app.include_router(presence_router,         prefix=BASE_PATH)
 app.include_router(cnr_router,              prefix=BASE_PATH)
 app.include_router(court_intelligence_router, prefix=BASE_PATH)
+if forgeos_router is not None:
+    app.include_router(forgeos_router, prefix=BASE_PATH)
 
 # Static fallback used when sitemap_manager is unavailable
 _STATIC_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>

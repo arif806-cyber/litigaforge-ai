@@ -78,6 +78,7 @@ Components/utils:
 - `routers/` — `auth`, `subscription` (Razorpay), `matching`, `chat`, `community` (Q&A, analyzer, judgment finder, directory, legal aid), `watch`, `alerts` (WhatsApp/reminders), `admin` (lawyer verification, user mgmt), `lawyer` (lawyer + client case CRUD), `judgments`
 - `database.py` — asyncpg pool (fetch/fetchrow/execute/executemany)
 - `auth.py` — bcrypt + JWT (cookie-first, Bearer fallback); `payments.py` — Razorpay; `rate_limit.py` — slowapi; `ai_brain.py` — multi-AI cascade; `alerts/whatsapp.py` — Twilio
+- `forgeos/` — **ForgeOS**: modular multi-agent orchestration subsystem, fully gated by `FORGEOS_ENABLED` (default off/inert — no tables, routes, or scheduler when unset). See "ForgeOS subsystem" below.
 
 ## Database schema (PostgreSQL)
 
@@ -140,6 +141,22 @@ Components/utils:
 | `GET /chat/threads` / `POST /chat/threads` | Bearer | List / create chat threads |
 | `GET /chat/messages/{id}` / `POST /chat/messages/{id}` | Bearer | Get / send thread messages |
 
+### ForgeOS (multi-agent orchestration — `FORGEOS_ENABLED` only)
+
+All endpoints below 404 unless `FORGEOS_ENABLED=true`; mounted at `{BASE_PATH}/forgeos`.
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `POST /forgeos/agents` | Superuser | Register/upsert an agent (name is the upsert key) |
+| `GET /forgeos/agents` / `GET /forgeos/agents/{id}` | Bearer | List / get agents (`?status=`) |
+| `POST /forgeos/missions` | Bearer | Create a mission (`agent_id` or `agent_name`, `requires_approval`) |
+| `GET /forgeos/missions` / `GET /forgeos/missions/{id}` | Bearer | List / get mission status (`draft→pending_approval→approved→running→completed/failed/cancelled`) |
+| `POST /forgeos/workflows` | Bearer | Create a multi-step workflow (ordered steps, each with its own agent + optional approval) |
+| `GET /forgeos/workflows/{id}` | Bearer | Get workflow + step statuses |
+| `POST /forgeos/events` / `GET /forgeos/events` | Bearer | Publish / list events on the in-process pub/sub bus (`?topic=`) |
+| `GET /forgeos/approvals` | Superuser | List pending/decided approvals |
+| `POST /forgeos/approvals/{id}/approve` / `/reject` | Superuser | Decide an approval — resumes/cancels the underlying mission or workflow step |
+
 ## Environment variables & secrets
 
 Shared (set in Replit):
@@ -157,6 +174,8 @@ Optional secrets (enable extra features):
 |---|---|
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (`whatsapp:+14155238886`), `ADVOCATE_WHATSAPP` | WhatsApp alerts |
 | `SMTP_HOST`, `SMTP_PORT` (587/465), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email notifications (defaults: port 587, FROM = SMTP_USER) |
+| `FORGEOS_ENABLED` (`true`/`false`, default off) | Turns on the ForgeOS multi-agent subsystem (schema init, seed agents, scheduler, `/forgeos/*` routes). Inert (no tables/routes/scheduler) when unset. |
+| `FORGEOS_DEFAULT_MODEL`, `FORGEOS_MAX_CONCURRENT_MISSIONS` (default 2), `FORGEOS_SCHEDULER_POLL_SECONDS` (default 60), `FORGEOS_MAX_INPUT_CHARS` (default 8000), `FORGEOS_MAX_EVENT_PAYLOAD_CHARS` (default 20000) | ForgeOS tuning — only read when `FORGEOS_ENABLED=true` |
 
 ## User preferences
 

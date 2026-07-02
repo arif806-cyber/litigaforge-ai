@@ -1,0 +1,273 @@
+ForgeOS Mission 001 – Build the Live AI Command Center
+
+You are the lead software engineer for LitigaForge AI.
+
+Your task is to build ForgeOS, an AI Operating System inside the existing LitigaForge project. Do not create a new project. Extend the existing codebase without breaking any current functionality.
+
+Goal
+
+Create a production-ready ForgeOS Dashboard that works in the browser and updates in real time.
+
+The dashboard should feel like entering the headquarters of an AI company.
+
+---
+
+Requirements
+
+1. New Module
+
+Create a new module:
+
+/forgeos
+
+Inside it create:
+
+forgeos/
+    agents/
+    orchestrator/
+    memory/
+    missions/
+    workflow/
+    scheduler/
+    dashboard/
+    github/
+    events/
+    analytics/
+    approvals/
+
+---
+
+2. Live Dashboard
+
+Create a new route:
+
+/forgeos
+
+The dashboard must include:
+
+- Company Health
+- Active AI Employees
+- Running Missions
+- Pending Tasks
+- Deployments
+- Production Health
+- Revenue Widget (placeholder)
+- AI Cost Widget
+- Security Alerts
+- Notifications
+
+Everything must support real-time updates using WebSockets or Server-Sent Events.
+
+---
+
+3. AI Employees
+
+Create these agents:
+
+- CEO
+- CTO
+- Backend Engineer
+- Frontend Engineer
+- QA Engineer
+- DevOps Engineer
+- Security Engineer
+- Product Manager
+- Legal Research Agent
+- Customer Support Agent
+
+Each agent should have:
+
+- Name
+- Role
+- Avatar
+- Current Status
+- Current Task
+- Mission
+- Progress
+- Last Activity
+- KPIs
+- Logs
+
+---
+
+4. Mission Engine
+
+Create mission management.
+
+Mission states:
+
+- Planned
+- Assigned
+- Running
+- Waiting
+- Reviewing
+- Completed
+- Failed
+
+Agents can own multiple tasks.
+
+CEO assigns tasks.
+
+---
+
+5. Orchestrator
+
+Create a central AI Orchestrator.
+
+Responsibilities:
+
+- Assign work
+- Manage dependencies
+- Detect blocked missions
+- Reassign work
+- Collect results
+- Notify Founder
+
+---
+
+6. Activity Feed
+
+Display a live company activity stream.
+
+Example:
+
+CTO reviewed architecture
+
+Backend Engineer started API
+
+QA running tests
+
+DevOps deploying staging
+
+CEO assigned Mission #42
+
+Security completed scan
+
+Automatically append new events.
+
+---
+
+7. Founder Dashboard
+
+Include widgets for:
+
+Company Health
+
+AI Employees Online
+
+Current Missions
+
+Completed Missions Today
+
+Deployments
+
+Open Bugs
+
+PR Queue
+
+Pending Approvals
+
+Revenue
+
+AI Cost
+
+System Status
+
+Recent Events
+
+---
+
+8. Real-Time Updates
+
+Without refreshing the browser:
+
+- Mission progress updates
+- Agent status changes
+- Notifications
+- Logs
+- Deployments
+- Events
+
+---
+
+9. Backend APIs
+
+Create REST endpoints for:
+
+- Agents
+- Missions
+- Events
+- Dashboard
+- Metrics
+- Approvals
+
+Use FastAPI.
+
+---
+
+10. Database
+
+Create PostgreSQL tables for:
+
+- agents
+- missions
+- mission_tasks
+- events
+- approvals
+- agent_memory
+- metrics
+
+Create migrations.
+
+---
+
+11. Security
+
+Add:
+
+- Authentication
+- RBAC
+- Audit logs
+- Secure API design
+- Environment variable support
+
+---
+
+12. UI
+
+Modern professional interface.
+
+Dark mode by default.
+
+Animated status indicators.
+
+Progress bars.
+
+Live notifications.
+
+Responsive.
+
+---
+
+13. Code Quality
+
+- Modular architecture
+- Type safety
+- Logging
+- Unit tests
+- API documentation
+- Error handling
+
+---
+
+IMPORTANT
+
+Do NOT remove or modify existing LitigaForge features.
+
+ForgeOS must be an independent subsystem.
+
+Build incrementally and commit after each milestone.
+
+If any architectural decision is required, choose the most scalable enterprise-grade approach.
+
+The goal is to create the foundation for a future autonomous AI company where hundreds of AI employees collaborate under a central orchestrator while the Founder supervises everything through the live dashboard.
