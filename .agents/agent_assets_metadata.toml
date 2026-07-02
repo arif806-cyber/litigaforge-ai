@@ -101,3 +101,9 @@ id = "KEdApQVUwruNMPPsf6t32"
 uri = "file://litigaforge_context.txt"
 type = "text"
 title = "LitigaForge AI — Full Project Context (for ChatGPT)"
+
+[[outputs]]
+id = "N8xJByr23N-vuVHLCr4UN"
+uri = "file://litigaforge_hub71_pitchdeck.pdf"
+type = "pdf"
+title = "LitigaForge AI — Hub71 Abu Dhabi Pitch Deck"
