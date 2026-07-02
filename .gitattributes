@@ -1,1 +1,2 @@
 exports/litigaforge-ai-project.zip filter=lfs diff=lfs merge=lfs -text
+exports/litigaforge-ai-full.zip filter=lfs diff=lfs merge=lfs -text
