@@ -526,6 +526,82 @@ async def list_questions(response: Response, limit: int = 20, category: Optional
 
 # ── Document Analyzer ────────────────────────────────────────────────────────────────────
 
+# Human-readable labels for document type IDs
+_DOC_TYPE_LABELS: dict[str, str] = {
+    "contract":          "contract / agreement",
+    "sale_deed":         "sale deed",
+    "rental_agreement":  "rental / lease agreement",
+    "legal_notice":      "legal notice",
+    "fir":               "FIR / criminal complaint",
+    "petition":          "court petition",
+    "power_of_attorney": "power of attorney",
+    "mou":               "MOU / letter of intent",
+    "will":              "will / testament",
+    "affidavit":         "affidavit",
+    "court_order":       "court order / judgment extract",
+    "written_statement": "written statement / counter affidavit",
+    "cause_list":        "court cause list",
+    "vakalatnama":       "vakalatnama",
+    "other":             "legal document",
+}
+
+_CONTRACTUAL_TYPES = {"contract", "sale_deed", "rental_agreement", "mou", "power_of_attorney", "will"}
+_COURT_TYPES       = {"petition", "fir", "court_order", "written_statement", "cause_list", "vakalatnama", "affidavit"}
+_NOTICE_TYPES      = {"legal_notice"}
+
+
+def _doc_label(doc_type: str) -> str:
+    return _DOC_TYPE_LABELS.get(doc_type, "legal document")
+
+
+def _doc_type_guidance(doc_type: str) -> str:
+    if doc_type in _CONTRACTUAL_TYPES:
+        return (
+            "Focus on:\n"
+            "- Missing or vague clauses (payment terms, termination, dispute resolution, governing law)\n"
+            "- Clauses that are one-sided or unfair under the Indian Contract Act 1872\n"
+            "- Stamp duty and registration requirements under applicable state law\n"
+            "- Compliance with Transfer of Property Act, Registration Act, or relevant statutes\n"
+            "Assign risk_score based on contractual risk to the weaker party (0=no risk, 100=extremely risky).\n"
+            'Use "missing_clauses" to list absent or inadequately drafted contractual provisions.'
+        )
+    if doc_type in _COURT_TYPES:
+        return (
+            "Focus on:\n"
+            "- Procedural defects (jurisdiction, limitation period, proper forum, mandatory notices)\n"
+            "- Missing required grounds, prayers, or legal submissions\n"
+            "- Compliance with CPC, CrPC, or the relevant procedural rules for this document\n"
+            "- Identification of parties, court details, and case/CNR numbers\n"
+            "- Strength and completeness of legal arguments or averments presented\n"
+            "Assign risk_score based on procedural/legal risk (0=well-drafted and complete, 100=serious defects).\n"
+            'Use "missing_clauses" to list missing legal grounds, required components, or mandatory attachments — NOT contractual clauses.'
+        )
+    if doc_type in _NOTICE_TYPES:
+        return (
+            "Focus on:\n"
+            "- Completeness of demand / cause of action stated\n"
+            "- Statutory notice periods under relevant Acts (Consumer Protection, NI Act s.138, IBC, etc.)\n"
+            "- Clear identification of parties, amounts, and relief claimed\n"
+            "- Whether the notice creates a valid legal record for future proceedings\n"
+            "Assign risk_score based on effectiveness and legal completeness of the notice."
+        )
+    # "other" or unrecognised — auto-detect
+    return (
+        "IMPORTANT: First identify what type of legal document this actually is "
+        "(court order, petition, contract, notice, cause list, vakalatnama, etc.) "
+        "and state it clearly at the start of the summary field. "
+        "Do NOT treat it as a contract if it is not one.\n"
+        "Focus on:\n"
+        "- The document's legal purpose and whether it is complete for that purpose\n"
+        "- Any procedural or substantive defects relevant to this document type\n"
+        "- Compliance with applicable Indian law for this category of document\n"
+        "- Practical risks or missing elements\n"
+        "Assign risk_score based on the document's fitness for its legal purpose "
+        "(0=complete and sound, 100=seriously defective).\n"
+        'Use "missing_clauses" to list missing components or required elements for this document type.'
+    )
+
+
 class DocumentRequest(BaseModel):
     document_text: str
     document_type: str = "contract"
@@ -550,16 +626,20 @@ async def analyze_document(req: DocumentRequest, request: Request):
         raise HTTPException(status_code=422, detail=str(e))
 
     cfg = get_config(req.country)
+    label = _doc_label(req.document_type)
+    guidance = _doc_type_guidance(req.document_type)
     context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
-    prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {req.document_type}.
+    prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {label}.
 
 {jurisdiction_block(req.country)}
 {context_block}
-Analyze the following {req.document_type} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
+{guidance}
+
+Analyze the following {label} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
 
 {{
   "risk_score": 0-100,
-  "missing_clauses": ["list"],
+  "missing_clauses": ["list — adapted to the document type as instructed above"],
   "red_flags": ["list"],
   "recommendations": ["list"],
   "compliance_notes": "string — note compliance specifically under {cfg['name']} law",
@@ -722,16 +802,20 @@ async def analyze_document_file(
         raise HTTPException(status_code=422, detail=str(e))
 
     cfg = get_config(country)
+    label = _doc_label(document_type)
+    guidance = _doc_type_guidance(document_type)
     context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
-    prompt = f"""You are {advisor_descriptor(country)} reviewing a {document_type}.
+    prompt = f"""You are {advisor_descriptor(country)} reviewing a {label}.
 
 {jurisdiction_block(country)}
 {context_block}
-Analyze the following {document_type} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
+{guidance}
+
+Analyze the following {label} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
 
 {{
   "risk_score": 0-100,
-  "missing_clauses": ["list"],
+  "missing_clauses": ["list — adapted to the document type as instructed above"],
   "red_flags": ["list"],
   "recommendations": ["list"],
   "compliance_notes": "string — note compliance specifically under {cfg['name']} law",

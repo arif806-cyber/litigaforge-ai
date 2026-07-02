@@ -13,16 +13,21 @@ import { ClarifyDialog } from "@/components/ClarifyDialog";
 import { RiskMeter } from "@/components/case-file-os";
 
 const DOC_TYPES = [
-  { id: "contract", label: "Contract / Agreement" },
-  { id: "sale_deed", label: "Sale Deed" },
-  { id: "rental_agreement", label: "Rental / Lease Agreement" },
-  { id: "legal_notice", label: "Legal Notice" },
-  { id: "fir", label: "FIR / Complaint" },
-  { id: "petition", label: "Court Petition" },
+  { id: "contract",          label: "Contract / Agreement" },
+  { id: "sale_deed",         label: "Sale Deed" },
+  { id: "rental_agreement",  label: "Rental / Lease Agreement" },
+  { id: "legal_notice",      label: "Legal Notice" },
+  { id: "fir",               label: "FIR / Criminal Complaint" },
+  { id: "petition",          label: "Court Petition / Writ" },
+  { id: "court_order",       label: "Court Order / Judgment" },
+  { id: "written_statement", label: "Written Statement / Counter" },
+  { id: "cause_list",        label: "Cause List / Daily Board" },
+  { id: "affidavit",         label: "Affidavit" },
+  { id: "vakalatnama",       label: "Vakalatnama" },
   { id: "power_of_attorney", label: "Power of Attorney" },
-  { id: "mou", label: "MOU / LOI" },
-  { id: "will", label: "Will / Testament" },
-  { id: "other", label: "Other Document" },
+  { id: "mou",               label: "MOU / LOI" },
+  { id: "will",              label: "Will / Testament" },
+  { id: "other",             label: "Other — AI will identify" },
 ];
 
 const RISK_CONFIG = {
