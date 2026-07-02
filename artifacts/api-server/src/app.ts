@@ -1197,6 +1197,10 @@ if (true) { // serve frontend in both dev and production when dist exists
           setHeaders: (res, filePath) => {
             if (/[\\/]assets[\\/]/.test(filePath)) {
               res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            } else if (/[/\\](sw\.js|workbox-[^/\\]+\.js)$/.test(filePath)) {
+              // Service worker files must never be HTTP-cached so the browser
+              // always re-fetches and detects new builds immediately.
+              res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
             }
           },
         }),
