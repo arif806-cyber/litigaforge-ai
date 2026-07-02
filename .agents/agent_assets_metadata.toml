@@ -95,3 +95,9 @@ id = "hqC0yY_GxL1qPjNDILEYP"
 uri = "file://.local/seo-diagnosis-report.md"
 type = "text"
 title = "SEO Diagnosis & Fix Report"
+
+[[outputs]]
+id = "KEdApQVUwruNMPPsf6t32"
+uri = "file://litigaforge_context.txt"
+type = "text"
+title = "LitigaForge AI — Full Project Context (for ChatGPT)"
