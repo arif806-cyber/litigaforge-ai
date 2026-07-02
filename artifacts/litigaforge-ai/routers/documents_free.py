@@ -593,7 +593,7 @@ async def get_template(slug: str, country: str = "IN") -> Dict[str, Any]:
                 "fields": fields,
                 "ai_prompt_template": t.ai_prompt_template,
             }
-    return {"error": "Template not found"}
+    raise HTTPException(404, "Template not found")
 
 
 @router.post("/generate")
@@ -604,7 +604,7 @@ async def generate_document(req: GenerateRequest, request: Request) -> Dict[str,
             template = t
             break
     if not template:
-        return {"error": "Template not found"}
+        raise HTTPException(404, "Template not found")
 
     # Build the AI prompt by substituting fields
     prompt = template.ai_prompt_template

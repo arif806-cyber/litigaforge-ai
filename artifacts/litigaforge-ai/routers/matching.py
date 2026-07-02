@@ -249,6 +249,8 @@ async def update_case_requirement(
         params.append(body.is_anonymous)
     if not fields:
         raise HTTPException(400, "No fields to update")
+    # Safety: column names in `fields` are hardcoded strings ("title = $N", etc.),
+    # never derived from user input. Only the $N-parameterised values carry user data.
     query = f"UPDATE case_requirements SET {', '.join(fields)} WHERE id = ${len(params)+1} RETURNING *"
     params.append(req_id)
     row = await fetchrow(query, *params)
@@ -838,6 +840,7 @@ async def update_match(
         idx += 1
     params.append(match_id)
 
+    # Safety: update_fields contains only hardcoded column name strings ("status = $1", etc.)
     await execute(
         f"UPDATE matches SET {', '.join(update_fields)} WHERE id = ${idx}",
         *params,

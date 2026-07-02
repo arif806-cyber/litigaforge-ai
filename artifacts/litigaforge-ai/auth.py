@@ -31,7 +31,20 @@ def check_tier_usage(user: dict) -> bool:
     return (user.get("cases_this_month", 0) or 0) < limit
 
 
-SECRET_KEY = os.getenv("SESSION_SECRET", "litigaforge-dev-secret-change-in-prod")
+_DEV_SECRET_FALLBACK = "litigaforge-dev-secret-change-in-prod"
+SECRET_KEY = os.getenv("SESSION_SECRET", "")
+if not SECRET_KEY:
+    import logging as _startup_log
+    _startup_log.getLogger("litigaforge.auth").critical(
+        "SESSION_SECRET env var is not set — using insecure dev fallback. "
+        "Set SESSION_SECRET in production before accepting real user sessions."
+    )
+    SECRET_KEY = _DEV_SECRET_FALLBACK
+elif SECRET_KEY == _DEV_SECRET_FALLBACK:
+    import logging as _startup_log
+    _startup_log.getLogger("litigaforge.auth").warning(
+        "SESSION_SECRET is the dev default value — rotate it before going to production."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_MINUTES = 15
 REFRESH_TOKEN_DAYS = 7

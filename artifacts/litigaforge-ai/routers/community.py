@@ -752,8 +752,23 @@ async def analyze_document_file(
     """Analyze uploaded file (PDF, DOCX, TXT, PNG, JPG). Extracts text then runs AI analysis."""
     allowed = {"application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                "text/plain", "image/png", "image/jpeg", "image/jpg", "image/webp"}
+    allowed_extensions = {".pdf", ".docx", ".txt", ".png", ".jpg", ".jpeg", ".webp"}
+    _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+    # Sanitize filename — strip path traversal and null bytes
+    raw_name = (file.filename or "upload").replace("\x00", "")
+    safe_filename = os.path.basename(raw_name.replace("\\", "/"))
+    filename = safe_filename.lower()
+
+    # Validate extension before touching file content
+    file_ext = os.path.splitext(filename)[1]
+    if file_ext and file_ext not in allowed_extensions:
+        raise HTTPException(
+            415,
+            f"Unsupported file extension: {file_ext}. Allowed: PDF, DOCX, TXT, PNG, JPG, WEBP",
+        )
+
     content_type = file.content_type or ""
-    filename = (file.filename or "").lower()
 
     if not content_type or content_type == "application/octet-stream":
         if filename.endswith(".pdf"):
@@ -772,8 +787,9 @@ async def analyze_document_file(
     if content_type not in allowed:
         raise HTTPException(415, f"Unsupported file type: {content_type}. Supported: PDF, DOCX, TXT, PNG, JPG, WEBP")
 
-    data = await file.read()
-    if len(data) > 10 * 1024 * 1024:
+    # Bounded read — avoids loading multi-GB payloads into memory before rejection
+    data = await file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(data) > _MAX_UPLOAD_BYTES:
         raise HTTPException(413, "File too large. Max 10MB.")
 
     extracted_text = ""

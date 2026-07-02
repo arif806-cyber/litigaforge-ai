@@ -24,7 +24,9 @@ export async function _tryRefresh(): Promise<boolean> {
   return _refreshing;
 }
 
-export async function apiFetch(path: string, init?: RequestInit) {
+type ApiFetchInit = Omit<RequestInit, "body"> & { body?: object | BodyInit | null };
+
+export async function apiFetch(path: string, init?: ApiFetchInit) {
   const rawBody = (init as any)?.body;
   const isPlainObject =
     rawBody !== undefined &&
@@ -38,29 +40,32 @@ export async function apiFetch(path: string, init?: RequestInit) {
   const body = isPlainObject ? JSON.stringify(rawBody) : rawBody;
 
   // Cookie-only auth: browser sends httpOnly cookie automatically
-  const res = await fetch(`${BASE}${path}`, {
+  // `body` is already normalised to BodyInit (string | null | Blob | …) at this point.
+  const baseInit: RequestInit = {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...init?.headers,
     },
-    ...init,
-    body,
-  });
+    ...(init as RequestInit),
+    body: body as BodyInit | null | undefined,
+  };
+  const res = await fetch(`${BASE}${path}`, baseInit);
 
   if (res.status === 401) {
     if (!PUBLIC_PATH.test(path)) {
       // Attempt a silent token refresh and retry once
       const refreshed = await _tryRefresh();
       if (refreshed) {
-        const retry = await fetch(`${BASE}${path}`, {
+        const retryInit: RequestInit = {
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
             ...init?.headers,
           },
-          ...init,
-        });
+          ...(init as RequestInit),
+        };
+        const retry = await fetch(`${BASE}${path}`, retryInit);
         if (!retry.ok) {
           if (retry.status === 401) {
             window.location.href = "/login";
