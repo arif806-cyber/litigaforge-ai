@@ -1090,7 +1090,19 @@ export default function ForgeWorkspace() {
           } catch { /* malformed */ }
         }
       }
-    } catch { /* stream error — leave askStreaming: false */ }
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "The agent request failed.";
+      addToast({ type: "error", message: "Agent request failed", detail: "Please retry. " + detail });
+      setAgentStates(prev => ({
+        ...prev,
+        [agentId]: {
+          ...(prev[agentId] ?? { status: "done", text: "" }),
+          askResponse: prev[agentId]?.askResponse || "⚠️ Request failed — please retry.",
+          askStreaming: false,
+        },
+      }));
+      return;
+    }
     setAgentStates(prev => ({
       ...prev,
       [agentId]: { ...(prev[agentId] ?? { status: "done", text: "" }), askStreaming: false },
