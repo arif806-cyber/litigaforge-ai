@@ -555,50 +555,95 @@ def _doc_label(doc_type: str) -> str:
 
 
 def _doc_type_guidance(doc_type: str) -> str:
+    """Return an analysis instruction block AND annotated JSON schema for this document type."""
     if doc_type in _CONTRACTUAL_TYPES:
         return (
+            "DOCUMENT CATEGORY: CONTRACT / AGREEMENT\n"
+            "Perform standard contract analysis.\n\n"
             "Focus on:\n"
             "- Missing or vague clauses (payment terms, termination, dispute resolution, governing law)\n"
             "- Clauses that are one-sided or unfair under the Indian Contract Act 1872\n"
             "- Stamp duty and registration requirements under applicable state law\n"
-            "- Compliance with Transfer of Property Act, Registration Act, or relevant statutes\n"
-            "Assign risk_score based on contractual risk to the weaker party (0=no risk, 100=extremely risky).\n"
-            'Use "missing_clauses" to list absent or inadequately drafted contractual provisions.'
+            "- Compliance with Transfer of Property Act, Registration Act, or relevant statutes\n\n"
+            "Assign risk_score based on contractual risk to the weaker party (0=no risk, 100=extremely risky).\n\n"
+            "Return ONLY this JSON (no markdown, no extra text):\n"
+            "{\n"
+            '  "risk_score": <0-100 integer>,\n'
+            '  "missing_clauses": ["<absent or inadequately drafted contractual provision>", ...],\n'
+            '  "red_flags": ["<unfair or risky contractual clause>", ...],\n'
+            '  "recommendations": ["<specific improvement to this contract>", ...],\n'
+            '  "compliance_notes": "<stamp duty, registration, and statutory compliance notes>",\n'
+            '  "summary": "<brief plain-English summary of this contract>"\n'
+            "}"
         )
     if doc_type in _COURT_TYPES:
+        label = _DOC_TYPE_LABELS.get(doc_type, "court document")
         return (
-            "Focus on:\n"
-            "- Procedural defects (jurisdiction, limitation period, proper forum, mandatory notices)\n"
-            "- Missing required grounds, prayers, or legal submissions\n"
-            "- Compliance with CPC, CrPC, or the relevant procedural rules for this document\n"
-            "- Identification of parties, court details, and case/CNR numbers\n"
-            "- Strength and completeness of legal arguments or averments presented\n"
-            "Assign risk_score based on procedural/legal risk (0=well-drafted and complete, 100=serious defects).\n"
-            'Use "missing_clauses" to list missing legal grounds, required components, or mandatory attachments — NOT contractual clauses.'
+            f"DOCUMENT CATEGORY: COURT DOCUMENT — {label.upper()}\n"
+            "⚠️ THIS IS NOT A CONTRACT. DO NOT perform contract analysis.\n"
+            "DO NOT say 'contract review', 'contract analysis', or 'submitted for contract review' anywhere.\n"
+            "DO NOT look for contractual clauses, payment terms, or contractual obligations.\n\n"
+            "Perform court-document analysis instead. Focus on:\n"
+            "- Procedural correctness (jurisdiction, limitation, proper forum, mandatory pre-litigation notices)\n"
+            "- Completeness of required legal elements for this type of court document\n"
+            "- Accuracy of party names, case/CNR numbers, court/bench details, and dates\n"
+            "- Compliance with CPC, CrPC, or the applicable High Court / Supreme Court Rules\n"
+            "- Strength and coherence of legal arguments, grounds, or averments (if any)\n\n"
+            "Assign risk_score based on procedural/documentary risk (0=complete and sound, 100=seriously defective).\n\n"
+            "Return ONLY this JSON (no markdown, no extra text):\n"
+            "{\n"
+            '  "risk_score": <0-100 integer>,\n'
+            '  "missing_clauses": ["<missing legal ground, required attachment, or mandatory component — NOT a contractual clause>", ...],\n'
+            '  "red_flags": ["<procedural defect, incorrect entry, or legal error in this document>", ...],\n'
+            '  "recommendations": ["<specific improvement to this court document>", ...],\n'
+            '  "compliance_notes": "<compliance with CPC/CrPC/High Court Rules and applicable procedural law>",\n'
+            f'  "summary": "<what this {label} contains, which court/bench/parties are involved, and any notable observations>"\n'
+            "}"
         )
     if doc_type in _NOTICE_TYPES:
         return (
-            "Focus on:\n"
-            "- Completeness of demand / cause of action stated\n"
-            "- Statutory notice periods under relevant Acts (Consumer Protection, NI Act s.138, IBC, etc.)\n"
-            "- Clear identification of parties, amounts, and relief claimed\n"
-            "- Whether the notice creates a valid legal record for future proceedings\n"
-            "Assign risk_score based on effectiveness and legal completeness of the notice."
+            "DOCUMENT CATEGORY: LEGAL NOTICE\n"
+            "⚠️ THIS IS NOT A CONTRACT. DO NOT perform contract analysis.\n"
+            "DO NOT say 'contract review' or 'contract analysis' anywhere.\n\n"
+            "Perform legal-notice analysis instead. Focus on:\n"
+            "- Completeness of the demand and cause of action\n"
+            "- Statutory notice periods under relevant Acts (Consumer Protection Act, NI Act s.138, IBC, etc.)\n"
+            "- Clear identification of sender, recipient, amounts, and relief claimed\n"
+            "- Whether the notice creates a valid legal record for future proceedings\n\n"
+            "Assign risk_score based on effectiveness and legal completeness (0=complete, 100=seriously defective).\n\n"
+            "Return ONLY this JSON (no markdown, no extra text):\n"
+            "{\n"
+            '  "risk_score": <0-100 integer>,\n'
+            '  "missing_clauses": ["<missing demand element, statutory requirement, or required information>", ...],\n'
+            '  "red_flags": ["<deficiency or error in this legal notice>", ...],\n'
+            '  "recommendations": ["<specific improvement to this notice>", ...],\n'
+            '  "compliance_notes": "<statutory notice-period compliance and formal requirements>",\n'
+            '  "summary": "<brief summary of what this notice demands and its legal basis>"\n'
+            "}"
         )
     # "other" or unrecognised — auto-detect
     return (
-        "IMPORTANT: First identify what type of legal document this actually is "
-        "(court order, petition, contract, notice, cause list, vakalatnama, etc.) "
-        "and state it clearly at the start of the summary field. "
-        "Do NOT treat it as a contract if it is not one.\n"
-        "Focus on:\n"
-        "- The document's legal purpose and whether it is complete for that purpose\n"
-        "- Any procedural or substantive defects relevant to this document type\n"
-        "- Compliance with applicable Indian law for this category of document\n"
-        "- Practical risks or missing elements\n"
-        "Assign risk_score based on the document's fitness for its legal purpose "
-        "(0=complete and sound, 100=seriously defective).\n"
-        'Use "missing_clauses" to list missing components or required elements for this document type.'
+        "DOCUMENT CATEGORY: UNCLASSIFIED — IDENTIFY FIRST\n"
+        "⚠️ DO NOT assume this is a contract. DO NOT say 'contract review' or 'contract analysis'.\n"
+        "First read the document and identify exactly what type it is "
+        "(court order, petition, cause list, affidavit, sale deed, notice, vakalatnama, etc.).\n"
+        "State the identified document type at the very start of the summary field.\n\n"
+        "Then analyze it on its own terms — apply the analysis framework appropriate to what it actually is:\n"
+        "- Court documents: procedural correctness, completeness, CPC/CrPC compliance\n"
+        "- Contracts/deeds: contractual risk, missing clauses, stamp duty\n"
+        "- Notices: demand completeness, statutory notice periods\n"
+        "- Other: fitness for the document's evident legal purpose\n\n"
+        "Assign risk_score based on the document's fitness for its own legal purpose "
+        "(0=complete and sound, 100=seriously defective).\n\n"
+        "Return ONLY this JSON (no markdown, no extra text):\n"
+        "{\n"
+        '  "risk_score": <0-100 integer>,\n'
+        '  "missing_clauses": ["<missing element required for this specific document type>", ...],\n'
+        '  "red_flags": ["<defect, error, or risk in this document>", ...],\n'
+        '  "recommendations": ["<specific improvement for this document>", ...],\n'
+        '  "compliance_notes": "<applicable law and compliance notes for the identified document type>",\n'
+        '  "summary": "<FIRST state the document type identified, then summarise what it contains and its legal significance>"\n'
+        "}"
     )
 
 
@@ -629,24 +674,13 @@ async def analyze_document(req: DocumentRequest, request: Request):
     label = _doc_label(req.document_type)
     guidance = _doc_type_guidance(req.document_type)
     context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
-    prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {label}.
+    prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {label} under {cfg['name']} law.
 
 {jurisdiction_block(req.country)}
 {context_block}
 {guidance}
 
-Analyze the following {label} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
-
-{{
-  "risk_score": 0-100,
-  "missing_clauses": ["list — adapted to the document type as instructed above"],
-  "red_flags": ["list"],
-  "recommendations": ["list"],
-  "compliance_notes": "string — note compliance specifically under {cfg['name']} law",
-  "summary": "string"
-}}
-
-Document text:
+Document text to analyze:
 ---
 {safe_text[:8000]}
 ---"""
@@ -805,24 +839,13 @@ async def analyze_document_file(
     label = _doc_label(document_type)
     guidance = _doc_type_guidance(document_type)
     context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
-    prompt = f"""You are {advisor_descriptor(country)} reviewing a {label}.
+    prompt = f"""You are {advisor_descriptor(country)} reviewing a {label} under {cfg['name']} law.
 
 {jurisdiction_block(country)}
 {context_block}
 {guidance}
 
-Analyze the following {label} under {cfg['name']} law and return ONLY a valid JSON object with this exact structure:
-
-{{
-  "risk_score": 0-100,
-  "missing_clauses": ["list — adapted to the document type as instructed above"],
-  "red_flags": ["list"],
-  "recommendations": ["list"],
-  "compliance_notes": "string — note compliance specifically under {cfg['name']} law",
-  "summary": "string"
-}}
-
-Document text:
+Document text to analyze:
 ----
 {extracted_text[:8000]}
 ----"""
