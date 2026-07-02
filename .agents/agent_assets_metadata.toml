@@ -107,3 +107,9 @@ id = "N8xJByr23N-vuVHLCr4UN"
 uri = "file://litigaforge_hub71_pitchdeck.pdf"
 type = "pdf"
 title = "LitigaForge AI — Hub71 Abu Dhabi Pitch Deck (v2)"
+
+[[outputs]]
+id = "uBzp1azo4F_Xq_G6-w5FR"
+uri = "file://exports/litigaforge-ai-project.zip"
+type = "unspecified"
+title = "LitigaForge AI — Full Project Archive"
