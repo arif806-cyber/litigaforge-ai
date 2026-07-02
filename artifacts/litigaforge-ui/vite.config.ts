@@ -43,6 +43,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,png,svg,woff2,html}"],
         cleanupOutdatedCaches: true,
+        // When a new SW is found, skip the waiting phase and activate immediately,
+        // then claim all open tabs so the updated assets load without a manual refresh.
+        skipWaiting: true,
+        clientsClaim: true,
         // Exclude backend/proxied paths from the SPA navigation fallback so the
         // service worker never serves the React shell for non-app URLs:
         //  - /blog + /_astro: reverse-proxied to the Cloudflare Worker (serving
