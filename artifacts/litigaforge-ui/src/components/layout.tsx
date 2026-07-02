@@ -261,6 +261,8 @@ const lawyerMobileNav: NavEntry[] = [
 /* ─── Bottom Tab Bar ─── */
 function BottomTabBar({ location, user }: { location: string; user: User | null }) {
   const { t } = useLanguage();
+  const { logout } = useAuth();
+  const [, setLocation] = useLocation();
   const unreadCount = useUnreadCount();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const openDrawer  = useCallback(() => setDrawerOpen(true),  []);
@@ -376,7 +378,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
                     <X className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
-                <div className="px-3 pb-6 grid grid-cols-3 gap-2">
+                <div className="px-3 grid grid-cols-3 gap-2">
                   {[...extraNav, ...commonNav].map((item) => {
                     const { href, icon: Icon, label } = item;
                     const active = location.startsWith(href);
@@ -394,6 +396,15 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
                       </Link>
                     );
                   })}
+                </div>
+                <div className="px-4 pt-3 pb-6 border-t border-border mt-3">
+                  <button
+                    onPointerDown={() => { closeDrawer(); logout(); setLocation("/login"); }}
+                    style={{ touchAction: "manipulation" }}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-95 transition-all text-sm font-semibold"
+                  >
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
                 </div>
               </motion.div>
             </>
