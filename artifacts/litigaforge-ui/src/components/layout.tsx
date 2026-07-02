@@ -416,6 +416,22 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   );
 }
 
+/* ─── Desktop header logout button ─── */
+function DesktopLogoutButton() {
+  const { logout } = useAuth();
+  const [, setLocation] = useLocation();
+  return (
+    <button
+      onClick={() => { logout(); setLocation("/login"); }}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+      title="Sign out"
+    >
+      <LogOut className="w-4 h-4" />
+      <span>Sign Out</span>
+    </button>
+  );
+}
+
 /* ─── Main Layout ─── */
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -480,6 +496,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Crown className="w-3.5 h-3.5 text-amber-600" />
                   {TIER_LABELS[user.subscription_tier] ?? "Free"}
                 </Link>
+              )}
+              {user && (
+                <DesktopLogoutButton />
               )}
             </div>
           </header>
