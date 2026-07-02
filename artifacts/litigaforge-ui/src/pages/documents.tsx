@@ -13,6 +13,7 @@ import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { formatDate } from "@/lib/locale";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DocumentsPage() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export default function DocumentsPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ["client-all-documents"],
@@ -113,7 +115,7 @@ export default function DocumentsPage() {
                     if (!res.ok) throw new Error("Upload failed");
                     qc.invalidateQueries({ queryKey: ["client-all-documents"] });
                   } catch (err) {
-                    alert(err instanceof Error ? err.message : "Upload failed");
+                    toast({ title: "Upload failed", description: err instanceof Error ? err.message : "Could not upload document. Please try again.", variant: "destructive" });
                   } finally {
                     setUploading(false);
                     e.target.value = "";

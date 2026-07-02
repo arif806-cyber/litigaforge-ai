@@ -18,7 +18,7 @@ import { LAWYER_DASHBOARD_COPY } from "@/lib/country-copy";
 import { formatDate, caseTerms } from "@/lib/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import IncomingCaseFeed, { type CaseFeedItem } from "@/components/lawyer/IncomingCaseFeed";
-import { useToast } from "@/hooks/use-toast";
+import { useToast, toast } from "@/hooks/use-toast";
 
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
@@ -1325,6 +1325,8 @@ export default function LawyerDashboard() {
         onClose={() => setShowFolder(false)}
         caseData={folderCase}
         docs={folderDocs}
+        isLoading={docsLoading}
+        isError={docsError}
         onUpload={() => { setShowFolder(false); setShowDocModal(true); }}
         onAnalyze={(docId: number) => { setAnalyzingDoc(docId); analyzeDocMut.mutate(docId, { onSettled: () => setAnalyzingDoc(null) }); }}
         analyzingDoc={analyzingDoc}
@@ -1418,17 +1420,19 @@ function downloadDoc(doc: LawyerDoc) {
 function shareDoc(doc: LawyerDoc) {
   const shareText = `Document: ${doc.filename}\nType: ${doc.file_type.toUpperCase()}\nContent:\n${doc.content_text?.slice(0, 500) || "No content"}${doc.content_text && doc.content_text.length > 500 ? "\n..." : ""}`;
   navigator.clipboard.writeText(shareText).then(() => {
-    alert("Document copied to clipboard! Paste in email, WhatsApp, or court filing.");
+    toast({ title: "Copied to clipboard", description: "Paste in email, WhatsApp, or court filing." });
   }).catch(() => {
-    alert("Could not copy. Copy manually from the document preview.");
+    toast({ title: "Copy failed", description: "Could not copy. Copy manually from the document preview.", variant: "destructive" });
   });
 }
 
 // ── Case Folder Modal ────────────────────────────────────────────────────────────────────────────────
 function CaseFolderModal({
-  open, onClose, caseData, docs, onUpload, onAnalyze, analyzingDoc, analyzePending, onSaveNotes, notesPending, countryCode,
+  open, onClose, caseData, docs, isLoading, isError, onUpload, onAnalyze, analyzingDoc, analyzePending, onSaveNotes, notesPending, countryCode,
 }: {
   open: boolean; onClose: () => void; caseData: LawyerCase | null; docs: LawyerDoc[];
+  isLoading?: boolean;
+  isError?: boolean;
   onUpload: () => void;
   onAnalyze: (docId: number) => void;
   analyzingDoc: number | null;
@@ -1496,7 +1500,19 @@ function CaseFolderModal({
             <h4 className="font-semibold text-foreground text-sm">Case Documents ({docs.length})</h4>
           </div>
 
-          {docs.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading documents…
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-2 py-6 rounded-xl text-center"
+              style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <p className="text-xs text-red-400 font-medium">Could not load documents</p>
+              <p className="text-[11px] text-muted-foreground">Check your connection and try reopening the folder.</p>
+            </div>
+          ) : docs.length === 0 ? (
             <div className="rounded-xl p-6 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
               <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No documents in this case folder yet.</p>
