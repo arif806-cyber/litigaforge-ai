@@ -113,3 +113,9 @@ id = "uBzp1azo4F_Xq_G6-w5FR"
 uri = "file://exports/litigaforge-ai-project.zip"
 type = "unspecified"
 title = "LitigaForge AI — Full Project Archive"
+
+[[outputs]]
+id = "9KKG2PPq_1NBPnxfo1-n1"
+uri = "file://exports/litigaforge-ai-source.zip"
+type = "unspecified"
+title = "LitigaForge AI — Source Code Archive (5.7MB)"
