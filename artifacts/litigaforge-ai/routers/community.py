@@ -88,12 +88,19 @@ def _ai(prompt: str, max_tokens: int = 2000) -> str:
 
 def _extract_json_object(text: str) -> dict:
     m = re.search(r'\{.*\}', text, re.DOTALL)
-    return json.loads(m.group()) if m else {}
+    if not m:
+        raise ValueError("No JSON object found in AI response")
+    result = json.loads(m.group())
+    if not result:
+        raise ValueError("AI returned empty JSON object")
+    return result
 
 
 def _extract_json_array(text: str) -> list:
     m = re.search(r'\[.*\]', text, re.DOTALL)
-    return json.loads(m.group()) if m else []
+    if not m:
+        raise ValueError("No JSON array found in AI response")
+    return json.loads(m.group())
 
 
 # ── Clarifying questions (shared) ─────────────────────────────────────────────────
