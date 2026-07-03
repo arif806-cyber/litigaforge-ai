@@ -94,6 +94,20 @@ export interface ForgeMissionCounts {
   total: number;
 }
 
+export interface ForgeHealthCheckResult {
+  name: string;
+  severity: "critical" | "degraded";
+  status: "ok" | "fail";
+  latency_ms: number;
+  detail: string;
+}
+
+export interface ForgeHealthCheckRun {
+  overall_status: "ok" | "degraded" | "critical";
+  results: ForgeHealthCheckResult[] | string;
+  created_at: string;
+}
+
 export interface ForgeDashboardSnapshot {
   agents: ForgeAgent[];
   agent_count: number;
@@ -103,6 +117,7 @@ export interface ForgeDashboardSnapshot {
   revenue: ForgeRevenueSummary;
   ai_cost: ForgeAiCostSummary;
   activity: ForgeActivityItem[];
+  health_check: ForgeHealthCheckRun | null;
 }
 
 export interface ForgePullRequest {

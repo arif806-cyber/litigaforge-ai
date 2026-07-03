@@ -35,13 +35,42 @@ async def _run_due_schedules() -> None:
             if isinstance(template, str):
                 template = json.loads(template)
 
+            title = template.get("title", row["name"])
+            description = template.get("description", "")
+            input_data = template.get("input", {})
+            builder_name = template.get("builder")
+
+            if builder_name == "business_pulse":
+                from forgeos.business_pulse import build_pulse
+                built = await build_pulse()
+                if built is None:
+                    # Skipped this run (e.g. daily AI cost cap already reached) —
+                    # push next_run_at forward like any other completed poll, no
+                    # mission created, no failed-mission clutter in the feed.
+                    await execute(
+                        """UPDATE forgeos_schedules
+                           SET next_run_at = NOW() + ($1 || ' seconds')::interval
+                           WHERE id = $2""",
+                        str(row["interval_seconds"]), row["id"],
+                    )
+                    from forgeos.audit import log_action
+                    await log_action("pulse.skipped_cost_cap", target_type="schedule", target_id=row["id"],
+                                      actor="scheduler",
+                                      detail=f"Business Pulse schedule '{row['name']}' skipped — daily AI cost cap reached")
+                    continue
+                title, description = built
+                input_data = {**input_data, "mission_type": "business_pulse"}
+            elif builder_name:
+                logger.warning("forgeos: schedule '%s' has unknown builder '%s' — falling back to static template",
+                                row["name"], builder_name)
+
             from forgeos.missions import create_mission
             await create_mission(
-                title=template.get("title", row["name"]),
-                description=template.get("description", ""),
+                title=title,
+                description=description,
                 agent_id=template.get("agent_id"),
                 agent_name=template.get("agent_name"),
-                input_data=template.get("input", {}),
+                input_data=input_data,
                 requires_approval=bool(template.get("requires_approval", False)),
             )
             await execute(

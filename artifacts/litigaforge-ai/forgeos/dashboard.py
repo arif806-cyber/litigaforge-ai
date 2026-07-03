@@ -124,6 +124,19 @@ async def _activity_feed(limit: int = 30) -> list[dict]:
     return feed[:limit]
 
 
+async def _latest_health_check() -> dict | None:
+    """Latest Product Health Check run, if any — deliberately deferred-import
+    since health_check.py lives outside forgeos/ and runs independently of
+    FORGEOS_ENABLED (never let a missing/broken forgeos dashboard block it,
+    or vice versa)."""
+    try:
+        from health_check import get_latest_run
+        return await get_latest_run()
+    except Exception as e:
+        logger.warning("dashboard: failed to load latest health check: %s", e)
+        return None
+
+
 async def get_dashboard_snapshot() -> dict:
     """Single aggregation call the REST endpoint (and SSE's initial payload)
     both use — keeps GET /forgeos/dashboard and the first SSE frame
@@ -134,6 +147,7 @@ async def get_dashboard_snapshot() -> dict:
     revenue = await _revenue_summary()
     ai_cost = await _ai_cost_summary()
     activity = await _activity_feed()
+    health_check = await _latest_health_check()
 
     return {
         "agents": agents,
@@ -144,4 +158,5 @@ async def get_dashboard_snapshot() -> dict:
         "revenue": revenue,
         "ai_cost": ai_cost,
         "activity": activity,
+        "health_check": health_check,
     }

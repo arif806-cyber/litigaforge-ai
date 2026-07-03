@@ -12,6 +12,7 @@ import { AgentsGrid } from "@/components/forgeos/AgentsGrid";
 import { MissionsPanel, MissionCountPills } from "@/components/forgeos/MissionsPanel";
 import { ActivityFeed } from "@/components/forgeos/ActivityFeed";
 import { MetricsRow } from "@/components/forgeos/MetricsWidgets";
+import { HealthCheckCard } from "@/components/forgeos/HealthCheckCard";
 import { DeploymentsPanel } from "@/components/forgeos/DeploymentsPanel";
 import { AuditLogPanel } from "@/components/forgeos/AuditLogPanel";
 import { ApprovalsPanel } from "@/components/forgeos/ApprovalsPanel";
@@ -98,6 +99,7 @@ function OverviewTab({ snapshot }: { snapshot: ForgeDashboardSnapshot }) {
           <div className="rounded-xl border border-border bg-card p-3">
             <ActivityFeed activity={snapshot.activity} />
           </div>
+          <HealthCheckCard run={snapshot.health_check} />
         </div>
       </div>
     </div>

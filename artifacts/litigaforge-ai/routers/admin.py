@@ -424,3 +424,27 @@ async def admin_send_digest(current_user: dict = Depends(get_superuser)):
 
     result = await send_daily_digest(trigger="manual")
     return {"success": True, "result": result}
+
+
+@router.post("/admin/healthcheck/run")
+async def admin_run_health_check(current_user: dict = Depends(get_superuser)):
+    """Manually trigger the daily Product Health Check (ops + local testing).
+
+    Mirrors the 07:00 IST scheduler but runs on demand — same deterministic
+    checks, same founder-alert behaviour on a CRITICAL result, same
+    ``health_check_runs`` row written. Useful for verifying the feature in
+    dev, where the scheduler itself is production-gated and never fires.
+    """
+    from health_check import run_health_check
+
+    result = await run_health_check()
+    return {"success": True, "result": result}
+
+
+@router.get("/admin/healthcheck/latest")
+async def admin_latest_health_check(current_user: dict = Depends(get_superuser)):
+    """Latest Product Health Check run, if any have executed yet."""
+    from health_check import get_latest_run
+
+    run = await get_latest_run()
+    return {"run": run}

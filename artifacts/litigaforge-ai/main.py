@@ -1152,6 +1152,17 @@ async def lifespan(app: FastAPI):
     from digest import start_scheduler as _start_digest_scheduler
     app.state.digest_scheduler = _start_digest_scheduler()
 
+    # Daily product health check (production only). Deliberately independent
+    # of FORGEOS_ENABLED — the table + scheduler must exist and run even if
+    # the ForgeOS subsystem is off, since this proves the product itself
+    # works, not the multi-agent tooling.
+    from health_check import init_health_check_table, start_scheduler as _start_health_check_scheduler
+    try:
+        await init_health_check_table()
+    except Exception as _hce:
+        logger.warning("health-check: table init failed: %s", _hce)
+    app.state.health_check_scheduler = _start_health_check_scheduler()
+
     # ── ForgeOS (multi-agent orchestration subsystem) — fully gated ──────────
     # Inert unless FORGEOS_ENABLED is set: no tables, no seed data, no
     # scheduler when the flag is off/unset (default), so this never touches
@@ -1161,9 +1172,10 @@ async def lifespan(app: FastAPI):
     if _FORGEOS_ENABLED:
         try:
             from forgeos.schema import init_forgeos_tables
-            from forgeos.seed import seed_agents
+            from forgeos.seed import seed_agents, seed_schedules
             await init_forgeos_tables()
             await seed_agents()
+            await seed_schedules()
             from forgeos.scheduler import start_scheduler as _start_forgeos_scheduler
             app.state.forgeos_scheduler = _start_forgeos_scheduler()
             logger.info("forgeos: subsystem enabled — tables ready, agents seeded, scheduler started")
@@ -1309,6 +1321,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("court-intel: notif-retry scheduler shutdown error: %s", e)
+    _hcsched = getattr(app.state, "health_check_scheduler", None)
+    if _hcsched is not None:
+        _hcsched.cancel()
+        try:
+            await _hcsched
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("health-check: scheduler shutdown error: %s", e)
     _dsched = getattr(app.state, "digest_scheduler", None)
     if _dsched is not None:
         _dsched.cancel()

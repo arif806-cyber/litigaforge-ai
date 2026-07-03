@@ -101,3 +101,31 @@ async def seed_agents() -> None:
             json.dumps(agent["capabilities"]), agent["avatar"],
         )
     logger.info("forgeos: seed agents ensured (%d)", len(INITIAL_AGENTS))
+
+
+# Recurring mission templates for forgeos_schedules. Inserted ON CONFLICT (name)
+# DO NOTHING (not DO UPDATE) so a founder can freely disable/retune
+# interval_seconds from the DB/dashboard afterward without a restart silently
+# reverting their change.
+INITIAL_SCHEDULES = [
+    {
+        "name": "business_pulse",
+        "interval_seconds": 6 * 3600,  # every 6 hours = 4 runs/day
+        "mission_template": {
+            "builder": "business_pulse",
+            "agent_name": "CEO",
+            "requires_approval": False,
+        },
+    },
+]
+
+
+async def seed_schedules() -> None:
+    for sched in INITIAL_SCHEDULES:
+        await execute(
+            """INSERT INTO forgeos_schedules (name, mission_template, interval_seconds)
+               VALUES ($1, $2::jsonb, $3)
+               ON CONFLICT (name) DO NOTHING""",
+            sched["name"], json.dumps(sched["mission_template"]), sched["interval_seconds"],
+        )
+    logger.info("forgeos: seed schedules ensured (%d)", len(INITIAL_SCHEDULES))
