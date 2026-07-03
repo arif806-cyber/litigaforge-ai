@@ -1,0 +1,45 @@
+You are an expert FastAPI engineer working on ForgeOS cost control.
+
+### Current Situation
+- There is already a working global daily soft cap using `FORGEOS_DAILY_COST_LIMIT_USD`. It is well implemented and logged.
+- The main remaining gap is:
+  - No per-mission cost or token ceiling
+  - No early warning before the daily cap is reached (only a hard block after the budget is exceeded)
+
+### Goal
+Add lightweight but effective per-mission guardrails and early warning, while keeping changes small and low-risk. Build on existing code where possible.
+
+### Requirements
+
+1. **Per-Mission Ceiling**
+   - Add support for a per-mission cost or token limit.
+   - Use the existing `complete_with_usage()` method (which already accepts `max_tokens`).
+   - Make the per-mission limit configurable (via environment variable or passed when creating a mission).
+   - When a mission would exceed its individual limit, block it early with clear logging (before making the expensive LLM call).
+
+2. **Early Warning System**
+   - Before starting a mission, check how close the daily spend is to `FORGEOS_DAILY_COST_LIMIT_USD`.
+   - If usage is approaching the daily limit (e.g., within 80–90%), log a clear warning.
+   - Do **not** block the mission on warning — only warn. The hard block should still happen only when the daily cap is actually exceeded.
+
+3. **Implementation Constraints**
+   - Keep changes minimal and contained.
+   - Reuse existing cost tracking and logging patterns.
+   - Do not over-engineer. Focus on the highest-value safety gap (per-mission cap + early warning).
+   - Update `FORGEOS.md` with the new environment variables and behavior, if any new ones are added.
+
+4. **Testing & Verification**
+   - After implementation, run all ForgeOS tests and confirm they still pass.
+   - Add or update tests to cover the new per-mission limit and early warning behavior.
+
+### Instructions
+First, analyze the relevant files (especially where `complete_with_usage()` is called and where the daily cost limit is enforced).
+
+Then respond with:
+- A short, clear implementation plan (keep it scoped and low-risk)
+- Which files you expect to modify
+- Any new environment variables you recommend adding
+
+Wait for my confirmation before writing code.
+
+After implementation, provide a summary of changes and confirm test results.
