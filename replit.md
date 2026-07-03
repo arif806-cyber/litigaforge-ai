@@ -62,6 +62,7 @@ Pages (`pages/`), route in parens:
 - `subscription.tsx` (`/subscription`) — plan comparison & upgrade/downgrade
 - `about.tsx`, `contact.tsx`, `privacy.tsx` (alias `/privacy-policy`), `terms.tsx` — AdSense-required public pages, all ending in shared `LegalDisclaimerFooter` (contact email `legal@litigaforge.com`); `contact.tsx` posts to `POST /contact`; `privacy.tsx` has Cookies + AdSense sections
 - `use-cases.tsx` — redirects to `/ask`
+- `forgeos.tsx` (`/forgeos`) — **ForgeOS Command Center**: superuser-only, live multi-agent ops dashboard. Tabs: Overview (KPI row — real MRR revenue + real LLM token cost from `forgeos_metrics`, agent/mission counts; 10-agent grid; missions panel; activity feed), Approvals, Deployments (live GitHub PR/workflow-run queue), Audit Log. Live-updates via SSE (`components/forgeos/`, `lib/useForgeOsStream.ts`); shows "Failed to load ForgeOS dashboard" gracefully if `FORGEOS_ENABLED` is off on the backend (404). Sidebar entry only renders for `is_superuser` (`ForgeOsNavItem` in `layout.tsx`) — this is a UI convenience gate, not the inertness guarantee (that's backend-only, see below).
 
 All main routes are protected via `ProtectedRoute` (`AuthProvider` in `lib/auth-context.tsx`).
 
@@ -143,19 +144,23 @@ Components/utils:
 
 ### ForgeOS (multi-agent orchestration — `FORGEOS_ENABLED` only)
 
-All endpoints below 404 unless `FORGEOS_ENABLED=true`; mounted at `{BASE_PATH}/forgeos`.
+All endpoints below 404 unless `FORGEOS_ENABLED=true`; mounted at `{BASE_PATH}/forgeos`. 10 seeded agents. Mission lifecycle: `planned→waiting→assigned→running→reviewing→completed/failed/cancelled` (`waiting` = needs approval; `mark_approved_and_run` → `assigned`).
 
 | Endpoint | Auth | Purpose |
 |---|---|---|
 | `POST /forgeos/agents` | Superuser | Register/upsert an agent (name is the upsert key) |
 | `GET /forgeos/agents` / `GET /forgeos/agents/{id}` | Bearer | List / get agents (`?status=`) |
 | `POST /forgeos/missions` | Bearer | Create a mission (`agent_id` or `agent_name`, `requires_approval`) |
-| `GET /forgeos/missions` / `GET /forgeos/missions/{id}` | Bearer | List / get mission status (`draft→pending_approval→approved→running→completed/failed/cancelled`) |
+| `GET /forgeos/missions` / `GET /forgeos/missions/{id}` | Bearer | List / get mission status |
 | `POST /forgeos/workflows` | Bearer | Create a multi-step workflow (ordered steps, each with its own agent + optional approval) |
 | `GET /forgeos/workflows/{id}` | Bearer | Get workflow + step statuses |
 | `POST /forgeos/events` / `GET /forgeos/events` | Bearer | Publish / list events on the in-process pub/sub bus (`?topic=`) |
 | `GET /forgeos/approvals` | Superuser | List pending/decided approvals |
 | `POST /forgeos/approvals/{id}/approve` / `/reject` | Superuser | Decide an approval — resumes/cancels the underlying mission or workflow step |
+| `GET /forgeos/dashboard` | Superuser | Command Center snapshot: agents, missions + counts, real revenue (Razorpay subscriptions), real AI cost (token usage in `forgeos_metrics`), activity feed |
+| `GET /forgeos/deployments` | Superuser | Live GitHub PR queue + recent workflow runs (via `GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE`, ~60s cache; `?force_refresh=true` bypasses cache) |
+| `GET /forgeos/audit-log` | Superuser | List audit log entries (`?target_type=`, `?action=`) |
+| `GET /forgeos/stream` | Superuser | SSE: initial dashboard snapshot, then live events + 20s periodic refresh + 15s heartbeat |
 
 ## Environment variables & secrets
 
@@ -174,7 +179,7 @@ Optional secrets (enable extra features):
 |---|---|
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (`whatsapp:+14155238886`), `ADVOCATE_WHATSAPP` | WhatsApp alerts |
 | `SMTP_HOST`, `SMTP_PORT` (587/465), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email notifications (defaults: port 587, FROM = SMTP_USER) |
-| `FORGEOS_ENABLED` (`true`/`false`, default off) | Turns on the ForgeOS multi-agent subsystem (schema init, seed agents, scheduler, `/forgeos/*` routes). Inert (no tables/routes/scheduler) when unset. |
+| `FORGEOS_ENABLED` (`true`/`false`, default off) | Turns on the ForgeOS multi-agent subsystem (schema init, seed agents, scheduler, `/forgeos/*` routes) AND the `/forgeos` Command Center page in litigaforge-ui (backend 404s when off, page shows a load-failure message; sidebar link is separately gated by `is_superuser` client-side). Backend is inert (no tables/routes/scheduler) when unset. |
 | `FORGEOS_DEFAULT_MODEL`, `FORGEOS_MAX_CONCURRENT_MISSIONS` (default 2), `FORGEOS_SCHEDULER_POLL_SECONDS` (default 60), `FORGEOS_MAX_INPUT_CHARS` (default 8000), `FORGEOS_MAX_EVENT_PAYLOAD_CHARS` (default 20000) | ForgeOS tuning — only read when `FORGEOS_ENABLED=true` |
 
 ## User preferences
