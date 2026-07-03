@@ -69,6 +69,8 @@ async def create_workflow(mission_id: int | None, name: str, steps: list[dict]) 
             bool(step.get("requires_approval", False)), input_text,
         )
 
+    logger.info("forgeos: workflow %s created — name=%r steps=%d", workflow["id"], workflow["name"], len(steps))
+
     asyncio.create_task(execute_workflow(workflow["id"]))
     return workflow
 
@@ -132,17 +134,22 @@ async def execute_workflow(workflow_id: int) -> None:
             await _set_step_status(step["id"], "waiting_approval")
             from forgeos.approvals import create_approval
             await create_approval(workflow_step_id=step["id"], requested_by="workflow_engine")
+            logger.info("forgeos: workflow %s halted at step %s (%r) — awaiting approval",
+                        workflow_id, step["id"], step.get("name"))
             await bus.publish("workflow.step.waiting_approval",
                                {"workflow_id": workflow_id, "step_id": step["id"]}, source="workflows")
             return  # halt — resumed via resume_step_after_approval()
 
         ok = await _run_step(step)
         if not ok:
+            logger.warning("forgeos: workflow %s failed at step %s (%r)",
+                            workflow_id, step["id"], step.get("name"))
             await _set_workflow_status(workflow_id, "failed")
             await bus.publish("workflow.failed", {"workflow_id": workflow_id, "step_id": step["id"]},
                                source="workflows")
             return
 
+    logger.info("forgeos: workflow %s completed", workflow_id)
     await _set_workflow_status(workflow_id, "completed")
     await bus.publish("workflow.completed", {"workflow_id": workflow_id}, source="workflows")
 
@@ -168,6 +175,13 @@ async def _run_step(step: dict) -> bool:
     if outcome.get("error"):
         await _set_step_status(step["id"], "failed", error=outcome["error"])
         return False
+
+    if outcome.get("cost_usd") is not None:
+        logger.info("forgeos: workflow step %s completed — model=%s tokens=%s cost=$%.4f",
+                    step["id"], outcome["model_used"], outcome.get("tokens"), outcome["cost_usd"])
+    else:
+        logger.info("forgeos: workflow step %s completed — model=%s (fallback path, no usage reported)",
+                    step["id"], outcome["model_used"])
 
     output_json = json.dumps({"output": outcome["output"], "model_used": outcome["model_used"]})
     await _set_step_status(step["id"], "done", output=output_json)

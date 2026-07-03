@@ -129,6 +129,47 @@ separately against a live workflow if needed. `tests/test_auth.py` has 4
 pre-existing failures unrelated to ForgeOS (require a live Postgres
 connection / differ on `healthz`+`root` response shape).
 
+## Replit Deployment
+
+ForgeOS ships **disabled** and stays disabled through a normal deploy — enabling
+it in production is a deliberate, separate step.
+
+**Recommended way to enable (Replit Secrets, not `.env`):**
+
+1. Open the Secrets pane (padlock icon) in the Replit workspace.
+2. Add `FORGEOS_ENABLED` = `true`. Optionally tune these alongside it (all
+   have safe defaults if omitted — see `forgeos/config.py`):
+   - `FORGEOS_MAX_CONCURRENT_MISSIONS` (default `2`)
+   - `FORGEOS_SCHEDULER_POLL_SECONDS` (default `60`)
+   - `FORGEOS_DAILY_COST_LIMIT_USD` (default `0` = no cap — set a real number,
+     e.g. `5`, before any production use)
+3. Set these as **shared** secrets so both dev and prod see the same value,
+   unless you specifically want ForgeOS on in dev only.
+4. **Republish/redeploy** — the deployed app builds a separate production
+   process from the workspace, so a new secret only takes effect after a
+   restart of that process (dev workflow restarts pick it up immediately).
+
+**Pre-flight checklist before flipping `FORGEOS_ENABLED=true` in production:**
+
+- [ ] At least one real user account has `is_superuser = true` — every
+      `/forgeos/*` route (including read-only GETs) 403s for everyone else.
+- [ ] `FORGEOS_DAILY_COST_LIMIT_USD` is set to a number you're comfortable
+      losing in the worst case (remember: it's a *soft* cap — see caveats
+      below — and it doesn't cover the `ai_brain` fallback path).
+- [ ] `FORGEOS_MAX_CONCURRENT_MISSIONS` matches your app's spare event-loop
+      capacity — ForgeOS runs in-process alongside the rest of the API.
+- [ ] You've reviewed the mission lifecycle and scheduler thresholds below so
+      an alert or a `failed` mission isn't a surprise.
+- [ ] You know how to turn it back off: unset `FORGEOS_ENABLED` (or set it to
+      `false`) and republish — this is fully reversible and destroys nothing
+      (tables and history are left in place, just unreachable).
+- [ ] After enabling, log into `/forgeos` as a superuser and click **"Create
+      Test Mission"** to confirm the pipeline runs end-to-end before relying
+      on it for anything real.
+- [ ] Watch the Command Center's Overview (AI Cost, mission counts) and the
+      Audit Log for the first real missions before turning on any heavier
+      usage.
+
 ## Where things live
 
 ```

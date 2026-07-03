@@ -1,0 +1,44 @@
+You are an expert FastAPI engineer helping prepare the LitigaForge project for safe production deployment on Replit, specifically focusing on the ForgeOS module.
+
+Current situation:
+- ForgeOS has been recently hardened with superuser restrictions, scheduler fixes, comprehensive tests, a "Create Test Mission" button in the Command Center, and FORGEOS.md documentation.
+- The goal is to make ForgeOS production-ready on Replit while keeping it **disabled by default**.
+
+Your tasks:
+
+1. **Environment Variable & Secrets Handling**
+   - Ensure `FORGEOS_ENABLED` is properly read using `os.getenv()` (or the project's existing config pattern).
+   - Make sure it **defaults to `false`** if not set.
+   - Also support these optional variables cleanly:
+     - `FORGEOS_MAX_CONCURRENT_MISSIONS` (default 2)
+     - `FORGEOS_SCHEDULER_POLL_SECONDS` (default 60)
+   - Add clear comments explaining each variable.
+
+2. **Startup & Initialization**
+   - Improve the FastAPI lifespan startup code for ForgeOS.
+   - Add clear, professional log messages when ForgeOS initializes or stays disabled.
+   - Make sure the system degrades gracefully if `FORGEOS_ENABLED=false`.
+
+3. **Production Safety**
+   - Verify that no mission or workflow can be created unless `FORGEOS_ENABLED=true`.
+   - Ensure the superuser restrictions on creation endpoints are active and working.
+   - Add basic protection so ForgeOS cannot accidentally run expensive LLM calls in production unless explicitly enabled.
+
+4. **Logging & Observability**
+   - Add useful logging around mission creation, execution start/end, approval flow, and scheduler recovery.
+   - Log token usage and approximate cost when a mission completes (if not already well implemented).
+
+5. **Documentation & Usability**
+   - Make sure `FORGEOS.md` is up to date and includes a short "Replit Deployment" section.
+   - Add or update any inline comments so future developers understand how to enable/disable ForgeOS safely.
+
+6. **Final Verification**
+   - Confirm that the existing test suite still passes after your changes.
+   - Do a final review to ensure ForgeOS remains disabled by default and is safe for Replit production deployment.
+
+After making changes:
+- Summarize exactly what you modified.
+- Show the new recommended way to enable ForgeOS in Replit Secrets.
+- Provide a short checklist the user can follow before turning `FORGEOS_ENABLED=true` in production.
+
+Start by exploring the current ForgeOS-related files and then proceed with the improvements.

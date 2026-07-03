@@ -111,6 +111,11 @@ async def create_mission(title: str, description: str = "", agent_id: int | None
     )
     mission = _serialize(row)
 
+    logger.info(
+        "forgeos: mission %s created — title=%r agent_id=%s requires_approval=%s",
+        mission["id"], mission["title"], agent_id, requires_approval,
+    )
+
     await bus.publish("mission.created", {"mission_id": mission["id"], "status": mission["status"]},
                        source="missions")
 
@@ -252,6 +257,9 @@ async def execute_mission(mission_id: int) -> None:
 
         await registry.update_agent_activity(agent["id"], current_mission_id=mission_id, progress=10)
 
+        logger.info("forgeos: mission %s starting execution — agent=%s (%r)",
+                    mission_id, agent["id"], agent.get("name"))
+
         from forgeos.orchestrator import run_agent_task
         task_text = mission["description"] or mission["title"]
         try:
@@ -282,6 +290,17 @@ async def execute_mission(mission_id: int) -> None:
             return
 
         await _record_llm_metrics(agent["id"], mission_id, outcome)
+
+        if outcome.get("cost_usd") is not None:
+            logger.info(
+                "forgeos: mission %s completed — model=%s tokens=%s cost=$%.4f",
+                mission_id, outcome["model_used"], outcome.get("tokens"), outcome["cost_usd"],
+            )
+        else:
+            logger.info(
+                "forgeos: mission %s completed — model=%s (fallback path, no usage reported)",
+                mission_id, outcome["model_used"],
+            )
 
         result_json = json.dumps({"output": outcome["output"], "model_used": outcome["model_used"]})
         await _set_status(mission_id, "completed", result=result_json)

@@ -79,6 +79,11 @@ async def approve(approval_id: int, reviewer_id: int) -> dict:
     )
     result = _serialize(row)
 
+    logger.info(
+        "forgeos: approval %s approved by user %s (mission_id=%s workflow_step_id=%s)",
+        approval_id, reviewer_id, result["mission_id"], result["workflow_step_id"],
+    )
+
     if result["mission_id"] is not None:
         from forgeos.missions import mark_approved_and_run
         await mark_approved_and_run(result["mission_id"])
@@ -106,6 +111,11 @@ async def reject(approval_id: int, reviewer_id: int, reason: str = "") -> dict:
         reviewer_id, reason, approval_id,
     )
     result = _serialize(row)
+
+    logger.info(
+        "forgeos: approval %s rejected by user %s (mission_id=%s workflow_step_id=%s reason=%r)",
+        approval_id, reviewer_id, result["mission_id"], result["workflow_step_id"], reason,
+    )
 
     if result["mission_id"] is not None:
         from forgeos.missions import mark_rejected
