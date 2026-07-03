@@ -84,6 +84,23 @@ Caveats (accept these, don't try to "fix" them without discussion):
   per-call usage reporting, so any spend routed through it is invisible to
   both this cap and the dashboard's "AI Cost" widget.
 
+**Per-mission token ceiling** — `FORGEOS_MAX_TOKENS_PER_MISSION` (default `0`
+= unbounded) is passed straight through as the `max_tokens` param on every
+metered LiteLLM call. Unlike the daily cap, this is enforced by the LLM API
+itself (a single call physically cannot return more output tokens than the
+limit), so it bounds the worst-case cost of any *one* mission or workflow
+step regardless of how the daily aggregate looks. Like the daily cap, it
+only applies to the metered path — the `ai_brain` fallback cascade has no
+token-limit knob of its own.
+
+**Early warning** — `FORGEOS_COST_WARN_THRESHOLD_PCT` (default `80`, only
+meaningful when `FORGEOS_DAILY_COST_LIMIT_USD` is set) makes
+`run_agent_task()` log a `logger.warning` ("approaching daily cost cap...")
+once spend crosses that percentage of the daily cap, *before* the hard block
+at 100%. This is warning-only — it never blocks a mission — so operators get
+advance notice in the logs instead of finding out only when missions start
+failing.
+
 ## Command Center UI
 
 `/forgeos` (superuser-only) — Overview (KPI row, agent grid, missions panel,
@@ -143,6 +160,10 @@ it in production is a deliberate, separate step.
    - `FORGEOS_SCHEDULER_POLL_SECONDS` (default `60`)
    - `FORGEOS_DAILY_COST_LIMIT_USD` (default `0` = no cap — set a real number,
      e.g. `5`, before any production use)
+   - `FORGEOS_MAX_TOKENS_PER_MISSION` (default `0` = unbounded — set a real
+     number, e.g. `2000`, to cap the worst-case cost of any single mission)
+   - `FORGEOS_COST_WARN_THRESHOLD_PCT` (default `80` — only matters once
+     `FORGEOS_DAILY_COST_LIMIT_USD` is set)
 3. Set these as **shared** secrets so both dev and prod see the same value,
    unless you specifically want ForgeOS on in dev only.
 4. **Republish/redeploy** — the deployed app builds a separate production

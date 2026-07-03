@@ -60,3 +60,18 @@ FORGEOS_STUCK_ASSIGNED_SECONDS = int(os.getenv("FORGEOS_STUCK_ASSIGNED_SECONDS",
 # the metered LiteLLM path — the unmetered ai_brain fallback cascade has no
 # per-call usage reporting, so it isn't counted at all (see dashboard.py).
 FORGEOS_DAILY_COST_LIMIT_USD = float(os.getenv("FORGEOS_DAILY_COST_LIMIT_USD", "0"))
+
+# Per-mission ceiling on LLM *output* tokens (passed straight through as the
+# `max_tokens` param on the metered LiteLLM call). 0 or unset = unbounded
+# (backward compatible default). This bounds the worst-case cost of any single
+# mission/workflow-step call — unlike the daily cap above, it's enforced by
+# the LLM API itself (it can't overshoot), not by a read-then-check query.
+# It does NOT apply to the unmetered ai_brain fallback cascade, which has no
+# token-limit knob of its own.
+FORGEOS_MAX_TOKENS_PER_MISSION = int(os.getenv("FORGEOS_MAX_TOKENS_PER_MISSION", "0"))
+
+# Percent of FORGEOS_DAILY_COST_LIMIT_USD at which to start logging a
+# warning (spend is "approaching" the cap) instead of only finding out when
+# the hard block kicks in at 100%. Only meaningful when the daily cap is
+# enabled (> 0); ignored otherwise. Warning-only — never blocks a mission.
+FORGEOS_COST_WARN_THRESHOLD_PCT = float(os.getenv("FORGEOS_COST_WARN_THRESHOLD_PCT", "80"))

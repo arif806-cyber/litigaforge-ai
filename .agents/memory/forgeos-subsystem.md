@@ -33,6 +33,10 @@ ForgeOS (`artifacts/litigaforge-ai/forgeos/`) is a self-contained multi-agent or
   **Why:** lets an operator reconstruct "what happened and what did it cost" from workflow logs alone, without a DB query, while keeping the always-on dashboard/audit-log tables as the source of truth for anything queryable.
   **How to apply:** when adding a new lifecycle transition, follow the existing one-line `logger.info(...)` pattern at the same call sites (not inside tight loops), and never log full LLM prompts/outputs.
 
+- **Testing logger.warning calls on `litigaforge.forgeos`**: that logger has `propagate=False` (see logger.py), so pytest's `caplog` (which hooks the root logger) captures nothing even with `caplog.at_level(..., logger=...)` — that only sets levels, it doesn't attach caplog's handler to a non-propagating logger. Fix: `monkeypatch.setattr(<module>.logger, "propagate", True)` for the test's duration.
+  **Why:** cost a debugging round-trip when adding tests for the per-mission cost-cap early-warning log — the warning printed to stdout but `caplog.records` stayed empty.
+  **How to apply:** any new test asserting on a forgeos log message needs the propagate monkeypatch, not just `caplog.at_level`.
+
 - **FORGEOS_ENABLED can be legitimately `true` in this dev workspace** (was observed enabled after an unrelated restart, subsystem logs "tables ready, agents seeded, scheduler started" with zero errors) — this reflects the operator's own choice, not a task-agent action; never flip it off silently to "restore the default," since the user may be actively using/testing it.
   **Why:** an earlier assumption that dev should always be reset to disabled after E2E testing is not a standing invariant — respect the flag's current state as intentional unless the user asks to change it.
   **How to apply:** treat `FORGEOS_ENABLED`'s live value as user-owned config; only change it if explicitly asked, and always verify via startup logs (not by inference from a stale memory note) whether it's currently on.

@@ -14,30 +14,57 @@ directly — so the daily cost cap is enforced here rather than duplicated in
 each caller.
 """
 from logger import get_logger
-from forgeos.config import FORGEOS_DAILY_COST_LIMIT_USD
+from forgeos.config import (
+    FORGEOS_DAILY_COST_LIMIT_USD,
+    FORGEOS_MAX_TOKENS_PER_MISSION,
+    FORGEOS_COST_WARN_THRESHOLD_PCT,
+)
 
 logger = get_logger("litigaforge.forgeos")
 
 
-async def _daily_cost_cap_exceeded() -> float | None:
-    """Returns today's metered spend (USD) if it has reached/exceeded the
-    configured cap, else None. Uses the exact same query the dashboard's "AI
-    Cost > today" widget uses so the cap and what operators see agree.
-    Soft/best-effort: a small overshoot is possible when several missions run
-    concurrently (bounded by FORGEOS_MAX_CONCURRENT_MISSIONS) — this is a
-    spend guard, not a hard billing lock, and only covers the metered LiteLLM
+async def _daily_spend_today() -> float:
+    """Today's metered spend (USD), summed the same way the dashboard's "AI
+    Cost > today" widget does — a single DB query shared by both the
+    hard-cap and early-warning checks below. Only covers the metered LiteLLM
     path (the ai_brain fallback has no per-call usage data to sum)."""
-    if FORGEOS_DAILY_COST_LIMIT_USD <= 0:
-        return None
     from database import fetch
     rows = await fetch(
         """SELECT COALESCE(SUM(value), 0) AS total FROM forgeos_metrics
            WHERE metric_type = 'llm_cost_usd' AND created_at >= CURRENT_DATE"""
     )
-    spent_today = float(rows[0]["total"]) if rows else 0.0
+    return float(rows[0]["total"]) if rows else 0.0
+
+
+async def _daily_cost_cap_exceeded() -> float | None:
+    """Returns today's metered spend (USD) if it has reached/exceeded the
+    configured cap, else None.
+    Soft/best-effort: a small overshoot is possible when several missions run
+    concurrently (bounded by FORGEOS_MAX_CONCURRENT_MISSIONS) — this is a
+    spend guard, not a hard billing lock."""
+    if FORGEOS_DAILY_COST_LIMIT_USD <= 0:
+        return None
+    spent_today = await _daily_spend_today()
     if spent_today >= FORGEOS_DAILY_COST_LIMIT_USD:
         return spent_today
     return None
+
+
+async def _warn_if_approaching_daily_cap() -> None:
+    """Warning-only early-alert: logs once per call when today's spend has
+    crossed FORGEOS_COST_WARN_THRESHOLD_PCT of the daily cap but hasn't hit
+    it yet. Never blocks — the hard block is _daily_cost_cap_exceeded()'s job."""
+    if FORGEOS_DAILY_COST_LIMIT_USD <= 0:
+        return
+    spent_today = await _daily_spend_today()
+    if spent_today >= FORGEOS_DAILY_COST_LIMIT_USD:
+        return  # already over — _daily_cost_cap_exceeded() will block this call
+    warn_at = FORGEOS_DAILY_COST_LIMIT_USD * (FORGEOS_COST_WARN_THRESHOLD_PCT / 100)
+    if spent_today >= warn_at:
+        logger.warning(
+            "forgeos: approaching daily cost cap — $%.4f of $%.2f spent today (%.0f%% threshold)",
+            spent_today, FORGEOS_DAILY_COST_LIMIT_USD, FORGEOS_COST_WARN_THRESHOLD_PCT,
+        )
 
 
 _SYSTEM_PROMPT_TEMPLATE = (
@@ -83,11 +110,14 @@ async def run_agent_task(agent: dict, task_input: str) -> dict:
             "tokens": None, "cost_usd": None,
         }
 
+    await _warn_if_approaching_daily_cap()
+
     system_prompt = _build_system_prompt(agent)
+    max_tokens = FORGEOS_MAX_TOKENS_PER_MISSION or None
 
     try:
         from llm.legal_llm import acomplete_with_usage
-        result = await acomplete_with_usage(system_prompt, task_input)
+        result = await acomplete_with_usage(system_prompt, task_input, max_tokens=max_tokens)
         if result["text"]:
             return {
                 "output": result["text"], "model_used": result["model"], "error": None,
