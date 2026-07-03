@@ -1,0 +1,45 @@
+You are an expert FastAPI + production systems engineer working on the LitigaForge project.
+
+### Current State (Latest)
+- ForgeOS now has structured logging (logger.info) at all major lifecycle points: mission creation, execution start/completion (with model, tokens, and cost), workflow steps, and approval decisions.
+- FORGEOS.md has been updated with a "Replit Deployment" section and pre-flight checklist.
+- All 92 ForgeOS unit tests are passing.
+- Backend starts cleanly with zero errors.
+- ForgeOS remains disabled by default (`FORGEOS_ENABLED=false`).
+
+### Production Readiness Assessment
+Security restrictions, scheduler fixes, and test coverage are already in good shape. The recent addition of structured logging and updated documentation has significantly improved observability and deployability on Replit.
+
+### Your Task
+Help move ForgeOS closer to safe production use on Replit. First, propose a clear plan with priorities. Then implement based on the chosen direction.
+
+Here are the recommended next options. Choose one (or suggest a better one):
+
+**Option A: Cost Control & Guardrails** (Recommended)
+- Add basic but effective cost/token usage guardrails.
+- Implement simple per-mission or daily limits with clear logging and graceful handling when limits are approached or exceeded.
+- Make limits configurable via environment variables.
+- Update FORGEOS.md with how to configure cost protection.
+
+**Option B: Production Enablement & Monitoring**
+- Create a practical, step-by-step "Safe Enablement Checklist" for turning on ForgeOS in Replit production.
+- Improve logging visibility (especially around costs and errors).
+- Add a simple health/status indicator for ForgeOS in the dashboard or logs.
+- Update documentation with monitoring recommendations.
+
+**Option C: End-to-End Validation**
+- Perform a full end-to-end test of the current ForgeOS flow using the new "Create Test Mission" button.
+- Verify structured logging appears correctly for creation → execution → completion.
+- Check that dashboard metrics update properly.
+- Document any issues found and fix them.
+
+**Option D: Something Else**
+- Suggest and implement another high-value improvement for production readiness.
+
+Instructions:
+1. First, tell me which option you recommend and why.
+2. Then give a short implementation plan.
+3. Wait for my confirmation before making changes.
+4. After implementation, run the tests and summarize what was done and its impact on production readiness.
+
+Start by analyzing the current ForgeOS code structure and then respond with your recommendation and plan.
