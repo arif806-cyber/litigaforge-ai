@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Cpu, AlertTriangle, Loader2, Bot, Rocket, ScrollText, ShieldCheck } from "lucide-react";
+import { Cpu, AlertTriangle, Loader2, Bot, Rocket, ScrollText, ShieldCheck, Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useForgeOsStream } from "@/lib/useForgeOsStream";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { AgentsGrid } from "@/components/forgeos/AgentsGrid";
 import { MissionsPanel, MissionCountPills } from "@/components/forgeos/MissionsPanel";
@@ -108,6 +109,8 @@ export default function ForgeOsPage() {
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<Tab>("overview");
   const isSuperuser = !!user?.is_superuser;
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const dashboardQuery = useQuery<ForgeDashboardSnapshot>({
     queryKey: ["forgeos-dashboard"],
@@ -117,6 +120,33 @@ export default function ForgeOsPage() {
   });
 
   const streamStatus = useForgeOsStream(isSuperuser);
+
+  const createTestMissionMutation = useMutation({
+    mutationFn: () => {
+      const activeAgent = (dashboardQuery.data?.agents ?? []).find((a) => a.status === "active");
+      return apiFetch("/forgeos/missions", {
+        method: "POST",
+        body: {
+          title: `Test mission — ${new Date().toLocaleString()}`,
+          description: "Manually triggered smoke-test mission from the Command Center.",
+          agent_id: activeAgent?.id,
+          input: { note: "Created via 'Create Test Mission' button." },
+          requires_approval: false,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Test mission created", description: "Check the Missions panel for progress." });
+      queryClient.invalidateQueries({ queryKey: ["forgeos-dashboard"] });
+    },
+    onError: (err) => {
+      toast({
+        title: "Failed to create mission",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const [deployRefreshing, setDeployRefreshing] = useState(false);
   const deploymentsQuery = useQuery<ForgeDeploymentStatus>({
@@ -174,7 +204,23 @@ export default function ForgeOsPage() {
           <Cpu className="w-6 h-6 text-violet-500" />
           <h1 className="text-2xl font-bold">ForgeOS Command Center</h1>
         </div>
-        <LiveIndicator status={streamStatus} />
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid="button-create-test-mission"
+            disabled={createTestMissionMutation.isPending || !dashboardQuery.data}
+            onClick={() => createTestMissionMutation.mutate()}
+          >
+            {createTestMissionMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4 mr-1.5" />
+            )}
+            Create Test Mission
+          </Button>
+          <LiveIndicator status={streamStatus} />
+        </div>
       </div>
 
       <div className="flex gap-2 border-b border-border overflow-x-auto">

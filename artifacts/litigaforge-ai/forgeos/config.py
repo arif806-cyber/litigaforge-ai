@@ -50,3 +50,13 @@ FORGEOS_STUCK_WAITING_SECONDS = int(os.getenv("FORGEOS_STUCK_WAITING_SECONDS", "
 # create_mission()'s asyncio.create_task and the task actually executing) —
 # it's just re-launched, no reassignment needed since no agent ever started it.
 FORGEOS_STUCK_ASSIGNED_SECONDS = int(os.getenv("FORGEOS_STUCK_ASSIGNED_SECONDS", "120"))
+
+# Soft daily spend cap (USD) on *metered* LLM calls (forgeos_metrics
+# metric_type='llm_cost_usd' — the same rows the Command Center's "AI Cost"
+# widget sums for "today"). 0 or unset = no cap (backward compatible default).
+# This is a soft/best-effort limit, not a hard guarantee: a small overshoot is
+# possible when several missions are mid-flight concurrently (bounded by
+# FORGEOS_MAX_CONCURRENT_MISSIONS), and it only bounds calls that went through
+# the metered LiteLLM path — the unmetered ai_brain fallback cascade has no
+# per-call usage reporting, so it isn't counted at all (see dashboard.py).
+FORGEOS_DAILY_COST_LIMIT_USD = float(os.getenv("FORGEOS_DAILY_COST_LIMIT_USD", "0"))

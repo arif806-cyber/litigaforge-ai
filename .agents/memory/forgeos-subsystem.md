@@ -16,3 +16,15 @@ ForgeOS (`artifacts/litigaforge-ai/forgeos/`) is a self-contained multi-agent or
 - **Pre-existing unrelated test failures**: `tests/test_auth.py::test_healthz`, `test_root`, `test_register_success`, `test_login_success` fail on this codebase even in complete isolation from forgeos changes (stale `ai_mode` health assertion, dev-mode root 404, and a real `store_refresh_token` DB call that isn't mocked, hitting `ConnectionRefusedError` against a fake DATABASE_URL). Confirmed pre-existing by running `test_auth.py` alone with zero forgeos files collected — same 4 failures.
   **Why:** avoids mistakenly attributing legacy test drift to new subsystem work.
   **How to apply:** if these 4 tests resurface as "broken by my change," first check they still fail with forgeos entirely excluded before investigating further.
+
+- **`tests/test_endpoints.py` is a live-server integration suite** (real `httpx` calls to `localhost:5000`, with real `time.sleep(20)` rate-limit retries) — running it (or the full `pytest tests/`) under a short tool timeout silently kills the run with no output. It is unrelated to forgeos and any other unit-tested module.
+  **Why:** wasted a `timeout`-guarded `pytest tests/` attempt before realizing the hang was this file, not a regression.
+  **How to apply:** for "run the full suite" checks, run unit-test files explicitly (excluding `test_endpoints.py`) instead of a bare `pytest tests/ -q`, or only run it separately against a live workflow with a long timeout.
+
+- **Monkeypatching a function that a module imported via `from X import fn`** must target the *importing* module's local name (`importing_module.fn`), not the origin module (`X.fn`) — the importing module already holds its own reference from import time, so patching the source has no effect. Hit this in `forgeos/dashboard.py`'s `_activity_feed` (which does `from forgeos.audit import list_audit_log`) specifically.
+  **Why:** cost a debugging round-trip — tests patched `forgeos.audit.list_audit_log` and still hit the real (failing) DB call inside `dashboard._activity_feed`.
+  **How to apply:** when unit-testing a function, check how it imported its dependencies; if imported by name (not `import module` + `module.fn()` call-sites), patch on the caller's module object.
+
+- **Cost/token safeguard**: `FORGEOS_DAILY_COST_LIMIT_USD` (0/unset = no cap) is enforced once, inside `orchestrator.run_agent_task()` — the single choke point both `missions.execute_mission()` and `workflows._run_step()` call — by summing today's `forgeos_metrics` rows (`metric_type='llm_cost_usd'`, same rows the dashboard's "AI Cost" widget totals) before dispatch.
+  **Why:** it's a soft/best-effort cap (concurrent in-flight missions can overshoot slightly) and only bounds the metered LiteLLM path — the unmetered `ai_brain` cascade fallback has no per-call usage reporting, so spend routed through it is invisible to both the cap and the dashboard.
+  **How to apply:** don't treat this as a hard billing guarantee; if a hard guarantee is ever needed, it requires a distributed lock/reservation, not a read-then-check.

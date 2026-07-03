@@ -7,10 +7,38 @@ used elsewhere in this backend (e.g. judgment summarization, /ask).
 
 Both are imported lazily so importing forgeos.orchestrator never pays the
 litellm import cost unless a mission actually runs.
+
+This is also the single choke point every LLM call goes through — both
+missions.execute_mission() and workflows._run_step() call run_agent_task()
+directly — so the daily cost cap is enforced here rather than duplicated in
+each caller.
 """
 from logger import get_logger
+from forgeos.config import FORGEOS_DAILY_COST_LIMIT_USD
 
 logger = get_logger("litigaforge.forgeos")
+
+
+async def _daily_cost_cap_exceeded() -> float | None:
+    """Returns today's metered spend (USD) if it has reached/exceeded the
+    configured cap, else None. Uses the exact same query the dashboard's "AI
+    Cost > today" widget uses so the cap and what operators see agree.
+    Soft/best-effort: a small overshoot is possible when several missions run
+    concurrently (bounded by FORGEOS_MAX_CONCURRENT_MISSIONS) — this is a
+    spend guard, not a hard billing lock, and only covers the metered LiteLLM
+    path (the ai_brain fallback has no per-call usage data to sum)."""
+    if FORGEOS_DAILY_COST_LIMIT_USD <= 0:
+        return None
+    from database import fetch
+    rows = await fetch(
+        """SELECT COALESCE(SUM(value), 0) AS total FROM forgeos_metrics
+           WHERE metric_type = 'llm_cost_usd' AND created_at >= CURRENT_DATE"""
+    )
+    spent_today = float(rows[0]["total"]) if rows else 0.0
+    if spent_today >= FORGEOS_DAILY_COST_LIMIT_USD:
+        return spent_today
+    return None
+
 
 _SYSTEM_PROMPT_TEMPLATE = (
     "You are {name}, acting as {role} inside ForgeOS, an internal multi-agent "
@@ -41,6 +69,20 @@ async def run_agent_task(agent: dict, task_input: str) -> dict:
     Never raises — callers (missions/workflows) rely on the "error" field
     to decide whether the task failed.
     """
+    spent_today = await _daily_cost_cap_exceeded()
+    if spent_today is not None:
+        logger.error(
+            "forgeos: daily cost cap reached ($%.4f spent >= $%.2f limit) — refusing to run agent '%s'",
+            spent_today, FORGEOS_DAILY_COST_LIMIT_USD, agent.get("name", "?"),
+        )
+        return {
+            "output": "", "model_used": None,
+            "error": (f"Daily ForgeOS AI cost cap reached (${spent_today:.4f} spent of "
+                      f"${FORGEOS_DAILY_COST_LIMIT_USD:.2f} limit) — mission blocked until it resets "
+                      "at midnight UTC or the cap is raised."),
+            "tokens": None, "cost_usd": None,
+        }
+
     system_prompt = _build_system_prompt(agent)
 
     try:
