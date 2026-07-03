@@ -1350,7 +1350,38 @@ if _prod_domain not in _cors_origins:
     _cors_origins.append(_prod_domain)
 if not _cors_origins:
     _cors_origins = ["http://localhost:5173", "http://localhost:4173"]
-app.add_middleware(GZipMiddleware, minimum_size=500)
+class _ConditionalGZipMiddleware:
+    """Wraps GZipMiddleware but bypasses it for streaming (SSE) responses.
+
+    Starlette's GZipMiddleware writes each chunk through gzip.GzipFile without
+    ever calling .flush() on intermediate chunks, so zlib's internal buffer can
+    sit on small SSE frames for a long time (sometimes indefinitely, since
+    close() — the only flush point — never happens on a long-lived stream).
+    That silently starves any Server-Sent Events endpoint of real-time output.
+    Excluded paths skip gzip entirely and go straight to the app.
+    """
+
+    def __init__(self, app, minimum_size: int = 500, exclude_paths: tuple = ()):
+        self.gzip_app = GZipMiddleware(app, minimum_size=minimum_size)
+        self.raw_app = app
+        self.exclude_paths = exclude_paths
+
+    async def __call__(self, scope, receive, send):
+        # Match by suffix, not prefix: Replit's shared proxy prepends BASE_PATH
+        # on top of uvicorn's own root_path=BASE_PATH, so scope["path"] can show
+        # up as either "/litigaforge/forgeos/stream" or the doubled
+        # "/litigaforge/litigaforge/forgeos/stream" depending on the entry point.
+        if scope["type"] == "http" and any(scope["path"].endswith(p) for p in self.exclude_paths):
+            await self.raw_app(scope, receive, send)
+            return
+        await self.gzip_app(scope, receive, send)
+
+
+app.add_middleware(
+    _ConditionalGZipMiddleware,
+    minimum_size=500,
+    exclude_paths=("/forgeos/stream",),
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,

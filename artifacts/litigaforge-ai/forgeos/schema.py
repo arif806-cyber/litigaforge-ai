@@ -33,7 +33,7 @@ async def init_forgeos_tables() -> None:
             title TEXT NOT NULL,
             description TEXT DEFAULT '',
             agent_id INTEGER REFERENCES forgeos_agents(id) ON DELETE SET NULL,
-            status TEXT NOT NULL DEFAULT 'draft',
+            status TEXT NOT NULL DEFAULT 'planned',
             requires_approval BOOLEAN NOT NULL DEFAULT FALSE,
             input JSONB DEFAULT '{}'::jsonb,
             result JSONB,
@@ -46,6 +46,73 @@ async def init_forgeos_tables() -> None:
     await execute("""
         CREATE INDEX IF NOT EXISTS idx_forgeos_missions_status
             ON forgeos_missions(status)
+    """)
+    # Existing installs may still have the pre-rename default — idempotent, harmless to rerun.
+    await execute("""
+        ALTER TABLE forgeos_missions ALTER COLUMN status SET DEFAULT 'planned'
+    """)
+
+    # ForgeOS Mission 001 additions — dashboard-facing agent fields. Added via
+    # idempotent ALTER (mirrors main.py's migration pattern) rather than a
+    # destructive rebuild, since forgeos_agents may already have rows.
+    await execute("ALTER TABLE forgeos_agents ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT ''")
+    await execute("ALTER TABLE forgeos_agents ADD COLUMN IF NOT EXISTS kpis JSONB DEFAULT '{}'::jsonb")
+    await execute("""
+        ALTER TABLE forgeos_agents ADD COLUMN IF NOT EXISTS current_mission_id
+            INTEGER REFERENCES forgeos_missions(id) ON DELETE SET NULL
+    """)
+    await execute("ALTER TABLE forgeos_agents ADD COLUMN IF NOT EXISTS progress INTEGER NOT NULL DEFAULT 0")
+    await execute("ALTER TABLE forgeos_agents ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ")
+
+    await execute("""
+        CREATE TABLE IF NOT EXISTS forgeos_mission_tasks (
+            id SERIAL PRIMARY KEY,
+            mission_id INTEGER NOT NULL REFERENCES forgeos_missions(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            agent_id INTEGER REFERENCES forgeos_agents(id) ON DELETE SET NULL,
+            order_index INTEGER NOT NULL DEFAULT 0,
+            output TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+    await execute("""
+        CREATE INDEX IF NOT EXISTS idx_forgeos_mission_tasks_mission
+            ON forgeos_mission_tasks(mission_id, order_index)
+    """)
+
+    await execute("""
+        CREATE TABLE IF NOT EXISTS forgeos_metrics (
+            id SERIAL PRIMARY KEY,
+            metric_type TEXT NOT NULL,
+            agent_id INTEGER REFERENCES forgeos_agents(id) ON DELETE SET NULL,
+            mission_id INTEGER REFERENCES forgeos_missions(id) ON DELETE SET NULL,
+            value NUMERIC NOT NULL DEFAULT 0,
+            unit TEXT DEFAULT '',
+            meta JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+    await execute("""
+        CREATE INDEX IF NOT EXISTS idx_forgeos_metrics_type_created
+            ON forgeos_metrics(metric_type, created_at DESC)
+    """)
+
+    await execute("""
+        CREATE TABLE IF NOT EXISTS forgeos_audit_log (
+            id SERIAL PRIMARY KEY,
+            actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            action TEXT NOT NULL,
+            target_type TEXT DEFAULT '',
+            target_id TEXT DEFAULT '',
+            detail JSONB DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+    await execute("""
+        CREATE INDEX IF NOT EXISTS idx_forgeos_audit_log_created
+            ON forgeos_audit_log(created_at DESC)
     """)
 
     await execute("""
@@ -137,4 +204,4 @@ async def init_forgeos_tables() -> None:
         )
     """)
 
-    logger.info("forgeos: schema ready (8 tables)")
+    logger.info("forgeos: schema ready (11 tables)")

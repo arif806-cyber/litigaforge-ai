@@ -3,10 +3,17 @@ ForgeOS REST API — mounted at {BASE_PATH}/forgeos, only when FORGEOS_ENABLED
 is true. Agent registration and approval decisions are superuser-gated
 (this is a live production app — an open agent-registration endpoint would
 let anyone inject prompts into LLM calls run under ForgeOS's identity).
+
+The Command Center dashboard (GET /dashboard, GET /stream, GET /deployments,
+GET /audit-log) is superuser-only end to end — it surfaces real revenue and
+AI-cost figures that must never leak to a non-admin user.
 """
+import asyncio
+import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from auth import require_user, get_superuser
@@ -14,7 +21,7 @@ from logger import get_logger
 from rate_limit import limiter
 from sanitizer import sanitize_text
 
-from forgeos import registry, missions, workflows, approvals
+from forgeos import registry, missions, workflows, approvals, dashboard, github, audit
 from forgeos.events import bus, recent_events
 
 logger = get_logger("litigaforge.forgeos")
@@ -213,3 +220,93 @@ async def reject_approval(approval_id: int, req: ApprovalDecisionRequest, reques
     except Exception as e:
         logger.error("forgeos: reject failed: %s", e, exc_info=True)
         raise HTTPException(500, "Failed to reject")
+
+
+# ── Command Center (dashboard, deployments, audit log, live stream) ──────────
+# All superuser-only: real revenue + AI-cost figures must never reach a
+# non-admin user, and the SSE stream re-broadcasts that same snapshot data.
+
+@router.get("/dashboard")
+async def get_dashboard(current_user: dict = Depends(get_superuser)):
+    try:
+        return await dashboard.get_dashboard_snapshot()
+    except Exception as e:
+        logger.error("forgeos: get_dashboard_snapshot failed: %s", e, exc_info=True)
+        raise HTTPException(500, "Failed to load dashboard")
+
+
+@router.get("/deployments")
+async def get_deployments(force_refresh: bool = False,
+                           current_user: dict = Depends(get_superuser)):
+    try:
+        return await github.get_deployment_status(force_refresh=force_refresh)
+    except Exception as e:
+        logger.error("forgeos: get_deployment_status failed: %s", e, exc_info=True)
+        raise HTTPException(500, "Failed to load deployment status")
+
+
+@router.get("/audit-log")
+async def get_audit_log(action: Optional[str] = None, target_type: Optional[str] = None,
+                         limit: int = 100, current_user: dict = Depends(get_superuser)):
+    try:
+        return await audit.list_audit_log(action=action, target_type=target_type, limit=limit)
+    except Exception as e:
+        logger.error("forgeos: list_audit_log failed: %s", e, exc_info=True)
+        raise HTTPException(500, "Failed to load audit log")
+
+
+# SSE snapshot refresh cadence — keeps Revenue/AI-Cost/Deployments widgets
+# fresh even during quiet periods with no discrete mission/workflow events.
+_STREAM_SNAPSHOT_INTERVAL_SECONDS = 20
+_STREAM_HEARTBEAT_SECONDS = 15
+
+
+@router.get("/stream")
+async def stream_command_center(request: Request, current_user: dict = Depends(get_superuser)):
+    """Server-Sent Events feed for the /forgeos Command Center: emits a full
+    dashboard snapshot immediately, then a live event for every ForgeOS
+    mission/workflow event as it happens, plus a periodic snapshot refresh so
+    widgets fed by slower-moving sources (revenue, AI cost, deployments)
+    don't go stale between discrete events. Browser EventSource must be
+    created with {withCredentials: true} so the httpOnly auth cookie rides
+    along (this app is cookie-first auth)."""
+    queue = bus.subscribe("*")
+
+    async def generate():
+        def sse(event_type: str, data: dict) -> str:
+            return f"event: {event_type}\ndata: {json.dumps(data, default=str)}\n\n"
+
+        try:
+            snapshot = await dashboard.get_dashboard_snapshot()
+            yield sse("snapshot", snapshot)
+        except Exception as e:
+            logger.error("forgeos: initial stream snapshot failed: %s", e, exc_info=True)
+
+        last_snapshot_at = asyncio.get_running_loop().time()
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                timeout = max(0.1, _STREAM_HEARTBEAT_SECONDS)
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=timeout)
+                    yield sse("event", event)
+                except asyncio.TimeoutError:
+                    yield ": heartbeat\n\n"
+
+                now = asyncio.get_running_loop().time()
+                if now - last_snapshot_at >= _STREAM_SNAPSHOT_INTERVAL_SECONDS:
+                    last_snapshot_at = now
+                    try:
+                        snapshot = await dashboard.get_dashboard_snapshot()
+                        yield sse("snapshot", snapshot)
+                    except Exception as e:
+                        logger.error("forgeos: periodic stream snapshot failed: %s", e, exc_info=True)
+        finally:
+            bus.unsubscribe("*", queue)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

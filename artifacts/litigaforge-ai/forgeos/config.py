@@ -34,3 +34,19 @@ FORGEOS_MAX_INPUT_CHARS = int(os.getenv("FORGEOS_MAX_INPUT_CHARS", "8000"))
 
 # Max characters accepted for event payload (stringified) — guards forgeos_events.
 FORGEOS_MAX_EVENT_PAYLOAD_CHARS = int(os.getenv("FORGEOS_MAX_EVENT_PAYLOAD_CHARS", "20000"))
+
+# A mission stuck in "running" past this long (seconds) is almost always an
+# orphan — its process died mid-call before it could ever reach a terminal
+# state — so the scheduler treats it as blocked and reassigns it.
+FORGEOS_STUCK_RUNNING_SECONDS = int(os.getenv("FORGEOS_STUCK_RUNNING_SECONDS", "600"))
+
+# A mission stuck in "waiting" (pending human approval) past this long is
+# surfaced as blocked so a founder alert fires — it isn't reassigned since a
+# human decision is what's actually missing, not agent capacity.
+FORGEOS_STUCK_WAITING_SECONDS = int(os.getenv("FORGEOS_STUCK_WAITING_SECONDS", "1800"))
+
+# A mission stuck in "assigned" past this long never even got its
+# execute_mission() task to run (e.g. the process restarted between
+# create_mission()'s asyncio.create_task and the task actually executing) —
+# it's just re-launched, no reassignment needed since no agent ever started it.
+FORGEOS_STUCK_ASSIGNED_SECONDS = int(os.getenv("FORGEOS_STUCK_ASSIGNED_SECONDS", "120"))

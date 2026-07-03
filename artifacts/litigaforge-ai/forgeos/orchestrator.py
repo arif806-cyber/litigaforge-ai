@@ -32,17 +32,30 @@ def _build_system_prompt(agent: dict) -> str:
 async def run_agent_task(agent: dict, task_input: str) -> dict:
     """Run a single agent task through the LLM layer.
 
-    Returns {"output": str, "model_used": str, "error": str | None}.
+    Returns {"output": str, "model_used": str, "error": str | None,
+    "tokens": {"prompt": int, "completion": int, "total": int} | None,
+    "cost_usd": float | None}. "tokens"/"cost_usd" are only populated on the
+    primary (metered) LiteLLM path — the ai_brain fallback cascade has no
+    per-call usage reporting, so those come back None (unknown, not zero).
+
     Never raises — callers (missions/workflows) rely on the "error" field
     to decide whether the task failed.
     """
     system_prompt = _build_system_prompt(agent)
 
     try:
-        from llm.legal_llm import acomplete
-        output = await acomplete(system_prompt, task_input)
-        if output and output.strip():
-            return {"output": output.strip(), "model_used": "legal_llm", "error": None}
+        from llm.legal_llm import acomplete_with_usage
+        result = await acomplete_with_usage(system_prompt, task_input)
+        if result["text"]:
+            return {
+                "output": result["text"], "model_used": result["model"], "error": None,
+                "tokens": {
+                    "prompt": result["prompt_tokens"],
+                    "completion": result["completion_tokens"],
+                    "total": result["total_tokens"],
+                },
+                "cost_usd": result["cost_usd"],
+            }
         logger.warning("forgeos: primary LLM path returned empty output — falling back")
     except Exception as e:
         logger.warning("forgeos: primary LLM path failed (%s) — falling back", e)
@@ -51,8 +64,10 @@ async def run_agent_task(agent: dict, task_input: str) -> dict:
         from ai_brain import call_llm_async
         output = await call_llm_async(system_prompt, task_input)
         if output and output.strip():
-            return {"output": output.strip(), "model_used": "ai_brain_cascade", "error": None}
-        return {"output": "", "model_used": "ai_brain_cascade", "error": "All LLM providers returned empty output"}
+            return {"output": output.strip(), "model_used": "ai_brain_cascade", "error": None,
+                    "tokens": None, "cost_usd": None}
+        return {"output": "", "model_used": "ai_brain_cascade",
+                "error": "All LLM providers returned empty output", "tokens": None, "cost_usd": None}
     except Exception as e:
         logger.error("forgeos: fallback LLM cascade failed: %s", e, exc_info=True)
-        return {"output": "", "model_used": None, "error": str(e)}
+        return {"output": "", "model_used": None, "error": str(e), "tokens": None, "cost_usd": None}

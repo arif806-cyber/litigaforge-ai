@@ -93,6 +93,38 @@ async def acomplete(system: str, user: str, temperature=None, max_tokens=None) -
     return _text(resp)
 
 
+async def acomplete_with_usage(system: str, user: str, temperature=None, max_tokens=None) -> dict:
+    """Async completion that also returns token usage + real USD cost.
+
+    Additive alongside :func:`acomplete` (which stays text-only for its many
+    existing callers) — used by ForgeOS to meter real AI spend per mission.
+    Cost is computed via litellm's own model-pricing table
+    (``litellm.completion_cost``), not a hand-maintained price list, so it
+    stays correct as models/pricing change upstream.
+
+    Returns {"text": str, "model": str, "prompt_tokens": int, "completion_tokens": int,
+    "total_tokens": int, "cost_usd": float | None}. "cost_usd" is None when the
+    model isn't in litellm's pricing table (cost unknown, not zero).
+    """
+    lib = _lib()
+    resp = await lib.acompletion(messages=_messages(system, user),
+                                  **_kwargs(max_tokens, temperature))
+    usage = getattr(resp, "usage", None)
+    cost_usd = None
+    try:
+        cost_usd = lib.completion_cost(completion_response=resp)
+    except Exception as e:
+        logger.debug("legal_llm: completion_cost unavailable for model %s: %s", LLM_MODEL, e)
+    return {
+        "text": _text(resp),
+        "model": LLM_MODEL,
+        "prompt_tokens": getattr(usage, "prompt_tokens", 0) if usage else 0,
+        "completion_tokens": getattr(usage, "completion_tokens", 0) if usage else 0,
+        "total_tokens": getattr(usage, "total_tokens", 0) if usage else 0,
+        "cost_usd": cost_usd,
+    }
+
+
 # ── Convenience helpers ────────────────────────────────────────────────────────
 def ask_legal_question(question: str, context: str = "", language: str = "en") -> str:
     """Synchronous legal Q&A using the shared legal system prompt."""

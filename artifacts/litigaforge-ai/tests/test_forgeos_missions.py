@@ -17,7 +17,7 @@ os.environ.setdefault("BASE_PATH", "/litigaforge")
 from forgeos import missions, approvals
 
 
-def _mission_row(status="approved", **overrides):
+def _mission_row(status="assigned", **overrides):
     row = {
         "id": 1, "title": "Draft the onboarding doc", "description": "Write it up",
         "agent_id": 1, "status": status, "requires_approval": False,
@@ -33,7 +33,7 @@ async def test_create_mission_without_approval_schedules_execution(monkeypatch):
     published = []
 
     async def fake_fetchrow(query, *args):
-        return _mission_row(status="approved")
+        return _mission_row(status="assigned")
 
     async def fake_publish(topic, payload, source=""):
         published.append(topic)
@@ -50,7 +50,7 @@ async def test_create_mission_without_approval_schedules_execution(monkeypatch):
 
     mission = await missions.create_mission(title="Draft the onboarding doc",
                                              requires_approval=False)
-    assert mission["status"] == "approved"
+    assert mission["status"] == "assigned"
     assert "mission.created" in published
 
     await asyncio.sleep(0)
@@ -60,7 +60,7 @@ async def test_create_mission_without_approval_schedules_execution(monkeypatch):
 @pytest.mark.asyncio
 async def test_create_mission_with_approval_creates_approval_not_execution(monkeypatch):
     async def fake_fetchrow(query, *args):
-        return _mission_row(status="pending_approval", requires_approval=True)
+        return _mission_row(status="waiting", requires_approval=True)
 
     async def fake_publish(topic, payload, source=""):
         return {"topic": topic}
@@ -83,7 +83,7 @@ async def test_create_mission_with_approval_creates_approval_not_execution(monke
     monkeypatch.setattr(missions, "execute_mission", fake_execute_mission)
 
     mission = await missions.create_mission(title="Sensitive task", requires_approval=True)
-    assert mission["status"] == "pending_approval"
+    assert mission["status"] == "waiting"
     assert approval_calls == [1]
 
     await asyncio.sleep(0)
@@ -122,7 +122,7 @@ async def test_execute_mission_skips_when_not_approved(monkeypatch, caplog):
 @pytest.mark.asyncio
 async def test_execute_mission_marks_failed_when_no_agent(monkeypatch):
     async def fake_get_mission(mission_id):
-        return _mission_row(status="approved", agent_id=None)
+        return _mission_row(status="assigned", agent_id=None)
 
     statuses = []
 
@@ -143,7 +143,7 @@ async def test_execute_mission_marks_failed_when_no_agent(monkeypatch):
 @pytest.mark.asyncio
 async def test_execute_mission_completes_on_success(monkeypatch):
     async def fake_get_mission(mission_id):
-        return _mission_row(status="approved", agent_id=5)
+        return _mission_row(status="assigned", agent_id=5)
 
     async def fake_get_agent(agent_id):
         return {"id": 5, "name": "Backend Engineer", "role": "Backend Engineer"}
@@ -159,13 +159,62 @@ async def test_execute_mission_completes_on_success(monkeypatch):
     async def fake_run_agent_task(agent, task_text):
         return {"output": "done", "model_used": "test-model", "error": None}
 
+    async def fake_still_owns(mission_id, agent_id):
+        return True
+
     monkeypatch.setattr(missions, "get_mission", fake_get_mission)
     monkeypatch.setattr(missions.registry, "get_agent", fake_get_agent)
     monkeypatch.setattr(missions, "_set_status", fake_set_status)
     monkeypatch.setattr(missions.bus, "publish", fake_publish)
+    monkeypatch.setattr(missions, "_still_owns", fake_still_owns)
 
     from forgeos import orchestrator
     monkeypatch.setattr(orchestrator, "run_agent_task", fake_run_agent_task)
 
     await missions.execute_mission(1)
     assert statuses == ["running", "completed"]
+
+
+@pytest.mark.asyncio
+async def test_execute_mission_discards_stale_result_when_reassigned(monkeypatch):
+    """If the scheduler reassigns a mission to another agent while this
+    coroutine is still mid-flight (e.g. a slow fallback past the stuck-running
+    threshold), the original coroutine must NOT clobber the reassigned
+    mission's state when it finally finishes."""
+    async def fake_get_mission(mission_id):
+        return _mission_row(status="assigned", agent_id=5)
+
+    async def fake_get_agent(agent_id):
+        return {"id": 5, "name": "Backend Engineer", "role": "Backend Engineer"}
+
+    statuses = []
+
+    async def fake_set_status(mission_id, status, **fields):
+        statuses.append(status)
+
+    async def fake_publish(topic, payload, source=""):
+        return {"topic": topic}
+
+    async def fake_run_agent_task(agent, task_text):
+        return {"output": "done", "model_used": "test-model", "error": None}
+
+    async def fake_still_owns(mission_id, agent_id):
+        return False
+
+    async def fake_update_agent_activity(agent_id, **fields):
+        return None
+
+    monkeypatch.setattr(missions, "get_mission", fake_get_mission)
+    monkeypatch.setattr(missions.registry, "get_agent", fake_get_agent)
+    monkeypatch.setattr(missions, "_set_status", fake_set_status)
+    monkeypatch.setattr(missions.bus, "publish", fake_publish)
+    monkeypatch.setattr(missions, "_still_owns", fake_still_owns)
+    monkeypatch.setattr(missions.registry, "update_agent_activity", fake_update_agent_activity)
+
+    from forgeos import orchestrator
+    monkeypatch.setattr(orchestrator, "run_agent_task", fake_run_agent_task)
+
+    await missions.execute_mission(1)
+    # Only the initial "running" transition happened before the coroutine's
+    # own execute_mission call set it; the stale terminal write is discarded.
+    assert statuses == ["running"]

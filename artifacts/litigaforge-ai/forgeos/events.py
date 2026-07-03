@@ -25,8 +25,11 @@ class EventBus:
         self._subscribers: dict[str, list[asyncio.Queue]] = {}
 
     def subscribe(self, topic: str) -> asyncio.Queue:
-        """Register a new subscriber queue for a topic. Caller is responsible
-        for eventually calling unsubscribe() to avoid leaking queues."""
+        """Register a new subscriber queue for a topic, or every topic when
+        topic="*" (used by the /forgeos/stream SSE endpoint so the dashboard
+        gets a single live feed instead of one subscription per topic).
+        Caller is responsible for eventually calling unsubscribe() to avoid
+        leaking queues."""
         queue: asyncio.Queue = asyncio.Queue(maxsize=100)
         self._subscribers.setdefault(topic, []).append(queue)
         return queue
@@ -46,7 +49,10 @@ class EventBus:
         if len(payload_json) > FORGEOS_MAX_EVENT_PAYLOAD_CHARS:
             payload_json = json.dumps({"truncated": True, "reason": "payload too large"})
 
-        for queue in self._subscribers.get(topic, []):
+        targets = list(self._subscribers.get(topic, []))
+        if topic != "*":
+            targets += self._subscribers.get("*", [])
+        for queue in targets:
             try:
                 queue.put_nowait({"topic": topic, "payload": payload, "source": source})
             except asyncio.QueueFull:

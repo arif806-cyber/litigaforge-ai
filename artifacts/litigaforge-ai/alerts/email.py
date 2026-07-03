@@ -511,3 +511,24 @@ def send_confirmation_email(to_email: str, name: str, confirm_link: str) -> dict
         "— LitigaForge AI"
     )
     return _send(to_email, subject, body_html, text)
+
+
+def send_founder_alert(subject: str, message: str) -> list[dict]:
+    """Fire-and-forget ops alert to whoever is in ADMIN_EMAILS (comma-separated,
+    same env var main.py already uses for admin bootstrap). Used by ForgeOS to
+    surface blocked missions that need a human. Mocks/logs if ADMIN_EMAILS or
+    SMTP isn't configured — never raises, callers shouldn't have to handle it."""
+    admin_emails = [e.strip() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()]
+    if not admin_emails:
+        logger.info("[Founder alert MOCK — no ADMIN_EMAILS set] %s: %s", subject, message[:200])
+        return [{"success": True, "mode": "mock", "note": "Set ADMIN_EMAILS to receive founder alerts"}]
+
+    full_subject = f"[LitigaForge ForgeOS] {subject}"
+    text = message
+    body_html = (
+        "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;\">"
+        f"<h3 style=\"color:#1a2744;\">{_html.escape(subject)}</h3>"
+        f"<p style=\"white-space:pre-wrap;color:#334155;\">{_html.escape(message)}</p>"
+        "</body></html>"
+    )
+    return [_send(addr, full_subject, body_html, text) for addr in admin_emails]
