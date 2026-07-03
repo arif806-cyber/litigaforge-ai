@@ -1,8 +1,14 @@
 """
 ForgeOS REST API — mounted at {BASE_PATH}/forgeos, only when FORGEOS_ENABLED
-is true. Agent registration and approval decisions are superuser-gated
-(this is a live production app — an open agent-registration endpoint would
-let anyone inject prompts into LLM calls run under ForgeOS's identity).
+is true. The entire router is superuser-only: this is an internal ops tool,
+not a feature exposed to regular clients/lawyers. Beyond agent registration
+and approval decisions (which were always superuser-gated), mission/workflow
+creation can trigger real LLM spend and run arbitrary free-text tasks under
+ForgeOS's identity, event publishing feeds directly into the admin
+dashboard's activity feed and SSE stream, and every GET endpoint here leaks
+LLM outputs, agent KPIs, or in-flight task state that a non-admin has no
+business seeing. The only consumer is the superuser-only /forgeos frontend
+page, so gating every route behind get_superuser costs nothing.
 
 The Command Center dashboard (GET /dashboard, GET /stream, GET /deployments,
 GET /audit-log) is superuser-only end to end — it surfaces real revenue and
@@ -16,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from auth import require_user, get_superuser
+from auth import get_superuser
 from logger import get_logger
 from rate_limit import limiter
 from sanitizer import sanitize_text
@@ -92,12 +98,12 @@ async def register_agent(req: RegisterAgentRequest, request: Request,
 
 @router.get("/agents")
 async def list_agents(status: Optional[str] = None,
-                       current_user: dict = Depends(require_user)):
+                       current_user: dict = Depends(get_superuser)):
     return await registry.list_agents(status=status)
 
 
 @router.get("/agents/{agent_id}")
-async def get_agent(agent_id: int, current_user: dict = Depends(require_user)):
+async def get_agent(agent_id: int, current_user: dict = Depends(get_superuser)):
     agent = await registry.get_agent(agent_id)
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -109,7 +115,7 @@ async def get_agent(agent_id: int, current_user: dict = Depends(require_user)):
 @router.post("/missions")
 @limiter.limit("20/minute")
 async def create_mission(req: CreateMissionRequest, request: Request,
-                          current_user: dict = Depends(require_user)):
+                          current_user: dict = Depends(get_superuser)):
     title = sanitize_text(req.title, max_length=200, field_name="title")
     description = sanitize_text(req.description, max_length=8000, field_name="description")
     try:
@@ -129,12 +135,12 @@ async def create_mission(req: CreateMissionRequest, request: Request,
 
 @router.get("/missions")
 async def list_missions(status: Optional[str] = None, limit: int = 50,
-                         current_user: dict = Depends(require_user)):
+                         current_user: dict = Depends(get_superuser)):
     return await missions.list_missions(status=status, limit=limit)
 
 
 @router.get("/missions/{mission_id}")
-async def get_mission_status(mission_id: int, current_user: dict = Depends(require_user)):
+async def get_mission_status(mission_id: int, current_user: dict = Depends(get_superuser)):
     mission = await missions.get_mission(mission_id)
     if not mission:
         raise HTTPException(404, "Mission not found")
@@ -146,7 +152,7 @@ async def get_mission_status(mission_id: int, current_user: dict = Depends(requi
 @router.post("/workflows")
 @limiter.limit("20/minute")
 async def create_workflow(req: CreateWorkflowRequest, request: Request,
-                           current_user: dict = Depends(require_user)):
+                           current_user: dict = Depends(get_superuser)):
     try:
         workflow = await workflows.create_workflow(
             mission_id=req.mission_id, name=req.name,
@@ -161,7 +167,7 @@ async def create_workflow(req: CreateWorkflowRequest, request: Request,
 
 
 @router.get("/workflows/{workflow_id}")
-async def get_workflow_status(workflow_id: int, current_user: dict = Depends(require_user)):
+async def get_workflow_status(workflow_id: int, current_user: dict = Depends(get_superuser)):
     workflow = await workflows.get_workflow(workflow_id)
     if not workflow:
         raise HTTPException(404, "Workflow not found")
@@ -173,7 +179,7 @@ async def get_workflow_status(workflow_id: int, current_user: dict = Depends(req
 @router.post("/events")
 @limiter.limit("60/minute")
 async def publish_event(req: PublishEventRequest, request: Request,
-                         current_user: dict = Depends(require_user)):
+                         current_user: dict = Depends(get_superuser)):
     topic = sanitize_text(req.topic, max_length=200, field_name="topic")
     try:
         return await bus.publish(topic, req.payload, source=f"user:{current_user['id']}")
@@ -184,7 +190,7 @@ async def publish_event(req: PublishEventRequest, request: Request,
 
 @router.get("/events")
 async def list_events(topic: Optional[str] = None, limit: int = 50,
-                       current_user: dict = Depends(require_user)):
+                       current_user: dict = Depends(get_superuser)):
     return await recent_events(topic=topic, limit=limit)
 
 

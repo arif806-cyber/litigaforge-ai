@@ -108,8 +108,20 @@ async def _reassign_stuck_missions() -> None:
         f"""SELECT id, title, agent_id FROM forgeos_missions
            WHERE status = 'assigned' AND updated_at < NOW() - INTERVAL '{FORGEOS_STUCK_ASSIGNED_SECONDS} seconds'"""
     )
+    from forgeos import missions as missions_module
+
     for mission in stuck_assigned:
         mission_id = mission["id"]
+        if missions_module.is_mission_task_active(mission_id):
+            # Still legitimately queued behind the concurrency semaphore in
+            # this same process — NOT an orphan from a crash/restart. Leave
+            # it alone; relaunching now would double-execute it.
+            logger.info(
+                "forgeos: mission #%s has been 'assigned' for over %ss but is still "
+                "queued behind the concurrency limit in this process — skipping relaunch",
+                mission_id, FORGEOS_STUCK_ASSIGNED_SECONDS,
+            )
+            continue
         detail = (f"Mission #{mission_id} '{mission['title']}' has been 'assigned' for over "
                   f"{FORGEOS_STUCK_ASSIGNED_SECONDS}s without its task ever starting "
                   "(likely a process restart) — relaunching.")
@@ -119,8 +131,7 @@ async def _reassign_stuck_missions() -> None:
         )
         await log_action("mission.relaunched", target_type="mission", target_id=mission_id,
                           actor="scheduler", detail=detail)
-        from forgeos.missions import execute_mission
-        asyncio.create_task(execute_mission(mission_id))
+        missions_module._spawn_execution(mission_id)
 
     stuck_running = await fetch(
         f"""SELECT id, title, agent_id, status FROM forgeos_missions
@@ -128,6 +139,18 @@ async def _reassign_stuck_missions() -> None:
     )
     for mission in stuck_running:
         mission_id, old_agent_id = mission["id"], mission["agent_id"]
+
+        if missions_module.is_mission_task_active(mission_id):
+            # Genuinely still executing in this process (e.g. a long LLM
+            # call) — not orphaned. Leave it running rather than reassigning
+            # and spawning a second execution for the same mission.
+            logger.info(
+                "forgeos: mission #%s has been 'running' for over %ss but has a live task "
+                "in this process — skipping reassignment",
+                mission_id, FORGEOS_STUCK_RUNNING_SECONDS,
+            )
+            continue
+
         replacement = await _find_replacement_agent(old_agent_id)
 
         if old_agent_id:
@@ -149,8 +172,7 @@ async def _reassign_stuck_missions() -> None:
             }, source="scheduler")
             await log_action("mission.reassigned", target_type="mission", target_id=mission_id,
                               actor="scheduler", detail=detail)
-            from forgeos.missions import execute_mission
-            asyncio.create_task(execute_mission(mission_id))
+            missions_module._spawn_execution(mission_id)
         else:
             await fetchrow(
                 """UPDATE forgeos_missions SET status = 'failed',

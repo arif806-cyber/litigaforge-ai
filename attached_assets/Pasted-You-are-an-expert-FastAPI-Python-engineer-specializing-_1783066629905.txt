@@ -1,0 +1,72 @@
+You are an expert FastAPI + Python engineer specializing in production-grade AI agent orchestration systems. Your task is to take the existing ForgeOS module in this LitigaForge codebase and make it **complete, secure, tested, and production-ready** for deployment on Replit.
+
+### Current State (from recent audit)
+- 10 agents are seeded and visible in the Command Center (idle by design).
+- Missions and workflows can be created via API and execute real LLM calls (LiteLLM primary + fallback cascade).
+- Approval gates work.
+- A scheduler exists but has a bug: it incorrectly treats normally queued/in-progress missions as "stuck" or duplicates them.
+- The `forgeos_schedules` recurring feature is schema-only and unreachable (no API to create schedules).
+- No UI buttons exist in the Command Center to create missions/workflows.
+- `FORGEOS_ENABLED` is currently a global secret and is `true` in production.
+- There are **zero automated tests** for the workflow engine, scheduler, orchestrator, or dashboard.
+- Mission/workflow creation and event endpoints are not restricted to superusers.
+- Execution is currently in-process asyncio (with semaphore concurrency limit of 2).
+
+### Goals
+Make ForgeOS **complete and working** while keeping it **disabled by default**. After your changes, a superuser should be able to safely create and run missions via API, see results in the dashboard, and the system should handle restarts gracefully without false "stuck" detections.
+
+### Mandatory Requirements
+
+1. **Security (Critical)**
+   - Restrict **all** ForgeOS endpoints related to mission creation, workflow creation, and events so that **only superusers** can access them.
+   - Add proper dependency injection for superuser checks (reuse existing auth patterns in the project).
+   - Do **not** allow regular users to trigger missions or workflows.
+
+2. **Scheduler & Recovery Fix (Critical)**
+   - Fix the mission scheduling / recovery logic so that normally queued or running missions (under normal LLM execution time) are **not** incorrectly marked as stuck or duplicated.
+   - Improve the logic to distinguish between genuinely stuck missions vs. missions that are still legitimately processing.
+   - Keep the existing recovery behavior for crashed/restarted processes.
+
+3. **Testing (Mandatory for Production)**
+   - Add comprehensive automated tests using the project's existing test setup (pytest if available, or FastAPI TestClient).
+   - Cover at minimum:
+     - Workflow engine (step progression, approval gates, resume after approval)
+     - Scheduler (recovery logic, stuck detection, concurrency)
+     - Orchestrator / mission execution flow
+     - Dashboard data aggregation (metrics, agent status)
+   - Tests must be runnable with `pytest` and must pass cleanly.
+   - Include both unit and integration-style tests. Use mocking for LLM calls where appropriate.
+
+4. **Production Readiness on Replit**
+   - Keep `FORGEOS_ENABLED` as an environment variable / secret. **It must default to `false`** (disabled).
+   - Update any startup code so ForgeOS only initializes when explicitly enabled.
+   - Improve error handling, logging, and graceful degradation (especially around LLM failures and restarts).
+   - Add basic cost protection / safeguards (e.g., simple per-mission or daily token/cost limits with clear logging when exceeded).
+   - Ensure the system works correctly in Replit's deployment environment (handle secrets properly via `os.getenv`, graceful shutdown, etc.).
+   - Do not break any existing functionality outside of ForgeOS.
+
+5. **Usability Improvements (Minimal but Practical)**
+   - Keep the Command Center functional.
+   - Optionally add clear status indicators and a note that missions are created via API (or add a simple protected "Create Test Mission" action in the dashboard for superusers only — do this only if it doesn't complicate things).
+   - Document clearly (in code comments or a short `FORGEOS.md`) how a superuser enables and uses the system.
+
+6. **Constraints**
+   - Preserve all existing working functionality.
+   - Do **not** enable ForgeOS by default in production or development.
+   - Do **not** implement the full recurring schedule API unless it can be done cleanly without scope creep (the main priority is fixing the existing scheduler bug and adding tests).
+   - Focus on making the **current mission/workflow + approval + recovery** path rock-solid and production-ready.
+
+### Execution Instructions
+
+1. First, explore the project structure and locate all ForgeOS-related files (routers, models, services, scheduler, orchestrator, dashboard, etc.).
+2. Create a clear, step-by-step implementation plan and show it to me before making changes.
+3. Implement the changes incrementally and verify after each major step.
+4. After implementation, run the full test suite and confirm all tests pass.
+5. Provide a final summary that includes:
+   - What was changed
+   - How to enable ForgeOS safely on Replit (step-by-step)
+   - How a superuser can create and monitor a mission
+   - Any remaining limitations or recommended next steps
+   - Confirmation that ForgeOS remains disabled by default
+
+Start by exploring the codebase and giving me your implementation plan.

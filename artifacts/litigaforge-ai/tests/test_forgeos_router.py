@@ -36,13 +36,19 @@ def _make_app(as_admin: bool = False) -> FastAPI:
     return app
 
 
-def test_list_agents_requires_auth_dependency_only(monkeypatch):
+def test_list_agents_requires_admin():
+    client = TestClient(_forbidden_app())
+    resp = client.get("/forgeos/agents")
+    assert resp.status_code == 403
+
+
+def test_list_agents_success_for_admin(monkeypatch):
     async def fake_list_agents(status=None):
         return [{"id": 1, "name": "CEO", "role": "Chief Executive Officer"}]
 
     monkeypatch.setattr(registry, "list_agents", fake_list_agents)
 
-    client = TestClient(_make_app())
+    client = TestClient(_make_app(as_admin=True))
     resp = client.get("/forgeos/agents")
     assert resp.status_code == 200
     assert resp.json()[0]["name"] == "CEO"
@@ -120,6 +126,91 @@ def test_publish_event_success(monkeypatch):
     resp = client.post("/forgeos/events", json={"topic": "custom.event", "payload": {"x": 1}})
     assert resp.status_code == 200
     assert resp.json()["topic"] == "custom.event"
+
+
+def test_list_events_success(monkeypatch):
+    async def fake_recent_events(topic=None, limit=50):
+        return [{"id": 1, "topic": "mission.created"}]
+
+    from forgeos import router as router_module
+    monkeypatch.setattr(router_module, "recent_events", fake_recent_events)
+
+    client = TestClient(_make_app(as_admin=True))
+    resp = client.get("/forgeos/events")
+    assert resp.status_code == 200
+    assert resp.json()[0]["topic"] == "mission.created"
+
+
+def test_create_workflow_returns_400_on_value_error(monkeypatch):
+    async def fake_create_workflow(mission_id, name, steps):
+        raise ValueError("Workflow must have at least one step")
+
+    from forgeos import workflows as workflows_module
+    monkeypatch.setattr(workflows_module, "create_workflow", fake_create_workflow)
+
+    client = TestClient(_make_app(as_admin=True))
+    resp = client.post("/forgeos/workflows", json={"name": "wf", "steps": []})
+    assert resp.status_code == 400
+
+
+def test_create_workflow_success(monkeypatch):
+    async def fake_create_workflow(mission_id, name, steps):
+        return {"id": 1, "name": name, "status": "running", "steps": steps}
+
+    from forgeos import workflows as workflows_module
+    monkeypatch.setattr(workflows_module, "create_workflow", fake_create_workflow)
+
+    client = TestClient(_make_app(as_admin=True))
+    resp = client.post("/forgeos/workflows", json={"name": "wf", "steps": [{"name": "s1"}]})
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "wf"
+
+
+def test_get_workflow_status_404_when_missing(monkeypatch):
+    async def fake_get_workflow(workflow_id):
+        return None
+
+    from forgeos import workflows as workflows_module
+    monkeypatch.setattr(workflows_module, "get_workflow", fake_get_workflow)
+
+    client = TestClient(_make_app(as_admin=True))
+    resp = client.get("/forgeos/workflows/999")
+    assert resp.status_code == 404
+
+
+def test_list_missions_success(monkeypatch):
+    async def fake_list_missions(status=None, limit=50):
+        return [{"id": 1, "title": "m", "status": "completed"}]
+
+    monkeypatch.setattr(missions, "list_missions", fake_list_missions)
+
+    client = TestClient(_make_app(as_admin=True))
+    resp = client.get("/forgeos/missions")
+    assert resp.status_code == 200
+    assert resp.json()[0]["title"] == "m"
+
+
+# ── Superuser boundary: every route below used to accept any authenticated
+# user (require_user) and now must reject a non-superuser outright, since
+# mission/workflow creation triggers real LLM spend and every GET here leaks
+# LLM outputs, agent KPIs, or in-flight task state. ────────────────────────
+
+@pytest.mark.parametrize("method,path,json_body", [
+    ("get", "/forgeos/agents", None),
+    ("get", "/forgeos/agents/1", None),
+    ("post", "/forgeos/missions", {"title": "Do a thing"}),
+    ("get", "/forgeos/missions", None),
+    ("get", "/forgeos/missions/1", None),
+    ("post", "/forgeos/workflows", {"name": "wf", "steps": [{"name": "s1"}]}),
+    ("get", "/forgeos/workflows/1", None),
+    ("post", "/forgeos/events", {"topic": "custom.event"}),
+    ("get", "/forgeos/events", None),
+])
+def test_endpoints_forbidden_for_non_superuser(method, path, json_body):
+    client = TestClient(_forbidden_app())
+    call = getattr(client, method)
+    resp = call(path, json=json_body) if json_body is not None else call(path)
+    assert resp.status_code == 403
 
 
 def test_approvals_list_requires_admin():

@@ -13,6 +13,16 @@ mission through it.
 
 A concurrency cap (asyncio.Semaphore) bounds how many missions execute their
 LLM call at once, so ForgeOS never starves the rest of the FastAPI event loop.
+
+A mission queued behind that semaphore stays in "assigned" status the whole
+time it waits — it only flips to "running" once it actually acquires a slot.
+With a small FORGEOS_MAX_CONCURRENT_MISSIONS and LLM calls that can legitimately
+take tens of seconds, a queued mission can sit in "assigned" longer than
+FORGEOS_STUCK_ASSIGNED_SECONDS under completely normal load, not just a crash.
+_active_tasks tracks every in-process execute_mission() coroutine so
+scheduler.py can tell "still legitimately in-flight in this process" apart
+from "orphaned by an actual process restart/crash" (which wipes this dict)
+before deciding to relaunch a mission.
 """
 import asyncio
 import json
@@ -26,6 +36,39 @@ from forgeos.events import bus
 logger = get_logger("litigaforge.forgeos")
 
 _semaphore = asyncio.Semaphore(FORGEOS_MAX_CONCURRENT_MISSIONS)
+
+# mission_id -> the asyncio.Task currently running execute_mission() for it.
+# Populated synchronously (no await) right after asyncio.create_task() so
+# there's no window where a task exists but isn't tracked yet.
+_active_tasks: dict[int, asyncio.Task] = {}
+
+
+def _spawn_execution(mission_id: int) -> asyncio.Task:
+    """Schedule execute_mission(mission_id) and track it so the scheduler's
+    stuck-mission sweep can recognize it's still legitimately in-flight."""
+    task = asyncio.create_task(execute_mission(mission_id))
+    _active_tasks[mission_id] = task
+
+    def _untrack(finished_task: asyncio.Task, _mission_id: int = mission_id) -> None:
+        # Only evict if we're still the task on record — guards against a
+        # late done-callback from an old task clobbering a newer relaunch
+        # that has since overwritten this entry.
+        if _active_tasks.get(_mission_id) is finished_task:
+            _active_tasks.pop(_mission_id, None)
+
+    task.add_done_callback(_untrack)
+    return task
+
+
+def is_mission_task_active(mission_id: int) -> bool:
+    """True if this process currently has a live execute_mission() coroutine
+    for this mission (queued behind the semaphore or actively running).
+    False after a process restart even if the DB still shows an in-flight
+    status — that's exactly the "orphaned by a crash" case the scheduler's
+    sweep needs to relaunch."""
+    task = _active_tasks.get(mission_id)
+    return task is not None and not task.done()
+
 
 VALID_STATUSES = (
     "planned", "waiting", "assigned", "running",
@@ -75,7 +118,7 @@ async def create_mission(title: str, description: str = "", agent_id: int | None
         from forgeos.approvals import create_approval
         await create_approval(mission_id=mission["id"], requested_by="mission_engine")
     else:
-        asyncio.create_task(execute_mission(mission["id"]))
+        _spawn_execution(mission["id"])
 
     return mission
 
@@ -140,7 +183,7 @@ async def _still_owns(mission_id: int, agent_id: int) -> bool:
 
 async def mark_approved_and_run(mission_id: int) -> None:
     await _set_status(mission_id, "assigned")
-    asyncio.create_task(execute_mission(mission_id))
+    _spawn_execution(mission_id)
 
 
 async def mark_rejected(mission_id: int) -> None:
@@ -183,6 +226,20 @@ async def execute_mission(mission_id: int) -> None:
         return
 
     async with _semaphore:
+        # Defense in depth: if a duplicate execute_mission() coroutine was
+        # ever spawned for this mission_id (e.g. a stale relaunch that
+        # slipped past the scheduler's live-task check), only the first one
+        # to acquire the semaphore should actually run it. Re-check status
+        # now that we've queued and, potentially, waited.
+        current = await get_mission(mission_id)
+        if not current or current["status"] != "assigned":
+            logger.warning(
+                "forgeos: execute_mission %s no longer 'assigned' after acquiring semaphore "
+                "(status=%s) — skipping duplicate execution",
+                mission_id, current["status"] if current else "missing",
+            )
+            return
+
         await _set_status(mission_id, "running")
         await bus.publish("mission.started", {"mission_id": mission_id}, source="missions")
 
