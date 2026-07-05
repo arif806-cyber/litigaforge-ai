@@ -23,12 +23,26 @@ from forgeos.config import (
 logger = get_logger("litigaforge.forgeos")
 
 
+def _get_builders() -> dict:
+    """Lazily built registry of builder_name -> async fn() -> (title, description)
+    | None, so importing scheduler.py never pays the cost of importing every
+    builder module (growth_program pulls in httpx) unless a schedule actually
+    uses one. business_pulse keeps its own historical audit action name
+    ("pulse.skipped_cost_cap") for backward compatibility; every other builder
+    shares the generic "schedule.skipped_cost_cap" action below."""
+    from forgeos.business_pulse import build_pulse
+    from forgeos import growth_program
+
+    return {"business_pulse": build_pulse, **growth_program.BUILDERS}
+
+
 async def _run_due_schedules() -> None:
     rows = await fetch(
         """SELECT id, name, mission_template, interval_seconds
            FROM forgeos_schedules
            WHERE enabled = TRUE AND next_run_at <= NOW()"""
     )
+    builders = _get_builders()
     for row in rows:
         try:
             template = row["mission_template"] or {}
@@ -40,9 +54,8 @@ async def _run_due_schedules() -> None:
             input_data = template.get("input", {})
             builder_name = template.get("builder")
 
-            if builder_name == "business_pulse":
-                from forgeos.business_pulse import build_pulse
-                built = await build_pulse()
+            if builder_name and builder_name in builders:
+                built = await builders[builder_name]()
                 if built is None:
                     # Skipped this run (e.g. daily AI cost cap already reached) —
                     # push next_run_at forward like any other completed poll, no
@@ -54,12 +67,13 @@ async def _run_due_schedules() -> None:
                         str(row["interval_seconds"]), row["id"],
                     )
                     from forgeos.audit import log_action
-                    await log_action("pulse.skipped_cost_cap", target_type="schedule", target_id=row["id"],
+                    skip_action = "pulse.skipped_cost_cap" if builder_name == "business_pulse" else "schedule.skipped_cost_cap"
+                    await log_action(skip_action, target_type="schedule", target_id=row["id"],
                                       actor="scheduler",
-                                      detail=f"Business Pulse schedule '{row['name']}' skipped — daily AI cost cap reached")
+                                      detail=f"Schedule '{row['name']}' (builder={builder_name}) skipped — daily AI cost cap reached")
                     continue
                 title, description = built
-                input_data = {**input_data, "mission_type": "business_pulse"}
+                input_data = {**input_data, "mission_type": builder_name}
             elif builder_name:
                 logger.warning("forgeos: schedule '%s' has unknown builder '%s' — falling back to static template",
                                 row["name"], builder_name)

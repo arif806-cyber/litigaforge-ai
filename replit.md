@@ -162,6 +162,20 @@ All endpoints below 404 unless `FORGEOS_ENABLED=true`; mounted at `{BASE_PATH}/f
 | `GET /forgeos/audit-log` | Superuser | List audit log entries (`?target_type=`, `?action=`) |
 | `GET /forgeos/stream` | Superuser | SSE: initial dashboard snapshot, then live events + 20s periodic refresh + 15s heartbeat |
 
+**ForgeOS Growth & Competitive Intelligence Program** (`forgeos/growth_program.py`) — 8 RECURRING mission schedules (seeded in `forgeos/seed.py`, staggered `next_run_at`) layered on top of Business Pulse, spanning Legal Research Agent / Product Manager / Backend Engineer, all reusing the existing `forgeos_missions`/`forgeos_schedules`/`forgeos_memory`/`forgeos_metrics` tables (no new schema):
+1. Blog content brief (weekly) — topic rotates via a `forgeos_memory` cursor, not title-scanning.
+2. Onboarding funnel review (30-day).
+3. Competitor watchlist — LawRato / LegalKart / Lawyered / Jhana.ai / MyKase, weekly (public pages only; hardened `httpx` scraper: 8s/req, 20s total budget, 200KB response cap, never raises — failures degrade to "unreachable", not a crash).
+4. Lawyer acquisition channels review (30-day).
+5. Bar-verification API design (14-day) — **design doc only**; there is no public Bar Council of India API, so this mission never claims real verification, only a spec for a manual/human-reviewed process.
+6. Technical SEO & Core Web Vitals self-audit (weekly) — checks the site's own sitemap/robots/JSON-LD/latency.
+7. Pricing & positioning vs. competitors (14-day).
+8. Client-side conversion copy review (30-day).
+
+Every builder is gated by the same `_daily_cost_cap_exceeded()` check as Business Pulse and returns `None` (schedule silently skipped, audit-logged) when the daily AI cost cap is already hit. The competitor snapshot is cached in `forgeos_memory` with a ~20h TTL (decoupled from mission cadence) and diffed run-over-run so missions only surface *changes*, not a re-description of the same page. Business Pulse (`forgeos/business_pulse.py`) was extended with a week-over-week comparison section and a "progress vs. configured goals" section (see `FORGEOS_GOAL_*` below).
+
+**Honesty boundary:** ForgeOS agents are LLM-text generators only. They draft briefs, specs, and reviews for a human to read and act on — they do **not** write/deploy code, publish content, call any live Bar Council verification API (none exists), or take any other real-world action. Every mission's output should be read as a research memo, not a completed task.
+
 ## Environment variables & secrets
 
 Shared (set in Replit):
@@ -181,6 +195,7 @@ Optional secrets (enable extra features):
 | `SMTP_HOST`, `SMTP_PORT` (587/465), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email notifications (defaults: port 587, FROM = SMTP_USER) |
 | `FORGEOS_ENABLED` (`true`/`false`, default off) | Turns on the ForgeOS multi-agent subsystem (schema init, seed agents, scheduler, `/forgeos/*` routes) AND the `/forgeos` Command Center page in litigaforge-ui (backend 404s when off, page shows a load-failure message; sidebar link is separately gated by `is_superuser` client-side). Backend is inert (no tables/routes/scheduler) when unset. |
 | `FORGEOS_DEFAULT_MODEL`, `FORGEOS_MAX_CONCURRENT_MISSIONS` (default 2), `FORGEOS_SCHEDULER_POLL_SECONDS` (default 60), `FORGEOS_MAX_INPUT_CHARS` (default 8000), `FORGEOS_MAX_EVENT_PAYLOAD_CHARS` (default 20000) | ForgeOS tuning — only read when `FORGEOS_ENABLED=true` |
+| `FORGEOS_GOAL_MONTHLY_SIGNUPS`, `FORGEOS_GOAL_MRR_RUPEES`, `FORGEOS_GOAL_VERIFIED_LAWYERS` (each default `0` = disabled) | Optional targets shown in Business Pulse's "progress vs. configured goals" section; a goal with value `0` is omitted from the memo, not shown as 0% |
 
 ## User preferences
 

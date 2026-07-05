@@ -50,8 +50,21 @@ async def test_build_pulse_embeds_live_numbers(monkeypatch):
         return {"cost_today_usd": 0.42, "total_cost_usd": 12.5, "total_tokens": 1000,
                 "by_agent": [], "unmetered_calls": 0}
 
+    async def fake_week_over_week():
+        return {
+            "signups_this_week": 5, "signups_last_week": 3,
+            "cases_this_week": 2, "cases_last_week": 2,
+            "matches_this_week": 1, "matches_last_week": 0,
+            "verified_lawyers": 10, "signups_this_month": 20,
+        }
+
+    async def fake_competitor_section_lines():
+        return []
+
     monkeypatch.setattr(business_pulse, "_daily_cost_cap_exceeded", fake_cap_ok)
     monkeypatch.setattr(business_pulse, "_counts_today", fake_counts_today)
+    monkeypatch.setattr(business_pulse, "_week_over_week", fake_week_over_week)
+    monkeypatch.setattr(business_pulse, "_competitor_section_lines", fake_competitor_section_lines)
     monkeypatch.setattr(dashboard, "_revenue_summary", fake_revenue_summary)
     monkeypatch.setattr(dashboard, "_ai_cost_summary", fake_ai_cost_summary)
 
@@ -63,6 +76,66 @@ async def test_build_pulse_embeds_live_numbers(monkeypatch):
     assert "49,900" in description
     assert "$0.4200" in description
     assert "CEO" in description
+    assert "Week-over-week" in description
+    assert "Signups: 5 vs 3" in description
+
+
+@pytest.mark.asyncio
+async def test_build_pulse_includes_goal_progress_when_configured(monkeypatch):
+    async def fake_cap_ok():
+        return None
+
+    async def fake_counts_today():
+        return {"new_signups": 0, "new_cases": 0, "new_matches": 0,
+                "accepted_matches": 0, "pending_verifications": 0, "new_contact_messages": 0}
+
+    async def fake_week_over_week():
+        return {"signups_this_week": 5, "signups_last_week": 3,
+                "cases_this_week": 1, "cases_last_week": 1,
+                "matches_this_week": 1, "matches_last_week": 1,
+                "verified_lawyers": 8, "signups_this_month": 40}
+
+    async def fake_revenue_summary():
+        return {"mrr_rupees": 25000.0, "paid_subscribers": 25, "by_tier": {}}
+
+    async def fake_ai_cost_summary():
+        return {"cost_today_usd": 0.0, "total_cost_usd": 0.0, "total_tokens": 0,
+                "by_agent": [], "unmetered_calls": 0}
+
+    async def fake_competitor_section_lines():
+        return []
+
+    monkeypatch.setattr(business_pulse, "_daily_cost_cap_exceeded", fake_cap_ok)
+    monkeypatch.setattr(business_pulse, "_counts_today", fake_counts_today)
+    monkeypatch.setattr(business_pulse, "_week_over_week", fake_week_over_week)
+    monkeypatch.setattr(business_pulse, "_competitor_section_lines", fake_competitor_section_lines)
+    monkeypatch.setattr(dashboard, "_revenue_summary", fake_revenue_summary)
+    monkeypatch.setattr(dashboard, "_ai_cost_summary", fake_ai_cost_summary)
+    monkeypatch.setattr(business_pulse, "FORGEOS_GOAL_MONTHLY_SIGNUPS", 100)
+    monkeypatch.setattr(business_pulse, "FORGEOS_GOAL_MRR_RUPEES", 50000.0)
+    monkeypatch.setattr(business_pulse, "FORGEOS_GOAL_VERIFIED_LAWYERS", 0)
+
+    result = await business_pulse.build_pulse()
+    assert result is not None
+    _, description = result
+    assert "Progress vs configured goals" in description
+    assert "Monthly signups goal: 40/100 (40%)" in description
+    assert "MRR goal:" in description
+    assert "Verified lawyers goal" not in description  # disabled (0) — no line shown
+
+
+@pytest.mark.asyncio
+async def test_competitor_section_lines_returns_empty_on_failure(monkeypatch):
+    """A broken/unavailable growth_program dependency must never break a
+    Business Pulse run — degrade to no competitor section, not a failure."""
+    async def fake_get_competitor_snapshot(force_refresh=False):
+        raise RuntimeError("boom")
+
+    from forgeos import growth_program
+    monkeypatch.setattr(growth_program, "get_competitor_snapshot", fake_get_competitor_snapshot)
+
+    lines = await business_pulse._competitor_section_lines()
+    assert lines == []
 
 
 @pytest.mark.asyncio

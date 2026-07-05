@@ -107,6 +107,12 @@ async def seed_agents() -> None:
 # DO NOTHING (not DO UPDATE) so a founder can freely disable/retune
 # interval_seconds from the DB/dashboard afterward without a restart silently
 # reverting their change.
+#
+# "Growth & Competitive Intelligence Program" (8 rows below business_pulse):
+# each `stagger_hours` offsets the FIRST next_run_at only (NOW() + N hours at
+# insert time) so all 8 don't fire in the same poll tick right after deploy —
+# subsequent runs then follow their own interval_seconds cadence as usual.
+_DAY = 24 * 3600
 INITIAL_SCHEDULES = [
     {
         "name": "business_pulse",
@@ -117,14 +123,95 @@ INITIAL_SCHEDULES = [
             "requires_approval": False,
         },
     },
+    {
+        "name": "growth_content_drafting",
+        "interval_seconds": 7 * _DAY,
+        "stagger_hours": 1,
+        "mission_template": {
+            "builder": "growth_content_drafting",
+            "agent_name": "Legal Research Agent",
+            "requires_approval": False,
+        },
+    },
+    {
+        "name": "growth_content_structure",
+        "interval_seconds": 30 * _DAY,
+        "stagger_hours": 2,
+        "mission_template": {
+            "builder": "growth_content_structure",
+            "agent_name": "Product Manager",
+            "requires_approval": False,
+        },
+    },
+    {
+        "name": "growth_seo_audit",
+        "interval_seconds": 7 * _DAY,
+        "stagger_hours": 3,
+        "mission_template": {
+            "builder": "growth_seo_audit",
+            "agent_name": "Backend Engineer",
+            "requires_approval": False,
+        },
+    },
+    {
+        "name": "growth_onboarding_flow",
+        "interval_seconds": 30 * _DAY,
+        "stagger_hours": 4,
+        "mission_template": {
+            "builder": "growth_onboarding_flow",
+            "agent_name": "Product Manager",
+            "requires_approval": False,
+        },
+    },
+    {
+        "name": "growth_bar_verification",
+        "interval_seconds": 14 * _DAY,
+        "stagger_hours": 5,
+        "mission_template": {
+            "builder": "growth_bar_verification",
+            "agent_name": "Backend Engineer",
+            "requires_approval": False,
+        },
+    },
+    {
+        "name": "growth_competitor_watchlist",
+        "interval_seconds": 7 * _DAY,
+        "stagger_hours": 6,
+        "mission_template": {
+            "builder": "growth_competitor_watchlist",
+            "agent_name": "Product Manager",
+            "requires_approval": False,
+        },
+    },
+    {
+        "name": "growth_content_gap",
+        "interval_seconds": 14 * _DAY,
+        "stagger_hours": 7,
+        "mission_template": {
+            "builder": "growth_content_gap",
+            "agent_name": "Legal Research Agent",
+            "requires_approval": False,
+        },
+    },
+    {
+        "name": "growth_launch_plan",
+        "interval_seconds": 30 * _DAY,
+        "stagger_hours": 8,
+        "mission_template": {
+            "builder": "growth_launch_plan",
+            "agent_name": "Product Manager",
+            "requires_approval": False,
+        },
+    },
 ]
 
 
 async def seed_schedules() -> None:
     for sched in INITIAL_SCHEDULES:
+        stagger_hours = sched.get("stagger_hours", 0)
         await execute(
-            """INSERT INTO forgeos_schedules (name, mission_template, interval_seconds)
-               VALUES ($1, $2::jsonb, $3)
+            f"""INSERT INTO forgeos_schedules (name, mission_template, interval_seconds, next_run_at)
+               VALUES ($1, $2::jsonb, $3, NOW() + interval '{int(stagger_hours)} hours')
                ON CONFLICT (name) DO NOTHING""",
             sched["name"], json.dumps(sched["mission_template"]), sched["interval_seconds"],
         )

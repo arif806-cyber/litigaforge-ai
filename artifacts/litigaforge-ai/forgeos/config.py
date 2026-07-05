@@ -75,3 +75,11 @@ FORGEOS_MAX_TOKENS_PER_MISSION = int(os.getenv("FORGEOS_MAX_TOKENS_PER_MISSION",
 # the hard block kicks in at 100%. Only meaningful when the daily cap is
 # enabled (> 0); ignored otherwise. Warning-only — never blocks a mission.
 FORGEOS_COST_WARN_THRESHOLD_PCT = float(os.getenv("FORGEOS_COST_WARN_THRESHOLD_PCT", "80"))
+
+# Optional growth-program targets, purely for Business Pulse's "progress vs
+# goals" section. 0/unset = disabled (no goal line shown for that metric) —
+# no numeric target is invented on the founder's behalf. Set these once real
+# targets exist.
+FORGEOS_GOAL_MONTHLY_SIGNUPS = int(os.getenv("FORGEOS_GOAL_MONTHLY_SIGNUPS", "0"))
+FORGEOS_GOAL_MRR_RUPEES = float(os.getenv("FORGEOS_GOAL_MRR_RUPEES", "0"))
+FORGEOS_GOAL_VERIFIED_LAWYERS = int(os.getenv("FORGEOS_GOAL_VERIFIED_LAWYERS", "0"))
