@@ -139,9 +139,9 @@ async def _trigger_single_refresh(tracked_case_id: str, cnr: str) -> None:
     """
     try:
         from services.court_data_client import get_case_by_cnr
-        # Short timeout + 1 retry for on-demand fetches so the task completes
-        # in ≤18s (8s + backoff 1s + 8s) instead of the nightly-worker's 93s.
-        await get_case_by_cnr(tracked_case_id, cnr, timeout=8.0, retries=2)
+        # Shorter timeout than the nightly worker (30s×3) for on-demand fetches —
+        # 15s per attempt × 2 retries = ≤31s so the UI re-fetches promptly.
+        await get_case_by_cnr(tracked_case_id, cnr, timeout=15.0, retries=2)
         logger.info("Immediate refresh done: tracked_case_id=%s cnr=%s", tracked_case_id, cnr)
     except RuntimeError as exc:
         logger.warning("API key not set — skipping immediate refresh for %s: %s", cnr, exc)

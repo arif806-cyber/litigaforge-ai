@@ -294,9 +294,9 @@ function TrackedCaseCard({ tc }: { tc: any }) {
   const retryMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/court-intel/${id}/refresh`, { method: "POST" }),
     onSuccess: () => {
-      // Wait 20s for the background task (8s timeout × 2 attempts + buffer)
+      // Wait 35s for the background task (15s timeout × 2 attempts + buffer)
       // then re-fetch so last_refreshed is visible in the card
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }), 20_000);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }), 35_000);
     },
   });
 
