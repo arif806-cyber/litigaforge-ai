@@ -133,6 +133,10 @@ class OpponentScanRequest(BaseModel):
 # ── Background refresh helper ──────────────────────────────────────────────────
 
 async def _trigger_single_refresh(tracked_case_id: str, cnr: str) -> None:
+    """
+    Fetch fresh data from eCourtsIndia for one tracked case and persist a snapshot.
+    Always stamps last_refreshed (even on failure) so the UI exits "Pending first fetch…".
+    """
     try:
         from services.court_data_client import get_case_by_cnr
         await get_case_by_cnr(tracked_case_id, cnr)
@@ -141,6 +145,16 @@ async def _trigger_single_refresh(tracked_case_id: str, cnr: str) -> None:
         logger.warning("API key not set — skipping immediate refresh for %s: %s", cnr, exc)
     except Exception as exc:
         logger.exception("Immediate refresh failed for %s: %s", tracked_case_id, exc)
+    finally:
+        # Always stamp last_refreshed so the frontend exits "Pending first fetch…"
+        # regardless of whether the upstream API succeeded, timed out, or was absent.
+        try:
+            await db_execute(
+                "UPDATE tracked_cases SET last_refreshed = now() WHERE id = $1::uuid",
+                tracked_case_id,
+            )
+        except Exception as stamp_err:
+            logger.warning("Failed to stamp last_refreshed for %s: %s", tracked_case_id, stamp_err)
 
 
 # ── POST /court-intel/track ────────────────────────────────────────────────────
@@ -569,6 +583,32 @@ async def get_prediction(case_id: str, user: dict = Depends(require_livetrack)):
         "case_type":  row["case_type"],
         "court_name": row["court_name"],
     }
+
+
+# ── POST /court-intel/{id}/refresh  (on-demand retry for any auth user) ───────
+
+@router.post("/court-intel/{case_id}/refresh")
+async def refresh_case(
+    case_id: str,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(require_user),
+):
+    """
+    Trigger an immediate background refresh for one tracked case.
+    Available to any authenticated user for their own cases — no LiveTrack gate.
+    Useful when the nightly worker hasn't run yet or the upstream API was offline.
+    Returns immediately; actual fetch happens asynchronously.
+    """
+    row = await db_fetchrow(
+        "SELECT id, user_id, cnr, is_active FROM tracked_cases WHERE id = $1::uuid",
+        case_id,
+    )
+    _assert_owns(row, int(user["id"]))
+    if not row["is_active"]:
+        raise HTTPException(status_code=409, detail="Case is no longer being tracked.")
+
+    background_tasks.add_task(_trigger_single_refresh, str(row["id"]), row["cnr"])
+    return {"status": "refresh_queued", "cnr": row["cnr"]}
 
 
 # ── DELETE /court-intel/{id} ──────────────────────────────────────────────────

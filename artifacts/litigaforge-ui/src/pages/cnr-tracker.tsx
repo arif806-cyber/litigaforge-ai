@@ -167,6 +167,21 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
     </div>
   );
 
+  /* No snapshot yet — API was offline during initial fetch */
+  if (!data.latest_status && data.livetrack_tier !== undefined) return (
+    <div className="rounded-xl p-4 text-center space-y-2"
+      style={{ background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.12)" }}>
+      <AlertTriangle className="w-4 h-4 text-blue-400/60 mx-auto" />
+      <p className="text-xs text-white/40">
+        No case data yet — eCourts India API was unreachable during the last fetch.
+      </p>
+      <p className="text-[11px] text-white/25">
+        Use the <span className="text-blue-400/70">Retry</span> button on the card to try again,
+        or check back after the nightly refresh at 08:00 IST.
+      </p>
+    </div>
+  );
+
   /* Free tier — show latest snapshot + upgrade prompt */
   if (!isPaid && data.upgrade_hint) return (
     <div className="space-y-3">
@@ -276,9 +291,19 @@ function TrackedCaseCard({ tc }: { tc: any }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }),
   });
 
+  const retryMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/court-intel/${id}/refresh`, { method: "POST" }),
+    onSuccess: () => {
+      // Re-fetch list after a short delay so last_refreshed has been stamped
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }), 2500);
+    },
+  });
+
+  const noData = !tc.last_refreshed && !tc.case_status;
+
   const lastRefreshed = tc.last_refreshed
     ? new Date(tc.last_refreshed).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })
-    : "Pending first fetch…";
+    : "Not fetched yet";
 
   return (
     <motion.div layout
@@ -297,6 +322,29 @@ function TrackedCaseCard({ tc }: { tc: any }) {
                 className="underline underline-offset-2 hover:text-amber-300">ecourts.gov.in</a>{" "}
               for real-time status.
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* No-data offline banner */}
+      {noData && (
+        <div className="px-4 pt-3">
+          <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2"
+            style={{ background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.15)" }}>
+            <span className="text-[11px] text-blue-300/70 flex items-center gap-1.5">
+              <AlertTriangle className="w-3 h-3 shrink-0 text-blue-400/70" />
+              eCourts data not fetched yet — API may be offline.
+            </span>
+            <button
+              data-testid={`retry-${tc.cnr}`}
+              onClick={() => retryMutation.mutate(tc.id)}
+              disabled={retryMutation.isPending}
+              className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors
+                flex items-center gap-1 shrink-0 disabled:opacity-50">
+              {retryMutation.isPending
+                ? <><Loader2 className="w-3 h-3 animate-spin" />Fetching…</>
+                : <><RefreshCw className="w-3 h-3" />Retry</>}
+            </button>
           </div>
         </div>
       )}
