@@ -91,6 +91,21 @@ app.use("/api", router);
 // ── Explicit verification / well-known files ──────────────────────────────
 // These must be served before any bot-detection or SPA fallback logic so
 // that crawlers requesting them never receive HTML by mistake.
+// ads.txt is here explicitly because AdsBot-Google matches _botPattern below
+// and would otherwise receive bot HTML instead of the required plain text,
+// causing AdSense to report "Unauthorized".
+app.get("/ads.txt", (_req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send("google.com, ca-pub-2540372254816391, DIRECT, f08c47fec0942fa0\n");
+});
+
+app.get("/app-ads.txt", (_req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send("google.com, ca-pub-2540372254816391, DIRECT, f08c47fec0942fa0\n");
+});
+
 app.get("/BingSiteAuth.xml", (_req, res) => {
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600");
