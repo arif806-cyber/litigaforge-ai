@@ -110,6 +110,7 @@ async def _request(
     json_body: dict | None = None,
     params: dict | None = None,
     retries: int = 3,
+    timeout: float = 30.0,
 ) -> dict:
     """Internal: rate-limited, retried HTTP call to eCourtsIndia."""
     if not _KEY_POOL:
@@ -124,7 +125,7 @@ async def _request(
     for attempt in range(retries):
         await _bucket.acquire()
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.request(
                     method, url,
                     headers=headers,
@@ -176,13 +177,21 @@ async def _persist_snapshot(tracked_case_id: str, raw: dict) -> None:
     logger.debug("Persisted snapshot for tracked_case_id=%s", tracked_case_id)
 
 
-async def get_case_by_cnr(tracked_case_id: str, cnr: str) -> dict:
+async def get_case_by_cnr(
+    tracked_case_id: str,
+    cnr: str,
+    *,
+    timeout: float = 30.0,
+    retries: int = 3,
+) -> dict:
     """
     Fetch a single case from eCourtsIndia by CNR.
     Persists raw JSON to case_snapshots before returning.
     Returns the parsed response dict.
+    timeout/retries: pass shorter values for on-demand (UI-triggered) refreshes
+    so they fail fast instead of blocking for 90+ seconds.
     """
-    raw = await _request("GET", f"/case/cnr/{cnr}")
+    raw = await _request("GET", f"/case/cnr/{cnr}", timeout=timeout, retries=retries)
     await _persist_snapshot(tracked_case_id, raw)
     return raw
 

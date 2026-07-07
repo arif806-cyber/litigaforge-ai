@@ -139,12 +139,14 @@ async def _trigger_single_refresh(tracked_case_id: str, cnr: str) -> None:
     """
     try:
         from services.court_data_client import get_case_by_cnr
-        await get_case_by_cnr(tracked_case_id, cnr)
+        # Short timeout + 1 retry for on-demand fetches so the task completes
+        # in ≤18s (8s + backoff 1s + 8s) instead of the nightly-worker's 93s.
+        await get_case_by_cnr(tracked_case_id, cnr, timeout=8.0, retries=2)
         logger.info("Immediate refresh done: tracked_case_id=%s cnr=%s", tracked_case_id, cnr)
     except RuntimeError as exc:
         logger.warning("API key not set — skipping immediate refresh for %s: %s", cnr, exc)
     except Exception as exc:
-        logger.exception("Immediate refresh failed for %s: %s", tracked_case_id, exc)
+        logger.warning("Immediate refresh failed (will stamp last_refreshed anyway) for %s: %s", tracked_case_id, exc)
     finally:
         # Always stamp last_refreshed so the frontend exits "Pending first fetch…"
         # regardless of whether the upstream API succeeded, timed out, or was absent.
