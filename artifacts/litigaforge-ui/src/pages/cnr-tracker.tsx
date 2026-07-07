@@ -300,7 +300,10 @@ function TrackedCaseCard({ tc }: { tc: any }) {
     },
   });
 
-  const noData = !tc.last_refreshed && !tc.case_status;
+  // Show banner when there's no case status at all (never fetched OR fetched but API unreachable)
+  const neverFetched  = !tc.last_refreshed && !tc.case_status;
+  const fetchedNoData = !!tc.last_refreshed && !tc.case_status;
+  const noData = neverFetched || fetchedNoData;
 
   const lastRefreshed = tc.last_refreshed
     ? new Date(tc.last_refreshed).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })
@@ -334,7 +337,9 @@ function TrackedCaseCard({ tc }: { tc: any }) {
             style={{ background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.15)" }}>
             <span className="text-[11px] text-blue-300/70 flex items-center gap-1.5">
               <AlertTriangle className="w-3 h-3 shrink-0 text-blue-400/70" />
-              eCourts data not fetched yet — API may be offline.
+              {fetchedNoData
+                ? "eCourts API unreachable from server — requires an Indian network IP."
+                : "eCourts data not fetched yet — click Retry to try now."}
             </span>
             <button
               data-testid={`retry-${tc.cnr}`}

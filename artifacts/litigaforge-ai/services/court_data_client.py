@@ -143,14 +143,15 @@ async def _request(
             # 4xx — do NOT retry
             logger.error("eCourtsIndia 4xx for %s %s: %s", method, url, resp.text[:200])
             resp.raise_for_status()
-        except (httpx.TimeoutException, httpx.HTTPStatusError) as exc:
+        except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.ConnectError) as exc:
+            exc_desc = f"{type(exc).__name__}({exc!s})" if str(exc) else type(exc).__name__
             wait = 2 ** attempt
             if attempt < retries - 1:
                 logger.warning("eCourts request failed (attempt %d/%d): %s — retrying in %ds",
-                               attempt + 1, retries, exc, wait)
+                               attempt + 1, retries, exc_desc, wait)
                 await asyncio.sleep(wait)
             else:
-                logger.error("eCourts request permanently failed after %d attempts: %s", retries, exc)
+                logger.error("eCourts request permanently failed after %d attempts: %s", retries, exc_desc)
                 raise
 
     raise RuntimeError("Unreachable")
