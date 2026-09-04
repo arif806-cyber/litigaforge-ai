@@ -22,6 +22,7 @@ from routers.personalization  import router as personalization_router
 from routers.presence         import router as presence_router
 from routers.cnr              import router as cnr_router
 from routers.court_intelligence import router as court_intelligence_router
+from routers.mcp              import router as mcp_router
 
 __all__ = [
     "auth_router",
@@ -45,4 +46,5 @@ __all__ = [
     "presence_router",
     "cnr_router",
     "court_intelligence_router",
+    "mcp_router",
 ]

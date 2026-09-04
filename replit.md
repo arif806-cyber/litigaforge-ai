@@ -142,6 +142,18 @@ Components/utils:
 | `GET /chat/threads` / `POST /chat/threads` | Bearer | List / create chat threads |
 | `GET /chat/messages/{id}` / `POST /chat/messages/{id}` | Bearer | Get / send thread messages |
 
+### MCP
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `GET /mcp` | None | MCP server metadata and connection instructions |
+| `POST /mcp` | None | Stateless MCP Streamable HTTP JSON-RPC endpoint for Grok and other remote clients |
+
+The MCP server is intentionally read-only and exposes only public data: recent
+judgments, keyword judgment search, individual published judgments, and
+country legal-system information. It makes no AI calls and performs no writes,
+so it adds no separate paid-service dependency.
+
 ### ForgeOS (multi-agent orchestration — `FORGEOS_ENABLED` only)
 
 All endpoints below 404 unless `FORGEOS_ENABLED=true`; mounted at `{BASE_PATH}/forgeos`. 10 seeded agents. Mission lifecycle: `planned→waiting→assigned→running→reviewing→completed/failed/cancelled` (`waiting` = needs approval; `mark_approved_and_run` → `assigned`).

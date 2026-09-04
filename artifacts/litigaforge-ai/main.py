@@ -1408,7 +1408,14 @@ app.add_middleware(
     allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "MCP-Protocol-Version",
+        "MCP-Session-Id",
+        "Last-Event-ID",
+    ],
     max_age=600,
 )
 
@@ -1638,7 +1645,7 @@ from routers import (
     judgments_router, research_router,
     llm_router, workspace_router, personalization_router,
     presence_router, cnr_router,
-    court_intelligence_router,
+    court_intelligence_router, mcp_router,
 )
 from country_router import router as country_router
 
@@ -1675,6 +1682,7 @@ app.include_router(personalization_router,  prefix=BASE_PATH)
 app.include_router(presence_router,         prefix=BASE_PATH)
 app.include_router(cnr_router,              prefix=BASE_PATH)
 app.include_router(court_intelligence_router, prefix=BASE_PATH)
+app.include_router(mcp_router,              prefix=BASE_PATH)
 if forgeos_router is not None:
     app.include_router(forgeos_router, prefix=BASE_PATH)
 

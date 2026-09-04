@@ -204,6 +204,65 @@ const _llmProxy = async (
 app.get("/api/llm/health", _llmProxy);
 app.get("/api/llm/{*splat}", _llmProxy);
 
+// ── LitigaForge MCP reverse-proxy ─────────────────────────────────────────
+// Expose the Python service's stateless Streamable HTTP endpoint on the
+// canonical public URL https://litigaforge.com/mcp.
+const _mcpProxy = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  const target = `${_LLM_ORIGIN}${_LLM_BASE}/mcp`;
+  try {
+    const headers: Record<string, string> = {
+      accept: req.headers.accept ?? "application/json, text/event-stream",
+    };
+    if (req.headers["content-type"]) {
+      headers["content-type"] = req.headers["content-type"];
+    }
+    if (req.headers.authorization) {
+      headers.authorization = req.headers.authorization;
+    }
+    if (req.headers["mcp-protocol-version"]) {
+      headers["mcp-protocol-version"] = String(
+        req.headers["mcp-protocol-version"],
+      );
+    }
+    if (req.headers["mcp-session-id"]) {
+      headers["mcp-session-id"] = String(req.headers["mcp-session-id"]);
+    }
+
+    const upstream = await fetch(target, {
+      method: req.method,
+      headers,
+      body:
+        req.method === "GET" || req.method === "HEAD"
+          ? undefined
+          : JSON.stringify(req.body ?? {}),
+      signal: AbortSignal.timeout(30_000),
+    });
+    res.status(upstream.status);
+    for (const header of [
+      "content-type",
+      "mcp-protocol-version",
+      "mcp-session-id",
+      "allow",
+    ]) {
+      const value = upstream.headers.get(header);
+      if (value) res.setHeader(header, value);
+    }
+    res.send(Buffer.from(await upstream.arrayBuffer()));
+  } catch (err) {
+    logger.error({ err }, "MCP proxy failed");
+    res.status(502).json({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32603, message: "MCP service temporarily unavailable" },
+    });
+  }
+};
+app.get("/mcp", _mcpProxy);
+app.post("/mcp", _mcpProxy);
+
 // ── Frontend serving (production only) ───────────────────────────────────
 // Node.js injects the correct meta tags so the CDN/static layer cannot
 // override them. Only active when NODE_ENV=production and dist exists.
