@@ -119,3 +119,80 @@ async def test_case_overview_remains_available_when_matching_is_off(monkeypatch)
     })), patch("routers.matching._ai", return_value="Overview"):
         result = await case_ai_overview(42, {"id": 8})
     assert result == {"overview": "Overview"}
+
+
+@pytest.mark.asyncio
+async def test_analyze_emits_start_before_database_work():
+    from routers.workspace import AnalyzeBody, analyze_session
+
+    with patch(
+        "routers.workspace.get_pool",
+        AsyncMock(side_effect=AssertionError("database touched before first SSE frame")),
+    ):
+        response = await analyze_session(
+            12,
+            AnalyzeBody(case_description="MACT Hyderabad", context=""),
+            None,
+            {"id": 112},
+        )
+        first = await anext(response.body_iterator)
+
+    assert '"type": "start"' in first
+
+
+@pytest.mark.asyncio
+async def test_public_mcp_search_strips_full_judgment_text():
+    from routers import mcp
+
+    class Acquire:
+        async def __aenter__(self):
+            return object()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    class Pool:
+        def acquire(self):
+            return Acquire()
+
+    search_result = {
+        "count": 1,
+        "source": "local_db",
+        "results": [{
+            "case_name": "Example v State",
+            "source": "local_db",
+            "url": "/judgments/example/2026/example-v-state",
+            "full_text": "x" * 50_000,
+        }],
+    }
+    with patch.object(mcp, "get_pool", AsyncMock(return_value=Pool())), \
+         patch.object(mcp, "search_case_law", AsyncMock(return_value=search_result)):
+        result = await mcp._search_judgments({"query": "example", "limit": 5})
+
+    assert "full_text" not in result["judgments"][0]
+
+
+@pytest.mark.asyncio
+async def test_workspace_sse_bypasses_gzip_buffering():
+    from main import _ConditionalGZipMiddleware
+
+    calls = []
+
+    async def raw_app(_scope, _receive, _send):
+        calls.append("raw")
+
+    async def gzip_app(_scope, _receive, _send):
+        calls.append("gzip")
+
+    middleware = _ConditionalGZipMiddleware(raw_app)
+    middleware.gzip_app = gzip_app
+    await middleware(
+        {
+            "type": "http",
+            "path": "/litigaforge/litigaforge/workspace/sessions/12/analyze",
+        },
+        None,
+        None,
+    )
+
+    assert calls == ["raw"]

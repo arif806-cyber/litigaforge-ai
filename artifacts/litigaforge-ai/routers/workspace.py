@@ -1020,53 +1020,12 @@ async def analyze_session(
     session_id: int, body: AnalyzeBody, request: Request, user=Depends(require_user)
 ):
     request_started = time.perf_counter()
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, case_description FROM workspace_sessions "
-            "WHERE id=$1 AND user_id=$2",
-            session_id, user["id"],
-        )
-        if not row:
-            raise HTTPException(404, "Session not found")
-
-    case_desc = body.case_description or row["case_description"] or ""
-
-    # Fetch personalization profile — only applied when learning is enabled (Step 1)
-    profile_ctx = ""
-    try:
-        from routers.personalization import compute_profile, _profile_prompt_context
-        async with pool.acquire() as pconn:
-            prof_row = await pconn.fetchrow(
-                "SELECT learning_enabled FROM user_profile WHERE user_id=$1", user["id"]
-            )
-            learning_enabled = prof_row["learning_enabled"] if prof_row else True
-            if learning_enabled:
-                evt_rows = await pconn.fetch(
-                    "SELECT event_type, event_data FROM user_learning_events "
-                    "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",
-                    user["id"],
-                )
-                # Reverse DESC rows → chronological for compute_profile()
-                events = [
-                    {
-                        "event_type": r["event_type"],
-                        "data": json.loads(r["event_data"]) if r["event_data"] else {},
-                    }
-                    for r in reversed(evt_rows)
-                ]
-                if events:
-                    computed    = compute_profile(events)
-                    profile_ctx = _profile_prompt_context(computed)
-    except Exception as _pe:
-        logger.debug("Profile context skipped: %s", _pe)
-
     async def generate():
         def _sse(d: dict) -> str:
             return f"data: {json.dumps(d, default=str)}\n\n"
 
-        # Emit before any provider work so reverse proxies and clients have a
-        # prompt first byte. The heartbeat also keeps idle buffering at bay.
+        # Emit before database, personalization, or provider work so reverse
+        # proxies and clients have a prompt first byte even on a cold database.
         logger.info(
             "workspace analyze first-byte session=%s user=%s ms=%d",
             session_id, user["id"], round((time.perf_counter() - request_started) * 1000),
@@ -1075,6 +1034,47 @@ async def analyze_session(
         yield ": heartbeat\n\n"
         agent_outputs_all: dict[str, str] = {}
         try:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT id, case_description FROM workspace_sessions "
+                    "WHERE id=$1 AND user_id=$2",
+                    session_id, user["id"],
+                )
+            if not row:
+                yield _sse({"type": "error", "error": "Session not found."})
+                return
+
+            case_desc = body.case_description or row["case_description"] or ""
+
+            # Personalization is optional and must never delay the first byte.
+            profile_ctx = ""
+            try:
+                from routers.personalization import compute_profile, _profile_prompt_context
+                async with pool.acquire() as pconn:
+                    prof_row = await pconn.fetchrow(
+                        "SELECT learning_enabled FROM user_profile WHERE user_id=$1", user["id"]
+                    )
+                    learning_enabled = prof_row["learning_enabled"] if prof_row else True
+                    if learning_enabled:
+                        evt_rows = await pconn.fetch(
+                            "SELECT event_type, event_data FROM user_learning_events "
+                            "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",
+                            user["id"],
+                        )
+                        events = [
+                            {
+                                "event_type": r["event_type"],
+                                "data": json.loads(r["event_data"]) if r["event_data"] else {},
+                            }
+                            for r in reversed(evt_rows)
+                        ]
+                        if events:
+                            computed = compute_profile(events)
+                            profile_ctx = _profile_prompt_context(computed)
+            except Exception as profile_error:
+                logger.debug("Profile context skipped: %s", profile_error)
+
             async for chunk in _stream_analysis(case_desc, body.context, profile_ctx):
                 yield chunk
                 if '"agent_done"' in chunk:

@@ -199,6 +199,9 @@ async def _search_judgments(arguments: dict) -> dict:
             conn, query, limit=limit, court=court, cache_writes=False
         )
     for row in search["results"]:
+        # Search is a discovery tool: never send stored judgment bodies in its
+        # result list. Clients can request one bounded body via get_judgment.
+        row.pop("full_text", None)
         if row.get("source") == "local_db":
             row["url"] = f"https://litigaforge.com{row['url']}"
     return {"query": query, "count": search["count"], "source": search["source"],

@@ -1,9 +1,9 @@
 ---
-name: LitigaForge per-route bot SEO
-description: How crawler-facing per-route metadata is generated, and the sitemap↔route-map sync rule that prevents duplicate-homepage content.
+name: LitigaForge per-route SEO
+description: How initial-response metadata is generated, including dynamic judgment pages and the sitemap↔route-map sync rule.
 ---
 
-# Per-route bot SEO (crawler-facing unique metadata)
+# Per-route initial-response SEO
 
 LitigaForge's frontend is a React SPA, so by default every route ships the same
 `index.html` shell. To give crawlers unique pages, the **api-server** (`artifacts/api-server/src/app.ts`)
@@ -15,6 +15,10 @@ template (`litigaforge-ui/public/index-static.html`, served from the built
   per bare path; a dynamic `/lawyers/:city` handler covers city pages.
 - `_stripCountry` removes a leading country/locale prefix (`/in/ask` → `/ask`) so
   country variants **consolidate onto bare canonical URLs** (`https://litigaforge.com/<path>`).
+- Dynamic `/judgments/:court/:year/:slug` routes fetch the case and inject its
+  title, description, canonical, OG/Twitter tags, and JSON-LD into the normal
+  SPA shell for **every user agent**. Plain curl and unfurlers must see the case;
+  do not make this path bot-only.
 - The template's `<title>/<meta>/<link canonical>/og:*/twitter:*` and the **first**
   `<h1>` and **first** `<p>` are swapped via regex **function replacers**
   (`.replace(re, () => value)`) — function replacers are mandatory so any `$` in
@@ -40,7 +44,8 @@ sitemap, add it to `_ROUTE_SEO` in the same change. (This bit us once: `/us-dema
 
 **How to apply:**
 - Changes take effect only after rebuilding the UI (`PORT=23790 BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run build`, so dist picks up template/robots/sitemap edits) **and** restarting the `api-server` workflow.
-- Verify with `curl -A "Googlebot" http://localhost:80/<path>` and confirm distinct title/canonical/h1; confirm a plain `curl` still returns the React shell (`<div id="root">`).
+- Verify static routes with Googlebot. Verify judgment routes with plain curl:
+  initial HTML must contain case metadata while retaining the React root/scripts.
 - The regex rewriting assumes the bot template's first `<h1>`/`<p>` are the hero
   intro — if the template gains an earlier `<p>`/`<h1>`, the wrong node gets rewritten.
 - `/subscription` is intentionally bot-indexed as pricing even though the human

@@ -15,6 +15,8 @@ introduce cost and abuse risk that the initial public transport does not need.
 
 **How to apply:** New public tools may read bounded public data. Search local
 judgments first; use IK only to supplement sparse results and preserve honest
-source labels. Before adding AI calls, user-specific data, document access, or
-write actions, add authentication, authorization scopes, stricter quotas, and
-an explicit cost policy.
+source labels. `search_judgments` is discovery metadata only and must never
+return `full_text`; bounded text belongs only in `get_judgment`. Before adding
+AI calls, user-specific data, document access, or write actions, add
+authentication, authorization scopes, stricter quotas, and an explicit cost
+policy.

@@ -1416,7 +1416,14 @@ class _ConditionalGZipMiddleware:
         # on top of uvicorn's own root_path=BASE_PATH, so scope["path"] can show
         # up as either "/litigaforge/forgeos/stream" or the doubled
         # "/litigaforge/litigaforge/forgeos/stream" depending on the entry point.
-        if scope["type"] == "http" and any(scope["path"].endswith(p) for p in self.exclude_paths):
+        path = scope.get("path", "")
+        is_workspace_sse = bool(_re.search(
+            r"/workspace/sessions/\d+/(?:analyze|simulate|agent/[^/]+/ask)$",
+            path,
+        ))
+        if scope["type"] == "http" and (
+            is_workspace_sse or any(path.endswith(p) for p in self.exclude_paths)
+        ):
             await self.raw_app(scope, receive, send)
             return
         await self.gzip_app(scope, receive, send)

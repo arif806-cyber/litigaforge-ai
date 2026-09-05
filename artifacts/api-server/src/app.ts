@@ -1133,13 +1133,13 @@ if (true) { // serve frontend in both dev and production when dist exists
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
 
-    // Per-judgment bot HTML: fetch the judgment from the Python service and
+    // Per-judgment initial HTML: fetch the judgment from the Python service and
     // inject case-specific <title>, description, canonical, OG/Twitter tags
     // (incl. the dynamic OG card image) and BlogPosting + LegalCase JSON-LD.
     // Returns null for non-judgment paths or when the judgment can't be found,
-    // so callers fall back to the generic bot/index HTML.
+    // so callers fall back to the generic route/index HTML.
     const _judgmentBotHtml = async (reqPath: string): Promise<string | null> => {
-      if (!_staticBotHtml) return null;
+      if (!_indexHtml) return null;
       let bare = _stripCountry(reqPath);
       if (bare.length > 1) bare = bare.replace(/\/+$/, "");
       const m = bare.match(/^\/judgments\/([^/]+)\/(\d{4})\/([^/]+)$/);
@@ -1197,7 +1197,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         ],
       }).replace(/</g, "\\u003c");
 
-      return _staticBotHtml
+      return _indexHtml
         .replace(/<title>[\s\S]*?<\/title>/, () => `<title>${_esc(title)}</title>`)
         .replace(
           /<meta name="description"[^>]*>/,
@@ -1309,10 +1309,12 @@ if (true) { // serve frontend in both dev and production when dist exists
       // Root: serve meta-injected HTML
       app.get("/", _sendIndex);
 
-      // Judgment detail: bots get per-judgment meta + OG card + JSON-LD fetched
-      // from the Python service; humans get the SPA shell (react-helmet sets
-      // meta client-side). Registered BEFORE the SPA catch-all. Matches both the
-      // bare and country-prefixed (/in/judgments/...) forms.
+      // Judgment detail: every initial HTML response gets per-judgment title,
+      // description, OG/Twitter tags and JSON-LD fetched from the Python
+      // service. The response remains the normal SPA shell, so React hydrates
+      // for humans while crawlers and unfurlers see correct metadata without JS.
+      // Registered BEFORE the SPA catch-all. Matches both bare and
+      // country-prefixed (/in/judgments/...) forms.
       // Tolerant judgment URLs: truncated, wrong-court or stray-keyword slugs
       // 301 → the canonical judgment URL. Existing slugs are NEVER renamed —
       // resolution is delegated to the Python service and cached briefly so an
@@ -1370,17 +1372,16 @@ if (true) { // serve frontend in both dev and production when dist exists
         } catch (err) {
           logger.error({ err }, "judgment redirect resolve failed");
         }
-        const ua = req.headers["user-agent"] ?? "";
-        if (_staticBotHtml && _botPattern.test(ua)) {
-          try {
-            const html = await _judgmentBotHtml(req.path);
-            res.setHeader("Cache-Control", "public, max-age=3600");
+        try {
+          const html = await _judgmentBotHtml(req.path);
+          if (html) {
+            res.setHeader("Cache-Control", "public, max-age=300");
             res.setHeader("Content-Type", "text/html; charset=utf-8");
-            res.send(html ?? _botHtmlForPath(req.path));
+            res.send(html);
             return;
-          } catch (err) {
-            logger.error({ err }, "judgment bot html failed — serving generic");
           }
+        } catch (err) {
+          logger.error({ err }, "judgment initial html failed — serving generic");
         }
         _sendIndex(req, res);
       };
