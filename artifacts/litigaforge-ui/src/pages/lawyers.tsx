@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { getCountryFromPath } from "@/lib/country";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, safeAuthNext } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
 import { LAWYERS_COPY } from "@/lib/country-copy";
 import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle, Globe2 } from "lucide-react";
@@ -151,7 +151,7 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
 }
 
 function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir: CountryDir; countryCode: string }) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const qc = useQueryClient();
   const [form, setForm] = useState({
     name: user?.name ?? "", phone: "", email: "", district: dir.regions[0],
@@ -164,7 +164,19 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
   const register = useMutation({
     mutationFn: (data: typeof form) =>
       apiFetch("/lawyers/register", { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: () => { setSuccess(true); qc.invalidateQueries({ queryKey: ["lawyers"] }); },
+    onSuccess: async () => {
+      setSuccess(true);
+      qc.invalidateQueries({ queryKey: ["lawyers"] });
+      // A new advocate must finish this profile before entering Workspace.
+      // Re-read auth so subsequent route guards see the server's status.
+      await refreshUser();
+      let next: string | null = null;
+      try { next = safeAuthNext(sessionStorage.getItem("lf_return_to")); } catch { /* storage unavailable */ }
+      if (next) {
+        try { sessionStorage.removeItem("lf_return_to"); } catch { /* storage unavailable */ }
+        window.location.href = next;
+      }
+    },
   });
 
   const toggleArea = (area: string) =>

@@ -11,6 +11,7 @@ import { hasPasskeySupport, authenticatePasskey } from "@/lib/passkeys";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import { trackEvent } from "@/lib/analytics";
 import { useCountry } from "@/hooks/useCountry";
+import { safeAuthNext } from "@/lib/auth-context";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
   IN: { badge: "India Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates, analyze documents, search Indian judgments, and get AI legal strategy — all in one platform.", trust: "Trusted by advocates across India" },
@@ -26,11 +27,11 @@ const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string
 type Role = "client" | "lawyer";
 type Mode = "signin" | "signup";
 
-// Read conversion intent passed from public CTAs (e.g. pricing plan, For Lawyers).
-function readAuthParams(): { role: string | null; plan: string | null; billing: string | null } {
-  if (typeof window === "undefined") return { role: null, plan: null, billing: null };
+// Read conversion intent passed from public CTAs (e.g. Workspace, For Lawyers).
+function readAuthParams(): { role: string | null; plan: string | null; billing: string | null; next: string | null } {
+  if (typeof window === "undefined") return { role: null, plan: null, billing: null, next: null };
   const p = new URLSearchParams(window.location.search);
-  return { role: p.get("role"), plan: p.get("plan"), billing: p.get("billing") };
+  return { role: p.get("role"), plan: p.get("plan"), billing: p.get("billing"), next: safeAuthNext(p.get("next")) };
 }
 
 export default function Login() {
@@ -63,15 +64,21 @@ export default function Login() {
 
   useEffect(() => { roleRef.current = role; }, [role]);
 
-  // Honor ?role= from the public "For Lawyers" CTA (/register?role=lawyer).
+  // Honor both the current advocate spelling and the legacy lawyer spelling.
+  // Workspace intent defaults to the advocate flow as it requires a profile.
   useEffect(() => {
-    const { role: r } = readAuthParams();
-    if (r === "lawyer" || r === "client") setRole(r);
+    const { role: r, next } = readAuthParams();
+    if (r === "lawyer" || r === "advocate" || next === "/workspace") setRole("lawyer");
+    else if (r === "client") setRole("client");
+    if (next) {
+      try { sessionStorage.setItem("lf_return_to", next); } catch { /* unavailable */ }
+    }
   }, []);
 
   // Carry the selected pricing plan through registration into the upgrade flow.
   const postAuthDest = (currentRole: Role): string => {
-    const { plan, billing } = readAuthParams();
+    const { plan, billing, next } = readAuthParams();
+    if (next) return next;
     if (plan && plan !== "free") {
       const q = new URLSearchParams({ plan });
       if (billing) q.set("billing", billing);

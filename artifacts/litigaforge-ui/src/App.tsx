@@ -59,6 +59,9 @@ const RefundPolicy        = lazy(() => import("@/pages/refund-policy"));
 const UsDemandLetter      = lazy(() => import("@/pages/us-demand-letter"));
 const AccountSettings     = lazy(() => import("@/pages/settings"));
 const ForgeWorkspace      = lazy(() => import("@/pages/workspace"));
+const WorkspaceDemoPreview = lazy(() =>
+  import("@/pages/workspace").then((m) => ({ default: m.WorkspaceDemoPreview })),
+);
 const MessagesPage        = lazy(() => import("@/pages/messages"));
 const CnrTracker          = lazy(() => import("@/pages/cnr-tracker"));
 const ForgeOsPage         = lazy(() => import("@/pages/forgeos"));
@@ -96,8 +99,8 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     if (!loading && !user) {
       // Persist the intended destination so login can redirect back after auth
       try {
-        const dest = window.location.pathname;
-        if (dest && dest !== "/login" && dest !== "/register") {
+        const dest = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (dest && !["/login", "/register", "/signup"].includes(window.location.pathname)) {
           sessionStorage.setItem("lf_return_to", dest);
         }
       } catch { /* ignore */ }
@@ -114,6 +117,23 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   }
   if (!user) return null;
   return <Component />;
+}
+
+function WorkspaceRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (!user) return <WorkspaceDemoPreview />;
+  // An advocate's directory profile is a required onboarding step before they
+  // can create a Workspace. Preserve the intended destination for completion.
+  if ((user.role === "advocate" || user.role === "lawyer") && !user.lawyer_status) {
+    try { sessionStorage.setItem("lf_return_to", "/workspace"); } catch { /* ignore */ }
+    return <Redirect to="/lawyers/register" />;
+  }
+  return <ForgeWorkspace />;
+}
+
+function SignupRedirect() {
+  return <Redirect to={`/register${window.location.search}`} />;
 }
 
 // Country root (e.g. /in, /us): logged-in users go straight to their dashboard;
@@ -307,6 +327,7 @@ function Router() {
         <Route path="/settings" component={() => <ProtectedRoute component={AccountSettings} />} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
+        <Route path="/signup" component={SignupRedirect} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/" component={CountryRoot} />
         <Route>
@@ -337,7 +358,7 @@ function Router() {
               <Route path="/blog/:slug"    component={() => <ErrorBoundary section="blog-post"><BlogPost /></ErrorBoundary>} />
               <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
               <Route path="/forgeos"      component={() => <ErrorBoundary section="forgeos"><ProtectedRoute component={ForgeOsPage} /></ErrorBoundary>} />
-              <Route path="/workspace"    component={() => <ErrorBoundary section="workspace"><ProtectedRoute component={ForgeWorkspace} /></ErrorBoundary>} />
+               <Route path="/workspace"    component={() => <ErrorBoundary section="workspace"><WorkspaceRoute /></ErrorBoundary>} />
               <Route path="/messages"    component={() => <ErrorBoundary section="messages"><ProtectedRoute component={MessagesPage} /></ErrorBoundary>} />
               <Route path="/cnr-tracker" component={() => <ErrorBoundary section="cnr-tracker"><CnrTracker /></ErrorBoundary>} />
               <Route path="/cnr"><Redirect to="/cnr-tracker" /></Route>

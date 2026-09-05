@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re as _re
+import time
 import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 
@@ -33,12 +34,42 @@ from auth import require_user
 from database import get_pool
 from llm import legal_llm
 from llm.config import LEGAL_SYSTEM_PROMPT as _LEGAL_SYSTEM_PROMPT
+from case_law_search import search_case_law
 
 logger = logging.getLogger("litigaforge.workspace")
 router = APIRouter(tags=["workspace"])
+_FIRST_PROVIDER_WAIT_SECONDS = 8
+_SSE_HEARTBEAT_SECONDS = 5
 
 IK_TOKEN = os.getenv("INDIANKANOON_API_TOKEN", "")
 IK_BASE  = "https://api.indiankanoon.org"
+
+
+async def _await_provider_with_heartbeats(awaitable):
+    """Yield heartbeats while awaiting one bounded provider response."""
+    task = asyncio.create_task(awaitable)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _FIRST_PROVIDER_WAIT_SECONDS
+    try:
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise asyncio.TimeoutError("provider first-token timeout")
+            try:
+                result = await asyncio.wait_for(
+                    asyncio.shield(task),
+                    timeout=min(_SSE_HEARTBEAT_SECONDS, remaining),
+                )
+                yield "result", result
+                return
+            except asyncio.TimeoutError:
+                if loop.time() >= deadline:
+                    raise
+                yield "heartbeat", None
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
 
 
 # ─── Pydantic schemas ──────────────────────────────────────────────────────────
@@ -323,24 +354,7 @@ async def search_judgments(
         if not exists:
             raise HTTPException(404, "Session not found")
 
-        if IK_TOKEN:
-            try:
-                docs  = await _cached_ik_search(conn, body.query, body.max_results)
-                ranked = sorted(docs, key=_compute_impact_score, reverse=True)
-                nodes  = [_doc_to_node(d, i, body.query) for i, d in enumerate(ranked)]
-                return {"nodes": nodes, "source": "indian_kanoon", "total": len(nodes)}
-            except Exception as exc:
-                logger.warning("IK search error: %s", exc)
-
-        # Fallback: local judgments table
-        term = f"%{body.query}%"
-        rows = await conn.fetch(
-            "SELECT id, case_name, court, citation, summary_en, year, court_slug, slug "
-            "FROM judgments WHERE summary_en IS NOT NULL "
-            "AND (case_name ILIKE $1 OR summary_en ILIKE $1) "
-            "ORDER BY judgment_date DESC NULLS LAST LIMIT $2",
-            term, body.max_results,
-        )
+        search = await search_case_law(conn, body.query, limit=body.max_results)
     nodes = [
         {
             "id":       f"judgment-{row['id']}",
@@ -352,14 +366,15 @@ async def search_judgments(
                 "citation":     row["citation"] or "",
                 "summary":      (row["summary_en"] or "")[:300],
                 "year":         str(row["year"] or ""),
-                "url":          f"/judgments/{row['court_slug']}/{row['year']}/{row['slug']}",
+                "url":          row["url"],
                 "impact_score": 70,
-                "num_citing":   0,
+                "num_citing":   row.get("num_citing", 0),
+                "source":       row["source"],
             },
         }
-        for i, row in enumerate(rows)
+        for i, row in enumerate(search["results"])
     ]
-    return {"nodes": nodes, "source": "local_db", "total": len(nodes)}
+    return {"nodes": nodes, "source": search["source"], "total": len(nodes)}
 
 
 # ─── Indian Kanoon — Smart Search (SSE) ───────────────────────────────────────
@@ -869,22 +884,32 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
                 logger.warning("IK pre-fetch for Research Agent failed: %s", _ik_exc)
 
         try:
-            response = await legal_llm.aask_legal_question(prompt)
-            response  = (response or "").strip()
+            response = ""
+            async for event, value in _await_provider_with_heartbeats(
+                legal_llm.aask_legal_question(prompt)
+            ):
+                if event == "heartbeat":
+                    yield ": heartbeat\n\n"
+                else:
+                    response = (value or "").strip()
         except Exception as _primary_exc:
             logger.warning(
                 "Agent %s — LiteLLM error (%s: %s); trying ai_brain cascade",
                 agent["id"], type(_primary_exc).__name__, _primary_exc,
             )
+            yield sse({"type": "provider_error", "agent": agent["id"],
+                       "error": "Primary analysis provider was unavailable; trying fallback."})
             # ── Fallback: ai_brain Claude → Gemini → Groq cascade ────────────
             try:
-                _fb = await _ai_brain.call_llm_async(
-                    _LEGAL_SYSTEM_PROMPT,
-                    prompt,
-                    temperature=0.3,
-                    max_tokens=2000,
-                )
-                response = (_fb or "").strip()
+                async for event, value in _await_provider_with_heartbeats(
+                    _ai_brain.call_llm_async(
+                        _LEGAL_SYSTEM_PROMPT, prompt, temperature=0.3, max_tokens=2000,
+                    )
+                ):
+                    if event == "heartbeat":
+                        yield ": heartbeat\n\n"
+                    else:
+                        response = (value or "").strip()
             except Exception as _fallback_exc:
                 logger.warning("Agent %s — ai_brain cascade also failed: %s", agent["id"], _fallback_exc)
                 response = ""
@@ -988,13 +1013,13 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
         "message":         "All five agents have completed their analysis. The Agent Society has reached consensus.",
         "consensus_score": consensus_score,
     })
-    yield sse({"type": "complete"})
 
 
 @router.post("/workspace/sessions/{session_id}/analyze")
 async def analyze_session(
     session_id: int, body: AnalyzeBody, request: Request, user=Depends(require_user)
 ):
+    request_started = time.perf_counter()
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -1040,40 +1065,40 @@ async def analyze_session(
         def _sse(d: dict) -> str:
             return f"data: {json.dumps(d, default=str)}\n\n"
 
+        # Emit before any provider work so reverse proxies and clients have a
+        # prompt first byte. The heartbeat also keeps idle buffering at bay.
+        logger.info(
+            "workspace analyze first-byte session=%s user=%s ms=%d",
+            session_id, user["id"], round((time.perf_counter() - request_started) * 1000),
+        )
+        yield _sse({"type": "start"})
+        yield ": heartbeat\n\n"
         agent_outputs_all: dict[str, str] = {}
-
-        async for chunk in _stream_analysis(case_desc, body.context, profile_ctx):
-            yield chunk
-            # Capture ALL agent outputs for multi-doc folder generation
-            if '"agent_done"' in chunk:
-                try:
-                    payload = json.loads(chunk.split("data: ", 1)[1])
-                    if payload.get("type") == "agent_done":
-                        aid = payload.get("agent", "")
-                        ft  = payload.get("full_text", "")
-                        if aid and ft:
-                            agent_outputs_all[aid] = ft
-                except Exception:
-                    pass
-
-        # ── Auto-create case folder after all agents complete ─────────────────
         try:
-            folder_info = await _auto_create_case_folder(
-                user_id=user["id"],
-                session_id=session_id,
-                case_desc=case_desc,
-                drafting_text=agent_outputs_all.get("drafting", ""),
-                agent_outputs=agent_outputs_all,
-            )
-            if folder_info:
-                yield _sse({
-                    "type":        "folder_created",
-                    "folder_id":   folder_info["id"],
-                    "folder_name": folder_info["name"],
-                    "file_count":  folder_info["file_count"],
-                })
-        except Exception as _fe:
-            logger.warning("Auto-folder creation failed: %s", _fe)
+            async for chunk in _stream_analysis(case_desc, body.context, profile_ctx):
+                yield chunk
+                if '"agent_done"' in chunk:
+                    try:
+                        payload = json.loads(chunk.split("data: ", 1)[1])
+                        if payload.get("type") == "agent_done" and payload.get("full_text"):
+                            agent_outputs_all[payload.get("agent", "")] = payload["full_text"]
+                    except Exception:
+                        pass
+            try:
+                folder_info = await _auto_create_case_folder(
+                    user_id=user["id"], session_id=session_id, case_desc=case_desc,
+                    drafting_text=agent_outputs_all.get("drafting", ""), agent_outputs=agent_outputs_all,
+                )
+                if folder_info:
+                    yield _sse({"type": "folder_created", "folder_id": folder_info["id"],
+                                "folder_name": folder_info["name"], "file_count": folder_info["file_count"]})
+            except Exception as _fe:
+                logger.warning("Auto-folder creation failed: %s", _fe)
+        except Exception as exc:
+            logger.exception("Workspace analysis stream failed: %s", exc)
+            yield _sse({"type": "error", "error": "Analysis ended unexpectedly."})
+        finally:
+            yield _sse({"type": "complete"})
 
     return StreamingResponse(
         generate(),
@@ -1306,6 +1331,7 @@ async def simulate_what_if(
     session_id: int, body: SimulateBody, request: Request, user=Depends(require_user)
 ):
     """SSE streaming What-If simulation with structured before/after comparison."""
+    request_started = time.perf_counter()
     pool = await get_pool()
     async with pool.acquire() as conn:
         exists = await conn.fetchval(
@@ -1322,11 +1348,22 @@ async def simulate_what_if(
             return f"data: {json.dumps(d, default=str)}\n\n"
 
         # ── Before state ────────────────────────────────────────────────────
-        scores = [int(n.get("data", {}).get("impact_score", 70)) for n in nodes if isinstance(n.get("data"), dict)]
+        def score(node: dict) -> int:
+            try:
+                return int(node.get("data", {}).get("impact_score", 70))
+            except (TypeError, ValueError):
+                return 70
+
+        scores = [score(n) for n in nodes if isinstance(n.get("data"), dict)]
         avg_before = int(sum(scores) / len(scores)) if scores else 70
         risk_before = "high" if avg_before < 60 else "medium" if avg_before < 75 else "low"
 
+        logger.info(
+            "workspace simulate first-byte session=%s user=%s ms=%d",
+            session_id, user["id"], round((time.perf_counter() - request_started) * 1000),
+        )
         yield sse({"type": "sim_start"})
+        yield ": heartbeat\n\n"
         yield sse({"type": "sim_before", "avg_score": avg_before, "risk_level": risk_before, "node_count": len(nodes)})
 
         # ── Agent involvement ───────────────────────────────────────────────
@@ -1337,7 +1374,7 @@ async def simulate_what_if(
 
         # ── LLM analysis ────────────────────────────────────────────────────
         node_summary = "\n".join(
-            f"  • [{n.get('type','?')}] {n.get('data',{}).get('label','?')} (score: {int(n.get('data',{}).get('impact_score',70))})"
+            f"  • [{n.get('type','?')}] {n.get('data',{}).get('label','?')} (score: {score(n)})"
             for n in nodes
         ) or "  (no nodes on canvas)"
 
@@ -1358,9 +1395,17 @@ async def simulate_what_if(
         )
 
         try:
-            raw = (await legal_llm.aask_legal_question(prompt) or "").strip()
+            raw = ""
+            async for event, value in _await_provider_with_heartbeats(
+                legal_llm.aask_legal_question(prompt)
+            ):
+                if event == "heartbeat":
+                    yield ": heartbeat\n\n"
+                else:
+                    raw = (value or "").strip()
         except Exception as exc:
             logger.warning("Simulate LLM error: %s", exc)
+            yield sse({"type": "provider_error", "error": "Simulation provider was unavailable."})
             raw = (
                 "SUMMARY: This scenario introduces significant uncertainty into the current strategy.\n"
                 "RISK: high\nSCORE_CHANGE: -10\n"
@@ -1426,6 +1471,7 @@ async def simulate_what_if(
             "recommendation": recommendation,
         })
         yield sse({"type": "sim_complete"})
+        yield sse({"type": "sim_end"})
 
     return StreamingResponse(
         generate(),

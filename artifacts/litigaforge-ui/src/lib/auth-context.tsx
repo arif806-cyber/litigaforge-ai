@@ -16,11 +16,24 @@ function dashboardUrl(role: string): string {
   return buildCountryUrl(country, page);
 }
 
+// Only accept app-relative destinations. Auth links are public input, so never
+// turn a `next` parameter (or a stale sessionStorage value) into an open redirect.
+export function safeAuthNext(value: string | null | undefined): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\"))
+    return null;
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : null;
+  } catch {
+    return null;
+  }
+}
+
 // Navigate after a successful auth — honors any pre-login saved destination.
 function navigateAfterAuth(role: string) {
   try {
-    const returnTo = sessionStorage.getItem("lf_return_to");
-    if (returnTo && returnTo !== "/login" && returnTo !== "/register") {
+    const returnTo = safeAuthNext(sessionStorage.getItem("lf_return_to"));
+    if (returnTo && returnTo !== "/login" && returnTo !== "/register" && returnTo !== "/signup") {
       sessionStorage.removeItem("lf_return_to");
       window.location.href = returnTo;
       return;
@@ -129,6 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     setUser(data.user);
     if (isAdvocate(data.user?.role ?? role)) {
+      // Keep a requested destination (notably Workspace) until the mandatory
+      // advocate profile has been submitted.
       window.location.href = buildCountryUrl(
         getCountryFromPath() ?? "in",
         "lawyers/register",

@@ -145,7 +145,7 @@ async def list_judgments(
     total = await fetchval(f"SELECT COUNT(*) FROM judgments WHERE {where_sql}", *args)
     rows = await fetch(
         f"""SELECT id, case_name, court, court_slug, bench, judgment_date, year, slug,
-                   summary_en, summary_hi, acts_cited, outcome, citation,
+                   summary_en, summary_hi, text_complete, acts_cited, outcome, citation,
                    source_name, source_url, og_image_url, created_at
             FROM judgments
             WHERE {where_sql}

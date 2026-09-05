@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SaveToResearch } from "@/components/research";
 import { IKanoonAttribution } from "@/components/IKanoonAttribution";
+import { useAuth } from "@/lib/auth-context";
 
 interface RelatedItem {
   case_name: string;
@@ -46,6 +47,7 @@ interface JudgmentDetail {
   path: string;
   url: string;
   related: RelatedItem[];
+  text_complete?: boolean;
 }
 
 function formatDate(iso: string | null): string {
@@ -69,6 +71,7 @@ function Paragraph({ text }: { text: string }) {
 }
 
 export default function JudgmentDetail() {
+  const { user } = useAuth();
   const params = useParams();
   const court = params.court ?? "";
   const year = params.year ?? "";
@@ -240,6 +243,18 @@ export default function JudgmentDetail() {
             {j.outcome}
           </div>
         )}
+        <span
+          data-testid="judgment-text-status"
+          className={cn(
+            "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border",
+            j.text_complete === false
+              ? "text-amber-800 bg-amber-50 border-amber-200"
+              : "text-emerald-800 bg-emerald-50 border-emerald-200",
+          )}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          {j.text_complete === false ? "Text incomplete — verify with source" : "Text complete"}
+        </span>
       </header>
 
       {/* save to research */}
@@ -334,6 +349,18 @@ export default function JudgmentDetail() {
         <Link href="/legal-chat">
           <Button data-testid="cta-ask-ai" className="shadow-sm flex-shrink-0">
             Ask AI <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      </section>
+
+      <section className="bg-card border border-border rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-foreground">Build this into your case strategy</h2>
+          <p className="text-sm text-muted-foreground mt-1">Open a visual Workspace to connect this precedent with facts and arguments.</p>
+        </div>
+        <Link href={user ? "/workspace" : "/register?role=advocate&next=/workspace"}>
+          <Button data-testid="cta-open-workspace" className="flex-shrink-0">
+            Open in Workspace <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </Link>
       </section>

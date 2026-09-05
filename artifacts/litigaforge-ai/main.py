@@ -354,9 +354,9 @@ async def _ensure_sample_judgments(conn) -> None:
                 """
                 INSERT INTO judgments
                     (case_name, court, court_slug, bench, judgment_date, year, slug,
-                     full_text, summary_en, summary_hi, acts_cited, outcome,
+                     full_text, text_complete, summary_en, summary_hi, acts_cited, outcome,
                      source_url, source_name, citation, status)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'published')
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9,$10,$11,$12,$13,$14,$15,'published')
                 ON CONFLICT (court_slug, year, slug) DO NOTHING
                 """,
                 s["case_name"], s["court"], s["court_slug"], s["bench"],
@@ -469,7 +469,12 @@ async def lifespan(app: FastAPI):
         """)
         await conn.execute("""
             DELETE FROM users
-            WHERE email IN ('lf.audit.client.20260905@gmail.com', 'lf.audit.adv.20260905@gmail.com')
+            WHERE email IN (
+                'lf.audit.client.20260905@gmail.com',
+                'lf.audit.adv.20260905@gmail.com',
+                'grok.qa.advocate.20260905@litigaforge.com',
+                'grok.qa.client.20260905@litigaforge.com'
+            )
         """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS case_requirements (
@@ -755,6 +760,7 @@ async def lifespan(app: FastAPI):
                     year INTEGER,
                     slug TEXT NOT NULL,
                     full_text TEXT,
+                    text_complete BOOLEAN NOT NULL DEFAULT FALSE,
                     summary_en TEXT,
                     summary_hi TEXT,
                     acts_cited TEXT[] DEFAULT '{}',
@@ -810,6 +816,9 @@ async def lifespan(app: FastAPI):
             # initial release — safe to re-run via ADD COLUMN IF NOT EXISTS.
             await conn.execute(
                 "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS entities JSONB DEFAULT NULL"
+            )
+            await conn.execute(
+                "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS text_complete BOOLEAN NOT NULL DEFAULT FALSE"
             )
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS digest_subscribers (

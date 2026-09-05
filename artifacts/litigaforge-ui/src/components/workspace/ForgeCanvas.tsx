@@ -319,6 +319,7 @@ export interface ForgeCanvasProps {
   canUndo:          boolean;
   canRedo:          boolean;
   fitViewTrigger?:  number;
+  readOnly?:        boolean;
 }
 
 // Inject global CSS once
@@ -362,6 +363,7 @@ export default function ForgeCanvas({
   onUndo, onRedo, onDeleteSelected,
   canUndo, canRedo,
   fitViewTrigger,
+  readOnly = false,
 }: ForgeCanvasProps) {
   injectCSS();
 
@@ -427,16 +429,19 @@ export default function ForgeCanvas({
   return (
     <div
       className="forge-canvas"
-      style={{ flex: 1, minWidth: 0, minHeight: 0, position: "relative" }}
+      style={{ flex: 1, width: "100%", height: "100%", minWidth: 0, minHeight: 0, position: "relative" }}
     >
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={handleConnect}
-        onEdgeDoubleClick={handleEdgeDblClick}
-        onNodeDragStop={handleNodeDragStop}
+        onNodesChange={readOnly ? undefined : onNodesChange}
+        onEdgesChange={readOnly ? undefined : onEdgesChange}
+        onConnect={readOnly ? undefined : handleConnect}
+        onEdgeDoubleClick={readOnly ? undefined : handleEdgeDblClick}
+        onNodeDragStop={readOnly ? undefined : handleNodeDragStop}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        elementsSelectable={!readOnly}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         colorMode="dark"
@@ -453,7 +458,7 @@ export default function ForgeCanvas({
         }}
         deleteKeyCode={null}
       >
-        <CanvasInternals
+        {!readOnly && <CanvasInternals
           nodes={nodes}
           edges={edges}
           onUndo={onUndo}
@@ -474,7 +479,7 @@ export default function ForgeCanvas({
           onProximityConnect={handleProximityConnect}
           onProximityCancel={() => setProximitySuggestion(null)}
           fitViewTrigger={fitViewTrigger}
-        />
+        />}
       </ReactFlow>
 
       {/* Empty state */}

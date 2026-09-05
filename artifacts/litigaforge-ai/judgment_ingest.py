@@ -37,7 +37,7 @@ from typing import Any, Optional
 import requests as _req
 from asyncpg.exceptions import UniqueViolationError as UniqueViolation
 
-from database import fetchval, get_pool
+from database import fetch, fetchval, get_pool
 from logger import get_logger
 
 logger = get_logger("litigaforge.judgment_ingest")
@@ -408,19 +408,38 @@ async def _already_have(source_url: str) -> bool:
     return bool(found)
 
 
+async def _near_duplicate(year: int, case_name: str) -> bool:
+    """Avoid a second canonical case when a source changes punctuation/title tails.
+
+    This deliberately mirrors the tolerant redirect convention: party slugs are
+    normalized and a truncated canonical slug only resolves when it is unique.
+    """
+    wanted = _case_slug(case_name)
+    if len(wanted) < 8:
+        return False
+    rows = await fetch(
+        "SELECT slug FROM judgments WHERE status='published' AND year=$1", year
+    )
+    for row in rows:
+        candidate = _case_slug(str(row["slug"]))
+        if wanted == candidate or wanted.startswith(candidate + "-") or candidate.startswith(wanted + "-"):
+            return True
+    return False
+
+
 async def _insert_one(row: dict) -> Optional[int]:
     return await fetchval(
         """INSERT INTO judgments
                (case_name, court, court_slug, bench, judgment_date, year, slug,
-                full_text, summary_en, summary_hi, acts_cited, outcome,
+                 full_text, text_complete, summary_en, summary_hi, acts_cited, outcome,
                 source_url, source_name, status)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'published')
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'published')
            ON CONFLICT (court_slug, year, slug) DO NOTHING
            RETURNING id""",
         row["case_name"], row["court"], row["court_slug"], row.get("bench"),
         row.get("judgment_date"), row["year"], row["slug"], row.get("full_text"),
-        row["summary_en"], row["summary_hi"], row.get("acts_cited") or [],
-        row["outcome"], row["source_url"], SOURCE_NAME,
+        bool(row.get("text_complete")), row["summary_en"], row["summary_hi"],
+        row.get("acts_cited") or [], row["outcome"], row["source_url"], SOURCE_NAME,
     )
 
 
@@ -564,6 +583,9 @@ async def _do_run(
             if not case_name or not year or len(full_text) < 200:
                 stats["skipped_no_summary"] += 1
                 continue
+            if await _near_duplicate(year, case_name):
+                stats["skipped_existing"] += 1
+                continue
 
             # ── Pre-enrichment: deterministic statute extraction ──────────────
             # Run regex-based Indian legal NLP before the AI summariser so the
@@ -597,6 +619,7 @@ async def _do_run(
                 "bench": (doc.get("bench") or "").strip() or None,
                 "judgment_date": jdate, "year": year,
                 "slug": _case_slug(case_name), "full_text": full_text,
+                "text_complete": len(full_text) < FULL_TEXT_CAP,
                 "summary_en": summary["summary_en"], "summary_hi": summary["summary_hi"],
                 "acts_cited": merged_acts, "outcome": summary["outcome"],
                 "source_url": source_url,

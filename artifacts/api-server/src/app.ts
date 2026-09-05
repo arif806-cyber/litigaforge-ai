@@ -1279,6 +1279,15 @@ if (true) { // serve frontend in both dev and production when dist exists
         res.send(_spaHtmlForPath(req.path));
       };
 
+      // Keep the historical signup URL working as a real HTTP redirect so
+      // curl, crawlers, and browsers all land on the registration route.
+      app.get("/signup", (req, res) => {
+        const query = req.originalUrl.includes("?")
+          ? req.originalUrl.slice(req.originalUrl.indexOf("?"))
+          : "";
+        res.redirect(302, `/register${query}`);
+      });
+
       // Serve static assets (JS, CSS, fonts, images) — index:false so we
       // control index.html ourselves via the routes below. Hashed assets under
       // /assets/ are content-addressed, so they can be cached forever.

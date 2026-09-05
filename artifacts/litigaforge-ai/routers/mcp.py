@@ -13,7 +13,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
 from country_router import COUNTRY_CONFIG
-from database import fetch, fetchrow
+from database import fetch, fetchrow, get_pool
+from case_law_search import search_case_law
 from rate_limit import limiter
 
 
@@ -170,7 +171,7 @@ async def _list_recent_judgments(arguments: dict) -> dict:
     params.append(limit)
     rows = await fetch(
         f"""SELECT case_name, court, court_slug, judgment_date, year, slug,
-                   summary_en, acts_cited, outcome, citation, source_name, source_url
+                   summary_en, text_complete, acts_cited, outcome, citation, source_name, source_url
             FROM judgments
             WHERE {' AND '.join(where)}
             ORDER BY judgment_date DESC NULLS LAST, id DESC
@@ -192,45 +193,16 @@ async def _search_judgments(arguments: dict) -> dict:
     query = query[:200]
     limit = max(1, min(int(arguments.get("limit", 5)), 10))
     court = str(arguments.get("court") or "").strip()[:160]
-    pattern = f"%{query}%"
-    if court:
-        rows = await fetch(
-            """SELECT case_name, court, court_slug, judgment_date, year, slug,
-                      summary_en, acts_cited, outcome, citation, source_name, source_url
-               FROM judgments
-               WHERE status = 'published'
-                 AND (court ILIKE $2 OR court_slug ILIKE $2)
-                 AND (
-                   case_name ILIKE $1 OR summary_en ILIKE $1 OR outcome ILIKE $1
-                   OR array_to_string(acts_cited, ' ') ILIKE $1
-                 )
-               ORDER BY judgment_date DESC NULLS LAST, id DESC
-               LIMIT $3""",
-            pattern,
-            f"%{court}%",
-            limit,
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        search = await search_case_law(
+            conn, query, limit=limit, court=court, cache_writes=False
         )
-    else:
-        rows = await fetch(
-            """SELECT case_name, court, court_slug, judgment_date, year, slug,
-                      summary_en, acts_cited, outcome, citation, source_name, source_url
-               FROM judgments
-               WHERE status = 'published'
-                 AND (
-                   case_name ILIKE $1 OR summary_en ILIKE $1 OR outcome ILIKE $1
-                   OR array_to_string(acts_cited, ' ') ILIKE $1
-                 )
-               ORDER BY judgment_date DESC NULLS LAST, id DESC
-               LIMIT $2""",
-            pattern,
-            limit,
-        )
-    for row in rows:
-        row["url"] = (
-            f"https://litigaforge.com/judgments/"
-            f"{row['court_slug']}/{row['year']}/{row['slug']}"
-        )
-    return {"query": query, "count": len(rows), "judgments": rows}
+    for row in search["results"]:
+        if row.get("source") == "local_db":
+            row["url"] = f"https://litigaforge.com{row['url']}"
+    return {"query": query, "count": search["count"], "source": search["source"],
+            "judgments": search["results"]}
 
 
 async def _get_judgment(arguments: dict) -> dict:
@@ -241,8 +213,11 @@ async def _get_judgment(arguments: dict) -> dict:
         raise ValueError("court_slug and slug are required")
     row = await fetchrow(
         """SELECT case_name, court, court_slug, bench, judgment_date, year, slug,
-                  summary_en, summary_hi, acts_cited, outcome, citation,
-                  source_name, source_url
+                  summary_en, summary_hi, LEFT(full_text, 20000) AS full_text,
+                  CASE WHEN LENGTH(COALESCE(full_text, '')) <= 20000
+                       THEN text_complete ELSE FALSE END AS text_complete,
+                  LENGTH(COALESCE(full_text, '')) > 20000 AS full_text_truncated,
+                  acts_cited, outcome, citation, source_name, source_url
            FROM judgments
            WHERE status = 'published' AND court_slug = $1 AND year = $2 AND slug = $3""",
         court_slug,

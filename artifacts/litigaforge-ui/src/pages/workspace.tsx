@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { Link } from "wouter";
 import {
   addEdge,
   useNodesState,
@@ -22,6 +23,7 @@ import { NoSessionWelcome, EmptyCanvasGuide } from "@/components/workspace/Forge
 import { ToastStack, type ForgeToastItem } from "@/components/workspace/ForgeToast";
 import { layoutWithDagre } from "@/components/workspace/canvasLayout";
 import ConnectionHintsTray, { type ConnectionHint } from "@/components/workspace/ConnectionHintsTray";
+import { _tryRefresh } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,7 +46,7 @@ interface SearchResult {
 const BASE = "/litigaforge";
 
 async function api(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  let res = await fetch(`${BASE}${path}`, {
     ...opts,
     headers: {
       "Content-Type": "application/json",
@@ -53,12 +55,48 @@ async function api(path: string, opts: RequestInit = {}) {
     credentials: "include",
   });
   if (res.status === 401) {
+    // Workspace sessions can remain open longer than an access cookie. Refresh
+    // with the httpOnly refresh cookie and replay this idempotent/request body
+    // once before treating the session as expired.
+    if (await _tryRefresh()) {
+      res = await fetch(`${BASE}${path}`, {
+        ...opts,
+        headers: {
+          "Content-Type": "application/json",
+          ...(opts.headers as Record<string, string> | undefined),
+        },
+        credentials: "include",
+      });
+    }
+  }
+  if (res.status === 401) {
     window.location.href = "/login";
     throw new Error("Session expired — please sign in again.");
   }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res;
+}
+
+// fetch() streams cannot be replayed after their body has started, but an
+// expired cookie is detectable before that point. Retry exactly once on an
+// initial 401, then leave provider/network interruptions to the normal UI.
+async function workspaceStream(path: string, payload: object): Promise<Response> {
+  const init: RequestInit = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  };
+  let res = await fetch(`${BASE}${path}`, init);
+  if (res.status === 401 && await _tryRefresh()) {
+    res = await fetch(`${BASE}${path}`, init);
+  }
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Session expired — please sign in again.");
   }
   return res;
 }
@@ -119,6 +157,55 @@ const DEMO_EDGES: Edge[] = [
   { id: "de-a2-s1", source: "da2", target: "ds1", type: "default", animated: false },
   { id: "de-j1-s1", source: "dj1", target: "ds1", type: "default", animated: false },
 ];
+
+/** Public, non-persistent Workspace look-in. It intentionally has no API calls. */
+export function WorkspaceDemoPreview() {
+  const [secondsLeft, setSecondsLeft] = useState(10);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const timer = window.setTimeout(() => setSecondsLeft(value => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [secondsLeft]);
+
+  return (
+    <section className="relative h-[calc(100vh-5rem)] min-h-[580px] overflow-hidden bg-[#070d1a]">
+      <div className="pointer-events-none grid h-full grid-cols-3 gap-5 overflow-hidden px-10 pb-10 pt-40">
+        {DEMO_NODES.map((node) => {
+          const data = node.data as Record<string, unknown>;
+          const accent =
+            node.type === "risk" ? "border-red-400/40 bg-red-950/25" :
+            node.type === "strategy" ? "border-amber-400/40 bg-amber-950/25" :
+            node.type === "judgment" ? "border-teal-400/40 bg-teal-950/25" :
+            node.type === "issue" ? "border-violet-400/40 bg-violet-950/25" :
+            "border-sky-400/30 bg-sky-950/20";
+          return (
+            <article key={node.id} className={`min-h-0 rounded-xl border p-4 shadow-lg ${accent}`}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                {node.type}
+              </p>
+              <h3 className="mt-1 text-sm font-semibold text-white">{String(data.label ?? "")}</h3>
+              <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-300">
+                {String(data.content ?? data.description ?? data.summary ?? data.citation ?? "")}
+              </p>
+            </article>
+          );
+        })}
+      </div>
+      <div className="absolute left-1/2 top-5 z-30 w-[min(92%,620px)] -translate-x-1/2 rounded-2xl border border-teal-300/25 bg-slate-950/90 p-4 text-center shadow-2xl backdrop-blur">
+        <p className="text-sm font-bold text-white">Explore a sample case strategy canvas</p>
+        <p className="mt-1 text-xs text-slate-300">
+          Read-only preview {secondsLeft > 0 ? `· ${secondsLeft}s remaining` : "complete"} — sign up to create and analyze your own matter.
+        </p>
+        <Link href="/register?role=advocate&next=/workspace">
+          <button className="mt-3 rounded-lg bg-teal-500 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-teal-400" data-testid="workspace-demo-cta">
+            Create your Workspace
+          </button>
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 function makeDefaultAgentStates(): Record<string, AgentState> {
   return Object.fromEntries(AGENT_IDS.map(id => [id, { status: "idle" as const, text: "" }]));
@@ -231,7 +318,19 @@ export default function ForgeWorkspace() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }
 
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+
+  // Keep the short-lived access cookie fresh while an advocate is working.
+  // refreshUser uses cookie-only auth and its own single-flight refresh guard.
+  useEffect(() => {
+    const refresh = () => { void refreshUser(); };
+    const interval = window.setInterval(refresh, 5 * 60 * 1000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [refreshUser]);
 
   const saveTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addMenuRef          = useRef<HTMLDivElement>(null);
@@ -695,14 +794,10 @@ export default function ForgeWorkspace() {
     let localSynthesisScore: number | null = null;
 
     try {
-      const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/analyze`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ case_description: caseDescription }),
-      });
+      const res = await workspaceStream(
+        `/workspace/sessions/${sessionId}/analyze`,
+        { case_description: caseDescription },
+      );
 
       if (!res.ok || !res.body) throw new Error("Stream failed");
 
@@ -841,12 +936,10 @@ export default function ForgeWorkspace() {
     if (!sessionId || !assumption.trim() || simState.phase === "running") return;
     setSimState({ phase: "running", scenario: assumption, before: null, after: null, deltas: [], analysis: "", agents: [] });
     try {
-      const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/simulate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ assumption, case_description: caseDescription, nodes }),
-      });
+      const res = await workspaceStream(
+        `/workspace/sessions/${sessionId}/simulate`,
+        { assumption, case_description: caseDescription, nodes },
+      );
       if (!res.ok || !res.body) throw new Error("Stream failed");
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
