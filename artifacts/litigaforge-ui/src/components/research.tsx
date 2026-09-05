@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import {
-  Bookmark, BookmarkCheck, Loader2, Trash2, Check, X, ExternalLink,
+  Bookmark, BookmarkCheck, Loader2, Trash2, Check, X, ExternalLink, Eye, EyeOff,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -111,19 +111,65 @@ export function ClaimUsernameDialog({ onClose }: { onClose: () => void }) {
 
 // ── "My Research" header button (logged-in only) ─────────────────────────────
 export function MyResearchButton() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [showClaim, setShowClaim] = useState(false);
+  const [visibilityError, setVisibilityError] = useState("");
+  const visibilityMut = useMutation({
+    mutationFn: (isPublic: boolean) =>
+      apiFetch("/research/visibility", {
+        method: "PUT",
+        body: JSON.stringify({ is_public: isPublic }),
+      }),
+    onMutate: () => setVisibilityError(""),
+    onSuccess: async () => {
+      await refreshUser();
+    },
+    onError: (err) => {
+      setVisibilityError(
+        err instanceof Error ? err.message : "Could not update portfolio visibility.",
+      );
+    },
+  });
   if (!user) return null;
 
   if (user.username) {
+    const isPublic = user.is_profile_public !== false;
     return (
-      <Link
-        href={`/profile/${user.username}/research`}
-        data-testid="link-my-research"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-border bg-card hover:border-primary/40 hover:text-primary transition-colors"
-      >
-        <Bookmark className="w-4 h-4" /> My Research
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/profile/${user.username}/research`}
+          data-testid="link-my-research"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-border bg-card hover:border-primary/40 hover:text-primary transition-colors"
+        >
+          <Bookmark className="w-4 h-4" /> My Research
+        </Link>
+        <button
+          type="button"
+          onClick={() => visibilityMut.mutate(!isPublic)}
+          disabled={visibilityMut.isPending}
+          aria-pressed={isPublic}
+          aria-label={`Research portfolio is ${isPublic ? "public" : "private"}. Make it ${isPublic ? "private" : "public"}.`}
+          title={visibilityError || `Portfolio ${isPublic ? "public" : "private"} — click to change`}
+          data-testid="button-research-visibility"
+          className={
+            "inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border transition-colors disabled:cursor-wait disabled:opacity-60 " +
+            (visibilityError
+              ? "border-red-300 bg-red-50 text-red-700"
+              : isPublic
+                ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
+                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-primary")
+          }
+        >
+          {visibilityMut.isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : isPublic ? (
+            <Eye className="w-4 h-4" />
+          ) : (
+            <EyeOff className="w-4 h-4" />
+          )}
+          {isPublic ? "Public" : "Private"}
+        </button>
+      </div>
     );
   }
 

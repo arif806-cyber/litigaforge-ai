@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import { Button } from "@/components/ui/button";
 import {
   Scale, Loader2, Landmark, CalendarDays, BookOpen, ArrowLeft,
-  Link2, Check, NotebookPen,
+  Link2, Check, NotebookPen, EyeOff,
 } from "lucide-react";
 
 interface ProfileJudgment {
@@ -32,6 +33,7 @@ interface ProfileBookmark {
 interface ProfileData {
   username: string;
   name: string;
+  is_profile_public?: boolean;
   count: number;
   bookmarks: ProfileBookmark[];
 }
@@ -55,11 +57,15 @@ function initials(name: string): string {
 export default function ProfileResearch() {
   const params = useParams();
   const username = params.username ?? "";
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
+  const ownerUsername = user?.username?.toLowerCase();
+  const isOwner = Boolean(ownerUsername && ownerUsername === username.toLowerCase());
 
   const { data, isLoading, isError } = useQuery<ProfileData>({
-    queryKey: ["research-profile", username],
-    queryFn: () => apiFetch(`/research/profile/${username}`),
+    queryKey: ["research-profile", username, isOwner ? "owner" : "public"],
+    queryFn: () =>
+      apiFetch(isOwner ? "/research/me" : `/research/profile/${username}`),
     enabled: Boolean(username),
     retry: false,
   });
@@ -127,13 +133,22 @@ export default function ProfileResearch() {
               >
                 <BookOpen className="w-4 h-4" /> Cases Researched: {data.count}
               </span>
-              <button
-                onClick={copyLink}
-                data-testid="button-copy-profile-link"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card hover:border-primary/40 hover:text-primary transition-colors"
-              >
-                {copied ? <><Check className="w-3.5 h-3.5 text-green-600" /> Copied</> : <><Link2 className="w-3.5 h-3.5" /> Share profile</>}
-              </button>
+              {isOwner && data.is_profile_public === false ? (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-muted text-muted-foreground"
+                  data-testid="badge-private-profile"
+                >
+                  <EyeOff className="w-3.5 h-3.5" /> Private — only you can see this
+                </span>
+              ) : (
+                <button
+                  onClick={copyLink}
+                  data-testid="button-copy-profile-link"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  {copied ? <><Check className="w-3.5 h-3.5 text-green-600" /> Copied</> : <><Link2 className="w-3.5 h-3.5" /> Share profile</>}
+                </button>
+              )}
             </div>
           </div>
         </header>

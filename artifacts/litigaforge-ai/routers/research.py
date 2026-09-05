@@ -138,7 +138,8 @@ async def set_username(
     return {"username": row["username"], "is_profile_public": row["is_profile_public"]}
 
 
-@router.patch("/research/visibility")
+@router.put("/research/visibility")
+@router.patch("/research/visibility", include_in_schema=False)
 @limiter.limit("20/minute")
 async def set_visibility(
     body: VisibilityRequest,
