@@ -67,9 +67,14 @@ export default function SocialProofBar({ countryCode }: SocialProofBarProps) {
 
   useEffect(() => {
     let alive = true;
-    apiFetch("/stats")
-      .then((d: Stats) => {
-        if (alive) setStats(d);
+    Promise.all([
+      apiFetch("/stats") as Promise<Stats>,
+      apiFetch("/lawyers") as Promise<{ total?: number }>,
+    ])
+      .then(([d, directory]) => {
+        // The directory's public total is the source of truth for the advocate
+        // counter. It already excludes pending, rejected, and test profiles.
+        if (alive) setStats({ ...d, verified_lawyers: directory.total ?? 0 });
       })
       .catch(() => {
         if (alive) setFailed(true);

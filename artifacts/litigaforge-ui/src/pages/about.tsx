@@ -53,7 +53,7 @@ export default function About() {
         <Section icon={<Target className="w-4 h-4" />} title="Our Mission">
           <p>
             To bridge the gap between people and legal help using artificial intelligence.
-            Legal advice should not be a privilege — it should be available to anyone, anywhere.
+            Clear legal information should not be a privilege — it should be available to anyone, anywhere.
           </p>
         </Section>
 

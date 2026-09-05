@@ -1115,12 +1115,17 @@ async def list_lawyers(
 ):
     response.headers["Cache-Control"] = "public, max-age=300"
 
-    ck = cache_key("lawyers", country or "", district or "", practice_area or "", language or "", search or "")
+    # Version this key so a pre-deployment cache entry containing PII is never reused.
+    ck = cache_key("lawyers-v2-public", country or "", district or "", practice_area or "", language or "", search or "")
     cached = await cache_get(ck)
     if cached is not None:
         return cached
 
-    conds, params = ["l.verified = TRUE"], []
+    conds, params = [
+        "l.verified = TRUE",
+        "COALESCE(l.is_test, FALSE) = FALSE",
+        "l.verification_status = 'verified'",
+    ], []
     if country:
         conds.append("LOWER(l.country) = $" + str(len(params) + 1))
         params.append(country.lower())
@@ -1142,25 +1147,36 @@ async def list_lawyers(
 
     where = "WHERE " + " AND ".join(conds)
     rows = await fetch(
-        f"SELECT l.id, l.name, l.email, l.phone, l.bar_number, l.district, l.country, "
-        f"l.practice_areas, l.languages, l.experience_years, l.rating, l.bio, "
-        f"l.hourly_rate, l.availability, l.verification_status, l.verified, l.created_at, "
-        f"u.subscription_tier "
+        f"SELECT l.id, l.name, l.district, l.district AS city, l.practice_areas, "
+        f"l.languages, l.experience_years, l.rating, l.bio, l.hourly_rate, "
+        f"l.availability, l.verification_status, l.verified "
         f"FROM lawyers l "
-        f"LEFT JOIN users u ON u.id = l.user_id "
         f"{where} "
         f"ORDER BY "
-        f"  CASE WHEN u.subscription_tier = 'advocate_pro' THEN 0 ELSE 1 END, "
-        f"  l.verified DESC, l.rating DESC, l.experience_years DESC "
+        f"  l.rating DESC, l.experience_years DESC "
         f"LIMIT 50",
         *params,
     )
-    for r in rows:
-        r["created_at"] = str(r["created_at"])
-
     result = {"total": len(rows), "lawyers": rows}
     await cache_set(ck, result, ttl=300)
     return result
+
+
+@router.get("/lawyers/{lawyer_id}")
+async def get_public_lawyer(lawyer_id: int):
+    """Public profile deliberately uses the same PII-free allowlist as the list."""
+    row = await fetchrow(
+        """SELECT id, name, district, district AS city, practice_areas, languages,
+                  experience_years, rating, verification_status, verified, bio,
+                  availability, hourly_rate
+           FROM lawyers
+           WHERE id = $1 AND verified = TRUE AND COALESCE(is_test, FALSE) = FALSE
+             AND verification_status = 'verified'""",
+        lawyer_id,
+    )
+    if not row:
+        raise HTTPException(404, "Advocate not found")
+    return row
 
 
 @router.post("/lawyers/register")
@@ -1170,11 +1186,15 @@ async def register_lawyer(
 ):
     if not current_user:
         raise HTTPException(401, "Login required to register as an advocate")
+    if current_user.get("role") not in ("advocate", "lawyer"):
+        raise HTTPException(403, "Register an advocate account before submitting a profile")
+    if not current_user.get("email_verified") and os.getenv("ALLOW_UNVERIFIED") != "1":
+        raise HTTPException(403, "Verify your email before submitting an advocate profile")
     row = await fetchrow(
         """INSERT INTO lawyers
-           (user_id, name, email, phone, bar_number, district, practice_areas, languages, experience_years, bio, hourly_rate, country)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-           RETURNING id, name, district, verified""",
+           (user_id, name, email, phone, bar_number, district, practice_areas, languages, experience_years, bio, hourly_rate, country, verification_status, verified)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending',FALSE)
+           RETURNING id, name, district, verification_status, verified""",
         current_user["id"], req.name, req.email, req.phone, req.bar_number, req.district,
         req.practice_areas, req.languages, req.experience_years, req.bio, req.hourly_rate,
         (req.country or "in").lower(),
@@ -1414,17 +1434,13 @@ async def legal_aid_contacts(response: Response, country: str = "IN"):
     return {"country": code, **data}
 
 
-@router.get("/stats")
-@limiter.limit("60/minute")
-async def public_stats(request: Request, response: Response):
+async def get_public_stats() -> dict:
     """Public, read-only aggregate counts for the homepage social-proof bar.
 
     Returns real platform totals only (no PII). Each metric independently
     degrades to 0 on query failure so a single bad count never 500s the
     endpoint or breaks the landing page. Cached publicly for 1 hour.
     """
-    response.headers["Cache-Control"] = "public, max-age=3600"
-
     async def _count(sql: str) -> int:
         try:
             return int(await fetchval(sql) or 0)
@@ -1436,7 +1452,9 @@ async def public_stats(request: Request, response: Response):
         "SELECT COUNT(*) FROM legal_questions WHERE ai_answer IS NOT NULL"
     )
     verified_lawyers = await _count(
-        "SELECT COUNT(*) FROM lawyers WHERE verified = TRUE"
+        """SELECT COUNT(*) FROM lawyers
+           WHERE verified = TRUE AND verification_status = 'verified'
+             AND COALESCE(is_test, FALSE) = FALSE"""
     )
     documents_generated = await _count(
         "SELECT COUNT(*) FROM paid_documents WHERE status = 'paid'"
@@ -1447,3 +1465,11 @@ async def public_stats(request: Request, response: Response):
         "verified_lawyers": verified_lawyers,
         "documents_generated": documents_generated,
     }
+
+
+@router.get("/stats")
+@limiter.limit("60/minute")
+async def public_stats(request: Request, response: Response):
+    """Public, read-only aggregate counts for homepage consumers."""
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return await get_public_stats()

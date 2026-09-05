@@ -57,6 +57,17 @@ const commonNav: NavEntry[] = [
   { href: "/blog",           label: "Legal Guides",    icon: Newspaper,         tKey: "legal_guides" },
 ];
 
+const publicNav: NavEntry[] = [
+  { href: "/ask",            label: "Ask",            icon: MessageSquare },
+  { href: "/free-documents", label: "Documents",      icon: FileCheck },
+  { href: "/review",         label: "Analyzer",       icon: FileSearch },
+  { href: "/judgments",      label: "Judgments",      icon: BookOpen },
+  { href: "/legal-aid",      label: "Legal Aid",      icon: Heart },
+  { href: "/lawyers",        label: "Find a Lawyer",  icon: Users },
+  { href: "/for-lawyers",    label: "For Lawyers",    icon: Briefcase },
+  { href: "/login",          label: "Login",          icon: UserIcon },
+];
+
 // Translate a nav entry's display label while keeping the English label for
 // stable data-testid generation.
 function navLabel(item: NavEntry, t: Translation): string {
@@ -210,9 +221,10 @@ function SidebarContent({
 }) {
   const { t } = useLanguage();
   const unreadCount = useUnreadCount();
-  const isClient = user?.role !== "lawyer";
-  const roleNav = isClient ? clientNav : lawyerNav;
-  const roleLabel = isClient ? "Client" : "Advocate";
+  const isAdvocate = user?.role === "lawyer" || user?.role === "advocate";
+  const isClient = !!user && !isAdvocate;
+  const roleNav = !user ? publicNav : isClient ? clientNav : lawyerNav;
+  const roleLabel = !user ? "Public tools" : isClient ? "Client" : "Advocate";
 
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
@@ -236,7 +248,7 @@ function SidebarContent({
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         <div className="px-3 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">
-          {isClient ? "Match & Connect" : "Lawyer Portal"}
+          {!user ? "Explore" : isClient ? "Match & Connect" : "Lawyer Portal"}
         </div>
         {roleNav.map(item => (
           <NavItem
@@ -250,8 +262,8 @@ function SidebarContent({
           />
         ))}
 
-        <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>
-        {commonNav.map(item => (
+        {user && <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>}
+        {user && commonNav.map(item => (
           <NavItem
             key={item.href}
             {...item}
@@ -472,7 +484,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-bold text-sm tracking-tight">LitigaForge</span>
             {user && (
               <span className="ml-2 px-1.5 py-0.5 rounded bg-accent/20 text-[9px] font-bold text-accent-foreground uppercase tracking-wide">
-                {user.role !== "lawyer" ? "Client" : "Advocate"}
+                {user.role !== "lawyer" && user.role !== "advocate" ? "Client" : "Advocate"}
               </span>
             )}
           </div>
@@ -536,7 +548,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom tab bar */}
-      <BottomTabBar location={location} user={user} />
+      {user && <BottomTabBar location={location} user={user} />}
     </div>
   );
 }

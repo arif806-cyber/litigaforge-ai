@@ -1,68 +1,41 @@
 # LitigaForge AI
 
-> LitigaForge AI is a global AI-powered legal platform that connects clients with verified lawyers, delivers instant legal guidance, analyzes legal documents, and provides free legal aid — available 24/7 in English, Hindi, and Telugu.
+> LitigaForge AI is a legal-technology platform for Telangana and Andhra Pradesh. It provides AI-assisted legal information, document analysis, judgment research, free legal-aid information, and tools for advocates.
 
 ## Platform Overview
 
-LitigaForge AI makes legal help accessible to everyone. Using a multi-AI engine (Claude Sonnet, Gemini 2.5 Flash, GPT-5), the platform provides immediate, accurate legal answers, intelligently matches clients with the right verified advocate, and handles the full lifecycle of a legal case — from initial question to resolved matter.
+LitigaForge AI helps people understand legal information and helps advocates organize research and drafting work. It is not a law firm and does not provide legal advice. AI output can be wrong and should be checked by a qualified advocate.
 
 ## Core Features
 
-- [Legal Q&A with AI](/ask): Ask any legal question and receive an instant, AI-generated plain-language answer. Questions and answers are stored in a community knowledge base.
-- [Document Analyzer](/review): Paste or upload any legal document — contract, FIR, court notice, employment letter — to get an AI risk score, missing-clause detection, and actionable recommendations.
-- [AI Lawyer Matching](/lawyers): Post case requirements and receive AI-matched verified advocates scored 0–100 with detailed explanations of why each lawyer fits.
-- [Judgment Finder](/judgments): Search court judgments and case law by keyword, court name, or case number. Returns up to 5 relevant precedents with citation links for the user's jurisdiction.
-- [AI Legal Chat](/legal-chat): Interactive legal drafting assistant with templates for contracts, notices, affidavits, and petitions. Powered by Claude Sonnet.
-- [Free Legal Documents](/free-documents): 10+ downloadable AI-powered document templates — rental agreements, legal notices, affidavits, employment letters — generated free of charge.
-- [Free Legal Aid Finder](/legal-aid): Eligibility wizard + contact details and toll-free helplines for free legal aid services in the user's country.
-- [Subscription Plans](/subscription): Free tier (5 AI queries/month), Professional ₹999/month (unlimited queries), Advocate Pro ₹2,499/month (full practice management).
+- [Legal information Q&A](/ask): Ask a legal question and receive AI-generated legal information in plain language.
+- [Document Analyzer](/review): Review a document for potential risks, missing clauses, and questions to discuss with an advocate.
+- [Lawyer Directory](/lawyers): Browse advocates who have been human-verified and choose to be listed. If no eligible advocate is available, the service shows an empty state rather than a match.
+- [Judgment Finder](/judgments): Search Indian court judgments and case law by keyword, court name, or case number.
+- [AI Legal Chat](/legal-chat): AI-assisted legal-information and drafting workspace.
+- [Free Legal Documents](/free-documents): Document templates and drafting tools.
+- [Free Legal Aid Finder](/legal-aid): Telangana and Andhra Pradesh legal-aid information and public contacts.
+- [Subscription Plans](/subscription): Free tier, Professional ₹999/month, and Advocate Pro ₹2,499/month.
 
 ## Target Users
 
-- Individuals seeking legal guidance in India and globally
-- Small businesses needing contract review and legal consultation
-- Verified advocates managing client cases, documents, and hearings
-- NGOs and legal aid organizations
-- International users with India-related legal matters (NRIs, foreign companies)
+- Litigants and small businesses with Telangana or Andhra Pradesh matters
+- Advocates handling Telangana or Andhra Pradesh matters
+- Legal-aid organizations
 
 ## Geographic Coverage
 
-Worldwide. Country-specific legal content for: India, United States, United Kingdom, United Arab Emirates, Australia, Canada, Singapore, and Germany.
+The product is built for Telangana and Andhra Pradesh, India.
 
 ## Languages
 
 English, Telugu, Hindi
 
-## Key Pages
-
-- Homepage: https://litigaforge.com/
-- Legal Q&A: https://litigaforge.com/ask
-- Document Analyzer: https://litigaforge.com/review
-- Lawyer Directory: https://litigaforge.com/lawyers
-- Judgment Finder: https://litigaforge.com/judgments
-- Free Legal Aid: https://litigaforge.com/legal-aid
-- Free Documents: https://litigaforge.com/free-documents
-- Pricing: https://litigaforge.com/subscription
-- Blog: https://litigaforge.com/blog
-- Privacy Policy: https://litigaforge.com/privacy
-- Terms of Service: https://litigaforge.com/terms
-- Refund Policy: https://litigaforge.com/refund-policy
-- U.S. Demand Letter: https://litigaforge.com/us-demand-letter
-- About Us: https://litigaforge.com/about
-
-## Technology
-
-- AI Models: Anthropic Claude Sonnet, Google Gemini 2.5 Flash, OpenAI GPT-5 (cascading fallback)
-- Backend: Python 3.12 / FastAPI
-- Frontend: React 19 / Vite / Tailwind CSS
-- Database: PostgreSQL
-- Auth: JWT (30-day tokens), bcrypt password hashing
-
 ## Legal Disclaimer
 
-LitigaForge AI provides legal information for educational purposes. It is not a substitute for advice from a qualified advocate. For serious legal matters, users are encouraged to consult a verified lawyer via the platform's matching service.
+This is not legal advice and not a substitute for an advocate. AI can be wrong. For representation, consult a qualified advocate.
 
 ## Contact
 
 Website: https://litigaforge.com  
-Platform type: AI-powered legal technology (LegalTech / LawTech)
+Platform type: AI-powered legal technology

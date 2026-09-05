@@ -18,14 +18,14 @@ const OG_IMAGE = `${SITE}/opengraph.jpg`;
 // canonical (optional) → override canonical href (e.g. /privacy-policy → /privacy)
 const ROUTES = {
   '/': {
-    title: 'LitigaForge AI \u2014 Global Legal Platform',
-    ogTitle: 'LitigaForge AI \u2014 Global AI Legal Platform',
-    desc: 'AI-powered lawyer matching, legal Q&amp;A, document analysis and free legal aid \u2014 available globally across India, US, UK, UAE, Australia and more.',
+    title: 'LitigaForge AI \u2014 Telangana & Andhra Pradesh Legal Information',
+    ogTitle: 'LitigaForge AI \u2014 Legal Information',
+    desc: 'AI-assisted legal information, document analysis, judgment research and advocate tools for Telangana and Andhra Pradesh.',
   },
   '/ask': {
-    title: 'Free Legal Q&amp;A \u2014 Instant AI Answers | LitigaForge AI',
-    ogTitle: 'Free Legal Q&amp;A \u2014 Instant AI Answers',
-    desc: 'Instant AI answers to legal questions, grounded in your laws. Free Q&amp;A \u2014 property, family, criminal, consumer and employment.',
+    title: 'Free Legal Information Q&amp;A | LitigaForge AI',
+    ogTitle: 'Free Legal Information Q&amp;A',
+    desc: 'AI-assisted legal information for questions about Telangana and Andhra Pradesh law. AI can be wrong; consult an advocate for representation.',
   },
   '/review': {
     title: 'AI Document Analyzer \u2014 Risk Score | LitigaForge AI',
@@ -33,9 +33,9 @@ const ROUTES = {
     desc: 'Get an AI risk score (0\u2013100), missing clauses and recommendations for any contract, agreement, FIR or court notice. Free document analysis.',
   },
   '/lawyers': {
-    title: 'Verified Lawyers \u2014 AI Lawyer Matching | LitigaForge AI',
-    ogTitle: 'Verified Lawyers \u2014 AI Lawyer Matching',
-    desc: 'Verified lawyers matched by AI \u2014 0\u2013100 scores, plain-language explanations. Property, family, criminal, consumer and employment.',
+    title: 'Advocate Directory | LitigaForge AI',
+    ogTitle: 'Advocate Directory',
+    desc: 'Browse human-verified advocates when available. If no eligible advocate is available, the directory shows an honest empty state.',
   },
   '/judgments': {
     title: 'Judgment Finder \u2014 Search Case Law | LitigaForge AI',
@@ -55,12 +55,12 @@ const ROUTES = {
   '/subscription': {
     title: 'LitigaForge AI Plans \u2014 Free, Professional &amp; Advocate Pro',
     ogTitle: 'LitigaForge AI Pricing &amp; Plans',
-    desc: 'Compare plans: free legal tools, Professional for unlimited AI and priority matching, Advocate Pro for full lawyer practice management.',
+    desc: 'Compare Free, Professional ₹999, and Advocate Pro ₹2,499 plans for legal-information and advocate productivity tools.',
   },
   '/about': {
-    title: 'About LitigaForge AI \u2014 Our Mission &amp; Global Legal Platform',
+    title: 'About LitigaForge AI \u2014 Telangana &amp; Andhra Pradesh',
     ogTitle: 'About LitigaForge AI',
-    desc: 'LitigaForge AI makes legal help affordable worldwide \u2014 AI lawyer matching, document analysis, instant Q&amp;A and free legal aid.',
+    desc: 'LitigaForge AI supports clearer legal information, document analysis, judgment research and advocate tools in Telangana and Andhra Pradesh.',
   },
   '/contact': {
     title: 'Contact LitigaForge AI \u2014 Support &amp; Inquiries',
@@ -101,12 +101,12 @@ const ROUTES = {
   '/login': {
     title: 'Sign In | LitigaForge AI',
     ogTitle: 'Sign In \u2014 LitigaForge AI',
-    desc: 'Sign in to your LitigaForge AI account to access lawyer matching, your cases, AI legal tools and document analysis.',
+    desc: 'Sign in to access legal-information tools, document analysis, judgment research and advocate workspace features.',
   },
   '/register': {
     title: 'Create a Free Account | LitigaForge AI',
     ogTitle: 'Create a Free Account \u2014 LitigaForge AI',
-    desc: 'Create a free LitigaForge AI account to ask legal questions, analyze documents, and get matched with verified lawyers. No credit card required.',
+    desc: 'Create a free account for legal-information tools, document analysis and judgment research. No credit card required.',
   },
 };
 

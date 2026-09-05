@@ -6,11 +6,12 @@ import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from auth import get_current_user
 from rate_limit import limiter
-from database import fetchrow, fetch, execute, executemany
+from database import fetchrow, fetch, execute, executemany, create_case_requirement_with_quota
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt
 from logger import get_logger
@@ -93,12 +94,16 @@ class CaseRequirementRequest(BaseModel):
 
 
 @router.post("/cases/requirements")
+@limiter.limit("5/hour")
 async def create_case_requirement(
     req: CaseRequirementRequest,
+    request: Request,
     current_user: Optional[dict] = Depends(get_current_user),
 ):
     if not current_user:
         raise HTTPException(401, "Login required to post a case")
+    if not current_user.get("email_verified") and os.getenv("ALLOW_UNVERIFIED") != "1":
+        raise HTTPException(403, "Verify your email before posting a case")
     try:
         safe_title = sanitize_text(req.title, max_length=200, field_name="title")
         safe_case_type = sanitize_text(req.case_type, max_length=100, field_name="case_type")
@@ -108,16 +113,29 @@ async def create_case_requirement(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    row = await fetchrow(
-        """INSERT INTO case_requirements
-           (user_id, title, case_type, description, location, budget_range, budget_min, budget_max, is_anonymous, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open')
-           RETURNING id, user_id, title, case_type, description, location, budget_range, budget_min, budget_max, is_anonymous, status, created_at""",
-        current_user["id"], safe_title, safe_case_type, safe_desc,
-        safe_location, safe_budget, req.budget_min, req.budget_max, req.is_anonymous,
-    )
+    try:
+        row = await create_case_requirement_with_quota(
+            current_user["id"],
+            (safe_title, safe_case_type, safe_desc, safe_location, safe_budget,
+             req.budget_min, req.budget_max, req.is_anonymous),
+        )
+    except PermissionError:
+        return JSONResponse(
+            status_code=402,
+            content={"detail": "Free plan limit reached", "upgrade": "/subscription"},
+        )
+    except ValueError:
+        raise HTTPException(401, "User not found")
     row["created_at"] = str(row["created_at"])
-    return {"message": "Case requirement posted successfully", "case": row}
+    # Matching is deliberately disabled unless explicitly enabled. This avoids
+    # displaying speculative matches while the verified advocate supply is small.
+    matches = []
+    if os.getenv("MATCHING_ENABLED", "false").lower() == "true":
+        result = await ai_match_lawyers(
+            MatchRequest(case_requirement_id=row["id"]), request, current_user
+        )
+        matches = result.get("matches", [])
+    return {"message": "Case requirement posted successfully", "case": row, "matches": matches}
 
 
 @router.get("/cases/requirements")
@@ -340,6 +358,14 @@ async def ai_match_lawyers(
 ):
     if not current_user:
         raise HTTPException(401, "Login required")
+    # This direct endpoint must honor the same fail-closed switch as matching
+    # invoked while creating a case. Check before loading case or lawyer data.
+    if os.getenv("MATCHING_ENABLED", "false").lower() != "true":
+        return {
+            "case_id": req.case_requirement_id,
+            "matches": [],
+            "message": "Matching is not currently available.",
+        }
     # Fetch case requirement
     case = await fetchrow(
         "SELECT * FROM case_requirements WHERE id = $1 AND user_id = $2",
@@ -352,7 +378,9 @@ async def ai_match_lawyers(
     lawyers = await fetch(
         """SELECT id, name, district, practice_areas, languages,
                   experience_years, rating, bio, hourly_rate, availability, verification_status
-           FROM lawyers WHERE availability = 'available' AND verification_status = 'verified'
+            FROM lawyers
+            WHERE availability = 'available' AND verified = TRUE
+              AND verification_status = 'verified' AND COALESCE(is_test, FALSE) = FALSE
            ORDER BY rating DESC, experience_years DESC""",
     )
 
@@ -423,13 +451,27 @@ async def ai_match_lawyers(
     _raw_state = case.get("state_code") or ""
     inferred_case_state = _normalize_state_code(_raw_state) if _raw_state else _case_state(case_location)
 
+    # A real match must have both a practice-area and location/statewide tag
+    # overlap. Never save zero-relevance or inferred matches.
     scored = []
     for l in lawyers:
+        pas = [p.lower() for p in l.get("practice_areas", [])]
+        area_match = case_type in pas or any(ct in p for ct in case_type.split() for p in pas)
+        lawyer_district = (l.get("district") or "").strip().lower()
+        # An empty district must never satisfy Python's ``'' in location``.
+        # Statewide is an explicit opt-in location tag, never inferred.
+        statewide = bool(lawyer_district) and any(
+            marker in lawyer_district for marker in ("statewide", "telangana", "andhra pradesh")
+        )
+        location_match = statewide or (bool(lawyer_district and case_location) and any(
+            lawyer_district in segment or segment in lawyer_district for segment in case_loc_parts
+        ))
+        if not (area_match and location_match):
+            continue
         score = 0
         reasons = []
 
         # ── practice_areas (max 40 pts) ──────────────────────────────────────
-        pas = [p.lower() for p in l.get("practice_areas", [])]
         if case_type in pas:
             score += 40
             reasons.append(f"Specialises in {case_type.title()}")
@@ -446,7 +488,6 @@ async def ai_match_lawyers(
             reasons.append(f"{l['experience_years']}+ years experience")
 
         # ── district / cross-district (max 20 pts) ───────────────────────────
-        lawyer_district = l.get("district", "").lower()
         if case_location and case_loc_parts:
             # Cross-district: award points if lawyer matches ANY parsed segment
             matched_segment = None
@@ -481,13 +522,6 @@ async def ai_match_lawyers(
             score += 5
             reasons.append(f"Strong rating ({rating})")
 
-        # ── court-admission proxy +15 ────────────────────────────────────────
-        lawyer_state = _infer_state(lawyer_district)
-        if inferred_case_state and lawyer_state and lawyer_state == inferred_case_state:
-            hc_name = "Telangana High Court" if lawyer_state == "TS" else "Andhra Pradesh High Court"
-            score += 15
-            reasons.append(f"Admitted to {hc_name} (inferred)")
-
         l["match_score"] = min(score, 100)
         l["match_reasons"] = reasons
         scored.append(l)
@@ -495,7 +529,7 @@ async def ai_match_lawyers(
     scored.sort(key=lambda x: x["match_score"], reverse=True)
     top = scored[:10]
 
-    # ── Semantic reranking + AI explanations (single Claude call) ────────────
+    # ── Optional AI explanations (deterministic tag score remains authoritative) ──
     # Claude scores ALL top-10 lawyers for semantic fit (0–10) and writes
     # explanations for the top 3 — blended 60 % semantic / 40 % deterministic.
     # Falls back to deterministic order silently on any JSON parse error.
@@ -516,12 +550,12 @@ Shortlisted lawyers (by keyword score):
 {all_summary}
 
 Tasks:
-1. Score EVERY lawyer 0.0–10.0 for semantic fit to this specific case (consider legal specialty, applicable Indian statutes, and jurisdiction).
-2. Write 2–3 sentences explaining why the 3 highest-scoring lawyers are the best match.
+Write 2–3 sentences explaining why the 3 highest-scoring lawyers are the best match.
+The listed practice areas and location tags are authoritative. Do not claim a lawyer
+lacks a listed practice area and do not infer court admission.
 
 Return ONLY a valid JSON object — no markdown, no commentary:
 {{
-  "scores": [{{"lawyer_id": <int>, "semantic_score": <float 0-10>}}, ...],
   "explanations": [{{"lawyer_id": <int>, "explanation": "<string>"}}, ...]
 }}"""
 
@@ -531,19 +565,6 @@ Return ONLY a valid JSON object — no markdown, no commentary:
             m = re.search(r'\{.*\}', raw, re.DOTALL)
             if m:
                 parsed = _json.loads(m.group())
-                sem_scores = {
-                    int(s["lawyer_id"]): float(s["semantic_score"])
-                    for s in parsed.get("scores", [])
-                    if "lawyer_id" in s and "semantic_score" in s
-                }
-                if sem_scores:
-                    for l in top:
-                        sem = sem_scores.get(l["id"], 5.0)
-                        sem_norm  = min(max(sem, 0.0), 10.0) / 10.0
-                        det_norm  = l["match_score"] / 100.0
-                        l["match_score"] = round((0.6 * sem_norm + 0.4 * det_norm) * 100)
-                    top.sort(key=lambda x: x["match_score"], reverse=True)
-
                 for exp in parsed.get("explanations", []):
                     lid = exp.get("lawyer_id")
                     for l in top:
@@ -559,8 +580,8 @@ Return ONLY a valid JSON object — no markdown, no commentary:
         match_inserts.append((req.case_requirement_id, l["id"], current_user["id"], l["match_score"], l.get("ai_explanation", "")))
     if match_inserts:
         await executemany(
-            """INSERT INTO matches (case_requirement_id, lawyer_id, client_id, match_score, ai_explanation, status)
-               VALUES ($1, $2, $3, $4, $5, 'pending')
+            """INSERT INTO matches (case_requirement_id, lawyer_id, client_id, match_score, ai_explanation, status, payment_status)
+               VALUES ($1, $2, $3, $4, $5, 'pending', 'none')
                ON CONFLICT DO NOTHING""",
             match_inserts,
         )

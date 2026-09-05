@@ -225,7 +225,7 @@ export default function LawyerDashboard() {
 
   // ── Verification polling ──
   useEffect(() => {
-    if (user?.role !== "lawyer" || user?.is_verified) return;
+    if ((user?.role !== "lawyer" && user?.role !== "advocate") || user?.is_verified) return;
     const id = setInterval(() => { refreshUser(); }, 30_000);
     return () => clearInterval(id);
   }, [user?.role, user?.is_verified, refreshUser]);
@@ -361,7 +361,7 @@ export default function LawyerDashboard() {
   ];
 
   // ── Verification wall ──
-  if (user?.role === "lawyer" && !user?.is_verified) {
+  if ((user?.role === "lawyer" || user?.role === "advocate") && !user?.is_verified) {
     const hasSubmittedProfile = !!user?.lawyer_status;
     return (
       <div
@@ -394,7 +394,7 @@ export default function LawyerDashboard() {
                 <Hourglass className="w-7 h-7 text-primary" />
               </motion.div>
 
-              <h1 className="text-2xl font-bold text-foreground mb-2">Awaiting Verification</h1>
+                <h1 className="text-2xl font-bold text-foreground mb-2">Under review</h1>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
                 Your profile has been submitted. Our team will review your credentials and
                 verify your account — usually within 24 hours.

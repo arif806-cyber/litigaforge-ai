@@ -31,11 +31,6 @@ interface SearchPanelProps {
 
 const BASE = "/litigaforge";
 
-function getAuthHeaders(): Record<string, string> {
-  const t = localStorage.getItem("lf_token") || "";
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
-
 function courtColor(court: string) {
   const c = court.toLowerCase();
   if (c.includes("supreme court")) return "#f59e0b";
@@ -232,7 +227,7 @@ export default function SearchPanel({
     try {
       const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/search`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: query.trim(), max_results: 8 }),
         signal: ctrl.signal,
       });
@@ -271,7 +266,7 @@ export default function SearchPanel({
     try {
       const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/smart-search`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ case_description: caseDescription, nodes }),
         signal: ctrl.signal,
       });

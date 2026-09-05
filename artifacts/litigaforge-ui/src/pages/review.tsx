@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown, Upload, FileText, X, FileCheck } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
+import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -222,6 +223,7 @@ export default function Review() {
 
   return (
     <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle} icon={<FileSearch className="w-6 h-6 text-primary" />}>
+      <LegalDisclaimerBanner />
       <SEOHelmet
         title="Free Legal Document Analyzer | LitigaForge AI"
         description="Upload or paste any contract, agreement, notice, or legal document and get an instant AI risk score, missing clause detection, and recommendations."

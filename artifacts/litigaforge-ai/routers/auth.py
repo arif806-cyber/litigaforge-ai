@@ -60,7 +60,7 @@ async def _issue_tokens(user_id: int, response: Response) -> str:
 
 
 @router.post("/auth/register")
-@limiter.limit("3/minute")
+@limiter.limit("5/hour")
 async def register(req: RegisterRequest, request: Request, response: Response):
     if len(req.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
@@ -72,12 +72,16 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         raise HTTPException(status_code=422, detail=str(e))
     if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', req.email):
         raise HTTPException(status_code=422, detail="Invalid email format")
-    # Role validation — only "client" or "lawyer" are valid; anything else defaults to "client"
-    safe_role = req.role if req.role in ("client", "lawyer") else "client"
+    # `lawyer` remains readable for legacy accounts; new registrations use advocate.
+    if req.role not in ("client", "advocate", "lawyer"):
+        raise HTTPException(status_code=422, detail="Role must be client or advocate")
+    safe_role = req.role
 
     # reCAPTCHA v3 (non-blocking when RECAPTCHA_SECRET_KEY not configured)
-    _recaptcha_secret = _os.getenv("RECAPTCHA_SECRET_KEY")
-    if _recaptcha_secret and req.recaptcha_token:
+    _recaptcha_secret = _os.getenv("RECAPTCHA_SECRET") or _os.getenv("RECAPTCHA_SECRET_KEY")
+    if _recaptcha_secret and not req.recaptcha_token:
+        raise HTTPException(status_code=400, detail="reCAPTCHA token is required")
+    if _recaptcha_secret:
         try:
             import httpx as _httpx_rc
             async with _httpx_rc.AsyncClient(timeout=5.0) as _hc:
@@ -90,14 +94,17 @@ async def register(req: RegisterRequest, request: Request, response: Response):
                 raise HTTPException(status_code=400, detail="Bot detection triggered. Please try again.")
         except HTTPException:
             raise
-        except Exception:
-            pass  # non-blocking on network errors
+        except Exception as exc:
+            logger.warning("reCAPTCHA verification unavailable: %s", exc)
+            raise HTTPException(status_code=503, detail="Unable to verify reCAPTCHA. Please try again.")
+    else:
+        logger.warning("RECAPTCHA_SECRET is not configured; registration is protected only by rate limiting")
     try:
         user = await create_user(
             email=req.email,
             name=safe_name,
             password_hash=hash_password(req.password),
-            role=safe_role,  # "client" or "lawyer" — validated above
+            role=safe_role,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -284,7 +291,7 @@ async def _send_verification_email(email: str, token: str) -> bool:
     smtp_pass = _os.getenv("SMTP_PASSWORD", "")
     smtp_from = _os.getenv("SMTP_FROM", smtp_user)
     base_url = _os.getenv("APP_URL", "https://litigaforge.com")
-    verify_url = f"{base_url}/litigaforge/auth/verify-email?token={token}"
+    verify_url = f"{base_url}/litigaforge/auth/verify?token={token}"
     body = (
         f"Welcome to LitigaForge AI!\n\n"
         f"Please verify your email address by clicking the link below:\n\n"
@@ -330,7 +337,8 @@ async def _create_verification_token(user_id: int) -> str:
     return token
 
 
-@router.get("/auth/verify-email")
+@router.get("/auth/verify")
+@router.get("/auth/verify-email")  # legacy verification links remain valid
 async def verify_email(token: str):
     """Verify email via token from link. Marks user as verified."""
     row = await db_fetchrow(

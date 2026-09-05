@@ -98,7 +98,7 @@ export default defineConfig({
         name: "LitigaForge AI",
         short_name: "LitigaForge",
         description:
-          "Global AI legal platform — find verified lawyers, analyze documents, search case law, and get free legal aid worldwide.",
+          "AI-assisted legal information, research, and advocate tools for Telangana and Andhra Pradesh.",
         theme_color: "#1a2744",
         background_color: "#ffffff",
         display: "standalone",
@@ -125,7 +125,7 @@ export default defineConfig({
             name: "Ask a Legal Question",
             short_name: "Q&A",
             url: "/ask",
-            description: "Get instant AI-powered answers to legal questions",
+            description: "Get AI-assisted legal information",
           },
           {
             name: "Analyze a Document",
@@ -137,7 +137,7 @@ export default defineConfig({
             name: "Find a Lawyer",
             short_name: "Lawyers",
             url: "/lawyers",
-            description: "Browse verified lawyers worldwide",
+            description: "Browse human-verified advocates when available",
           },
         ],
       },

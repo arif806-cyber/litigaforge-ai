@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
 import { cn } from "@/lib/utils";
 import { LEGAL_CHAT_COPY } from "@/lib/country-copy";
+import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 
 const DETAIL_FIELDS = [
   { id: "location", label: "Location / jurisdiction", placeholder: "e.g. city, state or region" },
@@ -188,6 +189,7 @@ export default function LegalChat() {
     // bar. Bound the height explicitly: 100dvh minus the 56px mobile header and
     // the 72px bottom tab bar. Desktop keeps the flexbox `h-full`.
     <div className="flex flex-col h-[calc(100dvh-3.5rem-72px)] md:h-full bg-background">
+      <LegalDisclaimerBanner />
       <div className="flex items-center justify-between px-4 md:px-6 pt-4 md:pt-6">
         <div />
         <div className="flex items-center gap-2">

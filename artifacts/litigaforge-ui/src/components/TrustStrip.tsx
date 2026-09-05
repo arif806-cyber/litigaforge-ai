@@ -3,20 +3,20 @@ import { useLanguage } from "@/hooks/useLanguage";
 
 /**
  * Static, defensible trust signals shown beneath the hero social-proof bar.
- * Every claim is factually true for the product — 8-country coverage,
- * Bar-verification of advocates, jurisdiction-grounded AI answers, and a free
- * tier with no card required. We deliberately never ship fabricated
+ * Claims are deliberately limited to the supported Telangana/AP product,
+ * legal-information tools, and advocates verified by a human when available.
+ * We deliberately never ship fabricated
  * testimonials, partner logos or review counts. Localized via a local UI
  * dictionary, same pattern as SocialProofBar / PricingSection.
  */
 const UI: Record<string, Record<string, string>> = {
   countries: {
-    en: "Available in 8 countries", es: "Disponible en 8 países", hi: "8 देशों में उपलब्ध",
-    te: "8 దేశాల్లో అందుబాటులో", ar: "متاح في 8 دول",
-    de: "In 8 Ländern verfügbar", fr: "Disponible dans 8 pays",
+    en: "Built for Telangana & Andhra Pradesh", es: "Diseñado para Telangana y Andhra Pradesh", hi: "तेलंगाना और आंध्र प्रदेश के लिए बनाया गया",
+    te: "తెలంగాణ మరియు ఆంధ్రప్రదేశ్ కోసం రూపొందించబడింది", ar: "مصمم لتيلانجانا وأندرا براديش",
+    de: "Für Telangana und Andhra Pradesh entwickelt", fr: "Conçu pour le Telangana et l’Andhra Pradesh",
   },
   verified: {
-    en: "Bar-verified advocates", es: "Abogados verificados", hi: "सत्यापित अधिवक्ता",
+    en: "Human-verified advocates when available", es: "Abogados verificados por personas cuando estén disponibles", hi: "उपलब्ध होने पर मानव-सत्यापित अधिवक्ता",
     te: "ధ్రువీకరించబడిన న్యాయవాదులు", ar: "محامون موثّقون",
     de: "Verifizierte Anwälte", fr: "Avocats vérifiés",
   },

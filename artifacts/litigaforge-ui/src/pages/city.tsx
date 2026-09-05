@@ -690,9 +690,7 @@ export default function CityPage() {
     enabled: !!cityData,
     queryFn: async () => {
       const params = new URLSearchParams({ district: cityData!.district });
-      const res = await apiFetch(`/lawyers?${params}`);
-      const json = await res.json();
-      return json as { lawyers: Lawyer[]; total: number };
+      return apiFetch(`/lawyers?${params}`) as Promise<{ lawyers: Lawyer[]; total: number }>;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -701,8 +699,8 @@ export default function CityPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
         <Scale className="w-12 h-12 text-muted-foreground/40" />
-        <h1 className="text-2xl font-bold text-foreground">City Not Found</h1>
-        <p className="text-muted-foreground">We don't have a page for this city yet.</p>
+        <h1 className="text-2xl font-bold text-foreground">No advocates in this city yet</h1>
+        <p className="text-muted-foreground">Our directory is still expanding. Browse the available advocate directory or check back later.</p>
         <Link href="/lawyers">
           <button className="flex items-center gap-2 text-primary font-semibold hover:underline">
             Browse all lawyers <ArrowRight className="w-4 h-4" />

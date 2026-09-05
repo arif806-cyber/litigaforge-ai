@@ -41,7 +41,7 @@ export default function Login() {
   const headingLines = copy.heading.split("\n");
 
   const [role, setRole] = useState<Role>("client");
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<Mode>(() => window.location.pathname.endsWith("/register") ? "signup" : "signin");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -160,7 +160,7 @@ export default function Login() {
         trackEvent("login_success", { role });
       } else {
         const recaptchaToken = await getRecaptchaToken("register");
-        await register(name, email, password, role, recaptchaToken ?? undefined);
+        await register(name, email, password, role === "lawyer" ? "advocate" : "client", recaptchaToken ?? undefined);
         trackEvent("register_success", { role });
         // Show onboarding for first-time users
         const alreadyOnboarded = localStorage.getItem("lf_onboarded");
@@ -237,7 +237,7 @@ export default function Login() {
             {[
               { n: "24/7", label: "AI Access" },
               { n: "3", label: "AI Models" },
-              { n: "100+", label: "Lawyers" },
+              { n: "Early access", label: "Advocates onboarding" },
             ].map(({ n, label }, i, arr) => (
               <div key={label} className="flex items-center gap-5">
                 <div className="text-center">

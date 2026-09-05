@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PageShell } from "@/components/PageShell";
+import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Home, Mail, FileKey, FileCheck, Shield, Scroll,
@@ -118,6 +119,7 @@ export default function FreeDocuments() {
         canonical="/free-documents"
       />
       <PageShell title="Free Legal Documents" subtitle="Generate legally sound documents in minutes. Fill the form, let AI draft it, download instantly. No lawyer fees for standard templates.">
+        <LegalDisclaimerBanner />
         {/* Search + Filter */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">

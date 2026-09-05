@@ -106,11 +106,10 @@ export default function DocumentsPage() {
                   try {
                     const form = new FormData();
                     form.append("file", file);
-                    const token = typeof window !== "undefined" ? localStorage.getItem("lf_token") : null;
                     const res = await fetch(`/litigaforge/client/cases/0/documents`, {
                       method: "POST",
-                      headers: token ? { Authorization: `Bearer ${token}` } : {},
                       body: form,
+                      credentials: "include",
                     });
                     if (!res.ok) throw new Error("Upload failed");
                     qc.invalidateQueries({ queryKey: ["client-all-documents"] });

@@ -124,7 +124,7 @@ function CountryRoot() {
 
   useEffect(() => {
     if (!loading && user) {
-      setLocation(user.role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
+      setLocation((user.role === "lawyer" || user.role === "advocate") ? "/lawyer-dashboard" : "/client-dashboard");
     }
   }, [user, loading, setLocation]);
 
@@ -314,11 +314,13 @@ function Router() {
             <Switch>
               <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
               <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
-              <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><ProtectedRoute component={Subscription} /></ErrorBoundary>} />
+              <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
               <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
               <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
               <Route path="/judgments/:court/:year/:slug" component={() => <ErrorBoundary section="judgment-detail"><JudgmentDetail /></ErrorBoundary>} />
               <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />
+              <Route path="/for-lawyers" component={() => <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />} />
+              <Route path="/lawyers/register" component={() => <ErrorBoundary section="lawyer-registration"><ProtectedRoute component={LawyersPage} /></ErrorBoundary>} />
               <Route path="/lawyers/:city" component={() => <ErrorBoundary section="city-lawyers"><CityPage /></ErrorBoundary>} />
               <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />
               <Route path="/legal-aid"    component={() => <ErrorBoundary section="legal-aid"><LegalAid /></ErrorBoundary>} />
@@ -338,6 +340,7 @@ function Router() {
               <Route path="/workspace"    component={() => <ErrorBoundary section="workspace"><ProtectedRoute component={ForgeWorkspace} /></ErrorBoundary>} />
               <Route path="/messages"    component={() => <ErrorBoundary section="messages"><ProtectedRoute component={MessagesPage} /></ErrorBoundary>} />
               <Route path="/cnr-tracker" component={() => <ErrorBoundary section="cnr-tracker"><CnrTracker /></ErrorBoundary>} />
+              <Route path="/cnr"><Redirect to="/cnr-tracker" /></Route>
               <Route component={NotFound} />
             </Switch>
           </Layout>
@@ -388,7 +391,7 @@ function FirstVisitDisclaimer() {
 
         <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg p-4">
           <p className="text-sm text-amber-900 dark:text-amber-300 leading-relaxed">
-            This platform <strong>only connects users</strong> with lawyers. The final attorney-client relationship is <strong>directly between client and lawyer</strong>. We are <strong>not providing legal advice</strong>. All AI outputs should be verified by a qualified lawyer.
+            This platform <strong>only connects users</strong> with lawyers. The final attorney-client relationship is <strong>directly between client and lawyer</strong>. We provide legal information, not legal advice. All AI outputs should be verified by a qualified lawyer.
           </p>
         </div>
 

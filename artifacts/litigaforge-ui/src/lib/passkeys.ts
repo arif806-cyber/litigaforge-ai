@@ -48,9 +48,9 @@ function encodeCredentialForServer(cred: PublicKeyCredential): object {
   return base;
 }
 
-export async function registerPasskey(token: string): Promise<void> {
+export async function registerPasskey(_token?: string): Promise<void> {
   const optRes = await fetch(`${BASE}/auth/passkey/register-options`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
   });
   if (!optRes.ok) throw new Error("Could not get passkey registration options");
   const options = await optRes.json();
@@ -74,7 +74,8 @@ export async function registerPasskey(token: string): Promise<void> {
 
   const regRes = await fetch(`${BASE}/auth/passkey/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(encodeCredentialForServer(credential)),
   });
   if (!regRes.ok) {

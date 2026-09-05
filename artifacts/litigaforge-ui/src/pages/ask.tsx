@@ -12,6 +12,7 @@ import { useCountry } from "@/hooks/useCountry";
 import { ASK_COPY } from "@/lib/country-copy";
 import { formatDate } from "@/lib/locale";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
+import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 import { getAskCategories, askCategoryLabel, allCategoryLabel } from "@/data/askCategories";
 
 const CAT_COLORS: Record<string, string> = {
@@ -295,6 +296,7 @@ export default function Ask() {
 
   return (
     <PageShell title={copy.title} subtitle={copy.subtitle ?? `Ask any legal question — get instant answers grounded in the law of ${countryName} and local procedures.`} icon={<MessageSquare className="w-6 h-6 text-primary" />}>
+      <LegalDisclaimerBanner />
       <SEOHelmet
         title={copy.title}
         description={copy.description}
@@ -503,7 +505,7 @@ export default function Ask() {
         country={activeCode}
         onProceed={runAsk}
         onClose={() => setClarifyOpen(false)}
-        proceedLabel="Get Legal Advice"
+        proceedLabel="Get legal information"
       />
     </PageShell>
   );

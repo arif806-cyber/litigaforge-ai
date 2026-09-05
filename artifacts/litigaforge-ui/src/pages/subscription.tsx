@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth, TIER_LABELS } from "@/lib/auth-context";
@@ -17,13 +17,6 @@ interface Plan {
   cases_per_month: number;
   ai_label: string;
   features: string[];
-}
-
-interface StripePlan {
-  tier: string;
-  priceId: string;
-  currency: string;
-  unitAmount: number;
 }
 
 const TIER_ICONS: Record<string, React.ElementType> = {
@@ -48,7 +41,6 @@ export default function Subscription() {
   const [downgrading, setDowngrading] = useState(false);
 
   const country = getCountryFromPath();
-  const isIndia = !country || country === "in";
 
   const { data: plans, isLoading } = useQuery<Plan[]>({
     queryKey: ["subscription-plans"],
@@ -56,51 +48,6 @@ export default function Subscription() {
     staleTime: 300000,
   });
 
-  // International (non-India) pricing via Stripe.
-  const { data: stripeData } = useQuery<{ currency: string; plans: StripePlan[] }>({
-    queryKey: ["stripe-plans", country],
-    enabled: !isIndia,
-    staleTime: 300000,
-    queryFn: async () => {
-      const res = await fetch(`/api/stripe/plans?country=${country}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to load plans");
-      return res.json();
-    },
-  });
-
-  // After returning from a Stripe Checkout, confirm the subscription + tier.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const flag = params.get("stripe");
-    if (flag === "success") {
-      (async () => {
-        try {
-          const res = await fetch(`/api/stripe/reconcile`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-          });
-          const data = await res.json().catch(() => ({}));
-          if (data?.tier) {
-            await refreshUser();
-            queryClient.invalidateQueries({ queryKey: ["health"] });
-            setSuccess(TIER_LABELS[data.tier] ?? data.tier);
-          } else {
-            setError("We couldn't confirm your subscription yet. Please refresh in a moment.");
-          }
-        } catch {
-          setError("We couldn't confirm your subscription. Please contact support.");
-        } finally {
-          window.history.replaceState({}, "", window.location.pathname);
-        }
-      })();
-    } else if (flag === "cancel") {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const loadRazorpayScript = () => new Promise<void>((resolve, reject) => {
     if (document.getElementById("razorpay-script")) { resolve(); return; }
@@ -135,33 +82,7 @@ export default function Subscription() {
       }),
   });
 
-  const openStripePortal = async () => {
-    setDowngrading(true);
-    setSuccess(null);
-    setError(null);
-    try {
-      const res = await fetch("/api/stripe/portal", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error(data?.error || "Could not open subscription portal.");
-      }
-    } catch (e: any) {
-      setError(e.message || "Could not open subscription management.");
-      setDowngrading(false);
-    }
-  };
-
   const handleDowngrade = async () => {
-    if (!isIndia) {
-      void openStripePortal();
-      return;
-    }
     if (!confirm("Downgrade to Free? You will keep current benefits until the end of this billing period.")) return;
     setDowngrading(true);
     setSuccess(null);
@@ -188,6 +109,10 @@ export default function Subscription() {
   };
 
   const handleRazorpayUpgrade = async (tier: string) => {
+    if (!user) {
+      window.location.href = buildCountryUrl(country ?? "in", "login");
+      return;
+    }
     setUpgrading(tier);
     setSuccess(null);
     setError(null);
@@ -246,91 +171,18 @@ export default function Subscription() {
     }
   };
 
-  const handleStripeUpgrade = async (tier: string) => {
-    setUpgrading(tier);
-    setSuccess(null);
-    setError(null);
-    try {
-      const res = await fetch(`/api/stripe/checkout`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier, country }),
-      });
-      if (res.status === 401) {
-        window.location.href = buildCountryUrl(country ?? "in", "login");
-        return;
-      }
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "Failed to start checkout.");
-      }
-      const data = await res.json();
-      if (data.url) {
-        // New subscriber → redirect to Stripe Checkout
-        window.location.href = data.url;
-      } else if (data.upgraded) {
-        // Existing subscriber → in-place price swap with proration succeeded
-        await refreshUser();
-        queryClient.invalidateQueries({ queryKey: ["health"] });
-        setSuccess(TIER_LABELS[data.tier] ?? data.tier);
-        setUpgrading(null);
-      } else {
-        throw new Error("Checkout session could not be created.");
-      }
-    } catch (e: any) {
-      setError(e.message || "Failed to start checkout. Please try again.");
-      setUpgrading(null);
-    }
-  };
-
   const handleUpgrade = (tier: string) => {
     if (tier !== "professional" && tier !== "advocate_pro") return;
-    if (isIndia) {
-      void handleRazorpayUpgrade(tier);
-    } else {
-      void handleStripeUpgrade(tier);
-    }
+    void handleRazorpayUpgrade(tier);
   };
-
-  const stripePlanFor = (tier: string): StripePlan | undefined =>
-    stripeData?.plans.find((p) => p.tier === tier);
 
   const renderPrice = (plan: Plan) => {
     if (plan.price_inr === 0) {
       return <span className="text-4xl font-bold text-foreground">Free</span>;
     }
-    if (isIndia) {
-      return (
-        <>
-          <span className="text-4xl font-bold text-foreground tracking-tight">₹{plan.price_inr.toLocaleString("en-IN")}</span>
-          <span className="text-base text-muted-foreground font-medium mb-1.5">/mo</span>
-        </>
-      );
-    }
-    // Non-India: show local-currency price from Stripe.
-    // While the query is still in-flight, stripeData is undefined — show a spinner.
-    // If Stripe returns no price for this tier (should not happen once seeded),
-    // show "View pricing" so the user is never left with a bare dash or ₹ symbol.
-    if (stripeData === undefined) {
-      return <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />;
-    }
-    const sp = stripePlanFor(plan.id);
-    if (!sp) {
-      return (
-        <span className="text-xl font-semibold text-muted-foreground">
-          View pricing
-        </span>
-      );
-    }
-    const formatted = new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: sp.currency.toUpperCase(),
-      maximumFractionDigits: 0,
-    }).format(sp.unitAmount / 100);
     return (
       <>
-        <span className="text-4xl font-bold text-foreground tracking-tight">{formatted}</span>
+        <span className="text-4xl font-bold text-foreground tracking-tight">₹{plan.price_inr.toLocaleString("en-IN")}</span>
         <span className="text-base text-muted-foreground font-medium mb-1.5">/mo</span>
       </>
     );
@@ -415,9 +267,7 @@ export default function Subscription() {
             <div className="flex items-center gap-3">
               <ArrowDownCircle className="w-5 h-5 flex-shrink-0" />
               <span className="font-medium text-sm">
-                {isIndia
-                  ? "Not satisfied? You can downgrade to Free anytime. Benefits continue until the end of the billing period."
-                  : "Manage your plan, update payment details, or cancel anytime via the Stripe billing portal."}
+                Not satisfied? You can downgrade to Free anytime. Benefits continue until the end of the billing period.
               </span>
             </div>
             <Button
@@ -427,7 +277,7 @@ export default function Subscription() {
               disabled={downgrading}
               className="flex-shrink-0 border-amber-300 hover:bg-amber-100 text-amber-900"
             >
-              {downgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : isIndia ? "Downgrade" : "Manage Plan"}
+              {downgrading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Downgrade"}
             </Button>
           </motion.div>
         )}
@@ -492,7 +342,7 @@ export default function Subscription() {
           >
             {(plans ?? []).map((plan, idx) => {
               const Icon = TIER_ICONS[plan.id] ?? Star;
-              const isCurrent = plan.id === currentTier;
+              const isCurrent = !!user && plan.id === currentTier;
               const isPopular = plan.id === "professional";
               const isUpgrading = upgrading === plan.id;
               const iconColor = plan.id === "advocate_pro" ? "text-amber-500" : "text-primary";
@@ -555,7 +405,7 @@ export default function Subscription() {
                   </ul>
 
                   <Button
-                    onClick={() => !isCurrent && handleUpgrade(plan.id)}
+                    onClick={() => plan.price_inr === 0 && !user ? window.location.assign(buildCountryUrl(country ?? "in", "register")) : !isCurrent && handleUpgrade(plan.id)}
                     disabled={isCurrent || isUpgrading || createOrder.isPending}
                     variant={isCurrent ? "outline" : (plan.id === "advocate_pro" ? "default" : "default")}
                     size="lg"
@@ -569,7 +419,7 @@ export default function Subscription() {
                     ) : isCurrent ? (
                       "Your Current Plan"
                     ) : plan.price_inr === 0 ? (
-                      "Downgrade to Free"
+                      user ? "Your Current Plan" : "Start free"
                     ) : (
                       `Upgrade to ${plan.name}`
                     )}
@@ -577,9 +427,7 @@ export default function Subscription() {
 
                   {plan.price_inr > 0 && (
                     <p className="text-xs text-muted-foreground text-center mt-3 font-medium">
-                      {isIndia
-                        ? "Powered by Razorpay. Your payment is secure and encrypted."
-                        : "Powered by Stripe. Your payment is secure and encrypted."}
+                      Powered by Razorpay. Your payment is secure and encrypted.
                     </p>
                   )}
                 </motion.div>

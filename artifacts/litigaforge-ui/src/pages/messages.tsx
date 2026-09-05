@@ -258,12 +258,9 @@ export default function Messages() {
   /* ── WebSocket subscription ── */
   useEffect(() => {
     if (!activeThreadId) return;
-    const token = typeof window !== "undefined"
-      ? (localStorage.getItem("lf_token") ?? "")
-      : "";
     const proto = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = typeof window !== "undefined" ? window.location.host : "";
-    const wsUrl = `${proto}//${host}/litigaforge/ws/chat/${activeThreadId}?token=${encodeURIComponent(token)}`;
+    const wsUrl = `${proto}//${host}/litigaforge/ws/chat/${activeThreadId}`;
 
     let ws: WebSocket;
     let closed = false;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { getCountryFromPath } from "@/lib/country";
@@ -77,9 +77,6 @@ const COUNTRY_DIR: Record<string, CountryDir> = {
 interface Lawyer {
   id: number;
   name: string;
-  email: string | null;
-  phone: string | null;
-  bar_number: string | null;
   district: string;
   country?: string;
   practice_areas: string[];
@@ -90,24 +87,15 @@ interface Lawyer {
   hourly_rate?: number;
   bio: string;
   verified: boolean;
-  subscription_tier?: string;
 }
 
 function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
-  const [showContact, setShowContact] = useState(false);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-card rounded-2xl border border-border shadow-sm p-6 flex flex-col hover:border-primary/40 hover:shadow-md transition-all duration-300"
     >
-      {lawyer.subscription_tier === "advocate_pro" && (
-        <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 w-fit">
-          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-          <span className="text-xs font-bold text-amber-400 tracking-wide">Premium Advocate</span>
-        </div>
-      )}
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
@@ -122,9 +110,6 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
           <div className="flex items-center flex-wrap gap-y-1 gap-x-3 text-sm text-muted-foreground font-medium">
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{lawyer.district}</span>
             <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{lawyer.experience_years}y exp</span>
-            {lawyer.bar_number && (
-              <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{dir.barLabel}: {lawyer.bar_number}</span>
-            )}
             {lawyer.hourly_rate && (
               <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
                 {dir.currency}{lawyer.hourly_rate.toLocaleString()}/hr
@@ -160,47 +145,7 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
         </div>
       )}
 
-      <div className="mt-auto">
-        <button
-          onClick={() => setShowContact(s => !s)}
-          className={cn(
-            "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all",
-            showContact ? "bg-muted text-foreground" : "bg-foreground text-background hover:bg-foreground/90 shadow-sm"
-          )}
-        >
-          <Phone className="w-4 h-4" />
-          {showContact ? "Hide Contact details" : "Contact Advocate"}
-        </button>
-        <AnimatePresence>
-          {showContact && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-4 p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
-                {lawyer.phone && (
-                  <a href={`tel:${lawyer.phone}`} className="flex items-center gap-3 text-foreground hover:text-primary font-medium transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
-                       <Phone className="w-4 h-4 text-primary" />
-                    </div>
-                    {lawyer.phone}
-                  </a>
-                )}
-                {lawyer.email && (
-                  <a href={`mailto:${lawyer.email}`} className="flex items-center gap-3 text-foreground hover:text-primary font-medium transition-colors">
-                     <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
-                       <Mail className="w-4 h-4 text-primary" />
-                    </div>
-                    {lawyer.email}
-                  </a>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <p className="mt-auto text-xs text-muted-foreground text-center">Contact details are shared only after an accepted match.</p>
     </motion.div>
   );
 }
@@ -378,7 +323,8 @@ export default function LawyersPage() {
   const [district, setDistrict] = useState(allRegions);
   const [practiceArea, setPracticeArea] = useState(allAreas);
   const [searchText, setSearchText] = useState("");
-  const [showRegister, setShowRegister] = useState(false);
+  const [location] = useLocation();
+  const [showRegister, setShowRegister] = useState(location === "/lawyers/register");
 
   const { data, isLoading } = useQuery({
     queryKey: ["lawyers", cc, district, practiceArea, searchText],
@@ -426,7 +372,7 @@ export default function LawyersPage() {
 
   return (
     <PageShell title={copy.pageTitle} subtitle={copy.pageSubtitle} icon={<Users className="w-6 h-6 text-primary" />}
-      action={user?.role === "lawyer" ? (
+      action={(user?.role === "lawyer" || user?.role === "advocate") ? (
         <Button onClick={() => setShowRegister(true)} size="lg" className="shadow-md flex-shrink-0">
           <Plus className="w-5 h-5 mr-2" /> List Your Profile
         </Button>
@@ -500,7 +446,7 @@ export default function LawyersPage() {
                 <p className="text-muted-foreground font-medium max-w-md text-center mb-8">
                   We're onboarding verified advocates in {dir.name} now. In the meantime, you can still post your case and our AI will help match you, or be the first advocate listed here.
                 </p>
-                {user?.role === "lawyer" ? (
+                {user?.role === "lawyer" || user?.role === "advocate" ? (
                   <Button onClick={() => setShowRegister(true)} size="lg">
                     <Plus className="w-5 h-5 mr-2" /> Be the first to list your profile
                   </Button>

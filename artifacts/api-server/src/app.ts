@@ -9,8 +9,21 @@ import router from "./routes";
 import { WebhookHandlers } from "./webhookHandlers";
 import { logger } from "./lib/logger";
 import { BLOG_REDIRECTS } from "./lib/blogRedirects";
+import { isTrustedBrowserOrigin } from "./lib/origins";
 
 const app: Express = express();
+app.disable("x-powered-by");
+
+// CORS is a browser concern only. Allowing requests with no Origin preserves
+// Stripe webhooks, MCP clients, and internal reverse-proxy traffic, while only
+// trusted LitigaForge and Replit-preview browser origins receive CORS headers.
+const apiCors = cors({
+  origin(origin, callback) {
+    callback(null, !origin || isTrustedBrowserOrigin(origin));
+  },
+  credentials: true,
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+});
 
 // ── Domain canonicalization ────────────────────────────────────────────────
 // Redirect www.litigaforge.com → litigaforge.com (301, permanent) so Google
@@ -50,7 +63,10 @@ app.use(
 // is ~195 KiB uncompressed and shrinks to ~28 KiB gzipped — a major LCP win.
 app.use(compression());
 
-app.use(cors());
+// Do not apply CORS to SPA/static HTML. In particular, never emit wildcard
+// Access-Control-Allow-Origin headers for pages that may be served by Express.
+// This is mounted before API routes and API reverse proxies below.
+app.use("/api", apiCors);
 
 // ── Stripe webhook ────────────────────────────────────────────────────────
 // MUST be registered with the raw body parser BEFORE express.json(), otherwise

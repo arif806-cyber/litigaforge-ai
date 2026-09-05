@@ -227,10 +227,10 @@ function AgentCard({
     if (!sessionId) return;
     setPdfLoading(true);
     try {
-      const token = localStorage.getItem("lf_token") ?? "";
       const r = await fetch(`/litigaforge/workspace/sessions/${sessionId}/export-pdf`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           drafting_text:    state.text ?? "",
           case_description: caseDescription ?? "",
@@ -250,11 +250,11 @@ function AgentCard({
     if (!sessionId || !invAmount) return;
     setInvLoading(true);
     try {
-      const token      = localStorage.getItem("lf_token") ?? "";
       const feeSection = sections.find(s => s.title === "FEE RECOMMENDATION");
       const r = await fetch(`/litigaforge/workspace/sessions/${sessionId}/invoice-pdf`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           client_name:      invClient,
           lawyer_name:      invLawyer,

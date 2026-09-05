@@ -125,9 +125,10 @@ SUBSCRIPTION_PLANS = [
 async def create_user(email: str, name: str, password_hash: str, role: str = "client") -> dict:
     try:
         row = await fetchrow(
-            """INSERT INTO users (email, name, password_hash, role)
-               VALUES ($1, $2, $3, $4)
-               RETURNING id, email, name, subscription_tier, role, created_at""",
+            """INSERT INTO users (email, name, password_hash, role, email_verified, is_profile_public)
+               VALUES ($1, $2, $3, $4, FALSE, FALSE)
+               RETURNING id, email, name, subscription_tier, role, email_verified,
+                         is_profile_public, created_at""",
             email.lower().strip(), name.strip(), password_hash, role,
         )
         row["created_at"] = str(row["created_at"])
@@ -139,7 +140,8 @@ async def create_user(email: str, name: str, password_hash: str, role: str = "cl
 async def get_user_by_email(email: str) -> dict | None:
     row = await fetchrow(
         """SELECT id, email, name, password_hash, subscription_tier,
-                  cases_this_month, month_reset_date, is_superuser, role
+                  cases_this_month, month_reset_date, is_superuser, role, email_verified,
+                  COALESCE(is_profile_public, FALSE) AS is_profile_public
            FROM users WHERE email = $1""",
         email.lower().strip(),
     )
@@ -150,7 +152,8 @@ async def get_user_by_id(user_id: int) -> dict | None:
     row = await fetchrow(
         """SELECT u.id, u.email, u.name, u.subscription_tier,
                   u.cases_this_month, u.month_reset_date, u.is_superuser, u.role, u.created_at,
-                  u.username, COALESCE(u.is_profile_public, TRUE) AS is_profile_public,
+                   u.username, COALESCE(u.is_profile_public, FALSE) AS is_profile_public,
+                   COALESCE(u.email_verified, FALSE) AS email_verified,
                   COALESCE(l.verified, FALSE) AS is_verified,
                   l.verification_status AS lawyer_status
            FROM users u
@@ -183,6 +186,42 @@ async def increment_case_count(user_id: int) -> dict:
         user_id,
     )
     return dict(row)
+
+
+async def create_case_requirement_with_quota(user_id: int, values: tuple) -> dict:
+    """Atomically reserve a monthly case quota and create the requirement.
+
+    A row lock prevents concurrent requests from both passing the free-tier limit.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            user = await conn.fetchrow(
+                """SELECT subscription_tier, cases_this_month, month_reset_date
+                   FROM users WHERE id = $1 FOR UPDATE""", user_id
+            )
+            if not user:
+                raise ValueError("User not found")
+            tier = user["subscription_tier"] or "free"
+            reset = user["month_reset_date"] < __import__("datetime").date.today().replace(day=1)
+            used = 0 if reset else (user["cases_this_month"] or 0)
+            limit = TIER_LIMITS.get(tier, 5)
+            if limit != -1 and used >= limit:
+                raise PermissionError("Free plan limit reached")
+            row = await conn.fetchrow(
+                """INSERT INTO case_requirements
+                   (user_id, title, case_type, description, location, budget_range,
+                    budget_min, budget_max, is_anonymous, status)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'open')
+                   RETURNING id, user_id, title, case_type, description, location,
+                             budget_range, budget_min, budget_max, is_anonymous, status, created_at""",
+                user_id, *values,
+            )
+            await conn.execute(
+                """UPDATE users SET cases_this_month = $1, month_reset_date = CURRENT_DATE
+                   WHERE id = $2""", used + 1, user_id
+            )
+            return dict(row)
 
 
 # ── Refresh token CRUD ────────────────────────────────────────────────────────

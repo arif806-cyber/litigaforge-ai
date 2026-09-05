@@ -42,24 +42,17 @@ interface SearchResult {
 }
 
 const BASE = "/litigaforge";
-const TOKEN_KEY = "lf_token";
-
-function authHeaders(): Record<string, string> {
-  const t = localStorage.getItem(TOKEN_KEY) || "";
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
 
 async function api(path: string, opts: RequestInit = {}) {
   const res = await fetch(`${BASE}${path}`, {
     ...opts,
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
       ...(opts.headers as Record<string, string> | undefined),
     },
+    credentials: "include",
   });
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
     window.location.href = "/login";
     throw new Error("Session expired — please sign in again.");
   }
@@ -253,8 +246,9 @@ export default function ForgeWorkspace() {
   // ─── Bootstrap ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    loadSessions();
-  }, []);
+    if (user) void loadSessions();
+    else setIsLoadingSessions(false);
+  }, [user]);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -705,8 +699,8 @@ export default function ForgeWorkspace() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders(),
         },
+        credentials: "include",
         body: JSON.stringify({ case_description: caseDescription }),
       });
 
@@ -849,7 +843,8 @@ export default function ForgeWorkspace() {
     try {
       const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/simulate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ assumption, case_description: caseDescription, nodes }),
       });
       if (!res.ok || !res.body) throw new Error("Stream failed");
@@ -1060,7 +1055,8 @@ export default function ForgeWorkspace() {
     try {
       const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/agent/${agentId}/ask`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ question, case_description: caseDescription }),
       });
       if (!res.ok || !res.body) throw new Error("Stream failed");
@@ -1494,15 +1490,14 @@ export default function ForgeWorkspace() {
   useEffect(() => {
     function handleUnload() {
       if (!sessionId) return;
-      const token = localStorage.getItem(TOKEN_KEY) || "";
       // keepalive: true allows the request to outlive the page
       fetch(`${BASE}/workspace/sessions/${sessionId}/canvas`, {
         method: "PUT",
         keepalive: true,
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        credentials: "include",
         body: JSON.stringify({ nodes, edges }),
       }).catch(() => {});
     }
@@ -1528,6 +1523,22 @@ export default function ForgeWorkspace() {
   const PANEL = "rgba(8,16,36,0.97)";
   const BORDER = "rgba(20,184,166,0.12)";
   const TEAL  = "#14b8a6";
+
+  if (!user) {
+    return (
+      <div className="min-h-full flex items-center justify-center p-6 bg-background">
+        <div className="max-w-lg rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-foreground">Forge Workspace</h1>
+          <p className="mt-3 text-muted-foreground leading-relaxed">
+            Organize case facts, research, arguments, and drafting work in one private workspace.
+          </p>
+          <a href="/login" data-testid="link-workspace-sign-in" className="inline-flex mt-6 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground">
+            Sign in to open Workspace
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

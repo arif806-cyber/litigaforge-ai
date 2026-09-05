@@ -14,7 +14,7 @@ export function LegalDisclaimerBanner({ className }: { className?: string }) {
         <ShieldAlert className="w-4 h-4 text-amber-700 dark:text-amber-400 mt-0.5 flex-shrink-0" />
         <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
           <span className="font-semibold">Disclaimer:</span>{" "}
-          This is an AI assistant only. All outputs should be verified by a qualified lawyer. Not a substitute for professional legal advice. No attorney-client relationship is created.
+          This is not legal advice and not a substitute for an advocate. AI can be wrong. For representation, consult a qualified advocate.
         </p>
       </div>
     </div>

@@ -436,6 +436,7 @@ async def lifespan(app: FastAPI):
                 availability TEXT DEFAULT 'available',
                 verification_status TEXT DEFAULT 'pending',
                 verified BOOLEAN DEFAULT FALSE,
+                is_test BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -445,7 +446,8 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT")
         # ── Research Portfolio: public username + profile visibility ──────────
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_profile_public BOOLEAN DEFAULT TRUE")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_profile_public BOOLEAN DEFAULT FALSE")
+        await conn.execute("ALTER TABLE users ALTER COLUMN is_profile_public SET DEFAULT FALSE")
         # Case-insensitive uniqueness; partial so NULL usernames don't collide.
         await conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower "
@@ -455,8 +457,20 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS hourly_rate INTEGER")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'available'")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending'")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT FALSE")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'in'")
         await conn.execute("UPDATE lawyers SET country = 'in' WHERE country IS NULL")
+        # Never expose known seed/dummy profiles through the public directory or matching.
+        await conn.execute("""
+            UPDATE lawyers SET is_test = TRUE, verified = FALSE, verification_status = 'rejected'
+            WHERE name ILIKE '%test%' OR email ILIKE '%test%' OR email ILIKE '%dbtest%'
+               OR name ILIKE 'Lawyer_test%'
+        """)
+        await conn.execute("""
+            DELETE FROM users
+            WHERE email IN ('lf.audit.client.20260905@gmail.com', 'lf.audit.adv.20260905@gmail.com')
+        """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS case_requirements (
                 id SERIAL PRIMARY KEY,
@@ -487,7 +501,8 @@ async def lifespan(app: FastAPI):
             )
         """)
         # ── matches: payment tracking columns (must follow CREATE TABLE matches) ─
-        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending_payment'")
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'none'")
+        await conn.execute("ALTER TABLE matches ALTER COLUMN payment_status SET DEFAULT 'none'")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_payment_id TEXT")
         await conn.execute("""

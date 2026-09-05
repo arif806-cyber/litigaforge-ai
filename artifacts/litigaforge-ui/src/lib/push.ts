@@ -17,7 +17,7 @@ function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
   return buffer;
 }
 
-export async function subscribeToPush(token: string): Promise<boolean> {
+export async function subscribeToPush(_token?: string): Promise<boolean> {
   if (!hasPushSupport || !VAPID_PUBLIC_KEY) return false;
 
   const permission = await Notification.requestPermission();
@@ -37,7 +37,7 @@ export async function subscribeToPush(token: string): Promise<boolean> {
     const subJson = subscription.toJSON();
     await fetch(`${BASE}/push/subscribe`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         endpoint: subJson.endpoint,
         p256dh: subJson.keys?.p256dh,
@@ -51,7 +51,7 @@ export async function subscribeToPush(token: string): Promise<boolean> {
   }
 }
 
-export async function unsubscribeFromPush(token: string): Promise<void> {
+export async function unsubscribeFromPush(_token?: string): Promise<void> {
   if (!hasPushSupport) return;
   try {
     const registration = await navigator.serviceWorker.ready;
@@ -60,7 +60,7 @@ export async function unsubscribeFromPush(token: string): Promise<void> {
     await subscription.unsubscribe();
     await fetch(`${BASE}/push/subscribe`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ endpoint: subscription.endpoint }),
       credentials: "include",
     });

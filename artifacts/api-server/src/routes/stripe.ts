@@ -3,6 +3,7 @@ import { getUserId } from "../auth";
 import { storage, type PlanPrice } from "../stripeStorage";
 import { currencyForCountry } from "../stripeConfig";
 import { getUncachableStripeClient } from "../stripeClient";
+import { trustedFrontendOrigin } from "../lib/origins";
 
 const router: IRouter = Router();
 
@@ -153,9 +154,7 @@ router.post("/stripe/checkout", async (req, res) => {
     }
 
     // No existing subscription — create a Checkout session for new subscribers.
-    const origin =
-      req.get("origin") ??
-      `${req.protocol}://${req.get("host")}`;
+    const origin = trustedFrontendOrigin(req.get("origin") ?? undefined);
     const base = country ? `${origin}/${country}` : origin;
 
     const session = await stripe.checkout.sessions.create({
@@ -246,8 +245,7 @@ router.post("/stripe/portal", async (req, res) => {
     }
 
     const stripe = await getUncachableStripeClient();
-    const origin =
-      req.get("origin") ?? `${req.protocol}://${req.get("host")}`;
+    const origin = trustedFrontendOrigin(req.get("origin") ?? undefined);
 
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripe_customer_id,

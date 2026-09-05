@@ -1,12 +1,11 @@
 import { Helmet } from "react-helmet-async";
-import { getCountryName } from "@/lib/country-copy";
 import { getPathWithoutCountry } from "@/lib/country";
 
 const SITE_URL = "https://litigaforge.com";
 const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
 
 const DEFAULT_KEYWORDS =
-  "find a lawyer online, legal AI assistant, legal advice, legal document analyzer, case law search, free legal aid, lawyer matching, AI legal help";
+  "find a lawyer online, legal AI assistant, legal information, legal document analyzer, case law search, free legal aid, lawyer matching, AI legal help";
 
 const OG_LOCALE: Record<string, string> = {
   IN: "en_IN", US: "en_US", GB: "en_GB", AE: "en_AE",
@@ -35,11 +34,11 @@ export function SEOHelmet({
   const urlCode = (typeof window !== "undefined" ? window.location.pathname.split("/")[1] : "in").toUpperCase();
   const isIndia = urlCode === "IN" || !urlCode;
   const title = _title ?? (isIndia
-    ? "LitigaForge AI – Find Lawyers & Legal Help in India"
-    : `LitigaForge AI – AI Legal Help for ${getCountryName(urlCode)}`);
+    ? "LitigaForge AI – Legal Information for Telangana & Andhra Pradesh"
+    : "LitigaForge AI – Legal Information for Telangana & Andhra Pradesh");
   const description = _description ?? (isIndia
-    ? "AI-powered legal platform connecting clients with verified advocates in India. Get instant legal advice, document analysis, and case matching."
-    : `AI-powered legal platform for ${getCountryName(urlCode)}. Connect with verified lawyers, analyze documents, and get instant legal guidance.`);
+    ? "AI-assisted legal information, document analysis, judgment research, and advocate tools for Telangana and Andhra Pradesh."
+    : "AI-assisted legal information, document analysis, judgment research, and advocate tools for Telangana and Andhra Pradesh.");
   const keywords = _keywords ?? DEFAULT_KEYWORDS;
   const fullTitle = title.includes("LitigaForge") ? title : `${title} | LitigaForge AI`;
   // Self-referencing canonical: use the explicit prop when given, otherwise

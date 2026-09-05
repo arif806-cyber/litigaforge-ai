@@ -1,385 +1,42 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
   <head>
-    <!-- Google Analytics (GA4) — loaded completely off the critical path so it
-         never blocks the main thread (the PageSpeed TBT culprit). The gtag()
-         stub queues events immediately into dataLayer; the heavy script is
-         fetched only AFTER the page is interactive: load + 3s, then during a
-         browser idle slot. NOTE: this GA4 measurement id (G-…) must be loaded
-         via gtag/js, NOT gtm.js (gtm.js is for GTM container ids, GTM-…). -->
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      // send_page_view:false — page_views are sent manually from the SPA
-      // (src/lib/analytics.ts) on every route change so client-side
-      // navigations are tracked, not just the first load.
-      gtag('config', 'G-DHTR1SECG4', { send_page_view: false });
-      window.addEventListener('load', function () {
-        var loadGA = function () {
-          var s = document.createElement('script');
-          s.async = true;
-          s.src = 'https://www.googletagmanager.com/gtag/js?id=G-DHTR1SECG4';
-          document.head.appendChild(s);
-        };
-        setTimeout(function () {
-          if ('requestIdleCallback' in window) {
-            requestIdleCallback(loadGA, { timeout: 2000 });
-          } else {
-            loadGA();
-          }
-        }, 3000); // load 3s after the page is interactive
-      });
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>About LitigaForge AI — Our Mission &amp; Global Legal Platform</title>
-    <!-- Primary Meta Tags -->
-    <meta name="title" content="LitigaForge AI — Global AI Legal Platform" />
-    <meta name="description" content="LitigaForge AI makes legal help affordable worldwide — AI lawyer matching, document analysis, instant Q&amp;A and free legal aid."/>
-    <meta name="keywords" content="legal AI, AI lawyer, court case help, legal document analyzer, free legal aid, legal Q&A, case law search, LitigaForge" />
+    <title>About LitigaForge AI — Telangana &amp; Andhra Pradesh</title>
+    <meta name="description" content="LitigaForge AI supports clearer legal information, document analysis, judgment research and advocate tools in Telangana and Andhra Pradesh."/>
+    <meta name="keywords" content="Telangana legal information, Andhra Pradesh legal information, advocate tools, document analyzer, judgment research, free legal aid" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://litigaforge.com/about"/>
-
-    <!-- Google Search Console verified via DNS (Domain name provider at GoDaddy) -->
-    <meta name="google-site-verification" content="DNS_VERIFIED" />
-
-    <!-- Global Language Targeting -->
-    <link rel="alternate" hreflang="en" href="https://litigaforge.com/" />
-    <link rel="alternate" hreflang="en-IN" href="https://litigaforge.com/" />
-    <link rel="alternate" hreflang="en-US" href="https://litigaforge.com/" />
-    <link rel="alternate" hreflang="en-GB" href="https://litigaforge.com/" />
-    <link rel="alternate" hreflang="en-AU" href="https://litigaforge.com/" />
-    <link rel="alternate" hreflang="en-CA" href="https://litigaforge.com/" />
-    <link rel="alternate" hreflang="hi" href="https://litigaforge.com/hi/" />
-    <link rel="alternate" hreflang="te" href="https://litigaforge.com/te/" />
-    <link rel="alternate" hreflang="x-default" href="https://litigaforge.com/" />
-
     <meta name="theme-color" content="#0A0B10" />
-
-    <!-- Apple Web App meta tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="LitigaForge AI" />
-    <!-- Smart App Banner (replace XXXXXXXXXX with App Store ID when published) -->
-    <!-- <meta name="apple-itunes-app" content="app-id=XXXXXXXXXX" /> -->
-
-    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://litigaforge.com/about"/>
     <meta property="og:title" content="About LitigaForge AI"/>
-    <meta property="og:description" content="LitigaForge AI makes legal help affordable worldwide — AI lawyer matching, document analysis, instant Q&amp;A and free legal aid."/>
+    <meta property="og:description" content="LitigaForge AI supports clearer legal information, document analysis, judgment research and advocate tools in Telangana and Andhra Pradesh."/>
     <meta property="og:image" content="https://litigaforge.com/opengraph.jpg"/>
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="LitigaForge AI — Global AI Legal Platform" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:site_name" content="LitigaForge AI" />
-
-    <!-- Twitter Card -->
+    <meta property="og:locale" content="en_IN" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@replit" />
     <meta name="twitter:title" content="About LitigaForge AI"/>
-    <meta name="twitter:description" content="LitigaForge AI makes legal help affordable worldwide — AI lawyer matching, document analysis, instant Q&amp;A and free legal aid."/>
+    <meta name="twitter:description" content="LitigaForge AI supports clearer legal information, document analysis, judgment research and advocate tools in Telangana and Andhra Pradesh."/>
     <meta name="twitter:image" content="https://litigaforge.com/opengraph.jpg"/>
-    <meta name="twitter:image:alt" content="LitigaForge AI — Global AI Legal Platform" />
-
-    <!-- Favicon (manifest link injected by VitePWA during build) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-
-    <!-- Font preconnect (must come before stylesheet) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
-    <!-- Critical Latin fonts only — Space Grotesk (UI) + JetBrains Mono (mono).
-         Telugu / Devanagari / Arabic are loaded on demand by useLanguage when a
-         non-Latin language is active, keeping the default payload small.
-         Loaded NON-render-blocking: preload as style, then swap rel→stylesheet
-         on load so the font CSS never blocks first paint (text shows in the
-         fallback face via display=swap until the webfont arrives). -->
-    <link
-      rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      onload="this.onload=null;this.rel='stylesheet'"
-    />
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      />
-    </noscript>
-
-    <!-- JSON-LD: SoftwareApplication -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "LitigaForge AI",
-      "operatingSystem": "Web, Android, iOS",
-      "applicationCategory": "LegalService",
-      "applicationSubCategory": "LegalTech",
-      "url": "https://litigaforge.com",
-      "description": "AI-powered legal platform offering lawyer matching, document analysis, legal Q&A, judgment search, and free legal aid for users worldwide.",
-      "featureList": [
-        "AI Lawyer Matching (0–100 score)",
-        "Legal Document Analyzer",
-        "Instant Legal Q&A",
-        "Judgment Finder",
-        "Free Legal Aid Finder",
-        "AI Legal Chat",
-        "Free Legal Document Templates",
-        "Case Management for Advocates"
-      ],
-      "offers": [
-        {
-          "@type": "Offer",
-          "name": "Free",
-          "price": "0",
-          "priceCurrency": "INR",
-          "description": "5 AI queries/month — Legal Q&A, Document Analyzer, Judgment Finder"
-        },
-        {
-          "@type": "Offer",
-          "name": "Professional",
-          "price": "999",
-          "priceCurrency": "INR",
-          "description": "Unlimited AI queries, priority lawyer matching, document uploads"
-        },
-        {
-          "@type": "Offer",
-          "name": "Advocate Pro",
-          "price": "2499",
-          "priceCurrency": "INR",
-          "description": "Full practice management, client case tracking, CNR integration"
-        }
-      ],
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "reviewCount": "120"
-      },
-      "inLanguage": ["en", "hi", "te"],
-      "provider": {
-        "@type": "Organization",
-        "name": "LitigaForge AI",
-        "url": "https://litigaforge.com"
-      }
-    }
+      {"@context":"https://schema.org","@type":"SoftwareApplication","name":"LitigaForge AI","applicationCategory":"LegalService","url":"https://litigaforge.com","description":"AI-assisted legal information, document analysis, judgment research, and advocate tools for Telangana and Andhra Pradesh.","areaServed":[{"@type":"State","name":"Telangana"},{"@type":"State","name":"Andhra Pradesh"}],"offers":[{"@type":"Offer","name":"Free","price":"0","priceCurrency":"INR"},{"@type":"Offer","name":"Professional","price":"999","priceCurrency":"INR"},{"@type":"Offer","name":"Advocate Pro","price":"2499","priceCurrency":"INR"}]}
     </script>
-
-    <!-- JSON-LD: Organization -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "LitigaForge AI",
-      "url": "https://litigaforge.com",
-      "logo": "https://litigaforge.com/opengraph.jpg",
-      "description": "AI-powered legal platform connecting clients with verified lawyers worldwide.",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "Customer Support",
-        "areaServed": ["IN", "US", "GB", "AE", "AU", "CA", "SG", "DE"],
-        "availableLanguage": ["English", "Hindi", "Telugu", "German", "Arabic"]
-      },
-      "sameAs": []
-    }
-    </script>
-
-    <!-- JSON-LD: WebSite + SearchAction -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "LitigaForge AI",
-      "alternateName": ["LitigaForge", "Litiga AI"],
-      "url": "https://litigaforge.com",
-      "inLanguage": ["en", "hi", "te"],
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": "https://litigaforge.com/ask?q={search_term_string}"
-        },
-        "query-input": "required name=search_term_string"
-      }
-    }
-    </script>
-
-    <!-- JSON-LD: LegalService -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "LegalService",
-      "name": "LitigaForge AI",
-      "alternateName": ["LitigaForge", "Litiga AI"],
-      "url": "https://litigaforge.com",
-      "logo": "https://litigaforge.com/logo.png",
-      "description": "LitigaForge AI is a global AI-powered legal platform offering instant legal guidance, document analysis, lawyer matching, court case management and free legal aid — accessible worldwide in multiple languages.",
-      "areaServed": [
-        {"@type": "Country", "name": "India"},
-        {"@type": "Country", "name": "United States"},
-        {"@type": "Country", "name": "United Kingdom"},
-        {"@type": "Country", "name": "Australia"},
-        {"@type": "Country", "name": "Canada"},
-        {"@type": "Country", "name": "Singapore"},
-        {"@type": "Country", "name": "United Arab Emirates"},
-        {"@type": "Country", "name": "Germany"}
-      ],
-      "availableLanguage": ["English", "Hindi", "Telugu"],
-      "serviceType": [
-        "Legal Consultation",
-        "AI Legal Document Analysis",
-        "Lawyer Matching Platform",
-        "Court Case Management",
-        "Legal Aid Services",
-        "Legal Q&A",
-        "Judgment Research"
-      ],
-      "hasOfferCatalog": {
-        "@type": "OfferCatalog",
-        "name": "LitigaForge AI Services",
-        "itemListElement": [
-          {
-            "@type": "Offer",
-            "itemOffered": {
-              "@type": "Service",
-              "name": "AI Legal Chat",
-              "description": "Real-time AI legal guidance in plain language"
-            }
-          },
-          {
-            "@type": "Offer",
-            "itemOffered": {
-              "@type": "Service",
-              "name": "Document Analyzer",
-              "description": "AI-powered legal document review and summarization"
-            }
-          },
-          {
-            "@type": "Offer",
-            "itemOffered": {
-              "@type": "Service",
-              "name": "Lawyer Matching",
-              "description": "Connect with verified lawyers globally"
-            }
-          }
-        ]
-      },
-      "provider": {
-        "@type": "Organization",
-        "name": "LitigaForge AI",
-        "url": "https://litigaforge.com",
-        "sameAs": [
-          "https://github.com/arif806-cyber",
-          "https://litigaforge.com"
-        ]
-      },
-      "priceRange": "Free – ₹2,499/month",
-      "address": {
-        "@type": "PostalAddress",
-        "addressCountry": "IN"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "reviewCount": "120"
-      }
-    }
-    </script>
-
-    <!-- JSON-LD: FAQPage -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How do I find a verified lawyer near me?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Post your case requirements on LitigaForge and our AI matches you with verified lawyers in your country — each with a match score (0–100) and a plain-language explanation of why they fit."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is LitigaForge AI free to use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Legal Q&A, document analysis, case-law search, the free legal aid finder, and the lawyer directory are all free. Paid plans unlock unlimited AI credits and advanced features."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I get instant answers to legal questions online?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Ask any legal question on LitigaForge and our AI answers instantly, grounded in the laws of your selected country across India, the US, UK, UAE, Australia, Canada, Singapore, and Germany."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Who is eligible for free legal aid?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Free legal aid eligibility varies by country and is usually based on income, vulnerability, or the type of case. Use our Free Legal Aid finder to check eligibility and get legal aid contacts for your region."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I analyze a legal document or contract online?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Paste your document into the LitigaForge Document Analyzer and get an AI-powered risk score, list of missing clauses, and actionable recommendations — instantly and for free."
-          }
-        }
-      ]
-    }
-    </script>
-
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2540372254816391" crossorigin="anonymous"></script>
-    <script type="module" crossorigin src="/assets/index-BeNGZxjh.js"></script>
+    <script type="module" crossorigin src="/assets/index-tg2BCMo6.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/query-BIuYWTRv.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-BeCKiQwk.js">
-    <link rel="modulepreload" crossorigin href="/assets/icons-DqaQlSaL.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-P1EF2QfA.css">
+    <link rel="modulepreload" crossorigin href="/assets/icons-CJsvTsOY.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-eH995sCM.css">
   <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
   <body>
     <div id="root"></div>
-
     <noscript>
-      <h1>LitigaForge AI — Global AI Legal Platform</h1>
-      <p>AI-powered legal guidance for India, USA, UK, UAE, Germany, Australia, Canada, Singapore. Available 24/7 in English, Hindi, and Telugu.</p>
-
-      <h2>Features</h2>
-      <ul>
-        <li>AI Legal Guidance — Ask any legal question, get instant answers grounded in your country's laws</li>
-        <li>Document Analyzer — Upload contracts and agreements and get AI risk scores and missing-clause detection</li>
-        <li>Lawyer Matching — Post your case and get matched with verified, rated lawyers scored 0–100</li>
-        <li>Free Legal Aid — Check eligibility and find free legal aid contacts in your country</li>
-        <li>Court Judgments — Search case law and precedents from courts in your jurisdiction</li>
-      </ul>
-
-      <h2>Pricing</h2>
-      <ul>
-        <li>Free Plan — 5 AI queries/month, legal Q&A, document analyzer, judgment finder</li>
-        <li>Basic Plan (Professional) — ₹999/month — Unlimited AI queries, priority lawyer matching, document uploads</li>
-        <li>Pro Plan (Advocate Pro) — ₹2,499/month — Full practice management, client case tracking, CNR integration</li>
-      </ul>
-
-      <nav>
-        <a href="/ask">Ask Legal Question</a>
-        <a href="/lawyers">Find Lawyers</a>
-        <a href="/review">Document Analyzer</a>
-        <a href="/judgments">Judgment Finder</a>
-        <a href="/legal-aid">Free Legal Aid</a>
-        <a href="/free-documents">Free Documents</a>
-        <a href="/blog">Blog</a>
-        <a href="/subscription">Pricing</a>
-      </nav>
+      <h1>LitigaForge AI — Legal Information for Telangana and Andhra Pradesh</h1>
+      <p>AI-assisted legal information, document analysis, judgment research, free legal-aid information, and advocate tools. This is not legal advice and not a substitute for an advocate. AI can be wrong. For representation, consult a qualified advocate.</p>
     </noscript>
   </body>
 </html>

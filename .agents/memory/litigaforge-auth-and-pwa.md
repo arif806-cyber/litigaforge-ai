@@ -3,18 +3,17 @@ name: LitigaForge auth init + PWA service-worker gotchas
 description: Cookie-only auth refresh contract for the initial /auth/me probe, and why a stale VitePWA service worker masks source/build changes in the preview browser.
 ---
 
-# Auth is cookie-only; the localStorage `lf_token` is only a "logged-in-on-this-browser" flag
+# Browser auth is strictly cookie-only
 
-- The real auth is an httpOnly cookie set by the backend. `apiFetch` and the auth-context probe both send `credentials: "include"` and do NOT attach a Bearer token. `lf_token` in `localStorage` is just a hint that this browser has logged in. Every login path (`login`/`register`/`google`/`apple`/`passkey`) sets it; `logout` removes it.
+- The real auth is an httpOnly cookie set by the backend. Browser code must not store an access JWT or login sentinel in localStorage and must not send `Authorization: Bearer`. API calls and the auth-context probe send `credentials: "include"`.
 
-**Why:** intentional security choice — do not "fix" the probe by adding `Authorization: Bearer` from localStorage.
+**Why:** a browser-held JWT defeats the XSS protection provided by httpOnly cookies. A real-browser registration/reload test confirmed cookie-only session persistence without local/session storage tokens.
 
-# The initial `/auth/me` probe must (a) skip when there's no token, and (b) refresh-then-retry on 401 before logging out
+# The initial `/auth/me` probe must refresh-then-retry on 401 before logging out
 
-- `AuthProvider` renders a full-screen spinner until the initial probe resolves, so the probe is on the critical first-paint path. For anonymous visitors (no `lf_token`) — the homepage / Lighthouse case — skip `/auth/me` entirely: render immediately and emit no console 401.
-- Access token is short-lived (~15 min, `ACCESS_TOKEN_MINUTES`) but the refresh cookie lasts ~7 days (`REFRESH_TOKEN_DAYS` in auth.py). So a 401 from `/auth/me` does NOT mean "logged out" — it usually means the access cookie just expired. The probe must mirror `apiFetch`: on 401 call `_tryRefresh()` (POST `/auth/refresh`, exported from `src/lib/api.ts`) and retry `/auth/me` once. Only if the refresh also fails is the session truly gone — then drop the stale `lf_token` so future loads skip the probe. Never remove the token (or sign the user out) on a *network* error, only on a real 401.
+- Access tokens are short-lived but refresh cookies last longer. A 401 from `/auth/me` does not necessarily mean "logged out": call `/auth/refresh` and retry `/auth/me` once. Only if refresh fails is the session truly gone. Network errors must not be treated as logout.
 
-**Why:** without refresh-on-401 the probe bounces a genuinely-logged-in user to a logged-out state on any cold reload >15 min after sign-in; removing the token without refreshing makes that logout sticky. The same pre-existing exposure lives in `lawyer-dashboard`'s periodic `refreshUser()` poll.
+**Why:** without refresh-on-401, a genuinely logged-in user is bounced to logged-out state after the short-lived access cookie expires.
 
 # A stale VitePWA service worker masks source/build changes in the preview browser
 

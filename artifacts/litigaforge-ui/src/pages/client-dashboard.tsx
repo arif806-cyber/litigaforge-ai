@@ -829,11 +829,10 @@ export default function ClientDashboard() {
                       try {
                         const form = new FormData();
                         form.append("file", file);
-                        const token = typeof window !== "undefined" ? localStorage.getItem("lf_token") : null;
                         const res = await fetch(`/litigaforge/client/cases/${showCaseDetail.id}/documents`, {
                           method: "POST",
-                          headers: token ? { Authorization: `Bearer ${token}` } : {},
                           body: form,
+                          credentials: "include",
                         });
                         if (!res.ok) throw new Error("Upload failed");
                         const data = await res.json();

@@ -41,24 +41,24 @@ export function defaultTitle(code: string): string {
 export function defaultDescription(code: string): string {
   const name = getCountryName(code);
   if (code.toUpperCase() === "IN") {
-    return "AI-powered legal platform connecting clients with verified advocates in India. Get instant legal advice, document analysis, and case matching.";
+    return "AI-powered legal platform connecting clients with verified advocates in India. Get legal information, document analysis, and case matching.";
   }
   if (code.toUpperCase() === "DE") {
     return "KI-gest\u00fctzte Rechtsplattform. Verbinden Sie sich mit verifizierten Anw\u00e4lten, analysieren Sie Dokumente und erhalten Sie sofortige Rechtsberatung.";
   }
-  return `AI-powered legal platform for ${name}. Connect with verified lawyers, analyze documents, and get instant legal guidance.`;
+  return `AI-powered legal information platform for ${name}. Analyze documents, research legal issues, and browse the advocate directory.`;
 }
 
 /* ── Page-specific copy ──────────────────────────────────────────────────────── */
 
 export const ASK_COPY: Record<string, PageCopy> = {
-  IN: { title: "Legal Q&A \u2013 Free Legal Advice", description: "Ask any legal question about Indian law. AI answers instantly. Property, family, criminal, GST, labour, consumer, and more.", subtitle: "Ask any legal question about Indian law. AI answers instantly.", keywords: "legal questions India, free legal advice, property law, family law, criminal law, GST" },
-  US: { title: "Legal Q&A \u2013 Free Legal Advice", description: "Ask any legal question about US law. AI answers instantly. Employment, family, immigration, contracts, and more.", subtitle: "Ask any legal question about US law. AI answers instantly.", keywords: "legal questions US, free legal advice, employment law, family law, immigration" },
-  GB: { title: "Legal Q&A \u2013 Free Legal Advice", description: "Ask any legal question about UK law. AI answers instantly. Property, family, criminal, employment, and more.", subtitle: "Ask any legal question about UK law. AI answers instantly.", keywords: "legal questions UK, free legal advice, property law, family law, criminal law" },
-  AE: { title: "Legal Q&A \u2013 Free Legal Advice", description: "Ask any legal question about UAE law. AI answers instantly. Labour, tenancy, business, family, and more.", subtitle: "Ask any legal question about UAE law. AI answers instantly.", keywords: "legal questions UAE, free legal advice, labour law, tenancy, business law" },
-  AU: { title: "Legal Q&A \u2013 Free Legal Advice", description: "Ask any legal question about Australian law. AI answers instantly. Property, family, criminal, employment, and more.", subtitle: "Ask any legal question about Australian law. AI answers instantly.", keywords: "legal questions Australia, free legal advice, property law, family law, criminal law" },
-  CA: { title: "Legal Q&A \u2013 Free Legal Advice", description: "Ask any legal question about Canadian law. AI answers instantly. Property, family, immigration, employment, and more.", subtitle: "Ask any legal question about Canadian law. AI answers instantly.", keywords: "legal questions Canada, free legal advice, property law, family law, immigration" },
-  SG: { title: "Legal Q&A \u2013 Free Legal Advice", description: "Ask any legal question about Singapore law. AI answers instantly. Property, family, employment, business, and more.", subtitle: "Ask any legal question about Singapore law. AI answers instantly.", keywords: "legal questions Singapore, free legal advice, property law, family law, employment" },
+  IN: { title: "Legal Q&A \u2013 Free legal information", description: "Ask any legal question about Indian law. AI provides legal information. Property, family, criminal, GST, labour, consumer, and more.", subtitle: "Ask any legal question about Indian law. AI provides legal information.", keywords: "legal questions India, free legal information, property law, family law, criminal law, GST" },
+  US: { title: "Legal Q&A \u2013 Free legal information", description: "Ask any legal question about US law. AI provides legal information. Employment, family, immigration, contracts, and more.", subtitle: "Ask any legal question about US law. AI provides legal information.", keywords: "legal questions US, free legal information, employment law, family law, immigration" },
+  GB: { title: "Legal Q&A \u2013 Free legal information", description: "Ask any legal question about UK law. AI provides legal information. Property, family, criminal, employment, and more.", subtitle: "Ask any legal question about UK law. AI provides legal information.", keywords: "legal questions UK, free legal information, property law, family law, criminal law" },
+  AE: { title: "Legal Q&A \u2013 Free legal information", description: "Ask any legal question about UAE law. AI provides legal information. Labour, tenancy, business, family, and more.", subtitle: "Ask any legal question about UAE law. AI provides legal information.", keywords: "legal questions UAE, free legal information, labour law, tenancy, business law" },
+  AU: { title: "Legal Q&A \u2013 Free legal information", description: "Ask any legal question about Australian law. AI provides legal information. Property, family, criminal, employment, and more.", subtitle: "Ask any legal question about Australian law. AI provides legal information.", keywords: "legal questions Australia, free legal information, property law, family law, criminal law" },
+  CA: { title: "Legal Q&A \u2013 Free legal information", description: "Ask any legal question about Canadian law. AI provides legal information. Property, family, immigration, employment, and more.", subtitle: "Ask any legal question about Canadian law. AI provides legal information.", keywords: "legal questions Canada, free legal information, property law, family law, immigration" },
+  SG: { title: "Legal Q&A \u2013 Free legal information", description: "Ask any legal question about Singapore law. AI provides legal information. Property, family, employment, business, and more.", subtitle: "Ask any legal question about Singapore law. AI provides legal information.", keywords: "legal questions Singapore, free legal information, property law, family law, employment" },
   DE: { title: "Rechtsfragen \u2013 Kostenlose Rechtsberatung", description: "Stellen Sie jede Rechtsfrage zum deutschen Recht. KI beantwortet sofort. Mietrecht, Familienrecht, Arbeitsrecht und mehr.", subtitle: "Stellen Sie jede Rechtsfrage zum deutschen Recht. KI beantwortet sofort.", keywords: "Rechtsfragen Deutschland, kostenlose Rechtsberatung, Mietrecht, Familienrecht, Arbeitsrecht" },
 };
 
