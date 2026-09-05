@@ -606,33 +606,58 @@ export default function ForgeWorkspace() {
     setEdges(es => es.filter(e => !e.selected && !removedIds.has(e.source) && !removedIds.has(e.target)));
   }
 
-  function propagateImpact(currentEdges: Edge[]) {
+  function propagateImpact(startNodeId: string, currentEdges: Edge[]) {
+    const MAX_PROPAGATION_DEPTH = 4;
+    const DAMPING_FACTOR = 0.5;
     const flashedIds: string[] = [];
     setNodes(ns => {
       const updated = ns.map(n => ({ ...n, data: { ...(n.data as Record<string, unknown>) } }));
       const idxMap  = new Map(updated.map((n, i) => [n.id, i]));
-      for (const e of currentEdges) {
-        const si = idxMap.get(e.source);
-        const ti = idxMap.get(e.target);
-        if (si === undefined || ti === undefined) continue;
-        const srcScore = Number((updated[si].data as Record<string, unknown>).impact_score ?? 70);
-        const d        = updated[ti].data as Record<string, unknown>;
-        const tgtScore = Number(d.impact_score ?? 70);
-        const rel      = ((e.data as Record<string, unknown>)?.relType as string) ?? "";
-        let delta = 0;
-        if (rel === "supports")         delta =  Math.round(srcScore * 0.08);
-        else if (rel === "cites")       delta =  5;
-        else if (rel === "contradicts") delta = -10;
-        if (delta !== 0) {
-          updated[ti] = {
-            ...updated[ti],
-            data: {
-              ...d,
-              impact_score: Math.min(100, Math.max(5, tgtScore + delta)),
-              impactFlash:  delta > 0 ? "positive" : "negative",
-            },
-          };
-          flashedIds.push(updated[ti].id);
+      const outgoing = new Map<string, Edge[]>();
+      for (const edge of currentEdges) {
+        const edgesFromSource = outgoing.get(edge.source) ?? [];
+        edgesFromSource.push(edge);
+        outgoing.set(edge.source, edgesFromSource);
+      }
+
+      const queue: Array<{ nodeId: string; depth: number }> = [{ nodeId: startNodeId, depth: 0 }];
+      const visitedDepth = new Map<string, number>([[startNodeId, 0]]);
+
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (!current || current.depth >= MAX_PROPAGATION_DEPTH) continue;
+
+        for (const e of outgoing.get(current.nodeId) ?? []) {
+          const nextDepth = current.depth + 1;
+          const previousDepth = visitedDepth.get(e.target);
+          if (previousDepth !== undefined && previousDepth <= nextDepth) continue;
+
+          visitedDepth.set(e.target, nextDepth);
+          queue.push({ nodeId: e.target, depth: nextDepth });
+
+          const si = idxMap.get(e.source);
+          const ti = idxMap.get(e.target);
+          if (si === undefined || ti === undefined) continue;
+          const srcScore = Number((updated[si].data as Record<string, unknown>).impact_score ?? 70);
+          const d        = updated[ti].data as Record<string, unknown>;
+          const tgtScore = Number(d.impact_score ?? 70);
+          const rel      = ((e.data as Record<string, unknown>)?.relType as string) ?? "";
+          let baseDelta = 0;
+          if (rel === "supports")         baseDelta =  srcScore * 0.08;
+          else if (rel === "cites")       baseDelta =  5;
+          else if (rel === "contradicts") baseDelta = -10;
+          const delta = Math.round(baseDelta * Math.pow(DAMPING_FACTOR, nextDepth - 1));
+          if (delta !== 0) {
+            updated[ti] = {
+              ...updated[ti],
+              data: {
+                ...d,
+                impact_score: Math.min(100, Math.max(5, tgtScore + delta)),
+                impactFlash:  delta > 0 ? "positive" : "negative",
+              },
+            };
+            flashedIds.push(updated[ti].id);
+          }
         }
       }
       // Clear flash after 1.6 s — mirrors simHighlight clear pattern
@@ -666,7 +691,7 @@ export default function ForgeWorkspace() {
     };
     pushHistory([...nodes], [...edges]);
     setEdges(eds => addEdge(newEdge, eds));
-    setTimeout(() => propagateImpact([...edges, newEdge]), 80);
+    setTimeout(() => propagateImpact(newEdge.source, [...edges, newEdge]), 80);
   }, [nodes, edges, setEdges]);
 
   const onEdgeTypeChange = useCallback((edgeId: string, relType: string) => {
