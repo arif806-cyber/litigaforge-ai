@@ -10,6 +10,7 @@ import { WebhookHandlers } from "./webhookHandlers";
 import { logger } from "./lib/logger";
 import { BLOG_REDIRECTS } from "./lib/blogRedirects";
 import { isTrustedBrowserOrigin } from "./lib/origins";
+import { judgmentRedirectTarget } from "./lib/judgmentRedirect";
 
 const app: Express = express();
 app.disable("x-powered-by");
@@ -1315,41 +1316,36 @@ if (true) { // serve frontend in both dev and production when dist exists
       ): Promise<string | null> => {
         let bare = _stripCountry(reqPath);
         if (bare.length > 1) bare = bare.replace(/\/+$/, "");
-        const m = bare.match(/^\/judgments\/([^/]+)\/(\d{4})\/([^/]+)$/);
-        if (!m) return null;
-        const [, court, year, slug] = m;
-        const prefix =
-          _stripCountry(reqPath) === reqPath
-            ? ""
-            : `/${reqPath.replace(/^\/+/, "").split("/")[0]?.toLowerCase() ?? ""}`;
 
         const now = Date.now();
-        const cached = _judgRedirCache.get(bare);
+        const cached = _judgRedirCache.get(reqPath);
         let to: string | null;
         if (cached && now - cached.at < _JUDG_REDIR_TTL_MS) {
           to = cached.to;
         } else {
-          to = null;
-          try {
-            const r = await fetch(
-              `${LF_API_ORIGIN}${LF_API_BASE}/judgments/resolve/${court}/${year}/${slug}`,
-              {
-                headers: { accept: "application/json" },
-                signal: AbortSignal.timeout(4000),
-              },
-            );
-            if (r.ok) {
-              const data = (await r.json()) as { exact?: boolean; path?: string };
-              if (data && data.exact === false && data.path && data.path !== bare) {
-                to = data.path;
+          to = await judgmentRedirectTarget(
+            reqPath,
+            _stripCountry,
+            async (court, year, slug) => {
+              try {
+                const r = await fetch(
+                  `${LF_API_ORIGIN}${LF_API_BASE}/judgments/resolve/${court}/${year}/${slug}`,
+                  {
+                    headers: { accept: "application/json" },
+                    signal: AbortSignal.timeout(4000),
+                  },
+                );
+                return r.ok
+                  ? ((await r.json()) as { exact?: boolean; path?: string })
+                  : null;
+              } catch {
+                return null;
               }
-            }
-          } catch {
-            to = null;
-          }
-          _judgRedirCache.set(bare, { to, at: now });
+            },
+          );
+          _judgRedirCache.set(reqPath, { to, at: now });
         }
-        return to ? `${prefix}${to}` : null;
+        return to;
       };
 
       const _judgmentRoute = async (
