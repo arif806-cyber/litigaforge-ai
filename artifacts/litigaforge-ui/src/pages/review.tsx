@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown, Upload, FileText, X, FileCheck } from "lucide-react";
@@ -35,6 +35,14 @@ const RISK_CONFIG = {
   MEDIUM: { color: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800", icon: AlertCircle },
   LOW:    { color: "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800", icon: Info },
 };
+
+const ANALYSIS_STEPS = [
+  { after: 0, label: "Reading your document", detail: "Identifying sections, parties, and key terms" },
+  { after: 7, label: "Checking important clauses", detail: "Looking for gaps, unusual terms, and obligations" },
+  { after: 16, label: "Reviewing legal risks", detail: "Assessing red flags for the selected jurisdiction" },
+  { after: 28, label: "Scoring overall risk", detail: "Weighing the issues by severity and impact" },
+  { after: 40, label: "Preparing your report", detail: "Turning the findings into clear next steps" },
+];
 
 interface AnalysisResult {
   summary: string;
@@ -127,6 +135,7 @@ export default function Review() {
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [analysisSeconds, setAnalysisSeconds] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
@@ -176,9 +185,28 @@ export default function Review() {
   };
 
   const isAnalyzing = analyzeText.isPending || analyzeFile.isPending;
+  const activeAnalysisStep = ANALYSIS_STEPS.reduce(
+    (active, step, index) => analysisSeconds >= step.after ? index : active,
+    0,
+  );
+  const analysisProgress = Math.min(92, 8 + Math.round((analysisSeconds / 45) * 84));
   const canAnalyze = inputMode === "paste"
     ? docText.trim().length >= 50
     : uploadedFile !== null;
+
+  useEffect(() => {
+    if (!isAnalyzing) {
+      setAnalysisSeconds(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      setAnalysisSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [isAnalyzing]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -354,6 +382,100 @@ export default function Review() {
             </div>
           )}
         </div>
+
+        <AnimatePresence>
+          {isAnalyzing && (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              aria-live="polite"
+              aria-label="Document analysis progress"
+              className="bg-card rounded-2xl border border-primary/20 shadow-sm overflow-hidden"
+              data-testid="analysis-progress"
+            >
+              <div className="p-6 md:p-8 border-b border-border">
+                <div className="flex items-start gap-4">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="font-semibold text-foreground">Building your risk report</h2>
+                      <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                        {analysisSeconds}s
+                      </span>
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={activeAnalysisStep}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="mt-1"
+                      >
+                        <p className="text-sm font-medium text-primary">{ANALYSIS_STEPS[activeAnalysisStep].label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{ANALYSIS_STEPS[activeAnalysisStep].detail}</p>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                <div className="mt-5 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-primary"
+                    animate={{ width: `${analysisProgress}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {ANALYSIS_STEPS.map((step, index) => {
+                    const isComplete = index < activeAnalysisStep;
+                    const isCurrent = index === activeAnalysisStep;
+                    return (
+                      <div key={step.label} className="flex items-center gap-2 min-w-0">
+                        <span className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border",
+                          isComplete && "bg-primary border-primary text-primary-foreground",
+                          isCurrent && "border-primary text-primary bg-primary/10",
+                          !isComplete && !isCurrent && "border-border text-muted-foreground",
+                        )}>
+                          {isComplete
+                            ? <CheckCircle2 className="w-3.5 h-3.5" />
+                            : <span className="text-[10px] font-bold">{index + 1}</span>}
+                        </span>
+                        <span className={cn(
+                          "text-[11px] leading-tight truncate",
+                          isCurrent ? "text-foreground font-semibold" : "text-muted-foreground",
+                        )}>
+                          {step.label.replace(" your document", "").replace(" important", "")}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="p-6 md:p-8 bg-muted/20" aria-hidden="true">
+                <div className="flex flex-col sm:flex-row gap-8 animate-pulse">
+                  <div className="w-36 h-36 rounded-full border-[14px] border-muted flex-shrink-0 mx-auto sm:mx-0" />
+                  <div className="flex-1 space-y-3 pt-2">
+                    <div className="h-3 w-32 rounded bg-muted" />
+                    <div className="h-4 w-full rounded bg-muted" />
+                    <div className="h-4 w-11/12 rounded bg-muted" />
+                    <div className="h-4 w-4/5 rounded bg-muted" />
+                    <div className="h-4 w-2/3 rounded bg-muted" />
+                  </div>
+                </div>
+                <div className="mt-7 grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
+                  <div className="h-24 rounded-xl bg-muted/80" />
+                  <div className="h-24 rounded-xl bg-muted/80" />
+                </div>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
         {/* Results */}
         <AnimatePresence>
