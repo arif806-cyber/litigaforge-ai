@@ -337,8 +337,6 @@ export default function ForgeWorkspace() {
   const historyRef          = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
   const histIdxRef          = useRef<number>(-1);
   const simAfterSummaryRef  = useRef<string>("");
-  const prevNodeScoresRef   = useRef<Map<string, number>>(new Map());
-  const flashTimersRef      = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -606,7 +604,7 @@ export default function ForgeWorkspace() {
     setEdges(es => es.filter(e => !e.selected && !removedIds.has(e.source) && !removedIds.has(e.target)));
   }
 
-  function propagateImpact(startNodeId: string, currentEdges: Edge[]) {
+  function propagateImpact(startNodeId: string, currentEdges: Edge[], sourceDelta?: number) {
     const MAX_PROPAGATION_DEPTH = 4;
     const DAMPING_FACTOR = 0.5;
     const flashedIds: string[] = [];
@@ -646,6 +644,9 @@ export default function ForgeWorkspace() {
           if (rel === "supports")         baseDelta =  srcScore * 0.08;
           else if (rel === "cites")       baseDelta =  5;
           else if (rel === "contradicts") baseDelta = -10;
+          if (sourceDelta !== undefined) {
+            baseDelta = Math.abs(baseDelta || sourceDelta) * Math.sign(sourceDelta) * (rel === "contradicts" ? -1 : 1);
+          }
           const delta = Math.round(baseDelta * Math.pow(DAMPING_FACTOR, nextDepth - 1));
           if (delta !== 0) {
             updated[ti] = {
@@ -1387,65 +1388,25 @@ export default function ForgeWorkspace() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, edges]);
 
-  // ─── Score-change impact flash (visual-only — score scrubber & agent updates) ─
+  // ─── Score scrubber → connected-node impact propagation ─────────────────────
 
   useEffect(() => {
-    const prevScores = prevNodeScoresRef.current;
-    const nextScores = new Map<string, number>();
-    const changedNodeIds: string[] = [];
-
-    for (const n of nodes) {
-      const score = Number((n.data as Record<string, unknown>).impact_score ?? 0);
-      nextScores.set(n.id, score);
-      const prev = prevScores.get(n.id);
-      if (prev !== undefined && prev !== score) changedNodeIds.push(n.id);
+    function handler(event: Event) {
+      const { nodeId, delta } = (event as CustomEvent<{ nodeId: string; delta: number }>).detail;
+      const incidentEdges = edges
+        .filter(edge => edge.source === nodeId || edge.target === nodeId)
+        .map(edge => edge.source === nodeId ? edge : {
+          ...edge,
+          source: nodeId,
+          target: edge.source,
+        });
+      if (incidentEdges.length === 0) return;
+      window.setTimeout(() => propagateImpact(nodeId, incidentEdges, delta), 80);
     }
-    prevNodeScoresRef.current = nextScores;
-    if (changedNodeIds.length === 0) return;
-
-    // First-degree neighbours of all changed nodes
-    const changedSet  = new Set(changedNodeIds);
-    const neighborIds = new Set<string>();
-    for (const e of edges) {
-      if (changedSet.has(e.source) && !changedSet.has(e.target)) neighborIds.add(e.target);
-      if (changedSet.has(e.target) && !changedSet.has(e.source)) neighborIds.add(e.source);
-    }
-    if (neighborIds.size === 0) return;
-
-    // Average delta → flash direction
-    const totalDelta = changedNodeIds.reduce((sum, id) => {
-      const cur  = nextScores.get(id) ?? 0;
-      const prev = prevScores.get(id) ?? cur;
-      return sum + (cur - prev);
-    }, 0);
-    const flash: "positive" | "negative" = totalDelta >= 0 ? "positive" : "negative";
-    const ids = [...neighborIds];
-
-    // Cancel existing timers for these nodes (avoid double-flash on rapid edits)
-    for (const id of ids) {
-      const existing = flashTimersRef.current.get(id);
-      if (existing) { clearTimeout(existing); flashTimersRef.current.delete(id); }
-    }
-
-    // Visual-only flash — no impact_score mutation
-    setNodes(prev => prev.map(n => {
-      if (!neighborIds.has(n.id)) return n;
-      return { ...n, data: { ...(n.data as Record<string, unknown>), impactFlash: flash } };
-    }));
-
-    // Clear after 1.6 s
-    const tid = setTimeout(() => {
-      setNodes(prev => prev.map(n => {
-        if (!ids.includes(n.id)) return n;
-        const { impactFlash: _f, ...rest } = n.data as Record<string, unknown>;
-        return { ...n, data: rest };
-      }));
-      for (const id of ids) flashTimersRef.current.delete(id);
-    }, 1600);
-    for (const id of ids) flashTimersRef.current.set(id, tid);
-  // edges is read via closure intentionally — flash fires on score change, not edge change
+    window.addEventListener("lf-score-changed", handler);
+    return () => window.removeEventListener("lf-score-changed", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes]);
+  }, [edges]);
 
   // ─── Personal Legal Twin — fetch profile + cross-matter ───────────────────────
 

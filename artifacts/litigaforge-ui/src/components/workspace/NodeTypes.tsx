@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
 
@@ -15,26 +15,59 @@ function selectedGlow(color: string): string {
   return `0 0 0 2px ${color}cc, 0 0 28px ${color}66, 0 0 56px ${color}22`;
 }
 
-function ScoreBar({ score, color }: { score: number; color: string }) {
+function ScoreBar({ nodeId, score, color }: { nodeId: string; score: number; color: string }) {
+  const { updateNodeData } = useReactFlow();
+  const dragStartScore = useRef(score);
   const pct = Math.min(100, Math.max(0, score));
   const barColor =
     pct >= 80 ? color :
     pct >= 60 ? "#f59e0b" :
     "#ef4444";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{
-        flex: 1, height: 3, borderRadius: 3,
-        background: "rgba(255,255,255,0.07)", overflow: "hidden",
-      }}>
-        <div style={{
-          height: "100%", width: `${pct}%`,
-          background: `linear-gradient(90deg, ${barColor}88, ${barColor})`,
-          borderRadius: 3,
-          transition: "width 0.6s cubic-bezier(.4,0,.2,1)",
-          boxShadow: `0 0 6px ${barColor}66`,
-        }} />
-      </div>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 6 }}
+      onMouseDown={e => e.stopPropagation()}
+      onPointerDown={e => {
+        e.stopPropagation();
+        dragStartScore.current = pct;
+      }}
+    >
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={pct}
+        aria-label="Impact score"
+        data-testid={`forge-score-${nodeId}`}
+        onChange={e => updateNodeData(nodeId, { impact_score: Number(e.currentTarget.value) })}
+        onPointerUp={e => {
+          e.stopPropagation();
+          const delta = pct - dragStartScore.current;
+          if (delta !== 0) {
+            window.dispatchEvent(new CustomEvent("lf-score-changed", {
+              detail: { nodeId, delta },
+            }));
+          }
+          dragStartScore.current = pct;
+        }}
+        onKeyDown={() => { dragStartScore.current = pct; }}
+        onKeyUp={() => {
+          const delta = pct - dragStartScore.current;
+          if (delta !== 0) {
+            window.dispatchEvent(new CustomEvent("lf-score-changed", {
+              detail: { nodeId, delta },
+            }));
+          }
+          dragStartScore.current = pct;
+        }}
+        style={{
+          flex: 1,
+          height: 10,
+          margin: 0,
+          cursor: "ew-resize",
+          accentColor: barColor,
+        }}
+      />
       <span style={{ fontSize: 9, fontWeight: 800, color: barColor, minWidth: 20, textAlign: "right" }}>
         {pct}
       </span>
@@ -193,7 +226,7 @@ function NodeBody({ text }: { text?: string }) {
   );
 }
 
-function NodeFooter({ score, extra, color }: { score?: number; extra?: React.ReactNode; color: string }) {
+function NodeFooter({ nodeId, score, extra, color }: { nodeId: string; score?: number; extra?: React.ReactNode; color: string }) {
   return (
     <div style={{
       marginTop: 8, paddingTop: 6,
@@ -201,7 +234,7 @@ function NodeFooter({ score, extra, color }: { score?: number; extra?: React.Rea
       display: "flex", flexDirection: "column", gap: 4,
     }}>
       {extra && <div>{extra}</div>}
-      {score !== undefined && <ScoreBar score={score} color={color} />}
+      {score !== undefined && <ScoreBar nodeId={nodeId} score={score} color={color} />}
     </div>
   );
 }
@@ -242,7 +275,7 @@ export const JudgmentNode = memo(({ id, data, selected, isConnectable }: NodePro
             </div>
           )}
           <NodeBody text={String(d.summary || d.description || "")} />
-          <NodeFooter score={score} color="#14b8a6" />
+          <NodeFooter nodeId={id} score={score} color="#14b8a6" />
         </>
       )}
     </NodeShell>
@@ -273,7 +306,7 @@ export const FactNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
             </div>
           )}
           <NodeBody text={String(d.content || d.description || "")} />
-          <NodeFooter score={score} color="#60a5fa" />
+          <NodeFooter nodeId={id} score={score} color="#60a5fa" />
         </>
       )}
     </NodeShell>
@@ -299,7 +332,7 @@ export const IssueNode = memo(({ id, data, selected, isConnectable }: NodeProps)
       {!collapsed && (
         <>
           <NodeBody text={String(d.description || "")} />
-          <NodeFooter score={score} color="#c084fc" />
+          <NodeFooter nodeId={id} score={score} color="#c084fc" />
         </>
       )}
     </NodeShell>
@@ -332,7 +365,7 @@ export const ArgumentNode = memo(({ id, data, selected, isConnectable }: NodePro
       {!collapsed && (
         <>
           <NodeBody text={String(d.content || d.description || "")} />
-          <NodeFooter score={score} color="#2dd4bf" />
+          <NodeFooter nodeId={id} score={score} color="#2dd4bf" />
         </>
       )}
     </NodeShell>
@@ -369,7 +402,7 @@ export const RiskNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
       {!collapsed && (
         <>
           <NodeBody text={String(d.description || "")} />
-          <NodeFooter score={score} color={sevColor} extra={
+          <NodeFooter nodeId={id} score={score} color={sevColor} extra={
             d.mitigation ? (
               <div style={{ fontSize: 9, color: "#94a3b8" }}>
                 💊 {String(d.mitigation)}
@@ -408,7 +441,7 @@ export const StrategyNode = memo(({ id, data, selected, isConnectable }: NodePro
       {!collapsed && (
         <>
           <NodeBody text={String(d.description || "")} />
-          <NodeFooter score={score} color="#fbbf24" />
+          <NodeFooter nodeId={id} score={score} color="#fbbf24" />
         </>
       )}
     </NodeShell>
