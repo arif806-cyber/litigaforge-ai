@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, type RefObject } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { runLongJob } from "@/lib/api";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -172,7 +173,7 @@ function AgentCard({
 }: {
   def: AgentDef;
   state: AgentState;
-  onAskAgent: (agentId: string, question: string) => void;
+  onAskAgent: (agentId: string, question: string) => Promise<boolean>;
   onFeedback: (agentId: string, vote: "up" | "down") => void;
   onDraftCopy?: (agentId: string, templateType: string, wordCountBucket: string) => void;
   forceAskOpen?: boolean;
@@ -198,6 +199,7 @@ function AgentCard({
   const [invContact,    setInvContact]    = useState("");
   const [invAmount,     setInvAmount]     = useState("");
   const [invMode,       setInvMode]       = useState("UPI");
+  const [feeLoading,     setFeeLoading]    = useState(false);
 
   // When forceAskOpen becomes true, open the inline ask UI
   useEffect(() => {
@@ -216,11 +218,24 @@ function AgentCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDone, def.id]);
 
-  function submitAsk() {
+  useEffect(() => {
+    if (!invoiceOpen || !sessionId || invAmount || feeLoading) return;
+    setFeeLoading(true);
+    runLongJob<{ suggested_amount?: number }>(
+      `/workspace/sessions/${sessionId}/suggest-fee`,
+      { method: "POST", body: { case_description: caseDescription ?? "", case_type: "" } },
+    )
+      .then((fee) => {
+        if (fee.suggested_amount != null) setInvAmount(String(fee.suggested_amount));
+      })
+      .catch((error) => setInvError(error instanceof Error ? error.message : "Fee suggestion failed."))
+      .finally(() => setFeeLoading(false));
+  }, [invoiceOpen, sessionId, invAmount, feeLoading, caseDescription]);
+
+  async function submitAsk() {
     const q = askText.trim();
     if (!q) return;
-    onAskAgent(def.id, q);
-    setAskText("");
+    if (await onAskAgent(def.id, q)) setAskText("");
   }
 
   async function downloadPdf() {
@@ -607,7 +622,7 @@ function AgentCard({
                 <input
                   value={askText}
                   onChange={e => setAskText(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && submitAsk()}
+                  onKeyDown={e => { if (e.key === "Enter") void submitAsk(); }}
                   placeholder="Ask anything about this analysis…"
                   style={{
                     flex: 1, background: "rgba(255,255,255,0.05)",
@@ -618,7 +633,7 @@ function AgentCard({
                   }}
                 />
                 <button
-                  onClick={submitAsk}
+                  onClick={() => { void submitAsk(); }}
                   disabled={!askText.trim() || state.askStreaming}
                   style={{
                     padding: "6px 10px", borderRadius: 7, border: "none",
@@ -686,7 +701,7 @@ function AgentCard({
                       type={type}
                       value={val}
                       onChange={e => setter(e.target.value)}
-                      placeholder={ph}
+                      placeholder={label === "Amount (Rs.)" && feeLoading ? "Suggesting fee…" : ph}
                       style={{
                         background: "rgba(255,255,255,0.05)",
                         border: "1px solid rgba(234,179,8,0.2)",
@@ -844,7 +859,7 @@ interface AgentPanelProps {
   caseDescription:        string;
   onCaseDescriptionChange:(val: string) => void;
   collabFeed:             CollabEvent[];
-  onAskAgent:             (agentId: string, question: string) => void;
+  onAskAgent:             (agentId: string, question: string) => Promise<boolean>;
   onFeedback:             (agentId: string, vote: "up" | "down") => void;
   onDraftCopy?:           (agentId: string, templateType: string, wordCountBucket: string) => void;
   synthesisScore?:        number;

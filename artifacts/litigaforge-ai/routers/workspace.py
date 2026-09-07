@@ -35,6 +35,7 @@ from database import get_pool
 from llm import legal_llm
 from llm.config import LEGAL_SYSTEM_PROMPT as _LEGAL_SYSTEM_PROMPT
 from case_law_search import search_case_law
+from jobs import collect_sse, enqueue_job
 
 logger = logging.getLogger("litigaforge.workspace")
 router = APIRouter(tags=["workspace"])
@@ -379,7 +380,7 @@ async def search_judgments(
 
 # ─── Indian Kanoon — Smart Search (SSE) ───────────────────────────────────────
 
-@router.post("/workspace/sessions/{session_id}/smart-search")
+@router.post("/workspace/sessions/{session_id}/smart-search", status_code=202)
 async def workspace_smart_search(
     session_id: int, body: SmartSearchBody, request: Request, user=Depends(require_ai_user)
 ):
@@ -480,11 +481,7 @@ async def workspace_smart_search(
 
         yield sse({"type": "ss_complete", "nodes": final, "total": len(final)})
 
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return await enqueue_job(user["id"], lambda: collect_sse(generate()))
 
 
 # ─── Agent Registry ────────────────────────────────────────────────────────────
@@ -1015,7 +1012,7 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
     })
 
 
-@router.post("/workspace/sessions/{session_id}/analyze")
+@router.post("/workspace/sessions/{session_id}/analyze", status_code=202)
 async def analyze_session(
     session_id: int, body: AnalyzeBody, request: Request, user=Depends(require_ai_user)
 ):
@@ -1100,16 +1097,12 @@ async def analyze_session(
         finally:
             yield _sse({"type": "complete"})
 
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
-    )
+    return await enqueue_job(user["id"], lambda: collect_sse(generate()))
 
 
 # ─── Direct Agent Ask (SSE) ────────────────────────────────────────────────────
 
-@router.post("/workspace/sessions/{session_id}/agent/{agent_id}/ask")
+@router.post("/workspace/sessions/{session_id}/agent/{agent_id}/ask", status_code=202)
 async def ask_agent(
     session_id: int,
     agent_id: str,
@@ -1161,11 +1154,7 @@ async def ask_agent(
 
         yield sse({"type": "done", "agent": agent_id})
 
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return await enqueue_job(user["id"], lambda: collect_sse(generate()))
 
 
 # ─── Proactive Intelligence ───────────────────────────────────────────────────
@@ -1192,8 +1181,7 @@ _INSIGHT_FALLBACKS = [
 ]
 
 
-@router.post("/workspace/sessions/{session_id}/insights")
-async def get_proactive_insights(
+async def _get_proactive_insights_work(
     session_id: int, body: InsightsBody, request: Request, user=Depends(require_ai_user)
 ):
     """Generate proactive AI suggestions based on current canvas state."""
@@ -1318,6 +1306,16 @@ async def get_proactive_insights(
         return {"suggestions": _INSIGHT_FALLBACKS}
 
 
+@router.post("/workspace/sessions/{session_id}/insights", status_code=202)
+async def get_proactive_insights(
+    session_id: int, body: InsightsBody, request: Request, user=Depends(require_ai_user)
+):
+    return await enqueue_job(
+        user["id"],
+        lambda: _get_proactive_insights_work(session_id, body, request, user),
+    )
+
+
 # ─── What-If Simulation (SSE) ─────────────────────────────────────────────────
 
 class SimulateBody(BaseModel):
@@ -1326,7 +1324,7 @@ class SimulateBody(BaseModel):
     nodes: list[dict] = Field(default_factory=list)
 
 
-@router.post("/workspace/sessions/{session_id}/simulate")
+@router.post("/workspace/sessions/{session_id}/simulate", status_code=202)
 async def simulate_what_if(
     session_id: int, body: SimulateBody, request: Request, user=Depends(require_ai_user)
 ):
@@ -1473,11 +1471,7 @@ async def simulate_what_if(
         yield sse({"type": "sim_complete"})
         yield sse({"type": "sim_end"})
 
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return await enqueue_job(user["id"], lambda: collect_sse(generate()))
 
 
 # ─── Agent Feedback ───────────────────────────────────────────────────────────
@@ -1890,8 +1884,7 @@ async def delete_folder_file(
 
 # ─── AI Fee Suggestion ────────────────────────────────────────────────────────
 
-@router.post("/workspace/sessions/{session_id}/suggest-fee")
-async def suggest_fee(
+async def _suggest_fee_work(
     session_id: int,
     body: SuggestFeeBody,
     request: Request,
@@ -1977,6 +1970,18 @@ async def suggest_fee(
         result["suggested_amount"] = float(fb[2])
 
     return result
+
+
+@router.post("/workspace/sessions/{session_id}/suggest-fee", status_code=202)
+async def suggest_fee(
+    session_id: int,
+    body: SuggestFeeBody,
+    request: Request,
+    user=Depends(require_ai_user),
+):
+    return await enqueue_job(
+        user["id"], lambda: _suggest_fee_work(session_id, body, request, user)
+    )
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

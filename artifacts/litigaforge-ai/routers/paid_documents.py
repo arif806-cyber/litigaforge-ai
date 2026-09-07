@@ -20,6 +20,7 @@ would be resolved against slowapi's globals (where our Pydantic request models
 don't exist), and FastAPI would mis-bind request bodies as query params.
 """
 import json
+import asyncio
 import logging
 import os
 import re
@@ -37,6 +38,7 @@ from auth import require_ai_user
 from ai_safety import safe_ai_output
 from database import execute, fetchrow
 from rate_limit import limiter
+from jobs import enqueue_job
 import payments_mor
 
 logger = logging.getLogger("litigaforge.paid_documents")
@@ -265,9 +267,7 @@ async def get_template() -> Dict[str, Any]:
     }
 
 
-@router.post("/generate")
-@limiter.limit("10/minute")
-async def generate(
+async def _generate_work(
     req: GenerateRequest,
     request: Request,
     current_user: dict = Depends(require_ai_user),
@@ -301,7 +301,7 @@ async def generate(
     if not EMAIL_RE.match(str(f.get("sender_email", "")).strip()):
         raise HTTPException(status_code=422, detail="A valid sender email is required.")
 
-    full_text = _generate_letter(_build_prompt(f))
+    full_text = await asyncio.to_thread(_generate_letter, _build_prompt(f))
     if not full_text or len(full_text.split()) < 60:
         raise HTTPException(
             status_code=503,
@@ -330,6 +330,18 @@ async def generate(
         "configured": payments_mor.is_configured(),
         "demo_available": _demo_available(),
     }
+
+
+@router.post("/generate", status_code=202)
+@limiter.limit("10/minute")
+async def generate(
+    req: GenerateRequest,
+    request: Request,
+    current_user: dict = Depends(require_ai_user),
+) -> Dict[str, Any]:
+    return await enqueue_job(
+        current_user["id"], lambda: _generate_work(req, request, current_user)
+    )
 
 
 @router.post("/checkout")

@@ -23,7 +23,7 @@ import { NoSessionWelcome, EmptyCanvasGuide } from "@/components/workspace/Forge
 import { ToastStack, type ForgeToastItem } from "@/components/workspace/ForgeToast";
 import { layoutWithDagre } from "@/components/workspace/canvasLayout";
 import ConnectionHintsTray, { type ConnectionHint } from "@/components/workspace/ConnectionHintsTray";
-import { _tryRefresh } from "@/lib/api";
+import { _tryRefresh, runLongJob } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,25 +80,20 @@ async function api(path: string, opts: RequestInit = {}) {
   return res;
 }
 
-// fetch() streams cannot be replayed after their body has started, but an
-// expired cookie is detectable before that point. Retry exactly once on an
-// initial 401, then leave provider/network interruptions to the normal UI.
+// Keep the existing event rendering pipeline while long AI operations run as
+// queued jobs. Workers return the former SSE events as an array (or an SSE
+// string); convert that completed result into a local response stream.
 async function workspaceStream(path: string, payload: object): Promise<Response> {
-  const init: RequestInit = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  };
-  let res = await fetch(`${BASE}${path}`, init);
-  if (res.status === 401 && await _tryRefresh()) {
-    res = await fetch(`${BASE}${path}`, init);
+  const result = await runLongJob<unknown>(path, { method: "POST", body: payload });
+  let body: string;
+  if (typeof result === "string") {
+    body = result.includes("data: ") ? result : `data: ${result}\n\n`;
+  } else {
+    const root = result as { events?: unknown[] } | null;
+    const events = Array.isArray(result) ? result : Array.isArray(root?.events) ? root.events : [result];
+    body = events.map(event => `data: ${JSON.stringify(event)}\n\n`).join("");
   }
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("Session expired — please sign in again.");
-  }
-  return res;
+  return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
 }
 
 // ─── Smart node placement — avoids stacking on existing nodes ─────────────────
@@ -810,6 +805,9 @@ export default function ForgeWorkspace() {
 
   const runAnalysis = useCallback(async () => {
     if (!sessionId || isAnalyzing) return;
+    const previousAgentStates = agentStates;
+    const previousCollabFeed = collabFeed;
+    const previousSynthesisScore = synthesisScore;
     setIsAnalyzing(true);
     setAgentStates(makeDefaultAgentStates());
     setCollabFeed([]);
@@ -942,11 +940,14 @@ export default function ForgeWorkspace() {
         detail: localSynthesisScore !== null ? `Consensus score: ${localSynthesisScore}/100` : "Canvas nodes updated.",
         duration: 5000,
       });
-    } catch {
+    } catch (error) {
+      setAgentStates(previousAgentStates);
+      setCollabFeed(previousCollabFeed);
+      setSynthesisScore(previousSynthesisScore);
       addToast({
         type: "error",
-        message: "Analysis stream interrupted",
-        detail: "LLM provider may be busy. Wait a moment and try again.",
+        message: "Analysis interrupted",
+        detail: error instanceof Error ? error.message : "This is taking longer than usual — tap Retry",
         duration: 7000,
       });
     } finally {
@@ -960,6 +961,7 @@ export default function ForgeWorkspace() {
 
   const runSimulation = useCallback(async (assumption: string) => {
     if (!sessionId || !assumption.trim() || simState.phase === "running") return;
+    const previousSimState = simState;
     setSimState({ phase: "running", scenario: assumption, before: null, after: null, deltas: [], analysis: "", agents: [] });
     try {
       const res = await workspaceStream(
@@ -1034,8 +1036,13 @@ export default function ForgeWorkspace() {
         ? `Score ${localScoreChange >= 0 ? "+" : ""}${localScoreChange.toFixed(0)} pts — AI insights refresh shortly.`
         : "Canvas updated. Check the Simulation tab.";
       addToast({ type: "success", message: "⚡ Simulation complete", detail: changeStr, duration: 5000 });
-    } catch {
-      setSimState(p => ({ ...p, phase: "complete" }));
+    } catch (error) {
+      setSimState(previousSimState);
+      addToast({
+        type: "error",
+        message: "Simulation interrupted",
+        detail: error instanceof Error ? error.message : "This is taking longer than usual — tap Retry",
+      });
     }
     // addToast intentionally excluded from deps — follows existing pattern
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1071,11 +1078,10 @@ export default function ForgeWorkspace() {
     if (!sessionId || isLoadingInsights) return;
     setIsLoadingInsights(true);
     try {
-      const res = await api(`/workspace/sessions/${sessionId}/insights`, {
+      const data = await runLongJob<{ suggestions: Suggestion[] }>(`/workspace/sessions/${sessionId}/insights`, {
         method: "POST",
-        body: JSON.stringify({ case_description: caseDescription, nodes, context: ctx }),
+        body: { case_description: caseDescription, nodes, context: ctx },
       });
-      const data = await res.json() as { suggestions: Suggestion[] };
       const apiSuggestions = data.suggestions ?? [];
 
       // Inject cross-matter connections as cross_matter suggestions (top 2)
@@ -1160,8 +1166,9 @@ export default function ForgeWorkspace() {
 
   // ─── Direct agent Q&A (SSE) ───────────────────────────────────────────────────
 
-  const onAskAgent = useCallback(async (agentId: string, question: string) => {
-    if (!sessionId) return;
+  const onAskAgent = useCallback(async (agentId: string, question: string): Promise<boolean> => {
+    if (!sessionId) return false;
+    const previous = agentStates[agentId];
     setAgentStates(prev => ({
       ...prev,
       [agentId]: {
@@ -1172,12 +1179,18 @@ export default function ForgeWorkspace() {
       },
     }));
     try {
-      const res = await fetch(`${BASE}/workspace/sessions/${sessionId}/agent/${agentId}/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ question, case_description: caseDescription }),
-      });
+      const result = await runLongJob<unknown>(
+        `/workspace/sessions/${sessionId}/agent/${agentId}/ask`,
+        { method: "POST", body: { question, case_description: caseDescription } },
+      );
+      const root = result as { events?: unknown[]; reply?: string } | null;
+      const events = Array.isArray(result) ? result : Array.isArray(root?.events)
+        ? root.events
+        : root?.reply ? [{ type: "token", token: root.reply }] : [result];
+      const res = new Response(
+        events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(""),
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      );
       if (!res.ok || !res.body) throw new Error("Stream failed");
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -1211,18 +1224,18 @@ export default function ForgeWorkspace() {
       setAgentStates(prev => ({
         ...prev,
         [agentId]: {
-          ...(prev[agentId] ?? { status: "done", text: "" }),
-          askResponse: prev[agentId]?.askResponse || "⚠️ Request failed — please retry.",
+          ...(previous ?? prev[agentId] ?? { status: "done", text: "" }),
           askStreaming: false,
         },
       }));
-      return;
+      return false;
     }
     setAgentStates(prev => ({
       ...prev,
       [agentId]: { ...(prev[agentId] ?? { status: "done", text: "" }), askStreaming: false },
     }));
-  }, [sessionId, caseDescription]);
+    return true;
+  }, [sessionId, caseDescription, agentStates]);
 
   // Step 5 helper: detect drafting-agent template from output text (mirrors SECTION_KEYS["drafting"])
   const _detectDraftTemplate = (text: string): string => {

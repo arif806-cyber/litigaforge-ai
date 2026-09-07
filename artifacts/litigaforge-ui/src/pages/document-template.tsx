@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, runLongJob } from "@/lib/api";
 import { useParams, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { SEOHelmet } from "@/components/SEOHelmet";
@@ -43,7 +43,14 @@ interface TemplateDetail {
 export default function DocumentTemplatePage() {
   const { slug } = useParams();
   const { activeCode } = useCountry();
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const storageKey = `litigaforge:free-document:${slug || "unknown"}:form`;
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(fieldValues));
+  }, [fieldValues, storageKey]);
+
   const [generated, setGenerated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -54,9 +61,9 @@ export default function DocumentTemplatePage() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => apiFetch("/documents/free/generate", {
+    mutationFn: () => runLongJob<{ document_text: string }>("/documents/free/generate", {
       method: "POST",
-      body: JSON.stringify({ slug, fields: fieldValues, country: activeCode }),
+      body: { slug, fields: fieldValues, country: activeCode },
     }),
     onSuccess: (data) => setGenerated(data.document_text),
   });

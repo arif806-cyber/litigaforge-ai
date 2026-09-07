@@ -415,7 +415,7 @@ export default function Subscription() {
                     )}
                   >
                     {isUpgrading ? (
-                      <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Processing\u2026</>
+                      <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Processing…</>
                     ) : isCurrent ? (
                       "Your Current Plan"
                     ) : plan.price_inr === 0 ? (

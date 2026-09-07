@@ -437,6 +437,24 @@ async def lifespan(app: FastAPI):
             )
         """)
         await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_jobs (
+                id UUID PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                status TEXT NOT NULL DEFAULT 'queued'
+                    CHECK (status IN ('queued','running','completed','failed')),
+                result JSONB,
+                error TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                started_at TIMESTAMPTZ,
+                completed_at TIMESTAMPTZ,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ai_jobs_user_created "
+            "ON ai_jobs(user_id, created_at DESC)"
+        )
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS lawyers (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -1697,6 +1715,7 @@ from routers import (
     court_intelligence_router, mcp_router,
 )
 from country_router import router as country_router
+from jobs import router as jobs_router
 
 # ForgeOS router is imported ONLY when FORGEOS_ENABLED is set — keeps the
 # subsystem fully inert (no import, no routes) when disabled/unset.
@@ -1732,6 +1751,7 @@ app.include_router(presence_router,         prefix=BASE_PATH)
 app.include_router(cnr_router,              prefix=BASE_PATH)
 app.include_router(court_intelligence_router, prefix=BASE_PATH)
 app.include_router(mcp_router,              prefix=BASE_PATH)
+app.include_router(jobs_router,             prefix=BASE_PATH)
 if forgeos_router is not None:
     app.include_router(forgeos_router, prefix=BASE_PATH)
 
@@ -1920,4 +1940,5 @@ if __name__ == "__main__":
         port=port,
         root_path=BASE_PATH,
         reload=os.getenv("RELOAD", "false").lower() == "true",
+        timeout_keep_alive=120,
     )

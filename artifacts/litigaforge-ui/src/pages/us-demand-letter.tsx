@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, runLongJob } from "@/lib/api";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { AdSlot } from "@/components/AdSlot";
@@ -41,7 +41,9 @@ function getReturnUrl() {
 
 export default function UsDemandLetter() {
   const [meta, setMeta] = useState<TemplateMeta | null>(null);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem("litigaforge:paid-demand-letter:form") || "{}"); } catch { return {}; }
+  });
   const [phase, setPhase] = useState<Phase>("form");
   const [docId, setDocId] = useState<string | null>(null);
   const [preview, setPreview] = useState<string>("");
@@ -51,6 +53,10 @@ export default function UsDemandLetter() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("litigaforge:paid-demand-letter:form", JSON.stringify(values));
+  }, [values]);
 
   // Load template (fields + price + payment availability)
   useEffect(() => {
@@ -116,9 +122,11 @@ export default function UsDemandLetter() {
     setError("");
     setGenerating(true);
     try {
-      const d = await apiFetch("/documents/paid/generate", {
+      const d = await runLongJob<{
+        doc_id: string; preview_text: string; configured: boolean; demo_available: boolean; price_usd: string;
+      }>("/documents/paid/generate", {
         method: "POST",
-        body: JSON.stringify({ fields: values, email: values.sender_email || "" }),
+        body: { fields: values, email: values.sender_email || "" },
       });
       setDocId(d.doc_id);
       setPreview(d.preview_text);

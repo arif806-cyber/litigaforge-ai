@@ -2,12 +2,14 @@
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
+import asyncio
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai_brain import _call_claude, _call_openai, _call_gemini, get_active_providers
 from ai_safety import safe_ai_output
 from jurisdiction import get_config, localize_currency, normalize_code
 from auth import require_ai_user
+from jobs import enqueue_job
 
 router = APIRouter(prefix="/documents/free", tags=["Free Documents"])
 
@@ -597,8 +599,7 @@ async def get_template(slug: str, country: str = "IN") -> Dict[str, Any]:
     raise HTTPException(404, "Template not found")
 
 
-@router.post("/generate")
-async def generate_document(
+async def _generate_document_work(
     req: GenerateRequest,
     request: Request,
     current_user: dict = Depends(require_ai_user),
@@ -637,31 +638,22 @@ async def generate_document(
     # Cascade: Claude → GPT-5 → Gemini → template fallback
     document_text = None
     try:
-        document_text = _call_claude(
-            system=sys_msg,
-            user=prompt,
-            temperature=0.3,
-            max_tokens=8000,
+        document_text = await asyncio.to_thread(
+            _call_claude, system=sys_msg, user=prompt, temperature=0.3, max_tokens=8000
         )
     except Exception:
         pass
     if not document_text:
         try:
-            document_text = _call_openai(
-                system=sys_msg,
-                user=prompt,
-                temperature=0.3,
-                max_tokens=8000,
+            document_text = await asyncio.to_thread(
+                _call_openai, system=sys_msg, user=prompt, temperature=0.3, max_tokens=8000
             )
         except Exception:
             pass
     if not document_text:
         try:
-            document_text = _call_gemini(
-                system=sys_msg,
-                user=prompt,
-                temperature=0.3,
-                max_tokens=8192,
+            document_text = await asyncio.to_thread(
+                _call_gemini, system=sys_msg, user=prompt, temperature=0.3, max_tokens=8192
             )
         except Exception:
             pass
@@ -685,3 +677,15 @@ Generated from your inputs. Please review and customize with a lawyer.
         "word_count": len(document_text.split()),
         "fields_used": list(req.fields.keys()),
     }
+
+
+@router.post("/generate", status_code=202)
+async def generate_document(
+    req: GenerateRequest,
+    request: Request,
+    current_user: dict = Depends(require_ai_user),
+) -> Dict[str, Any]:
+    return await enqueue_job(
+        current_user["id"],
+        lambda: _generate_document_work(req, request, current_user),
+    )

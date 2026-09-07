@@ -122,22 +122,22 @@ async def test_case_overview_remains_available_when_matching_is_off(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_analyze_emits_start_before_database_work():
+async def test_analyze_returns_job_before_generation_work():
     from routers.workspace import AnalyzeBody, analyze_session
 
     with patch(
-        "routers.workspace.get_pool",
-        AsyncMock(side_effect=AssertionError("database touched before first SSE frame")),
-    ):
+        "routers.workspace.enqueue_job",
+        AsyncMock(return_value={"job_id": "qa-job", "status": "queued"}),
+    ) as enqueue:
         response = await analyze_session(
             12,
             AnalyzeBody(case_description="MACT Hyderabad", context=""),
             None,
             {"id": 112},
         )
-        first = await anext(response.body_iterator)
 
-    assert '"type": "start"' in first
+    assert response == {"job_id": "qa-job", "status": "queued"}
+    enqueue.assert_awaited_once()
 
 
 @pytest.mark.asyncio

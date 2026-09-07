@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { runLongJob } from "@/lib/api";
 import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown, Upload, FileText, X, FileCheck } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
@@ -128,9 +128,9 @@ function RiskScoreBadge({ score }: { score: number }) {
 export default function Review() {
   const { activeCode, activeConfig } = useCountry();
   const copy = REVIEW_COPY[activeCode.toUpperCase()] ?? REVIEW_COPY.IN;
-  const [inputMode, setInputMode] = useState<"paste" | "upload">("paste");
-  const [docText, setDocText] = useState("");
-  const [docType, setDocType] = useState("contract");
+  const [inputMode, setInputMode] = useState<"paste" | "upload">(() => localStorage.getItem("litigaforge:analyzer:mode") === "upload" ? "upload" : "paste");
+  const [docText, setDocText] = useState(() => localStorage.getItem("litigaforge:analyzer:text") || "");
+  const [docType, setDocType] = useState(() => localStorage.getItem("litigaforge:analyzer:type") || "contract");
   const [docTypeOpen, setDocTypeOpen] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [clarifyOpen, setClarifyOpen] = useState(false);
@@ -141,10 +141,16 @@ export default function Review() {
 
   const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
 
+  useEffect(() => {
+    localStorage.setItem("litigaforge:analyzer:text", docText);
+    localStorage.setItem("litigaforge:analyzer:type", docType);
+    localStorage.setItem("litigaforge:analyzer:mode", inputMode);
+  }, [docText, docType, inputMode]);
+
   const analyzeText = useMutation({
-    mutationFn: (context: string) => apiFetch("/document/analyze", {
+    mutationFn: (context: string) => runLongJob("/document/analyze", {
       method: "POST",
-      body: JSON.stringify({ document_text: docText, document_type: docType, country: activeCode, context }),
+      body: { document_text: docText, document_type: docType, country: activeCode, context },
     }),
     onSuccess: (data) => setResult(normalizeAnalysis(data)),
   });
@@ -157,27 +163,18 @@ export default function Review() {
       form.append("document_type", docType);
       form.append("country", activeCode);
       form.append("context", context);
-      const res = await fetch("/litigaforge/document/analyze-file", {
+      return runLongJob("/document/analyze-file", {
         method: "POST",
         body: form,
       });
-      if (!res.ok) {
-        const text = await res.text();
-        let msg = text;
-        try { msg = JSON.parse(text).detail ?? text; } catch {}
-        throw new Error(msg);
-      }
-      return res.json();
     },
     onSuccess: (data) => {
       setResult(normalizeAnalysis(data));
-      setUploadedFile(null);
     },
   });
 
   const runAnalyze = (extraDetails: string) => {
     setClarifyOpen(false);
-    setResult(null);
     if (inputMode === "upload" && uploadedFile) {
       analyzeFile.mutate(extraDetails);
     } else {
@@ -586,6 +583,7 @@ export default function Review() {
         onProceed={runAnalyze}
         onClose={() => setClarifyOpen(false)}
         proceedLabel="Analyse Document"
+        storageKey="litigaforge:analyzer:context"
       />
     </PageShell>
   );

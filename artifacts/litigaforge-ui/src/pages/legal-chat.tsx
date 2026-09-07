@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, runLongJob } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
 import { cn } from "@/lib/utils";
@@ -67,29 +67,30 @@ export default function LegalChat() {
     return parts.length ? "Additional details provided by the user:\n- " + parts.join("\n- ") : "";
   };
 
-  const callAI = async (message: string, context: string) => {
+  const callAI = async (message: string, context: string): Promise<boolean> => {
     setIsTyping(true);
     try {
-      const data = await apiFetch("/ai-legal-chat", {
+      const data = await runLongJob<{ reply?: string }>("/ai-legal-chat", {
         method: "POST",
-        body: JSON.stringify({ message, context, country: activeCode }),
+        body: { message, context, country: activeCode },
       });
       const aiMsg: Message = { id: Date.now() + 1, role: "ai", content: data.reply || "Sorry, I could not generate a response." };
       setMessages((prev) => [...prev, aiMsg]);
+      return true;
     } catch (err: any) {
       const detail = err?.message || "";
       const errMsg: Message = { id: Date.now() + 1, role: "ai", content: detail || "I apologise, but I am unable to respond right now. Please try again later." };
       setMessages((prev) => [...prev, errMsg]);
+      return false;
     } finally {
       setIsTyping(false);
     }
   };
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, clearInputOnSuccess = false) => {
     if (!text.trim() || isTyping) return;
     const userMsg: Message = { id: Date.now(), role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
 
     const formDetails = composeDetails();
 
@@ -98,11 +99,13 @@ export default function LegalChat() {
       const original = pendingQ;
       setPendingQ(null);
       if (text.trim().toLowerCase() === "skip") {
-        await callAI(original, formDetails);
+        const ok = await callAI(original, formDetails);
+        if (ok && clearInputOnSuccess) setInput("");
       } else {
         const ctx = [formDetails, `User's answers to the clarifying questions: ${text.trim()}`]
           .filter(Boolean).join("\n\n");
-        await callAI(original, ctx);
+        const ok = await callAI(original, ctx);
+        if (ok && clearInputOnSuccess) setInput("");
       }
       return;
     }
@@ -124,6 +127,7 @@ export default function LegalChat() {
         };
         setMessages((prev) => [...prev, ask]);
         setPendingQ(text);
+        if (clearInputOnSuccess) setInput("");
         setIsTyping(false);
         return;
       }
@@ -131,12 +135,13 @@ export default function LegalChat() {
       // If clarify fails, fall through to a direct answer.
     }
     setIsTyping(false);
-    await callAI(text, formDetails);
+    const ok = await callAI(text, formDetails);
+    if (ok && clearInputOnSuccess) setInput("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
+    sendMessage(input, true);
   };
 
   const handleTemplate = (template: typeof TEMPLATES[0]) => {

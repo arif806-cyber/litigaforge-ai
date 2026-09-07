@@ -1,7 +1,7 @@
 const BASE = "/litigaforge";
 
 // Public endpoints that should NOT trigger a /login redirect on 401
-const PUBLIC_PATH = /^\/(ask|clarify|contact|document\/analyze|documents\/paid|judgments|lawyers|legal-aid|chains|healthz|memory|stats|cases\?|research\/profile)/;
+const PUBLIC_PATH = /^\/(ask|clarify|contact|document\/analyze|documents\/paid|documents\/free|jobs\/|judgments|lawyers|legal-aid|chains|healthz|memory|stats|cases\?|research\/profile)/;
 
 // Guard against concurrent refresh calls
 let _refreshing: Promise<boolean> | null = null;
@@ -42,12 +42,12 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
   // Cookie-only auth: browser sends httpOnly cookie automatically
   // `body` is already normalised to BodyInit (string | null | Blob | …) at this point.
   const baseInit: RequestInit = {
+    ...(init as RequestInit),
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(isPlainObject || typeof rawBody === "string" ? { "Content-Type": "application/json" } : {}),
       ...init?.headers,
     },
-    ...(init as RequestInit),
     body: body as BodyInit | null | undefined,
   };
   const res = await fetch(`${BASE}${path}`, baseInit);
@@ -57,15 +57,7 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
       // Attempt a silent token refresh and retry once
       const refreshed = await _tryRefresh();
       if (refreshed) {
-        const retryInit: RequestInit = {
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            ...init?.headers,
-          },
-          ...(init as RequestInit),
-        };
-        const retry = await fetch(`${BASE}${path}`, retryInit);
+        const retry = await fetch(`${BASE}${path}`, baseInit);
         if (!retry.ok) {
           if (retry.status === 401) {
             window.location.href = "/login";
@@ -89,6 +81,51 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
   }
 
   return res.json();
+}
+
+export type LongJobStatus<TResult> = {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  result?: TResult;
+  error?: string;
+};
+
+export const LONG_JOB_ERROR = "This is taking longer than usual — tap Retry";
+
+const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+/**
+ * Starts a queued AI operation and resolves with only its completed result.
+ * Poll errors are deliberately transient: a brief connection interruption does
+ * not discard the caller's in-progress UI or submitted values.
+ */
+export async function runLongJob<TResult>(
+  path: string,
+  init: ApiFetchInit,
+  options: { pollIntervalMs?: number; timeoutMs?: number } = {},
+): Promise<TResult> {
+  const queued = await apiFetch(path, init) as LongJobStatus<TResult>;
+  if (!queued?.job_id) throw new Error(LONG_JOB_ERROR);
+
+  const pollIntervalMs = options.pollIntervalMs ?? 2500;
+  const deadline = Date.now() + (options.timeoutMs ?? 3 * 60 * 1000);
+
+  while (Date.now() < deadline) {
+    await sleep(pollIntervalMs);
+    try {
+      const job = await apiFetch(`/jobs/${encodeURIComponent(queued.job_id)}/status`) as LongJobStatus<TResult>;
+      if (job.status === "completed") {
+        if (job.result === undefined) throw new Error(LONG_JOB_ERROR);
+        return job.result;
+      }
+      if (job.status === "failed") throw new Error(LONG_JOB_ERROR);
+    } catch (error) {
+      if (error instanceof Error && error.message === LONG_JOB_ERROR) throw error;
+      // Polling is read-only; tolerate transient network/server failures.
+    }
+  }
+
+  throw new Error(LONG_JOB_ERROR);
 }
 
 async function _extractError(res: Response): Promise<string> {

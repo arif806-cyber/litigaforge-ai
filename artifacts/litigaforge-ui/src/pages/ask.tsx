@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, runLongJob } from "@/lib/api";
 import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle, Sparkles, Bot, User, Trash2 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
@@ -158,12 +158,16 @@ export default function Ask() {
   const paramQ = params.get("q") ?? "";
   const initialCategory = categories.some((c) => c.id === paramCategory) ? paramCategory : "general";
 
-  const [question, setQuestion] = useState(paramQ);
+  const [question, setQuestion] = useState(() => paramQ || localStorage.getItem("litigaforge:ask:question") || "");
   const [category, setCategory] = useState(initialCategory);
   const [browseCategory, setBrowseCategory] = useState("all");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
+  useEffect(() => {
+    localStorage.setItem("litigaforge:ask:question", question);
+  }, [question]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -230,9 +234,10 @@ export default function Ask() {
 
   const askMutation = useMutation({
     mutationFn: (data: { question: string; category: string; country: string }) =>
-      apiFetch("/ask", { method: "POST", body: JSON.stringify(data) }),
+      runLongJob<{ answer: string; category: string }>("/ask", { method: "POST", body: data }),
     onSuccess: (data) => {
       setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: data.answer, category: data.category }]);
+      setQuestion("");
       refetch();
     },
     onError: (err) => {
@@ -288,7 +293,6 @@ export default function Ask() {
     const userText = question.trim();
     const finalQuestion = extraDetails ? `${userText}\n\n${extraDetails}` : userText;
     setMessages(prev => [...prev, { id: Date.now(), role: "user", content: userText, category }]);
-    setQuestion("");
     askMutation.mutate({ question: finalQuestion, category, country: activeCode });
   };
 

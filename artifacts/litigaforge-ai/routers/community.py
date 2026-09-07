@@ -27,6 +27,7 @@ from jurisdiction import (
     caselaw_provider, caselaw_link, normalize_code,
 )
 from llm import legal_llm
+from jobs import enqueue_job
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
@@ -87,13 +88,21 @@ def _ai(prompt: str, max_tokens: int = 2000) -> str:
 
 
 def _extract_json_object(text: str) -> dict:
-    m = re.search(r'\{.*\}', text, re.DOTALL)
-    if not m:
-        raise ValueError("No JSON object found in AI response")
-    result = json.loads(m.group())
-    if not result:
-        raise ValueError("AI returned empty JSON object")
-    return result
+    """Decode the first complete JSON object without consuming trailing prose.
+
+    Providers sometimes wrap JSON in a Markdown fence or append the mandatory
+    legal disclaimer. A greedy ``{.*}`` match turns either case into an
+    ``Extra data`` parse failure even when the JSON itself is valid.
+    """
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            result, _ = decoder.raw_decode(text[match.start():])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(result, dict) and result:
+            return result
+    raise ValueError("No complete JSON object found in AI response")
 
 
 def _extract_json_array(text: str) -> list:
@@ -433,7 +442,7 @@ class QuestionRequest(BaseModel):
     country: str = "IN"
 
 
-@router.post("/ask")
+@router.post("/ask", status_code=202)
 @limiter.limit("10/minute")
 async def ask_legal_question(req: QuestionRequest,
                              request: Request,
@@ -471,38 +480,30 @@ Provide a thorough, practical answer in this format:
 
 Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimers."""
 
-    # Portable LiteLLM layer first; fall back to the multi-provider cascade (_ai).
-    answer = ""
-    if legal_llm.is_configured():
-        try:
-            answer = await legal_llm.acomplete(
-                None, wrap_user_prompt(prompt, req.country), None, 1800
-            )
-        except Exception as e:
-            logger.warning("[/ask] LiteLLM failed; falling back to cascade: %s", e)
-            answer = ""
-    if not (answer or "").strip():
-        answer = _ai(wrap_user_prompt(prompt, req.country), 1800)
-    answer = validate_ai_response(answer)
-    answer = add_disclaimer(answer)
-    if not answer.strip():
-        answer = "Our AI advisors are temporarily busy. Please try again in a moment, or consult a local advocate directly."
-
     uid = current_user["id"] if current_user else None
     country = normalize_code(req.country)
-    row = await fetchrow(
-        "INSERT INTO legal_questions (user_id, question, category, ai_answer, country) "
-        "VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at",
-        uid, safe_question, req.category, answer, country,
-    )
-    return {
-        "id": row["id"],
-        "question": safe_question,
-        "category": req.category,
-        "country": country,
-        "answer": answer,
-        "created_at": str(row["created_at"]),
-    }
+    async def work():
+        answer = ""
+        if legal_llm.is_configured():
+            try:
+                answer = await legal_llm.acomplete(
+                    None, wrap_user_prompt(prompt, req.country), None, 1800
+                )
+            except Exception as e:
+                logger.warning("[/ask] LiteLLM failed; falling back to cascade: %s", e)
+        if not (answer or "").strip():
+            answer = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, req.country), 1800)
+        answer = add_disclaimer(validate_ai_response(answer))
+        if not answer.strip():
+            answer = "Our AI advisors are temporarily busy. Please try again in a moment, or consult a local advocate directly."
+        row = await fetchrow(
+            "INSERT INTO legal_questions (user_id, question, category, ai_answer, country) "
+            "VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at",
+            uid, safe_question, req.category, answer, country,
+        )
+        return {"id": row["id"], "question": safe_question, "category": req.category,
+                "country": country, "answer": answer, "created_at": str(row["created_at"])}
+    return await enqueue_job(uid, work)
 
 
 @router.get("/ask")
@@ -550,6 +551,16 @@ _DOC_TYPE_LABELS: dict[str, str] = {
 _CONTRACTUAL_TYPES = {"contract", "sale_deed", "rental_agreement", "mou", "power_of_attorney", "will"}
 _COURT_TYPES       = {"petition", "fir", "court_order", "written_statement", "cause_list", "vakalatnama", "affidavit"}
 _NOTICE_TYPES      = {"legal_notice"}
+
+_JSON_OUTPUT_BUDGET = """
+STRICT OUTPUT BUDGET:
+- Keep the complete JSON response under 1,200 words.
+- Return at most 5 items in each array.
+- Keep each array item under 35 words.
+- Keep compliance_notes and summary under 120 words each.
+- Finish and close the JSON object before the output limit; never start an item
+  you cannot complete.
+""".strip()
 
 
 def _doc_label(doc_type: str) -> str:
@@ -656,7 +667,7 @@ class DocumentRequest(BaseModel):
     context: str = ""
 
 
-@router.post("/document/analyze")
+@router.post("/document/analyze", status_code=202)
 @limiter.limit("10/minute")
 async def analyze_document(
     req: DocumentRequest,
@@ -686,25 +697,27 @@ async def analyze_document(
 {context_block}
 {guidance}
 
+{_JSON_OUTPUT_BUDGET}
+
 Document text to analyze:
 ---
 {safe_text[:8000]}
 ---"""
 
-    raw = _ai(wrap_user_prompt(prompt, req.country), 2500)
-    raw = validate_ai_response(raw)
-    try:
-        result = _extract_json_object(raw)
-    except Exception:
-        result = {
-            "risk_score": 50,
-            "missing_clauses": [],
-            "red_flags": ["Could not parse AI output"],
-            "recommendations": ["Please review manually or try again"],
-            "compliance_notes": "AI parsing failed — manual review recommended.",
-            "summary": "Analysis could not be completed automatically.",
-        }
-    return {"analysis": result, "document_type": req.document_type}
+    async def work():
+        raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, req.country), 2500)
+        raw = validate_ai_response(raw)
+        try:
+            result = _extract_json_object(raw)
+        except Exception as exc:
+            logger.warning(
+                "Document analysis returned unusable JSON: %s (response_chars=%d)",
+                type(exc).__name__,
+                len(raw),
+            )
+            raise ValueError("Document analysis returned an invalid response") from exc
+        return {"analysis": result, "document_type": req.document_type}
+    return await enqueue_job(current_user["id"], work)
 
 
 # ── File Upload Analyzer ──────────────────────────────────────────────────────────────────
@@ -738,10 +751,10 @@ def _extract_text_from_docx(data: bytes) -> str:
 
 
 from fastapi import File, UploadFile
+from io import BytesIO
+from starlette.datastructures import Headers
 
-@router.post("/document/analyze-file")
-@limiter.limit("10/minute")
-async def analyze_document_file(
+async def _analyze_document_file_work(
     request: Request,
     file: UploadFile = File(...),
     document_type: str = "contract",
@@ -796,10 +809,10 @@ async def analyze_document_file(
     analysis_source = "text_extraction"
 
     if content_type == "application/pdf":
-        extracted_text = _extract_text_from_pdf(data)
+        extracted_text = await asyncio.to_thread(_extract_text_from_pdf, data)
         analysis_source = "text_extraction"
     elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        extracted_text = _extract_text_from_docx(data)
+        extracted_text = await asyncio.to_thread(_extract_text_from_docx, data)
         analysis_source = "text_extraction"
     elif content_type.startswith("text/"):
         extracted_text = data.decode("utf-8", errors="replace")[:8000]
@@ -840,7 +853,7 @@ async def analyze_document_file(
             from PIL import Image
             from io import BytesIO
             img = Image.open(BytesIO(data))
-            extracted_text = pytesseract.image_to_string(img)[:8000]
+            extracted_text = (await asyncio.to_thread(pytesseract.image_to_string, img))[:8000]
         except Exception:
             extracted_text = ""
 
@@ -868,30 +881,58 @@ async def analyze_document_file(
 {context_block}
 {guidance}
 
+{_JSON_OUTPUT_BUDGET}
+
 Document text to analyze:
 ----
 {extracted_text[:8000]}
 ----"""
 
-    raw = _ai(wrap_user_prompt(prompt, country), 2500)
+    raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, country), 2500)
     raw = validate_ai_response(raw)
     try:
         result = _extract_json_object(raw)
-    except Exception:
-        result = {
-            "risk_score": 50,
-            "missing_clauses": [],
-            "red_flags": ["Could not parse AI output"],
-            "recommendations": ["Please review manually or try again"],
-            "compliance_notes": "AI parsing failed — manual review recommended.",
-            "summary": "Analysis could not be completed automatically.",
-        }
+    except Exception as exc:
+        logger.warning(
+            "File analysis returned unusable JSON: %s (response_chars=%d)",
+            type(exc).__name__,
+            len(raw),
+        )
+        raise ValueError("Document analysis returned an invalid response") from exc
     return {
         "analysis": result,
         "document_type": document_type,
         "source": analysis_source,
         "extracted_chars": len(extracted_text),
     }
+
+
+@router.post("/document/analyze-file", status_code=202)
+@limiter.limit("10/minute")
+async def analyze_document_file(
+    request: Request,
+    file: UploadFile = File(...),
+    document_type: str = "contract",
+    country: str = "IN",
+    context: str = "",
+    current_user: dict = Depends(require_ai_user),
+):
+    # UploadFile is request-scoped and is closed after this response, so copy a
+    # bounded payload before scheduling the durable job.
+    data = await file.read(10 * 1024 * 1024 + 1)
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(413, "File too large. Max 10MB.")
+    copied = UploadFile(
+        file=BytesIO(data),
+        filename=file.filename,
+        headers=Headers({"content-type": file.content_type or "application/octet-stream"}),
+    )
+    return await enqueue_job(
+        current_user["id"],
+        lambda: _analyze_document_file_work(
+            request, copied, document_type, country, context, current_user
+        ),
+    )
 
 
 # ── Judgment Finder ────────────────────────────────────────────────────────────────────

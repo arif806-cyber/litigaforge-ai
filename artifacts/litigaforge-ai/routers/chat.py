@@ -12,6 +12,7 @@ Endpoints:
   WS   /ws/chat/{id}?token=                  — real-time message push
 """
 import json
+import asyncio
 import logging
 import os
 from typing import Dict, List, Optional
@@ -29,6 +30,7 @@ from jurisdiction import (
     jurisdiction_block, advisor_descriptor, localize_currency,
     country_name, normalize_code,
 )
+from jobs import enqueue_job
 
 logger = logging.getLogger("litigaforge.chat")
 router = APIRouter(tags=["chat"])
@@ -167,7 +169,7 @@ class AIChatRequest(BaseModel):
     country: str = "IN"
 
 
-@router.post("/ai-legal-chat")
+@router.post("/ai-legal-chat", status_code=202)
 @limiter.limit("20/minute")
 async def ai_legal_chat(
     req: AIChatRequest,
@@ -196,19 +198,16 @@ Be concise and accurate, and cite the real statutes, sections, and procedures of
         user_prompt = f"Context: {safe_context}\n\nQuestion: {safe_message}"
 
     full_prompt = f"{system_prompt}\n\n{user_prompt}"
-    response = _ai(wrap_user_prompt(full_prompt), 2500)
-    response = validate_ai_response(response)
-    response = localize_currency(response, code)
-    response = add_disclaimer(response)
-
-    if req.thread_id:
-        await execute(
-            """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content)
-               VALUES ($1, NULL, 'ai', $2)""",
-            req.thread_id, response,
-        )
-
-    return {"reply": response, "disclaimer": "AI-generated guidance only. Verify with a qualified lawyer."}
+    async def work():
+        response = await asyncio.to_thread(_ai, wrap_user_prompt(full_prompt), 2500)
+        response = add_disclaimer(localize_currency(validate_ai_response(response), code))
+        if req.thread_id:
+            await execute(
+                """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content)
+                   VALUES ($1, NULL, 'ai', $2)""", req.thread_id, response,
+            )
+        return {"reply": response, "disclaimer": "AI-generated guidance only. Verify with a qualified lawyer."}
+    return await enqueue_job(current_user["id"], work)
 
 
 # ── Chat Threads & Messages ──────────────────────────────────────────────────

@@ -136,6 +136,57 @@ function SignupRedirect() {
   return <Redirect to={`/register${window.location.search}`} />;
 }
 
+function errorRoute(section: string, Component: React.ComponentType) {
+  return function StableErrorRoute() {
+    return <ErrorBoundary section={section}><Component /></ErrorBoundary>;
+  };
+}
+
+function protectedRoute(Component: React.ComponentType) {
+  return function StableProtectedRoute() {
+    return <ProtectedRoute component={Component} />;
+  };
+}
+
+function protectedErrorRoute(section: string, Component: React.ComponentType) {
+  return function StableProtectedErrorRoute() {
+    return <ErrorBoundary section={section}><ProtectedRoute component={Component} /></ErrorBoundary>;
+  };
+}
+
+const UsDemandLetterRoute = errorRoute("us-demand-letter", UsDemandLetter);
+const SettingsRoute = protectedRoute(AccountSettings);
+const ClientDashboardRoute = protectedRoute(ClientDashboard);
+const LawyerDashboardRoute = protectedRoute(LawyerDashboard);
+const SubscriptionRoute = errorRoute("subscription", Subscription);
+const AskRoute = errorRoute("ask", Ask);
+const ReviewRoute = errorRoute("review", Review);
+const JudgmentDetailRoute = errorRoute("judgment-detail", JudgmentDetail);
+const JudgmentsRoute = errorRoute("judgments", Judgments);
+const LawyerRegistrationRoute = protectedErrorRoute("lawyer-registration", LawyersPage);
+const CityLawyersRoute = errorRoute("city-lawyers", CityPage);
+const LawyersRoute = errorRoute("lawyers", LawyersPage);
+const LegalAidRoute = errorRoute("legal-aid", LegalAid);
+const PostCaseRoute = protectedErrorRoute("post-case", PostCase);
+const CaseDetailRoute = protectedErrorRoute("case-detail", CaseDetail);
+const MyCasesRoute = protectedErrorRoute("my-cases", MyCases);
+const MatchesRoute = protectedErrorRoute("matches", Matches);
+const DocumentsRoute = protectedErrorRoute("documents", DocumentsPage);
+const LegalChatRoute = protectedErrorRoute("legal-chat", LegalChat);
+const FreeDocumentsRoute = errorRoute("free-documents", FreeDocuments);
+const DocumentTemplateRoute = errorRoute("document-template", DocumentTemplatePage);
+const BlogRoute = errorRoute("blog", Blog);
+const BlogPostRoute = errorRoute("blog-post", BlogPost);
+const AdminRoute = protectedErrorRoute("admin", AdminPage);
+const ForgeOsRoute = protectedErrorRoute("forgeos", ForgeOsPage);
+const StableWorkspaceRoute = errorRoute("workspace", WorkspaceRoute);
+const MessagesRoute = protectedErrorRoute("messages", MessagesPage);
+const CnrTrackerRoute = errorRoute("cnr-tracker", CnrTracker);
+
+function ForLawyersRoute() {
+  return <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
+}
+
 // Country root (e.g. /in, /us): logged-in users go straight to their dashboard;
 // everyone else sees the country-specific public dashboard.
 function CountryRoot() {
@@ -323,8 +374,8 @@ function Router() {
         <Route path="/digest" component={Digest} />
         <Route path="/profile/:username/research" component={ProfileResearch} />
         <Route path="/refund-policy" component={RefundPolicy} />
-        <Route path="/us-demand-letter" component={() => <ErrorBoundary section="us-demand-letter"><UsDemandLetter /></ErrorBoundary>} />
-        <Route path="/settings" component={() => <ProtectedRoute component={AccountSettings} />} />
+        <Route path="/us-demand-letter" component={UsDemandLetterRoute} />
+        <Route path="/settings" component={SettingsRoute} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
         <Route path="/signup" component={SignupRedirect} />
@@ -333,34 +384,34 @@ function Router() {
         <Route>
           <Layout>
             <Switch>
-              <Route path="/client-dashboard" component={() => <ProtectedRoute component={ClientDashboard} />} />
-              <Route path="/lawyer-dashboard" component={() => <ProtectedRoute component={LawyerDashboard} />} />
-              <Route path="/subscription" component={() => <ErrorBoundary section="subscription"><Subscription /></ErrorBoundary>} />
-              <Route path="/ask"          component={() => <ErrorBoundary section="ask"><Ask /></ErrorBoundary>} />
-              <Route path="/review"       component={() => <ErrorBoundary section="review"><Review /></ErrorBoundary>} />
-              <Route path="/judgments/:court/:year/:slug" component={() => <ErrorBoundary section="judgment-detail"><JudgmentDetail /></ErrorBoundary>} />
-              <Route path="/judgments"    component={() => <ErrorBoundary section="judgments"><Judgments /></ErrorBoundary>} />
-              <Route path="/for-lawyers" component={() => <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />} />
-              <Route path="/lawyers/register" component={() => <ErrorBoundary section="lawyer-registration"><ProtectedRoute component={LawyersPage} /></ErrorBoundary>} />
-              <Route path="/lawyers/:city" component={() => <ErrorBoundary section="city-lawyers"><CityPage /></ErrorBoundary>} />
-              <Route path="/lawyers"      component={() => <ErrorBoundary section="lawyers"><LawyersPage /></ErrorBoundary>} />
-              <Route path="/legal-aid"    component={() => <ErrorBoundary section="legal-aid"><LegalAid /></ErrorBoundary>} />
-              <Route path="/post-case"    component={() => <ErrorBoundary section="post-case"><ProtectedRoute component={PostCase} /></ErrorBoundary>} />
-              <Route path="/my-cases/:id"  component={() => <ErrorBoundary section="case-detail"><ProtectedRoute component={CaseDetail} /></ErrorBoundary>} />
-              <Route path="/my-cases"     component={() => <ErrorBoundary section="my-cases"><ProtectedRoute component={MyCases} /></ErrorBoundary>} />
-              <Route path="/matches"      component={() => <ErrorBoundary section="matches"><ProtectedRoute component={Matches} /></ErrorBoundary>} />
-              <Route path="/documents"    component={() => <ErrorBoundary section="documents"><ProtectedRoute component={DocumentsPage} /></ErrorBoundary>} />
-              <Route path="/legal-chat"   component={() => <ErrorBoundary section="legal-chat"><ProtectedRoute component={LegalChat} /></ErrorBoundary>} />
-              <Route path="/free-documents" component={() => <ErrorBoundary section="free-documents"><FreeDocuments /></ErrorBoundary>} />
-              <Route path="/free-documents/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
-              <Route path="/document-template/:slug" component={() => <ErrorBoundary section="document-template"><DocumentTemplatePage /></ErrorBoundary>} />
-              <Route path="/blog"          component={() => <ErrorBoundary section="blog"><Blog /></ErrorBoundary>} />
-              <Route path="/blog/:slug"    component={() => <ErrorBoundary section="blog-post"><BlogPost /></ErrorBoundary>} />
-              <Route path="/admin"         component={() => <ErrorBoundary section="admin"><ProtectedRoute component={AdminPage} /></ErrorBoundary>} />
-              <Route path="/forgeos"      component={() => <ErrorBoundary section="forgeos"><ProtectedRoute component={ForgeOsPage} /></ErrorBoundary>} />
-               <Route path="/workspace"    component={() => <ErrorBoundary section="workspace"><WorkspaceRoute /></ErrorBoundary>} />
-              <Route path="/messages"    component={() => <ErrorBoundary section="messages"><ProtectedRoute component={MessagesPage} /></ErrorBoundary>} />
-              <Route path="/cnr-tracker" component={() => <ErrorBoundary section="cnr-tracker"><CnrTracker /></ErrorBoundary>} />
+              <Route path="/client-dashboard" component={ClientDashboardRoute} />
+              <Route path="/lawyer-dashboard" component={LawyerDashboardRoute} />
+              <Route path="/subscription" component={SubscriptionRoute} />
+              <Route path="/ask" component={AskRoute} />
+              <Route path="/review" component={ReviewRoute} />
+              <Route path="/judgments/:court/:year/:slug" component={JudgmentDetailRoute} />
+              <Route path="/judgments" component={JudgmentsRoute} />
+              <Route path="/for-lawyers" component={ForLawyersRoute} />
+              <Route path="/lawyers/register" component={LawyerRegistrationRoute} />
+              <Route path="/lawyers/:city" component={CityLawyersRoute} />
+              <Route path="/lawyers" component={LawyersRoute} />
+              <Route path="/legal-aid" component={LegalAidRoute} />
+              <Route path="/post-case" component={PostCaseRoute} />
+              <Route path="/my-cases/:id" component={CaseDetailRoute} />
+              <Route path="/my-cases" component={MyCasesRoute} />
+              <Route path="/matches" component={MatchesRoute} />
+              <Route path="/documents" component={DocumentsRoute} />
+              <Route path="/legal-chat" component={LegalChatRoute} />
+              <Route path="/free-documents" component={FreeDocumentsRoute} />
+              <Route path="/free-documents/:slug" component={DocumentTemplateRoute} />
+              <Route path="/document-template/:slug" component={DocumentTemplateRoute} />
+              <Route path="/blog" component={BlogRoute} />
+              <Route path="/blog/:slug" component={BlogPostRoute} />
+              <Route path="/admin" component={AdminRoute} />
+              <Route path="/forgeos" component={ForgeOsRoute} />
+              <Route path="/workspace" component={StableWorkspaceRoute} />
+              <Route path="/messages" component={MessagesRoute} />
+              <Route path="/cnr-tracker" component={CnrTrackerRoute} />
               <Route path="/cnr"><Redirect to="/cnr-tracker" /></Route>
               <Route component={NotFound} />
             </Switch>

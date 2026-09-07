@@ -17,6 +17,7 @@ interface ClarifyDialogProps {
   onClose: () => void;
   proceedLabel?: string;
   title?: string;
+  storageKey?: string;
 }
 
 interface ClarifyResponse {
@@ -34,7 +35,7 @@ const GENERIC_FIELDS = [
 
 export function ClarifyDialog({
   open, surface, baseText, country,
-  onProceed, onClose, proceedLabel = "Get Answer", title = "A few quick details",
+  onProceed, onClose, proceedLabel = "Get Answer", title = "A few quick details", storageKey,
 }: ClarifyDialogProps) {
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<string[]>([]);
@@ -47,8 +48,12 @@ export function ClarifyDialog({
     let cancelled = false;
     setLoading(true);
     setQuestions([]);
-    setAnswers({});
-    setGeneric({});
+    let saved: { answers?: Record<number, string>; generic?: Record<string, string> } = {};
+    if (storageKey) {
+      try { saved = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch { /* ignore */ }
+    }
+    setAnswers(saved.answers ?? {});
+    setGeneric(saved.generic ?? {});
     setDetailsOpen(false);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -75,6 +80,11 @@ export function ClarifyDialog({
     })();
     return () => { cancelled = true; controller.abort(); clearTimeout(timer); };
   }, [open, baseText, surface, country]);
+
+  useEffect(() => {
+    if (!storageKey || !open) return;
+    localStorage.setItem(storageKey, JSON.stringify({ answers, generic }));
+  }, [answers, generic, storageKey, open]);
 
   const compose = (): string => {
     const parts: string[] = [];
