@@ -7,6 +7,7 @@ Refresh token: opaque 32-byte urlsafe token, 7 days, httpOnly cookie "lf_refresh
 """
 import os
 import secrets
+import hashlib
 from datetime import datetime, timedelta
 
 import bcrypt
@@ -14,12 +15,20 @@ from fastapi import Depends, HTTPException, Request, Response
 from jose import jwt, JWTError
 
 from database import get_user_by_id, fetchrow as _fetchrow
+from rate_limit import get_client_ip
 
 TIER_LIMITS = {
     "free": 5,
     "professional": 50,
     "advocate_pro": -1,
 }
+
+AI_DAILY_LIMITS = {
+    "free": 5,
+    "professional": 50,
+    "advocate_pro": 200,
+}
+ANONYMOUS_ASK_DAILY_LIMIT = 2
 
 
 def check_tier_usage(user: dict) -> bool:
@@ -165,6 +174,61 @@ async def require_user(token: str | None = Depends(_token_dependency)) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+async def reserve_daily_ai_call(user: dict) -> dict:
+    """Atomically reserve one paid AI call for a logged-in user."""
+    tier = (user.get("subscription_tier") or "free").lower()
+    limit = AI_DAILY_LIMITS.get(tier, AI_DAILY_LIMITS["free"])
+    row = await _fetchrow(
+        """INSERT INTO ai_usage_daily (user_id, usage_date, call_count)
+           VALUES ($1, CURRENT_DATE, 1)
+           ON CONFLICT (user_id, usage_date) DO UPDATE
+             SET call_count = ai_usage_daily.call_count + 1,
+                 updated_at = NOW()
+           WHERE ai_usage_daily.call_count < $2
+           RETURNING call_count""",
+        user["id"], limit,
+    )
+    if not row:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily AI call limit reached for the {tier} plan ({limit}/day).",
+            headers={"Retry-After": "86400"},
+        )
+    return user
+
+
+async def require_ai_user(current_user: dict = Depends(require_user)) -> dict:
+    """Strict auth plus an atomic per-user daily AI-call reservation."""
+    return await reserve_daily_ai_call(current_user)
+
+
+async def require_ask_access(
+    request: Request,
+    current_user: dict | None = Depends(get_current_user),
+) -> dict | None:
+    """Meter logged-in users; allow only two anonymous /ask calls per IP/day."""
+    if current_user:
+        return await reserve_daily_ai_call(current_user)
+
+    ip_hash = hashlib.sha256(get_client_ip(request).encode("utf-8")).hexdigest()
+    row = await _fetchrow(
+        """INSERT INTO anonymous_ai_usage_daily (ip_hash, usage_date, call_count)
+           VALUES ($1, CURRENT_DATE, 1)
+           ON CONFLICT (ip_hash, usage_date) DO UPDATE
+             SET call_count = anonymous_ai_usage_daily.call_count + 1,
+                 updated_at = NOW()
+           WHERE anonymous_ai_usage_daily.call_count < $2
+           RETURNING call_count""",
+        ip_hash, ANONYMOUS_ASK_DAILY_LIMIT,
+    )
+    if not row:
+        raise HTTPException(
+            status_code=401,
+            detail="Anonymous question limit reached. Please log in to continue.",
+        )
+    return None
 
 
 def get_superuser(current_user: dict = Depends(require_user)) -> dict:

@@ -34,7 +34,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
-from auth import require_user
+from auth import require_user, reserve_daily_ai_call
 from database import (
     fetch as db_fetch,
     fetchrow as db_fetchrow,
@@ -110,6 +110,10 @@ async def require_livetrack(user: dict = Depends(require_user)) -> dict:
     if not await _check_livetrack_live(int(user["id"])):
         raise HTTPException(status_code=402, detail=_UPGRADE_DETAIL)
     return user
+
+
+async def require_livetrack_ai(user: dict = Depends(require_livetrack)) -> dict:
+    return await reserve_daily_ai_call(user)
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
@@ -323,7 +327,7 @@ async def get_events(case_id: str, user: dict = Depends(require_livetrack)):
 async def ask_about_case(
     case_id: str,
     body: AskRequest,
-    user: dict = Depends(require_livetrack),
+    user: dict = Depends(require_livetrack_ai),
 ):
     """
     RAG endpoint: answer a question grounded only in this case's embedded court orders.
@@ -433,7 +437,7 @@ async def ask_about_case(
 async def opponent_scan(
     case_id: str,
     body: OpponentScanRequest,
-    user: dict = Depends(require_livetrack),
+    user: dict = Depends(require_livetrack_ai),
 ):
     """
     Build (or rebuild) an Opponent Intelligence profile on demand.

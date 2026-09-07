@@ -10,7 +10,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
 
-from auth import get_current_user
+from auth import get_current_user, require_ai_user
 from database import fetchrow, fetch, execute, fetchval
 from logger import get_logger
 from rate_limit import limiter
@@ -315,10 +315,8 @@ def _extract_json_object(text: str) -> dict:
 async def analyze_lawyer_document(
     doc_id: int,
     request: Request,
-    current_user: Optional[dict] = Depends(get_current_user),
+    current_user: dict = Depends(require_ai_user),
 ):
-    if not current_user:
-        raise HTTPException(401, "Login required")
 
     doc = await fetchrow(
         "SELECT * FROM lawyer_documents WHERE id = $1 AND lawyer_id = $2",

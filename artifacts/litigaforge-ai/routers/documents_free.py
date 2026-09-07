@@ -1,5 +1,5 @@
 """Free Legal Document Templates — fill-in + AI generate + download."""
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 import sys, os
@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai_brain import _call_claude, _call_openai, _call_gemini, get_active_providers
 from ai_safety import safe_ai_output
 from jurisdiction import get_config, localize_currency, normalize_code
+from auth import require_ai_user
 
 router = APIRouter(prefix="/documents/free", tags=["Free Documents"])
 
@@ -597,7 +598,11 @@ async def get_template(slug: str, country: str = "IN") -> Dict[str, Any]:
 
 
 @router.post("/generate")
-async def generate_document(req: GenerateRequest, request: Request) -> Dict[str, Any]:
+async def generate_document(
+    req: GenerateRequest,
+    request: Request,
+    current_user: dict = Depends(require_ai_user),
+) -> Dict[str, Any]:
     template = None
     for t in TEMPLATES:
         if t.slug == req.slug:

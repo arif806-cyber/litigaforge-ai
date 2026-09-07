@@ -28,11 +28,12 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, urlencode, urlsplit, urlunsplit, parse_qsl
 
 import sys
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai_brain import _call_claude, _call_openai, _call_gemini
+from auth import require_ai_user
 from ai_safety import safe_ai_output
 from database import execute, fetchrow
 from rate_limit import limiter
@@ -266,7 +267,11 @@ async def get_template() -> Dict[str, Any]:
 
 @router.post("/generate")
 @limiter.limit("10/minute")
-async def generate(req: GenerateRequest, request: Request) -> Dict[str, Any]:
+async def generate(
+    req: GenerateRequest,
+    request: Request,
+    current_user: dict = Depends(require_ai_user),
+) -> Dict[str, Any]:
     f = req.fields or {}
 
     # Bound input size before we touch the AI cascade.

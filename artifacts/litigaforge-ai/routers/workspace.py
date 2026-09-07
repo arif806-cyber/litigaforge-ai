@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 import ai_brain as _ai_brain
 
-from auth import require_user
+from auth import require_user, require_ai_user
 from database import get_pool
 from llm import legal_llm
 from llm.config import LEGAL_SYSTEM_PROMPT as _LEGAL_SYSTEM_PROMPT
@@ -381,7 +381,7 @@ async def search_judgments(
 
 @router.post("/workspace/sessions/{session_id}/smart-search")
 async def workspace_smart_search(
-    session_id: int, body: SmartSearchBody, request: Request, user=Depends(require_user)
+    session_id: int, body: SmartSearchBody, request: Request, user=Depends(require_ai_user)
 ):
     """SSE streaming smart search — LLM extracts queries from canvas + ranks by authority/recency/citations."""
     pool = await get_pool()
@@ -1017,7 +1017,7 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
 
 @router.post("/workspace/sessions/{session_id}/analyze")
 async def analyze_session(
-    session_id: int, body: AnalyzeBody, request: Request, user=Depends(require_user)
+    session_id: int, body: AnalyzeBody, request: Request, user=Depends(require_ai_user)
 ):
     request_started = time.perf_counter()
     async def generate():
@@ -1115,7 +1115,7 @@ async def ask_agent(
     agent_id: str,
     body: AskAgentBody,
     request: Request,
-    user=Depends(require_user),
+    user=Depends(require_ai_user),
 ):
     """Direct question to a single agent — SSE streamed response."""
     agent = next((a for a in _AGENTS if a["id"] == agent_id), None)
@@ -1194,7 +1194,7 @@ _INSIGHT_FALLBACKS = [
 
 @router.post("/workspace/sessions/{session_id}/insights")
 async def get_proactive_insights(
-    session_id: int, body: InsightsBody, request: Request, user=Depends(require_user)
+    session_id: int, body: InsightsBody, request: Request, user=Depends(require_ai_user)
 ):
     """Generate proactive AI suggestions based on current canvas state."""
     pool = await get_pool()
@@ -1328,7 +1328,7 @@ class SimulateBody(BaseModel):
 
 @router.post("/workspace/sessions/{session_id}/simulate")
 async def simulate_what_if(
-    session_id: int, body: SimulateBody, request: Request, user=Depends(require_user)
+    session_id: int, body: SimulateBody, request: Request, user=Depends(require_ai_user)
 ):
     """SSE streaming What-If simulation with structured before/after comparison."""
     request_started = time.perf_counter()
@@ -1895,7 +1895,7 @@ async def suggest_fee(
     session_id: int,
     body: SuggestFeeBody,
     request: Request,
-    user=Depends(require_user),
+    user=Depends(require_ai_user),
 ):
     """AI-powered professional fee suggestion based on case type & Hyderabad/Telangana market rates."""
     pool = await get_pool()

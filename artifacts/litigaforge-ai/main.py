@@ -419,6 +419,24 @@ async def lifespan(app: FastAPI):
         """)
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IN'")
         await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_usage_daily (
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+                call_count INTEGER NOT NULL DEFAULT 0 CHECK (call_count >= 0),
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, usage_date)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS anonymous_ai_usage_daily (
+                ip_hash TEXT NOT NULL,
+                usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+                call_count INTEGER NOT NULL DEFAULT 0 CHECK (call_count >= 0),
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (ip_hash, usage_date)
+            )
+        """)
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS lawyers (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,

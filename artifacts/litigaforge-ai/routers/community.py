@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from auth import get_current_user, check_tier_usage
+from auth import get_current_user, require_ai_user, require_ask_access
 from rate_limit import limiter
 from database import fetchrow, fetch, execute, fetchval
 from cache import cache_get, cache_set, cache_key
@@ -122,9 +122,9 @@ class ClarifyRequest(BaseModel):
 
 
 @router.post("/clarify")
-@limiter.limit("30/minute")
+@limiter.limit("10/minute")
 async def clarify_input(req: ClarifyRequest, request: Request,
-                        current_user: Optional[dict] = Depends(get_current_user)):
+                        current_user: dict = Depends(require_ai_user)):
     """Given the user's draft input, return up to 3 short, jurisdiction-aware
     clarifying questions that would materially improve the answer. Returns an
     empty list when the input is already detailed enough."""
@@ -434,10 +434,10 @@ class QuestionRequest(BaseModel):
 
 
 @router.post("/ask")
-@limiter.limit("20/minute")
+@limiter.limit("10/minute")
 async def ask_legal_question(req: QuestionRequest,
                              request: Request,
-                             current_user: Optional[dict] = Depends(get_current_user)):
+                             current_user: Optional[dict] = Depends(require_ask_access)):
     try:
         safe_question = sanitize_text(req.question, max_length=1000, field_name="question")
     except ValueError as e:
@@ -470,11 +470,6 @@ Provide a thorough, practical answer in this format:
 (Specific situations in this matter that require in-person legal counsel)
 
 Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimers."""
-
-    # Tier enforcement
-    if current_user and not check_tier_usage(current_user):
-        limit = TIER_LIMITS.get(current_user.get("subscription_tier", "free"), 5)
-        raise HTTPException(403, f"Monthly limit reached ({limit} questions/month). Upgrade to continue.")
 
     # Portable LiteLLM layer first; fall back to the multi-provider cascade (_ai).
     answer = ""
@@ -663,7 +658,11 @@ class DocumentRequest(BaseModel):
 
 @router.post("/document/analyze")
 @limiter.limit("10/minute")
-async def analyze_document(req: DocumentRequest, request: Request):
+async def analyze_document(
+    req: DocumentRequest,
+    request: Request,
+    current_user: dict = Depends(require_ai_user),
+):
     try:
         safe_text = sanitize_text(req.document_text, max_length=8000, field_name="document_text")
     except ValueError as e:
@@ -748,6 +747,7 @@ async def analyze_document_file(
     document_type: str = "contract",
     country: str = "IN",
     context: str = "",
+    current_user: dict = Depends(require_ai_user),
 ):
     """Analyze uploaded file (PDF, DOCX, TXT, PNG, JPG). Extracts text then runs AI analysis."""
     allowed = {"application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

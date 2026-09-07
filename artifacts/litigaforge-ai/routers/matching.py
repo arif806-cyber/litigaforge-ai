@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from auth import get_current_user
+from auth import get_current_user, require_ai_user
 from rate_limit import limiter
 from database import fetchrow, fetch, execute, executemany, create_case_requirement_with_quota
 from sanitizer import sanitize_text
@@ -281,11 +281,9 @@ async def update_case_requirement(
 @router.post("/cases/requirements/{req_id}/ai-overview")
 async def case_ai_overview(
     req_id: int,
-    current_user: Optional[dict] = Depends(get_current_user),
+    current_user: dict = Depends(require_ai_user),
 ):
     """Generate an AI legal overview for a case requirement."""
-    if not current_user:
-        raise HTTPException(401, "Login required")
     case = await fetchrow(
         "SELECT * FROM case_requirements WHERE id = $1 AND user_id = $2",
         req_id, current_user["id"],
@@ -354,10 +352,8 @@ class MatchRequest(BaseModel):
 async def ai_match_lawyers(
     req: MatchRequest,
     request: Request,
-    current_user: Optional[dict] = Depends(get_current_user),
+    current_user: dict = Depends(require_ai_user),
 ):
-    if not current_user:
-        raise HTTPException(401, "Login required")
     # This direct endpoint must honor the same fail-closed switch as matching
     # invoked while creating a case. Check before loading case or lawyer data.
     if os.getenv("MATCHING_ENABLED", "false").lower() != "true":
