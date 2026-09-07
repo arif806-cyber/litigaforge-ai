@@ -63,18 +63,6 @@ export default defineConfig({
         ],
         runtimeCaching: [
           {
-            urlPattern: /\/litigaforge\//,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 3600,
-              },
-              networkTimeoutSeconds: 10,
-            },
-          },
-          {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
             handler: "StaleWhileRevalidate",
             options: {

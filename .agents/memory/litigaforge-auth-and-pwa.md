@@ -17,16 +17,24 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 # A stale VitePWA service worker masks source/build changes in the preview browser
 
-- `vite.config.ts` uses `VitePWA({ registerType: "autoUpdate", devOptions: { enabled: false }, workbox: { runtimeCaching: NetworkFirst for /litigaforge/ } })`. `devOptions.enabled:false` means the vite dev server registers NO service worker — but a service worker registered during a PRIOR production load (when the Node api-server served the built dist) persists in the browser profile and keeps serving the cached app shell + old JS. It can only auto-update when the production server hands back a fresh `sw.js`, so while `artifacts/api-server` is down it never updates and the preview shows stale behavior (e.g. an old `/auth/me` 401 that the new code no longer triggers).
+- `devOptions.enabled:false` means the Vite dev server registers NO service worker, but a worker from a prior built-app load persists in the browser profile. It updates only when the Node frontend server provides a fresh `sw.js`, so source changes can appear stale while that server is down.
 
-**Why / how to apply:** do NOT trust the in-workspace preview browser to reflect UI source changes — verify the change landed in the BUILT bundle instead (`grep` the minified `dist/public/assets/index-*.js` for the new logic), and run Lighthouse/PageSpeed in a clean/incognito profile (no prior SW). A real first-time visitor has no SW and gets fresh code immediately; returning users self-heal via `autoUpdate` + `cleanupOutdatedCaches` on the next deploy.
+**Why / how to apply:** do not trust the preview to reflect UI source changes until the production bundle is rebuilt and the Node frontend workflow restarted. Returning users self-heal through `autoUpdate`, `skipWaiting`, and `clientsClaim`.
+
+# API traffic must never use service-worker runtime caching
+
+- Never add Workbox runtime-caching rules for `/litigaforge` or `/api`. The navigation denylist for both prefixes stays required, but it solves a separate problem.
+
+**Why:** A `NetworkFirst` API rule with a timeout killed long-job status polling and could return stale job states, so completed AI results never rendered even though the backend succeeded.
+
+**How to apply:** Runtime caching is allowed for static third-party assets such as fonts only. After every PWA config change, build with the correct base path and inspect generated `sw.js` for no API cache/timeout while retaining the navigation denylist, `skipWaiting`, and `clientsClaim`.
 
 # Every backend/proxied path prefix MUST be in `navigateFallbackDenylist`
 
 - The SW's navigation fallback serves the precached React `index.html` for ALL in-scope navigations EXCEPT denylisted ones. Any backend or reverse-proxied URL that a user might open directly in the browser must be denylisted, or the SW hands back the SPA shell, the app prepends the country prefix (e.g. `/api/llm/health` → `/in/api/llm/health`) and renders its own "404 - Not Found" — even though `curl` (no SW) returns the correct JSON. The denylist must cover `/blog`, `/_astro`, `/api`, AND `/litigaforge`.
 - Symptom signature: address bar shows the URL with a `/in/` (or other country) prefix it didn't have when typed, plus the in-app 404 card. That country-prefix reappearing is the tell that the React app loaded (SW served the shell) instead of the request reaching the backend.
 
-**Why:** the runtimeCaching `NetworkFirst` rule for `/litigaforge/` only governs fetch/XHR sub-resources, NOT top-level navigations — navigations are decided solely by the navigation route + its denylist. Fix is build-time only (SW is disabled in dev, `devOptions.enabled:false`), so it needs a republish; returning users self-heal via `autoUpdate` on next app open.
+**Why:** Runtime caching governs fetch/XHR sub-resources, while top-level navigations are decided by the navigation route and its denylist. The denylist must remain even though API runtime caching is prohibited.
 
 # Admin = `is_superuser` flag; grant it on prod via a deploy-time bootstrap, not direct DB writes
 

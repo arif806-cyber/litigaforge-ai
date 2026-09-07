@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { ASK_COPY } from "@/lib/country-copy";
 import { formatDate } from "@/lib/locale";
+import { buildCountryUrl } from "@/lib/country";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
 import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 import { getAskCategories, askCategoryLabel, allCategoryLabel } from "@/data/askCategories";
@@ -55,6 +56,13 @@ interface ChatMsg {
   category?: string;
   isError?: boolean;
 }
+
+type AskSubmission = {
+  question: string;
+  category: string;
+  country: string;
+  share_anonymously: boolean;
+};
 
 function QACard({ item, country }: { item: QAItem; country?: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -165,6 +173,8 @@ export default function Ask() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
+  const [lastFailedSubmission, setLastFailedSubmission] = useState<AskSubmission | null>(null);
+  const [askError, setAskError] = useState("");
   useEffect(() => {
     localStorage.setItem("litigaforge:ask:question", question);
   }, [question]);
@@ -234,16 +244,18 @@ export default function Ask() {
     : undefined;
 
   const askMutation = useMutation({
-    mutationFn: (data: { question: string; category: string; country: string; share_anonymously: boolean }) =>
+    mutationFn: (data: AskSubmission) =>
       runLongJob<{ answer: string; category: string }>("/ask", { method: "POST", body: data }),
     onSuccess: (data) => {
       setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: data.answer, category: data.category }]);
       setQuestion("");
       setShareAnonymously(false);
+      setLastFailedSubmission(null);
+      setAskError("");
       refetch();
     },
     onError: (err) => {
-      setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: (err as Error).message || "Something went wrong. Please try again.", isError: true }]);
+      setAskError((err as Error).message || "Something went wrong — your text is saved. Tap Retry.");
     },
   });
 
@@ -295,12 +307,15 @@ export default function Ask() {
     const userText = question.trim();
     const finalQuestion = extraDetails ? `${userText}\n\n${extraDetails}` : userText;
     setMessages(prev => [...prev, { id: Date.now(), role: "user", content: userText, category }]);
-    askMutation.mutate({
+    const submission = {
       question: finalQuestion,
       category,
       country: activeCode,
       share_anonymously: shareAnonymously,
-    });
+    };
+    setLastFailedSubmission(submission);
+    setAskError("");
+    askMutation.mutate(submission);
   };
 
   const clearChat = () => setMessages([]);
@@ -359,6 +374,38 @@ export default function Ask() {
             {messages.map(msg => (
               <ChatBubble key={msg.id} msg={msg} />
             ))}
+
+            {askMutation.isError && askError && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4" role="alert">
+                <p className="text-sm font-semibold text-destructive">{askError}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!lastFailedSubmission || askMutation.isPending}
+                    onClick={() => {
+                      if (!lastFailedSubmission) return;
+                      setAskError("");
+                      askMutation.mutate(lastFailedSubmission);
+                    }}
+                    data-testid="button-retry-question"
+                  >
+                    Retry
+                  </Button>
+                  {/daily ai call limit|anonymous question limit/i.test(askError) && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => { window.location.href = buildCountryUrl(activeCode, "/subscription"); }}
+                      data-testid="button-upgrade-daily-limit"
+                    >
+                      Upgrade to Professional (50/day)
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Visible progress indicator */}
             {askMutation.isPending && (

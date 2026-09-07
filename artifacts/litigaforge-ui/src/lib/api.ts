@@ -90,7 +90,7 @@ export type LongJobStatus<TResult> = {
   error?: string;
 };
 
-export const LONG_JOB_ERROR = "This is taking longer than usual — tap Retry";
+export const LONG_JOB_ERROR = "Something went wrong — your text is saved. Tap Retry.";
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
