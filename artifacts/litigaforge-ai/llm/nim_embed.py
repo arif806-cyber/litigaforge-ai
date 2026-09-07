@@ -20,6 +20,7 @@ nv-embedqa-e5-v5 uses asymmetric embeddings: set input_type="query" for search
 queries and input_type="passage" for documents being indexed.  Cosine similarity
 between a query vector and a passage vector is the relevance score.
 """
+import json
 import logging
 import math
 import os
@@ -29,6 +30,9 @@ logger = logging.getLogger("litigaforge.nim_embed")
 
 NIM_API_KEY: Optional[str] = os.getenv("NIM_API_KEY")
 NIM_EMBED_MODEL: str = os.getenv("NIM_EMBED_MODEL", "nvidia/nv-embedqa-e5-v5")
+NIM_CANVAS_EMBED_MODEL: str = os.getenv(
+    "NIM_CANVAS_EMBED_MODEL", "nvidia/nemotron-3-embed-1b"
+)
 NIM_EMBED_BASE: str = os.getenv("NIM_EMBED_BASE", "https://integrate.api.nvidia.com/v1").rstrip("/")
 NIM_EMBED_TIMEOUT: float = float(os.getenv("NIM_EMBED_TIMEOUT", "30"))
 
@@ -64,8 +68,11 @@ def _normalize(vec: List[float]) -> List[float]:
     return [x * inv for x in vec]
 
 
-async def _call_embed(texts: List[str], input_type: str) -> Optional[List[Optional[List[float]]]]:
+async def _call_embed(
+    texts: List[str], input_type: str, model: Optional[str] = None
+) -> Optional[List[Optional[List[float]]]]:
     """Raw NIM embeddings call. input_type: 'query' or 'passage'."""
+    selected_model = model or NIM_EMBED_MODEL
     results: List[Optional[List[float]]] = [None] * len(texts)
     try:
         httpx = _http()
@@ -79,7 +86,7 @@ async def _call_embed(texts: List[str], input_type: str) -> Optional[List[Option
                         "Content-Type": "application/json",
                     },
                     json={
-                        "model": NIM_EMBED_MODEL,
+                        "model": selected_model,
                         "input": batch,
                         "input_type": input_type,
                         "encoding_format": "float",
@@ -94,7 +101,7 @@ async def _call_embed(texts: List[str], input_type: str) -> Optional[List[Option
                         results[start + idx] = _normalize(emb)
         logger.info(
             "nim.embed: embedded %d texts (type=%s model=%s)",
-            len(texts), input_type, NIM_EMBED_MODEL,
+            len(texts), input_type, selected_model,
         )
         return results
     except Exception as exc:
@@ -123,3 +130,54 @@ async def aembed_query(text: str) -> Optional[List[float]]:
     if results is None:
         return None
     return results[0]
+
+
+def canvas_to_text(nodes: list[dict], max_chars: int = 12_000) -> str:
+    """Build stable embedding text from canvas node types, labels, and data."""
+    parts: List[str] = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        data = node.get("data")
+        if not isinstance(data, dict):
+            data = {}
+        useful_data = {
+            str(key): value
+            for key, value in data.items()
+            if value not in (None, "", [], {})
+        }
+        parts.append(
+            f"type: {node.get('type') or 'unknown'}; "
+            f"label: {data.get('label') or ''}; "
+            f"data: {json.dumps(useful_data, ensure_ascii=False, sort_keys=True, default=str)}"
+        )
+    return "\n".join(parts)[:max_chars]
+
+
+async def aembed_canvas(nodes: list[dict]) -> Optional[List[float]]:
+    """Embed one workspace canvas as a passage, returning None when unavailable."""
+    results = await aembed_canvases([nodes])
+    return results[0] if results else None
+
+
+async def aembed_canvases(
+    canvases: list[list[dict]],
+) -> Optional[List[Optional[List[float]]]]:
+    """Embed multiple canvases while preserving empty-canvas positions."""
+    if not nim_embed_enabled() or not canvases:
+        return None
+    texts = [canvas_to_text(nodes) for nodes in canvases]
+    nonempty = [(index, text) for index, text in enumerate(texts) if text]
+    if not nonempty:
+        return [None] * len(canvases)
+    embedded = await _call_embed(
+        [text for _, text in nonempty],
+        "passage",
+        model=NIM_CANVAS_EMBED_MODEL,
+    )
+    if embedded is None:
+        return None
+    results: List[Optional[List[float]]] = [None] * len(canvases)
+    for (index, _), vector in zip(nonempty, embedded):
+        results[index] = vector
+    return results

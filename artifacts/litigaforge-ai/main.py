@@ -946,6 +946,32 @@ async def lifespan(app: FastAPI):
                 "CREATE INDEX IF NOT EXISTS idx_workspace_sessions_user "
                 "ON workspace_sessions (user_id, updated_at DESC)"
             )
+            try:
+                await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+                await conn.execute(
+                    "ALTER TABLE workspace_sessions "
+                    "ADD COLUMN IF NOT EXISTS embedding vector(2048)"
+                )
+                await conn.execute("DROP INDEX IF EXISTS idx_workspace_sessions_embedding")
+                await conn.execute("""
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1
+                            FROM pg_attribute a
+                            JOIN pg_class c ON c.oid = a.attrelid
+                            WHERE c.relname = 'workspace_sessions'
+                              AND a.attname = 'embedding'
+                              AND format_type(a.atttypid, a.atttypmod) <> 'vector(2048)'
+                        ) THEN
+                            ALTER TABLE workspace_sessions
+                            ALTER COLUMN embedding TYPE vector(2048) USING NULL;
+                        END IF;
+                    END $$;
+                """)
+                logger.info("workspace session embedding column ready")
+            except Exception as ve:
+                logger.warning("workspace session embeddings unavailable: %s", ve)
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS workspace_insights (
                     id SERIAL PRIMARY KEY,

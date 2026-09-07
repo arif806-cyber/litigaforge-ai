@@ -8,6 +8,7 @@ Endpoints (all prefixed with BASE_PATH from main.py):
   DELETE /workspace/profile/reset          — wipe all learning data
   GET    /workspace/sessions/{id}/cross-matter — cross-matter connection analysis
 """
+import asyncio
 import json
 import logging
 
@@ -17,6 +18,7 @@ from typing import Optional
 
 from auth import require_user
 from database import get_pool
+from llm.nim_embed import aembed_canvases, canvas_to_text, vec_to_str
 
 logger = logging.getLogger("litigaforge.personalization")
 router = APIRouter(tags=["personalization"])
@@ -57,6 +59,45 @@ _PATTERN_INSIGHTS = {
     "issue":     "You set the narrative early. Courts notice that.",
     "fact":      "You build from evidence up — solid foundation.",
 }
+
+
+async def _embedding_schema_available(conn) -> bool:
+    try:
+        return bool(await conn.fetchval("""
+            SELECT to_regtype('vector') IS NOT NULL
+               AND EXISTS (
+                   SELECT 1
+                   FROM information_schema.columns
+                   WHERE table_name='workspace_sessions' AND column_name='embedding'
+               )
+        """))
+    except Exception as exc:
+        logger.warning("Workspace embedding schema check failed: %s", exc)
+        return False
+
+
+async def _backfill_session_embeddings(user_id: int, sessions: list) -> None:
+    """Best-effort historical backfill that never delays the API response."""
+    try:
+        generated = await aembed_canvases([
+            list(s["nodes_json"]) if isinstance(s["nodes_json"], list) else []
+            for s in sessions
+        ])
+        updates = [
+            (vec_to_str(vector), s["id"], user_id)
+            for s, vector in zip(sessions, generated or [])
+            if vector
+        ]
+        if updates:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await conn.executemany(
+                    "UPDATE workspace_sessions SET embedding=$1::vector "
+                    "WHERE id=$2 AND user_id=$3",
+                    updates,
+                )
+    except Exception as exc:
+        logger.warning("Historical workspace embedding backfill skipped: %s", exc)
 
 
 # ─── Pure helpers ─────────────────────────────────────────────────────────────
@@ -613,20 +654,23 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
     """Find thematic connections between this session and the user's others."""
     pool = await get_pool()
     async with pool.acquire() as conn:
+        embedding_schema_available = await _embedding_schema_available(conn)
+        embedding_select = ", embedding" if embedding_schema_available else ""
         current = await conn.fetchrow(
-            "SELECT id, title, case_description, nodes_json, edges_json "
-            "FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            "SELECT id, title, case_description, nodes_json, edges_json"
+            f"{embedding_select} FROM workspace_sessions WHERE id=$1 AND user_id=$2",
             session_id, user["id"],
         )
         if not current:
             raise HTTPException(404, "Session not found")
 
         others = await conn.fetch(
-            """
+            f"""
             SELECT id, title, case_description, nodes_json, edges_json, updated_at
+                   {embedding_select}
             FROM workspace_sessions
             WHERE user_id=$1 AND id != $2
-            ORDER BY updated_at DESC LIMIT 25
+            ORDER BY updated_at DESC
             """,
             user["id"], session_id,
         )
@@ -637,6 +681,40 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
             "WHERE user_id=$1 AND event_type='judgment_add' ORDER BY created_at DESC LIMIT 50",
             user["id"],
         )
+
+    # Backfill old sessions out-of-band; this request immediately uses whatever
+    # vectors already exist and otherwise returns the keyword fallback.
+    missing = (
+        [
+            s for s in [current, *others]
+            if s["embedding"] is None
+            and canvas_to_text(
+                list(s["nodes_json"]) if isinstance(s["nodes_json"], list) else []
+            )
+        ][:50]
+        if embedding_schema_available else []
+    )
+    if missing:
+        asyncio.create_task(_backfill_session_embeddings(user["id"], missing))
+
+    semantic_rows = []
+    current_embedding = current["embedding"] if embedding_schema_available else None
+    if current_embedding is not None:
+        try:
+            async with pool.acquire() as conn:
+                semantic_rows = await conn.fetch(
+                    """
+                    SELECT id, title, case_description, nodes_json, edges_json, updated_at,
+                           1 - (embedding <=> $3::vector) AS similarity
+                    FROM workspace_sessions
+                    WHERE user_id=$1 AND id != $2 AND embedding IS NOT NULL
+                    ORDER BY embedding <=> $3::vector
+                    LIMIT 5
+                    """,
+                    user["id"], session_id, str(current_embedding),
+                )
+        except Exception as exc:
+            logger.warning("Cross-matter semantic search unavailable: %s", exc)
 
     # Keyword matching
     cur_text  = f"{current['title']} {current['case_description'] or ''}".lower()
@@ -661,6 +739,7 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
     cur_seq   = _node_type_seq(cur_raw, cur_edges)
 
     connections = []
+    semantic_by_id = {s["id"]: float(s["similarity"]) for s in semantic_rows}
     for s in others:
         other_text = f"{s['title']} {s['case_description'] or ''}".lower()
         shared = sorted(cur_terms & {t for t in _LEGAL_TERMS if t in other_text})
@@ -678,14 +757,26 @@ async def cross_matter(session_id: int, user=Depends(require_user)):
             if matches >= 2:
                 argument_echo = True
 
-        if shared or argument_echo:
+        similarity = semantic_by_id.get(s["id"])
+        if similarity is not None or shared or argument_echo:
+            fallback_score = min(
+                0.8, 0.45 + len(shared) * 0.08 + (0.12 if argument_echo else 0)
+            )
             connections.append({
                 "session_id":    s["id"],
                 "title":         s["title"],
                 "shared_topics": shared[:4],
                 "updated_at":    s["updated_at"].isoformat(),
                 "argument_echo": argument_echo,
+                "similarity":    round(similarity, 4) if similarity is not None else None,
+                "_rank_score":   similarity if similarity is not None else fallback_score,
             })
+
+    connections.sort(key=lambda c: (-c["_rank_score"], c["title"]))
+    connections = [
+        {key: value for key, value in connection.items() if key != "_rank_score"}
+        for connection in connections[:5]
+    ]
 
     # Node-type patterns across all prior sessions
     nt_counts: dict[str, int] = {}

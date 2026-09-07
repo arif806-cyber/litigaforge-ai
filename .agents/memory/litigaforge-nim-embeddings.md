@@ -39,3 +39,10 @@ Response always includes `search_source` field so callers know which tier fired.
 
 ## Ingest integration
 New judgments embedded fire-and-forget via `asyncio.create_task(_embed_judgment(...))` after `_insert` succeeds. Never blocks ingest throughput.
+
+## Embedding model compatibility
+Embedding providers can retire models and replacement models can change vector dimensions or exceed pgvector approximate-index limits.
+
+**Why:** A retired model once left semantic matching silently on keyword fallback, while its replacement exceeded the ivfflat dimension cap.
+
+**How to apply:** Live-check model availability and dimensions before migration. Keep unrelated embedding stores isolated, and prefer exact cosine scans when the selected dimensions cannot be indexed.

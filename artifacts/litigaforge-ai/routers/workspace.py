@@ -34,6 +34,7 @@ from auth import require_user, require_ai_user
 from database import get_pool
 from llm import legal_llm
 from llm.config import LEGAL_SYSTEM_PROMPT as _LEGAL_SYSTEM_PROMPT
+from llm.nim_embed import aembed_canvas, vec_to_str
 from case_law_search import search_case_law
 from jobs import collect_sse, enqueue_job
 
@@ -115,6 +116,69 @@ class RenameFolderBody(BaseModel):
 class SuggestFeeBody(BaseModel):
     case_description: str = ""
     case_type: str = ""
+
+
+async def _workspace_embedding_schema_available(conn) -> bool:
+    """Return whether vector casts and the session embedding column are usable."""
+    try:
+        return bool(await conn.fetchval("""
+            SELECT to_regtype('vector') IS NOT NULL
+               AND EXISTS (
+                   SELECT 1
+                   FROM information_schema.columns
+                   WHERE table_name='workspace_sessions' AND column_name='embedding'
+               )
+        """))
+    except Exception as exc:
+        logger.warning("Workspace embedding schema check failed: %s", exc)
+        return False
+
+
+async def _persist_canvas(
+    conn, session_id: int, user_id: int, nodes: list[dict], edges: list[dict],
+    embedding_literal: str | None, embedding_schema_available: bool,
+):
+    if embedding_schema_available:
+        try:
+            await conn.execute(
+                "UPDATE workspace_sessions "
+                "SET nodes_json=$1::jsonb, edges_json=$2::jsonb, "
+                "embedding=$3::vector, updated_at=NOW() "
+                "WHERE id=$4 AND user_id=$5",
+                json.dumps(nodes), json.dumps(edges), embedding_literal,
+                session_id, user_id,
+            )
+            return
+        except Exception as exc:
+            logger.warning("Canvas embedding write failed; saving without vector: %s", exc)
+    await conn.execute(
+        "UPDATE workspace_sessions "
+        "SET nodes_json=$1::jsonb, edges_json=$2::jsonb, updated_at=NOW() "
+        "WHERE id=$3 AND user_id=$4",
+        json.dumps(nodes), json.dumps(edges), session_id, user_id,
+    )
+
+
+async def _embed_saved_canvas(
+    session_id: int, user_id: int, nodes: list[dict], nodes_json: str,
+) -> None:
+    """Best-effort vector write for the exact canvas version just persisted."""
+    try:
+        embedding = await aembed_canvas(nodes)
+        if not embedding:
+            return
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if not await _workspace_embedding_schema_available(conn):
+                return
+            await conn.execute(
+                "UPDATE workspace_sessions SET embedding=$1::vector "
+                "WHERE id=$2 AND user_id=$3 AND nodes_json=$4::jsonb",
+                vec_to_str(embedding), session_id, user_id, nodes_json,
+            )
+    except Exception as exc:
+        logger.warning("Canvas embedding generation skipped: %s", exc)
+
 
 async def _canvas_pattern_for_user(conn, user_id: int) -> dict | None:
     """Return the user's current Legal Twin scaffold without invoking an LLM."""
@@ -218,14 +282,24 @@ async def update_session(
 async def save_canvas(session_id: int, body: SaveCanvasBody, request: Request, user=Depends(require_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "UPDATE workspace_sessions "
-            "SET nodes_json=$1::jsonb, edges_json=$2::jsonb, updated_at=NOW() "
-            "WHERE id=$3 AND user_id=$4 RETURNING id",
-            json.dumps(body.nodes), json.dumps(body.edges), session_id, user["id"],
+        exists = await conn.fetchval(
+            "SELECT id FROM workspace_sessions WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
         )
-        if not row:
-            raise HTTPException(404, "Session not found")
+        embedding_schema_available = await _workspace_embedding_schema_available(conn)
+    if not exists:
+        raise HTTPException(404, "Session not found")
+
+    nodes_json = json.dumps(body.nodes)
+    async with pool.acquire() as conn:
+        await _persist_canvas(
+            conn, session_id, user["id"], body.nodes, body.edges,
+            None, embedding_schema_available,
+        )
+    if embedding_schema_available and body.nodes:
+        asyncio.create_task(
+            _embed_saved_canvas(session_id, user["id"], body.nodes, nodes_json)
+        )
     return {"ok": True}
 
 
