@@ -219,6 +219,60 @@ def compute_profile(events: list[dict]) -> dict:
     }
 
 
+def build_canvas_pattern_suggestion(profile: dict) -> Optional[dict]:
+    """Build a starter scaffold from repeated usage and explicit accept signals."""
+    allowed = {"judgment", "strategy", "risk", "argument", "issue", "fact"}
+    scores = {
+        node_type: int(count)
+        for node_type, count in (profile.get("node_type_preferences") or {}).items()
+        if node_type in allowed and isinstance(count, (int, float)) and count > 0
+    }
+    accept_to_node = {
+        "opportunity": "strategy", "risk": "risk", "precedent": "judgment",
+        "pattern": "argument", "warning": "fact", "step": "argument",
+        "framework": "strategy",
+    }
+    success_signals = 0
+    for suggestion_type, count in (profile.get("suggestion_accepts") or {}).items():
+        node_type = accept_to_node.get(suggestion_type)
+        if node_type and isinstance(count, (int, float)) and count > 0:
+            scores[node_type] = scores.get(node_type, 0) + int(count) * 2
+            success_signals += int(count)
+    draft_pref = profile.get("draft_style_preference") or {}
+    draft_copies = int(draft_pref.get("total_copies") or 0)
+    if draft_copies:
+        scores["argument"] = scores.get("argument", 0) + draft_copies * 2
+        success_signals += draft_copies
+
+    if sum(scores.values()) < 2:
+        return None
+
+    ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+    node_types: list[str] = []
+    for node_type, count in ranked:
+        node_types.extend([node_type] * min(2, max(1, round(count / max(ranked[0][1], 1) * 2))))
+        if len(node_types) >= 4:
+            break
+    node_types = node_types[:4]
+    labels = {
+        "judgment": "judgment", "strategy": "strategy", "risk": "risk",
+        "argument": "argument", "issue": "issue", "fact": "fact",
+    }
+    counts = {nt: node_types.count(nt) for nt in dict.fromkeys(node_types)}
+    parts = [f"{count} {labels[nt]} node{'s' if count != 1 else ''}" for nt, count in counts.items()]
+    return {
+        "id": "legal-twin-canvas-pattern",
+        "type": "canvas_pattern",
+        "emoji": "🧬",
+        "text": f"Start from your working pattern: {', '.join(parts)}.",
+        "detail": (
+            "Your Legal Twin built this starter canvas from the nodes you use most often"
+            + (" and the suggestions or drafts you explicitly accepted." if success_signals else ".")
+        ),
+        "node_types": node_types,
+    }
+
+
 def _twin_score(profile: dict, total_sessions: int, total_events: int, active_days: int) -> int:
     """0-100 twin training score."""
     session_pts = min(35, total_sessions * 5)

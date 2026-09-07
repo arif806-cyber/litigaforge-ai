@@ -35,6 +35,7 @@ interface WorkspaceSession {
   edges_json: Edge[];
   insights: unknown[];
   updated_at: string;
+  pattern_suggestion?: Suggestion | null;
 }
 
 interface SearchResult {
@@ -111,8 +112,19 @@ function findOpenPosition(existing: { position: { x: number; y: number } }[]): {
   return last ? { x: last.position.x + 290, y: last.position.y } : { x: 200, y: 200 };
 }
 
-// ─── Node presets for manual "Add Node" ───────────────────────────────────────
-
+function buildPatternNodes(nodeTypes: string[], existing: Node[], idPrefix: string): Node[] {
+  const added: Node[] = [];
+  nodeTypes.forEach((nodeType, index) => {
+    const preset = NODE_PRESETS[nodeType] ?? NODE_PRESETS.strategy;
+    added.push({
+      id: `${idPrefix}-${index}`,
+      type: preset.type,
+      position: findOpenPosition([...existing, ...added]),
+      data: { ...preset.data },
+    } as Node);
+  });
+  return added;
+}
 const NODE_PRESETS: Record<string, { type: string; emoji: string; data: Record<string, unknown> }> = {
   judgment: { type: "judgment", emoji: "⚖️", data: { label: "New Judgment",   court: "Court",  summary: "",  impact_score: 75, citation: "" } },
   fact:     { type: "fact",     emoji: "📋", data: { label: "New Fact",        content: "",     impact_score: 70 } },
@@ -289,6 +301,7 @@ export default function ForgeWorkspace() {
     id: number; filename: string; doc_type: string; file_size_bytes: number; created_at: string;
   }>>([]);
   const [isFetchingFolderFiles, setIsFetchingFolderFiles] = useState(false);
+  const [showNewSessionDialog, setShowNewSessionDialog] = useState(false);
 
   function focusInput() {
     setLeftCollapsed(false);
@@ -407,7 +420,7 @@ export default function ForgeWorkspace() {
     }
   }
 
-  async function createSession(title = "Untitled Workspace") {
+  async function createSession(title = "Untitled Workspace", startFromPattern = false) {
     try {
       const res = await api("/workspace/sessions", {
         method: "POST",
@@ -418,10 +431,37 @@ export default function ForgeWorkspace() {
       setSessionId(s.id);
       setSessionTitle(s.title);
       setCaseDescription(s.case_description || "");
-      setNodes([]);
+      const pattern = s.pattern_suggestion ?? null;
+      const patternNodes = pattern?.node_types
+        ? buildPatternNodes(pattern.node_types, [], `pattern-${s.id}`)
+        : [];
+      setNodes(startFromPattern ? patternNodes : []);
       setEdges([]);
       setAgentStates(makeDefaultAgentStates());
       setSessionFolder(null);
+      setShowNewSessionDialog(false);
+      if (pattern) {
+        setSuggestions([pattern]);
+        setRightPanelTab("insights");
+      } else {
+        setSuggestions([]);
+      }
+      if (startFromPattern && patternNodes.length > 0) {
+        void api(`/workspace/sessions/${s.id}/canvas`, {
+          method: "PUT",
+          body: JSON.stringify({ nodes: patternNodes, edges: [] }),
+        }).catch(() => {});
+        void api("/workspace/profile/event", {
+          method: "POST",
+          body: JSON.stringify({
+            event_type: "suggestion_accept",
+            session_id: s.id,
+            data: { suggestion_type: "canvas_pattern", node_types: pattern!.node_types },
+          }),
+        }).catch(() => {});
+        setSuggestions([]);
+        addToast({ type: "success", message: "Started from your Legal Twin pattern", detail: `${patternNodes.length} familiar canvas building blocks added.` });
+      }
     } catch {
       addToast({ type: "error", message: "Could not create workspace", detail: "Check your connection and try again." });
     }
@@ -475,6 +515,9 @@ export default function ForgeWorkspace() {
       setSynthesisScore(null);
       setSuggestions([]);
       setSimState({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
+      if (full.pattern_suggestion) {
+        setSuggestions([full.pattern_suggestion]);
+      }
       // Load case folder for this session (non-critical)
       void fetchSessionFolder(full.id);
       // Load saved agent feedback for this session (non-critical)
@@ -1107,6 +1150,26 @@ export default function ForgeWorkspace() {
   }, [sessionId, caseDescription, nodes, isLoadingInsights, crossMatter]);
 
   const onAcceptSuggestion = useCallback((s: Suggestion) => {
+    if (s.type === "canvas_pattern" && sessionId && s.node_types?.length) {
+      const added = buildPatternNodes(s.node_types, nodes, `pattern-${sessionId}-${Date.now()}`);
+      pushHistory([...nodes], [...edges]);
+      const nextNodes = [...nodes, ...added];
+      setNodes(nextNodes);
+      setSuggestions(prev => prev.filter(x => x.id !== s.id));
+      void api(`/workspace/sessions/${sessionId}/canvas`, {
+        method: "PUT",
+        body: JSON.stringify({ nodes: nextNodes, edges }),
+      }).catch(() => {});
+      void api("/workspace/profile/event", {
+        method: "POST",
+        body: JSON.stringify({
+          event_type: "suggestion_accept",
+          session_id: sessionId,
+          data: { suggestion_type: "canvas_pattern", node_types: s.node_types },
+        }),
+      }).catch(() => {});
+      return;
+    }
     // cross_matter: navigate to the linked session
     if (s.type === "cross_matter") {
       if (s.sessionId != null) {
@@ -2029,7 +2092,7 @@ export default function ForgeWorkspace() {
           {!sessionId && (
             <NoSessionWelcome
               t={t}
-              onCreate={() => void createSession()}
+              onCreate={() => setShowNewSessionDialog(true)}
               onCreateDemo={() => void createDemoSession()}
             />
           )}
@@ -2125,7 +2188,7 @@ export default function ForgeWorkspace() {
                 <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => createSession()}
+                onClick={() => setShowNewSessionDialog(true)}
                 style={{
                   width: "100%",
                   padding: "10px",
@@ -2586,7 +2649,7 @@ export default function ForgeWorkspace() {
                 <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
                   <motion.button
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => { void createSession(); setMobileSheet(null); }}
+                    onClick={() => { setShowNewSessionDialog(true); setMobileSheet(null); }}
                     style={{
                       width: "100%", padding: "11px",
                       background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))",
@@ -2675,6 +2738,70 @@ export default function ForgeWorkspace() {
             </div>
           </motion.div>
         </>
+      )}
+    </AnimatePresence>
+
+    <AnimatePresence>
+      {showNewSessionDialog && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowNewSessionDialog(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, background: "rgba(2,6,23,0.76)", backdropFilter: "blur(8px)",
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            onClick={event => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-workspace-title"
+            style={{
+              width: "min(440px, 100%)", borderRadius: 16, padding: 22,
+              background: "#0b1426", border: "1px solid rgba(20,184,166,0.22)",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.55)",
+            }}
+          >
+            <div id="new-workspace-title" style={{ color: "#e2e8f0", fontSize: 17, fontWeight: 800 }}>
+              Start a new matter
+            </div>
+            <p style={{ color: "#64748b", fontSize: 11, lineHeight: 1.6, margin: "7px 0 18px" }}>
+              Begin with a clean canvas, or let your Legal Twin add building blocks based on your observed working style.
+            </p>
+            <button
+              data-testid="start-from-pattern"
+              onClick={() => void createSession("Untitled Workspace", true)}
+              style={{
+                width: "100%", padding: "12px 14px", borderRadius: 10, cursor: "pointer",
+                background: "linear-gradient(135deg, rgba(20,184,166,0.2), rgba(168,85,247,0.12))",
+                border: "1px solid rgba(20,184,166,0.4)", color: "#5eead4",
+                fontSize: 12, fontWeight: 800, textAlign: "left",
+              }}
+            >
+              🧬 Start from your pattern
+              <span style={{ display: "block", marginTop: 4, color: "#94a3b8", fontSize: 9.5, fontWeight: 500 }}>
+                Uses your most frequent and explicitly accepted canvas habits when enough history is available.
+              </span>
+            </button>
+            <button
+              data-testid="start-blank"
+              onClick={() => void createSession()}
+              style={{
+                width: "100%", marginTop: 9, padding: "10px 14px", borderRadius: 9, cursor: "pointer",
+                background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)",
+                color: "#cbd5e1", fontSize: 11, fontWeight: 700,
+              }}
+            >
+              Start with a blank canvas
+            </button>
+          </motion.div>
+        </motion.div>
       )}
     </AnimatePresence>
 

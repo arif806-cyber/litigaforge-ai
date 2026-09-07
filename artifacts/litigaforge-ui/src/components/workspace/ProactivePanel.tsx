@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export interface Suggestion {
   id: string;
-  type: "opportunity" | "risk" | "precedent" | "pattern" | "warning" | "agent_rec" | "cross_matter" | "step" | "framework";
+  type: "opportunity" | "risk" | "precedent" | "pattern" | "warning" | "agent_rec" | "cross_matter" | "step" | "framework" | "canvas_pattern";
   emoji: string;
   text: string;
   detail?: string;
   sessionId?: number;
+  node_types?: string[];
 }
 
 interface ProactivePanelProps {
@@ -34,6 +35,7 @@ const TYPE_META: Record<string, { color: string; label: string; acceptLabel?: st
   cross_matter: { color: "#6366f1", label: "Similar Matter",  acceptLabel: "→ Open Matter"   },
   step:         { color: "#22c55e", label: "Action Step",     acceptLabel: "✓ Add to Canvas" },
   framework:    { color: "#eab308", label: "Legal Framework", acceptLabel: "✓ Add Framework" },
+  canvas_pattern:{ color: "#14b8a6", label: "Your Legal Twin", acceptLabel: "Start from your pattern" },
 };
 
 // ─── Skeleton card ─────────────────────────────────────────────────────────────

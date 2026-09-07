@@ -116,9 +116,28 @@ class SuggestFeeBody(BaseModel):
     case_description: str = ""
     case_type: str = ""
 
+async def _canvas_pattern_for_user(conn, user_id: int) -> dict | None:
+    """Return the user's current Legal Twin scaffold without invoking an LLM."""
+    from routers.personalization import compute_profile, build_canvas_pattern_suggestion
 
-# ─── Session CRUD ──────────────────────────────────────────────────────────────
-
+    learning_enabled = await conn.fetchval(
+        "SELECT learning_enabled FROM user_profile WHERE user_id=$1", user_id
+    )
+    if learning_enabled is False:
+        return None
+    event_rows = await conn.fetch(
+        "SELECT event_type, event_data FROM user_learning_events "
+        "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 250",
+        user_id,
+    )
+    events = [
+        {
+            "event_type": event["event_type"],
+            "data": json.loads(event["event_data"]) if event["event_data"] else {},
+        }
+        for event in reversed(event_rows)
+    ]
+    return build_canvas_pattern_suggestion(compute_profile(events))
 @router.get("/workspace/sessions")
 async def list_sessions(request: Request, user=Depends(require_user)):
     pool = await get_pool()
@@ -142,7 +161,14 @@ async def create_session(body: CreateSessionBody, request: Request, user=Depends
             "VALUES ($1, $2, $3, '[]'::jsonb, '[]'::jsonb) RETURNING *",
             user["id"], body.title, body.case_description,
         )
-    return _session_dict(row)
+        pattern_suggestion = None
+        try:
+            pattern_suggestion = await _canvas_pattern_for_user(conn, user["id"])
+        except Exception as exc:
+            logger.debug("Canvas pattern suggestion skipped: %s", exc)
+    result = _session_dict(row)
+    result["pattern_suggestion"] = pattern_suggestion
+    return result
 
 
 @router.get("/workspace/sessions/{session_id}")
@@ -160,8 +186,15 @@ async def get_session(session_id: int, request: Request, user=Depends(require_us
             "WHERE session_id = $1 ORDER BY created_at DESC LIMIT 100",
             session_id,
         )
+        pattern_suggestion = None
+        if not (row["nodes_json"] or []):
+            try:
+                pattern_suggestion = await _canvas_pattern_for_user(conn, user["id"])
+            except Exception as exc:
+                logger.debug("Canvas pattern suggestion skipped: %s", exc)
     result = _session_dict(row)
     result["insights"] = [dict(i) for i in insights]
+    result["pattern_suggestion"] = pattern_suggestion
     return result
 
 
