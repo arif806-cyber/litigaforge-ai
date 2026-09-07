@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PageShell } from "@/components/PageShell";
+import { useToast } from "@/hooks/use-toast";
 
 interface Plan {
   id: string;
@@ -33,6 +34,7 @@ const TIER_ACCENT: Record<string, string> = {
 
 export default function Subscription() {
   const { user, refreshUser } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -50,12 +52,35 @@ export default function Subscription() {
 
 
   const loadRazorpayScript = () => new Promise<void>((resolve, reject) => {
-    if (document.getElementById("razorpay-script")) { resolve(); return; }
+    if (typeof (window as any).Razorpay === "function") {
+      resolve();
+      return;
+    }
+
+    // A stale/failed script tag does not mean checkout.js initialized.
+    document.getElementById("razorpay-script")?.remove();
     const script = document.createElement("script");
     script.id = "razorpay-script";
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Razorpay checkout"));
+    script.async = true;
+    const timeout = window.setTimeout(() => {
+      script.remove();
+      reject(new Error("Razorpay checkout took too long to load. Please check your connection and retry."));
+    }, 15000);
+    script.onload = () => {
+      window.clearTimeout(timeout);
+      if (typeof (window as any).Razorpay === "function") {
+        resolve();
+      } else {
+        script.remove();
+        reject(new Error("Razorpay checkout did not initialize. Please retry."));
+      }
+    };
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      script.remove();
+      reject(new Error("Failed to load Razorpay checkout. Please check your connection and retry."));
+    };
     document.body.appendChild(script);
   });
 
@@ -121,6 +146,14 @@ export default function Subscription() {
     try {
       await loadRazorpayScript();
       const orderData = await createOrder.mutateAsync(tier);
+      if (
+        !orderData?.order_id
+        || !orderData?.amount
+        || !orderData?.currency
+        || !orderData?.key_id
+      ) {
+        throw new Error("Payment order could not be initialized. Please retry.");
+      }
 
       const options = {
         key: orderData.key_id,
@@ -146,11 +179,15 @@ export default function Subscription() {
               setSuccess(TIER_LABELS[tier] ?? tier);
               setUpgrading(null);
             } else {
-              setRazorpayError("Payment verification failed. Please contact support.");
+              const message = "Payment verification failed. Please contact support.";
+              setRazorpayError(message);
+              toast({ title: "Payment verification failed", description: message, variant: "destructive" });
               setUpgrading(null);
             }
           } catch (e: any) {
-            setRazorpayError(e.message || "Payment verification failed.");
+            const message = e.message || "Payment verification failed.";
+            setRazorpayError(message);
+            toast({ title: "Payment verification failed", description: message, variant: "destructive" });
             setUpgrading(null);
           }
         },
@@ -164,9 +201,20 @@ export default function Subscription() {
       };
 
       const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", (response: any) => {
+        const message =
+          response?.error?.description
+          || response?.error?.reason
+          || "The payment could not be completed. Please retry.";
+        setRazorpayError(message);
+        setUpgrading(null);
+        toast({ title: "Payment failed", description: message, variant: "destructive" });
+      });
       rzp.open();
     } catch (e: any) {
-      setError(e.message || "Failed to start payment. Please try again.");
+      const message = e.message || "Failed to start payment. Please try again.";
+      setError(message);
+      toast({ title: "Could not open checkout", description: message, variant: "destructive" });
       setUpgrading(null);
     }
   };

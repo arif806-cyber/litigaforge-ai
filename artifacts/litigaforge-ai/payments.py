@@ -1,6 +1,8 @@
 """Razorpay payment integration for LitigaForge AI subscription upgrades and connection fees."""
 import os
 import re as _re
+import hashlib
+import hmac
 
 import razorpay
 
@@ -111,3 +113,16 @@ def verify_payment(
         return True
     except Exception:
         return False
+
+
+def verify_webhook_signature(raw_body: bytes, signature: str) -> bool:
+    """Verify a Razorpay webhook against the dedicated webhook secret."""
+    secret = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+    if not secret or not signature:
+        return False
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)

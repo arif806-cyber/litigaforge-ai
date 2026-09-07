@@ -3,13 +3,20 @@ LitigaForge AI — Subscription Router
 Razorpay subscription and plan management.
 """
 import logging
+import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from auth import require_user
 from database import get_pool, SUBSCRIPTION_PLANS
-from payments import create_order, verify_payment, get_client, PLAN_PRICES
+from payments import (
+    create_order,
+    verify_payment,
+    verify_webhook_signature,
+    get_client,
+    PLAN_PRICES,
+)
 
 logger = logging.getLogger("litigaforge.api")
 router = APIRouter(tags=["subscription"])
@@ -24,6 +31,35 @@ class VerifyRequest(BaseModel):
     razorpay_payment_id: str
     razorpay_signature: str
     tier: str
+
+
+async def _activate_subscription(
+    user_id: int,
+    tier: str,
+    payment_id: str,
+) -> None:
+    """Idempotently activate a server-validated paid tier."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            existing = await conn.fetchval(
+                "SELECT id FROM subscriptions WHERE payment_ref=$1",
+                payment_id,
+            )
+            await conn.execute(
+                "UPDATE users SET subscription_tier=$1 WHERE id=$2",
+                tier,
+                user_id,
+            )
+            if not existing:
+                await conn.execute(
+                    """INSERT INTO subscriptions
+                       (user_id, tier, started_at, status, payment_ref)
+                       VALUES ($1, $2, NOW(), 'active', $3)""",
+                    user_id,
+                    tier,
+                    payment_id,
+                )
 
 
 @router.get("/subscription/plans")
@@ -61,32 +97,80 @@ async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(r
     except Exception:
         raise HTTPException(status_code=400, detail="Failed to fetch order from payment provider")
     actual_amount = order.get("amount")
-    if actual_amount != expected_amount:
+    notes = order.get("notes") or {}
+    if (
+        actual_amount != expected_amount
+        or order.get("currency") != "INR"
+        or str(notes.get("user_id")) != str(current_user["id"])
+        or notes.get("tier") != req.tier
+    ):
         logger.warning(
-            "Tier/amount mismatch: user=%s tier=%s expected=%s actual=%s",
+            "Order validation failed: user=%s tier=%s expected=%s actual=%s",
             current_user["id"], req.tier, expected_amount, actual_amount,
         )
-        raise HTTPException(status_code=400, detail="Payment amount does not match selected tier")
+        raise HTTPException(status_code=400, detail="Payment order does not match the selected plan")
 
     # Verify signature
     ok = verify_payment(req.razorpay_order_id, req.razorpay_payment_id, req.razorpay_signature)
     if not ok:
         raise HTTPException(status_code=400, detail="Payment verification failed")
 
-    # Update user tier and record subscription
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(
-                "UPDATE users SET subscription_tier=$1 WHERE id=$2",
-                req.tier, current_user["id"],
-            )
-            await conn.execute(
-                """INSERT INTO subscriptions (user_id, tier, started_at, status, payment_ref)
-                   VALUES ($1, $2, NOW(), 'active', $3)""",
-                current_user["id"], req.tier, req.razorpay_payment_id,
-            )
+    await _activate_subscription(
+        current_user["id"],
+        req.tier,
+        req.razorpay_payment_id,
+    )
     return {"success": True, "tier": req.tier, "payment_id": req.razorpay_payment_id}
+
+
+@router.post("/subscription/webhook")
+async def subscription_webhook(request: Request):
+    """Activate captured Razorpay payments from a signed server callback."""
+    raw = await request.body()
+    signature = request.headers.get("x-razorpay-signature", "")
+    if not verify_webhook_signature(raw, signature):
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Invalid webhook payload") from exc
+
+    event = payload.get("event")
+    entities = payload.get("payload") or {}
+    order = ((entities.get("order") or {}).get("entity") or {})
+    payment = ((entities.get("payment") or {}).get("entity") or {})
+    if event not in {"order.paid", "payment.captured"}:
+        return {"received": True, "activated": False}
+
+    if not order and payment.get("order_id"):
+        try:
+            order = get_client().order.fetch(payment["order_id"])
+        except Exception as exc:
+            logger.warning("Webhook order fetch failed: %s", type(exc).__name__)
+            raise HTTPException(status_code=400, detail="Could not validate webhook order") from exc
+
+    notes = order.get("notes") or payment.get("notes") or {}
+    tier = notes.get("tier")
+    try:
+        user_id = int(notes.get("user_id"))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Webhook order has invalid ownership") from exc
+
+    expected_amount = PLAN_PRICES.get(tier)
+    paid_amount = payment.get("amount", order.get("amount"))
+    currency = payment.get("currency", order.get("currency"))
+    payment_id = payment.get("id")
+    if (
+        not expected_amount
+        or paid_amount != expected_amount
+        or currency != "INR"
+        or not payment_id
+    ):
+        raise HTTPException(status_code=400, detail="Webhook payment does not match a valid plan")
+
+    await _activate_subscription(user_id, tier, payment_id)
+    return {"received": True, "activated": True}
 
 
 @router.post("/subscription/upgrade")
@@ -210,7 +294,7 @@ body {{ font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 40px; ba
 
 @router.post("/subscription/downgrade")
 async def subscription_downgrade(current_user: dict = Depends(require_user)):
-    """Downgrade to free tier. Prorated refund logic is recorded for future implementation."""
+    """Cancel the active paid plan and immediately downgrade to free."""
     from database import get_pool
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -232,6 +316,6 @@ async def subscription_downgrade(current_user: dict = Depends(require_user)):
                     sub["id"],
                 )
     return {
-        "message": "Downgraded to Free tier successfully. You will retain your current tier benefits until the end of the current billing period.",
+        "message": "Paid plan cancelled and account downgraded to Free.",
         "tier": "free",
     }
