@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiFetch, runLongJob } from "@/lib/api";
+import { apiFetch, LONG_JOB_ERROR, LongJobError, pollLongJob, runLongJob } from "@/lib/api";
 import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle, Sparkles, Bot, User, Trash2 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
@@ -63,6 +63,54 @@ type AskSubmission = {
   country: string;
   share_anonymously: boolean;
 };
+
+type AskAttempt = {
+  submission: AskSubmission;
+  userText: string;
+};
+
+type AskResult = {
+  answer: string;
+  category: string;
+};
+
+type PendingAsk = AskAttempt & {
+  jobId: string;
+  queuedAt: number;
+};
+
+const PENDING_ASK_KEY = "litigaforge:ask:pending";
+const LIMIT_ERROR_PATTERN = /daily ai call limit|anonymous question limit/i;
+
+function readPendingAsk(): PendingAsk | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(PENDING_ASK_KEY) || "null") as PendingAsk | null;
+    if (
+      !value?.jobId ||
+      !value.userText ||
+      !value.submission?.question ||
+      typeof value.queuedAt !== "number"
+    ) {
+      return null;
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function requireAskResult(value: unknown): AskResult {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    typeof (value as AskResult).answer !== "string" ||
+    !(value as AskResult).answer.trim() ||
+    typeof (value as AskResult).category !== "string"
+  ) {
+    throw new LongJobError("malformed", "");
+  }
+  return value as AskResult;
+}
 
 function QACard({ item, country }: { item: QAItem; country?: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -173,7 +221,8 @@ export default function Ask() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [progressStep, setProgressStep] = useState(0);
-  const [lastFailedSubmission, setLastFailedSubmission] = useState<AskSubmission | null>(null);
+  const [lastFailedAttempt, setLastFailedAttempt] = useState<AskAttempt | null>(null);
+  const [resumingJob, setResumingJob] = useState(false);
   const [askError, setAskError] = useState("");
   useEffect(() => {
     localStorage.setItem("litigaforge:ask:question", question);
@@ -243,21 +292,78 @@ export default function Ask() {
       }
     : undefined;
 
+  const finishAsk = (data: AskResult) => {
+    localStorage.removeItem(PENDING_ASK_KEY);
+    setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: data.answer, category: data.category }]);
+    setQuestion("");
+    setShareAnonymously(false);
+    setLastFailedAttempt(null);
+    setAskError("");
+    refetch();
+  };
+
+  const failAsk = (error: unknown) => {
+    if (
+      error instanceof LongJobError &&
+      (error.reason === "failed" || error.reason === "malformed")
+    ) {
+      localStorage.removeItem(PENDING_ASK_KEY);
+    }
+    const message = error instanceof Error ? error.message : "";
+    setAskError(LIMIT_ERROR_PATTERN.test(message) ? message : LONG_JOB_ERROR);
+  };
+
   const askMutation = useMutation({
-    mutationFn: (data: AskSubmission) =>
-      runLongJob<{ answer: string; category: string }>("/ask", { method: "POST", body: data }),
-    onSuccess: (data) => {
-      setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: data.answer, category: data.category }]);
-      setQuestion("");
-      setShareAnonymously(false);
-      setLastFailedSubmission(null);
-      setAskError("");
-      refetch();
+    mutationFn: async (attempt: AskAttempt) => {
+      const value = await runLongJob<unknown>("/ask", {
+        method: "POST",
+        body: attempt.submission,
+      }, {
+        onQueued: (jobId) => {
+          const pending: PendingAsk = { ...attempt, jobId, queuedAt: Date.now() };
+          localStorage.setItem(PENDING_ASK_KEY, JSON.stringify(pending));
+        },
+      });
+      return requireAskResult(value);
     },
-    onError: (err) => {
-      setAskError((err as Error).message || "Something went wrong — your text is saved. Tap Retry.");
-    },
+    onSuccess: finishAsk,
+    onError: failAsk,
   });
+
+  const resumePendingAsk = async (pending: PendingAsk) => {
+    if (resumingJob) return;
+    setResumingJob(true);
+    setAskError("");
+    try {
+      const value = await pollLongJob<unknown>(pending.jobId, "/ask");
+      finishAsk(requireAskResult(value));
+    } catch (error) {
+      failAsk(error);
+    } finally {
+      setResumingJob(false);
+    }
+  };
+
+  const isAskPending = askMutation.isPending || resumingJob;
+
+  // A worker activation, route remount, or tab reload must not orphan an
+  // already-enqueued job. Restore the user's text and continue polling it.
+  const resumedJobRef = useRef("");
+  useEffect(() => {
+    const pending = readPendingAsk();
+    if (!pending || resumedJobRef.current === pending.jobId) return;
+    resumedJobRef.current = pending.jobId;
+    setQuestion(pending.userText);
+    setCategory(pending.submission.category);
+    setShareAnonymously(pending.submission.share_anonymously);
+    setLastFailedAttempt(pending);
+    setMessages(prev => prev.length > 0
+      ? prev
+      : [{ id: Date.now(), role: "user", content: pending.userText, category: pending.submission.category }]);
+    void resumePendingAsk(pending);
+    // This recovery runs once for the job persisted at mount time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Visible, rotating progress while the AI works on an answer.
   const progressSteps = [
@@ -267,26 +373,26 @@ export default function Ask() {
     "Drafting your answer…",
   ];
   useEffect(() => {
-    if (!askMutation.isPending) {
+    if (!isAskPending) {
       setProgressStep(0);
       return;
     }
     const id = setInterval(() => setProgressStep(s => (s + 1) % progressSteps.length), 1800);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [askMutation.isPending]);
+  }, [isAskPending]);
 
   // Keep the latest message / progress indicator in view. Skip while the thread
   // is empty so the page doesn't jump past the title on first load.
   useEffect(() => {
-    if (messages.length === 0 && !askMutation.isPending) return;
+    if (messages.length === 0 && !isAskPending) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, askMutation.isPending]);
+  }, [messages, isAskPending]);
 
   const copy = ASK_COPY[activeCode.toUpperCase()] ?? ASK_COPY.IN;
 
   const triggerAsk = () => {
-    if (!question.trim() || askMutation.isPending) return;
+    if (!question.trim() || isAskPending) return;
     setClarifyOpen(true);
   };
 
@@ -307,15 +413,16 @@ export default function Ask() {
     const userText = question.trim();
     const finalQuestion = extraDetails ? `${userText}\n\n${extraDetails}` : userText;
     setMessages(prev => [...prev, { id: Date.now(), role: "user", content: userText, category }]);
-    const submission = {
+    const submission: AskSubmission = {
       question: finalQuestion,
       category,
       country: activeCode,
       share_anonymously: shareAnonymously,
     };
-    setLastFailedSubmission(submission);
+    const attempt: AskAttempt = { submission, userText };
+    setLastFailedAttempt(attempt);
     setAskError("");
-    askMutation.mutate(submission);
+    askMutation.mutate(attempt);
   };
 
   const clearChat = () => setMessages([]);
@@ -359,7 +466,7 @@ export default function Ask() {
 
           {/* Message thread */}
           <div className="px-4 md:px-6 py-5 space-y-5 min-h-[280px] max-h-[540px] overflow-y-auto" aria-live="polite" data-testid="ask-chat-thread">
-            {messages.length === 0 && !askMutation.isPending && (
+            {messages.length === 0 && !isAskPending && (
               <div className="flex flex-col items-center justify-center text-center py-12">
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                   <Bot className="w-7 h-7 text-primary" />
@@ -375,7 +482,7 @@ export default function Ask() {
               <ChatBubble key={msg.id} msg={msg} />
             ))}
 
-            {askMutation.isError && askError && (
+            {askError && (
               <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4" role="alert">
                 <p className="text-sm font-semibold text-destructive">{askError}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
@@ -383,17 +490,22 @@ export default function Ask() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={!lastFailedSubmission || askMutation.isPending}
+                    disabled={!lastFailedAttempt || isAskPending}
                     onClick={() => {
-                      if (!lastFailedSubmission) return;
+                      if (!lastFailedAttempt) return;
                       setAskError("");
-                      askMutation.mutate(lastFailedSubmission);
+                      const pending = readPendingAsk();
+                      if (pending) {
+                        void resumePendingAsk(pending);
+                      } else {
+                        askMutation.mutate(lastFailedAttempt);
+                      }
                     }}
                     data-testid="button-retry-question"
                   >
                     Retry
                   </Button>
-                  {/daily ai call limit|anonymous question limit/i.test(askError) && (
+                  {LIMIT_ERROR_PATTERN.test(askError) && (
                     <Button
                       type="button"
                       size="sm"
@@ -408,7 +520,7 @@ export default function Ask() {
             )}
 
             {/* Visible progress indicator */}
-            {askMutation.isPending && (
+            {isAskPending && (
               <div className="flex gap-3" data-testid="ask-progress">
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-1">
                   <Bot className="w-4 h-4" />
@@ -474,11 +586,11 @@ export default function Ask() {
                 <Button
                 type="submit"
                 size="lg"
-                disabled={!question.trim() || askMutation.isPending}
+                disabled={!question.trim() || isAskPending}
                 className="px-5 shadow-md h-12"
                 data-testid="button-send"
               >
-                {askMutation.isPending
+                {isAskPending
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <Send className="w-4 h-4" />}
                 <span className="hidden sm:inline ml-2">Send</span>

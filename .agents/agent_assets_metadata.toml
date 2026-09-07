@@ -17,105 +17,137 @@ id = "uxPDthndgMTBnn7dqNnmK"
 uri = "file://.local/outputs/LitigaForge-AI-Investor-Deck.pdf"
 type = "pdf"
 title = "LitigaForge AI — Investor Deck (PDF)"
+logical_id = "9685bc73-f768-4df5-8d85-dfe8caf0677a"
 
 [[outputs]]
 id = "U_PtzD2vl_I83EcQmmIt0"
 uri = "file://.local/outputs/LitigaForge-Compliance-Report.zip"
 type = "unspecified"
 title = "LitigaForge AI — Data Privacy & Security Compliance Report"
+logical_id = "7773ee09-a371-4ee8-9931-f0d61977a512"
 
 [[outputs]]
 id = "euQMo-OHawKm6TgR6-8qY"
 uri = "file://attached_assets/generated_audio/music_litigaforge_bg_music.mp3"
 type = "audio"
 title = "litigaforge_bg_music"
+logical_id = "85c09995-c60d-4421-b2cb-f949eebd72ad"
 
 [[outputs]]
 id = "yKCITxO4VfI3ugI_ZO5d7"
 uri = "file://artifacts/litigaforge-demo/public/audio/bg_music.mp3"
 type = "audio"
 title = "LitigaForge global cinematic background music"
+logical_id = "d147244e-6f6c-45c4-8ba0-d2d1b2608918"
 
 [[outputs]]
 id = "ILQPJjwNvk252S3yDwM29"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_intro.mp3"
 type = "audio"
 title = "VO intro"
+logical_id = "f4d8afc2-df15-49a0-9874-9018acbb5217"
 
 [[outputs]]
 id = "V5O5oGdb-LQXYJFVbxAwR"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_case.mp3"
 type = "audio"
 title = "VO case"
+logical_id = "d68eeaea-9fac-4339-b733-04b42d4b7370"
 
 [[outputs]]
 id = "jWrSMVwYoxrv6pZdZz5n8"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_problem.mp3"
 type = "audio"
 title = "VO problem"
+logical_id = "a57e628f-efed-47e8-84b7-6f9c5a4e5573"
 
 [[outputs]]
 id = "iRKnphXClvMwTOxjFDXbV"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_matching.mp3"
 type = "audio"
 title = "VO matching"
+logical_id = "aec12983-7a0d-4dea-a683-5b750d38fd6a"
 
 [[outputs]]
 id = "bDeJj6Ireg7Yp0osVhEWo"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_synthesis.mp3"
 type = "audio"
 title = "VO synthesis"
+logical_id = "50b182fc-1b3f-4ba8-b8cd-c6774abed6b1"
 
 [[outputs]]
 id = "PCxXIo2t24YtSqcHL7uw4"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_forge.mp3"
 type = "audio"
 title = "VO forge"
+logical_id = "3f895598-17d7-4eff-beca-d9bac96fdc30"
 
 [[outputs]]
 id = "tpFfrHAitKOXTYEijVMhD"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_closing.mp3"
 type = "audio"
 title = "VO closing"
+logical_id = "31b458df-b2c0-498d-a00d-6eb154baf906"
 
 [[outputs]]
 id = "mskmJAj5fe8gwiSs8s-6I"
 uri = "file://artifacts/litigaforge-demo/public/audio/vo_carousel.mp3"
 type = "audio"
 title = "VO carousel"
+logical_id = "8a343c7b-c417-4e7c-9820-3bff37dd7b21"
 
 [[outputs]]
 id = "z2OEk8IB_EvEw3X7g_3h5"
 uri = "file://litigaforge_user_guide.pdf"
 type = "pdf"
 title = "LitigaForge AI — Complete User Guide"
+logical_id = "40239171-c0c7-4428-a78b-7c90e9dd56d8"
 
 [[outputs]]
 id = "hqC0yY_GxL1qPjNDILEYP"
 uri = "file://.local/seo-diagnosis-report.md"
 type = "text"
 title = "SEO Diagnosis & Fix Report"
+logical_id = "b73f0b91-255e-4213-b69f-7e991c2284f9"
 
 [[outputs]]
 id = "KEdApQVUwruNMPPsf6t32"
 uri = "file://litigaforge_context.txt"
 type = "text"
 title = "LitigaForge AI — Full Project Context (for ChatGPT)"
+logical_id = "ca0b212b-9879-4d7b-a927-844c10a6e98f"
 
 [[outputs]]
 id = "N8xJByr23N-vuVHLCr4UN"
 uri = "file://litigaforge_hub71_pitchdeck.pdf"
 type = "pdf"
 title = "LitigaForge AI — Hub71 Abu Dhabi Pitch Deck (v2)"
+logical_id = "77bad3e6-626e-494a-b366-d4a61dca4231"
 
 [[outputs]]
 id = "uBzp1azo4F_Xq_G6-w5FR"
 uri = "file://exports/litigaforge-ai-project.zip"
 type = "unspecified"
 title = "LitigaForge AI — Full Project Archive"
+logical_id = "84ef0b22-7a5f-457a-9c79-5cfc65e70d75"
 
 [[outputs]]
 id = "9KKG2PPq_1NBPnxfo1-n1"
 uri = "file://exports/litigaforge-ai-source.zip"
 type = "unspecified"
 title = "LitigaForge AI — Source Code Archive (5.7MB)"
+logical_id = "988d9d35-47e5-4ec1-b49e-0452c83f21b4"
+
+[[outputs]]
+id = "zIA8hiknCxMWFJ3yiHKXH"
+uri = "file://recordings/litigaforge-ask-question-to-answer.mp4"
+type = "video"
+title = "LitigaForge Ask — question to rendered answer"
+description = "45-second preview-browser recording showing a real Ask submission, live polling, and the completed legal answer rendering without a silent reset."
+logical_id = "118ba94e-477a-4914-a53e-650b56979a7c"
+content_hash = "sha256:320adf1ab28d4dddc1e48e73c4d9660433da283405d5480e7eb5b7f6373a4171"
+size = 280211
+mtime_ms = 1788809796145
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/118ba94e-477a-4914-a53e-650b56979a7c/1431fca7-1790-4ae9-8ff4-5a7d097bd025"
+storage_version_token = "1788809819053400"
+content_type = "video/mp4"

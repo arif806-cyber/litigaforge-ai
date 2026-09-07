@@ -64,7 +64,7 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
             return;
           }
           const detail = await _extractError(retry);
-          throw new Error(detail || `API error ${retry.status}`);
+          throw new ApiRequestError(detail || `API error ${retry.status}`, retry.status);
         }
         return retry.json();
       }
@@ -77,7 +77,7 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
 
   if (!res.ok) {
     const detail = await _extractError(res);
-    throw new Error(detail || `API error ${res.status}`);
+    throw new ApiRequestError(detail || `API error ${res.status}`, res.status);
   }
 
   return res.json();
@@ -94,6 +94,100 @@ export const LONG_JOB_ERROR = "Something went wrong — your text is saved. Tap 
 
 const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
+export class ApiRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
+export type LongJobFailureReason =
+  | "network"
+  | "unauthorized"
+  | "failed"
+  | "malformed"
+  | "timeout";
+
+export class LongJobError extends Error {
+  constructor(
+    readonly reason: LongJobFailureReason,
+    readonly jobId: string,
+    options?: ErrorOptions,
+  ) {
+    super(LONG_JOB_ERROR, options);
+    this.name = "LongJobError";
+  }
+}
+
+type LongJobOptions = {
+  pollIntervalMs?: number;
+  timeoutMs?: number;
+  maxConsecutivePollErrors?: number;
+  onQueued?: (jobId: string) => void;
+};
+
+function jobFailure(reason: LongJobFailureReason, jobId: string, cause?: unknown): LongJobError {
+  console.error("[LitigaForge AI job error]", { jobId, reason, cause });
+  return new LongJobError(reason, jobId, cause === undefined ? undefined : { cause });
+}
+
+export async function pollLongJob<TResult>(
+  jobId: string,
+  path: string,
+  options: LongJobOptions = {},
+): Promise<TResult> {
+  const pollIntervalMs = options.pollIntervalMs ?? 2500;
+  const deadline = Date.now() + (options.timeoutMs ?? 3 * 60 * 1000);
+  const startedAt = Date.now();
+  const maxConsecutivePollErrors = options.maxConsecutivePollErrors ?? 3;
+  let consecutivePollErrors = 0;
+
+  while (Date.now() < deadline) {
+    await sleep(pollIntervalMs);
+    let job: LongJobStatus<TResult>;
+    try {
+      job = await apiFetch(`/jobs/${encodeURIComponent(jobId)}/status`) as LongJobStatus<TResult>;
+      consecutivePollErrors = 0;
+    } catch (error) {
+      consecutivePollErrors += 1;
+      const status = error instanceof ApiRequestError ? error.status : undefined;
+      console.warn("[LitigaForge AI job poll error]", {
+        jobId,
+        path,
+        status,
+        consecutivePollErrors,
+        error,
+      });
+      if (status === 401 || status === 403) {
+        throw jobFailure("unauthorized", jobId, error);
+      }
+      if (consecutivePollErrors >= maxConsecutivePollErrors) {
+        throw jobFailure("network", jobId, error);
+      }
+      continue;
+    }
+
+    console.debug("[LitigaForge AI job poll]", { jobId, path, status: job?.status });
+    if (job?.status === "completed") {
+      if (job.result === undefined || job.result === null) {
+        throw jobFailure("malformed", jobId);
+      }
+      const detail = { jobId, path, elapsedMs: Date.now() - startedAt };
+      console.info("[LitigaForge AI job completed]", detail);
+      window.dispatchEvent(new CustomEvent("litigaforge:job-completed", { detail }));
+      return job.result;
+    }
+    if (job?.status === "failed") {
+      throw jobFailure("failed", jobId, job.error);
+    }
+    if (job?.status !== "queued" && job?.status !== "running") {
+      throw jobFailure("malformed", jobId, job);
+    }
+  }
+
+  throw jobFailure("timeout", jobId);
+}
+
 /**
  * Starts a queued AI operation and resolves with only its completed result.
  * Poll errors are deliberately transient: a brief connection interruption does
@@ -102,30 +196,12 @@ const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(r
 export async function runLongJob<TResult>(
   path: string,
   init: ApiFetchInit,
-  options: { pollIntervalMs?: number; timeoutMs?: number } = {},
+  options: LongJobOptions = {},
 ): Promise<TResult> {
   const queued = await apiFetch(path, init) as LongJobStatus<TResult>;
-  if (!queued?.job_id) throw new Error(LONG_JOB_ERROR);
-
-  const pollIntervalMs = options.pollIntervalMs ?? 2500;
-  const deadline = Date.now() + (options.timeoutMs ?? 3 * 60 * 1000);
-
-  while (Date.now() < deadline) {
-    await sleep(pollIntervalMs);
-    try {
-      const job = await apiFetch(`/jobs/${encodeURIComponent(queued.job_id)}/status`) as LongJobStatus<TResult>;
-      if (job.status === "completed") {
-        if (job.result === undefined) throw new Error(LONG_JOB_ERROR);
-        return job.result;
-      }
-      if (job.status === "failed") throw new Error(LONG_JOB_ERROR);
-    } catch (error) {
-      if (error instanceof Error && error.message === LONG_JOB_ERROR) throw error;
-      // Polling is read-only; tolerate transient network/server failures.
-    }
-  }
-
-  throw new Error(LONG_JOB_ERROR);
+  if (!queued?.job_id) throw jobFailure("malformed", "");
+  options.onQueued?.(queued.job_id);
+  return pollLongJob<TResult>(queued.job_id, path, options);
 }
 
 async function _extractError(res: Response): Promise<string> {
