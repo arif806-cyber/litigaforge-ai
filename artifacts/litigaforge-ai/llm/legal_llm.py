@@ -25,6 +25,7 @@ logger = logging.getLogger("litigaforge.legal_llm")
 # Re-export so callers only need `from llm import legal_llm`.
 __all__ = [
     "complete", "acomplete", "ask_legal_question", "aask_legal_question",
+    "awin_pattern_report",
     "is_configured", "provider_label",
 ]
 
@@ -140,3 +141,8 @@ async def aask_legal_question(question: str, context: str = "", language: str = 
     if context:
         system = f"{system}\n\nRelevant context:\n{context}"
     return await acomplete(system, question)
+
+
+async def awin_pattern_report(instructions: str, aggregate_signals: str) -> str:
+    """Generate a report while keeping aggregate user-derived data out of system instructions."""
+    return await acomplete(instructions, aggregate_signals, temperature=0.2, max_tokens=900)

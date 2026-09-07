@@ -1072,9 +1072,18 @@ async def lifespan(app: FastAPI):
                     id               SERIAL PRIMARY KEY,
                     user_id          INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     learning_enabled BOOLEAN DEFAULT TRUE,
+                    win_pattern_report TEXT,
+                    win_pattern_report_generated_at TIMESTAMPTZ,
                     updated_at       TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            await conn.execute(
+                "ALTER TABLE user_profile ADD COLUMN IF NOT EXISTS win_pattern_report TEXT"
+            )
+            await conn.execute(
+                "ALTER TABLE user_profile ADD COLUMN IF NOT EXISTS "
+                "win_pattern_report_generated_at TIMESTAMPTZ"
+            )
             logger.info("personalization tables ready")
         except Exception as me:
             logger.warning("personalization tables init: %s", me)

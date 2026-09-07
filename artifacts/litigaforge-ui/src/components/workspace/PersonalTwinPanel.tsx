@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 
 // ─── Types (exported for workspace.tsx) ───────────────────────────────────────
 
@@ -40,6 +41,16 @@ export interface CrossMatterData {
   } | null;
 }
 
+export interface WinPatternReport {
+  mode: "narrative" | "insights";
+  narrative: string | null;
+  insights: Array<{ emoji: string; text: string }>;
+  generated_at: string | null;
+  cached: boolean;
+  matter_count: number;
+  can_generate?: boolean;
+}
+
 interface Props {
   profile:                     TwinProfile | null;
   crossMatter:                 CrossMatterData | null;
@@ -48,6 +59,10 @@ interface Props {
   onToggleLearning:            (enabled: boolean) => void;
   onReset:                     () => void;
   onRefresh:                   () => void;
+  report?:                     WinPatternReport | null;
+  isReportLoading?:            boolean;
+  onRefreshReport?:            () => void;
+  canViewReport?:              boolean;
   onOpenSession?:              (sessionId: number) => void;
   onReactivateSuggestionType?: (type: string) => void;
 }
@@ -181,8 +196,10 @@ function Skeleton() {
 
 export default function PersonalTwinPanel({
   profile, crossMatter, isLoading, sessionReady,
-  onToggleLearning, onReset, onRefresh, onOpenSession, onReactivateSuggestionType,
+  onToggleLearning, onReset, onRefresh, report, isReportLoading,
+  onRefreshReport, canViewReport = true, onOpenSession, onReactivateSuggestionType,
 }: Props) {
+  const [view, setView] = useState<"profile" | "report">("profile");
 
   if (!sessionReady) {
     return (
@@ -218,6 +235,67 @@ export default function PersonalTwinPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", padding: "8px 10px", gap: 6, borderBottom: `1px solid ${BORDER}` }}>
+        {(["profile", ...(canViewReport ? ["report"] as const : [])] as const).map(tab => (
+          <button key={tab} onClick={() => setView(tab)} style={{
+            flex: 1, padding: "7px 8px", borderRadius: 7, cursor: "pointer",
+            border: `1px solid ${view === tab ? "rgba(20,184,166,0.3)" : BORDER}`,
+            background: view === tab ? "rgba(20,184,166,0.1)" : CARD,
+            color: view === tab ? TEAL : FGS, fontSize: 9.5, fontWeight: 800,
+          }}>
+            {tab === "profile" ? "Twin Profile" : "My Report"}
+          </button>
+        ))}
+      </div>
+
+      {view === "report" ? (
+        <div style={{ padding: "16px 14px 20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: FG }}>Win Pattern Report</div>
+              <div style={{ fontSize: 8.5, color: FGS, marginTop: 3 }}>
+                What your Legal Twin has learned across your matters
+              </div>
+            </div>
+            <button onClick={onRefreshReport} disabled={isReportLoading} style={{
+              padding: "5px 9px", borderRadius: 6, cursor: isReportLoading ? "default" : "pointer",
+              background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.22)",
+              color: TEAL, fontSize: 8.5, fontWeight: 800, opacity: isReportLoading ? 0.6 : 1,
+            }}>
+              {isReportLoading ? "Generating…" : "↻ Refresh Report"}
+            </button>
+          </div>
+          {isReportLoading && !report ? <Skeleton /> : report?.mode === "narrative" && report.narrative ? (
+            <>
+              <div style={{
+                whiteSpace: "pre-wrap", fontSize: 10, color: FGD, lineHeight: 1.75,
+                padding: "13px", borderRadius: 9, background: "rgba(20,184,166,0.04)",
+                border: "1px solid rgba(20,184,166,0.13)",
+              }}>{report.narrative}</div>
+              {report.generated_at && <div style={{ marginTop: 8, fontSize: 7.5, color: FGS }}>
+                Generated {new Date(report.generated_at).toLocaleDateString()}
+                {report.cached ? " · cached for 24 hours" : ""}
+              </div>}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 9, color: FGS, lineHeight: 1.6, marginBottom: 10 }}>
+                {report && report.matter_count < 3
+                  ? `Complete ${3 - report.matter_count} more matter${3 - report.matter_count === 1 ? "" : "s"} for a full AI narrative.`
+                  : "The narrative is unavailable right now. Your Twin's current insights are shown below."}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {(report?.insights ?? profile.summary_insights ?? []).map((insight, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, padding: "8px 10px", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8 }}>
+                    <span>{insight.emoji}</span>
+                    <span style={{ fontSize: 9.5, color: FGD, lineHeight: 1.55 }}>{insight.text}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (<>
 
       {/* ── Twin Score Header ───────────────────────────────────────────────── */}
       <div style={{
@@ -595,6 +673,7 @@ export default function PersonalTwinPanel({
           🗑️ Reset All Learning Data
         </button>
       </div>
+      </>)}
 
     </div>
   );

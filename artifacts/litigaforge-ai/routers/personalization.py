@@ -11,17 +11,21 @@ Endpoints (all prefixed with BASE_PATH from main.py):
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from auth import require_user
+from auth import require_user, reserve_daily_ai_call
 from database import get_pool
+from llm.legal_llm import awin_pattern_report
 from llm.nim_embed import aembed_canvases, canvas_to_text, vec_to_str
 
 logger = logging.getLogger("litigaforge.personalization")
 router = APIRouter(tags=["personalization"])
+_REPORT_LOCKS: dict[int, asyncio.Lock] = {}
+_REPORT_REFRESH_COOLDOWN_SECONDS = 300
 
 _ALL_AGENTS = ["research", "strategy", "risk", "drafting", "predictive"]
 
@@ -470,6 +474,112 @@ def _generate_summary_insights(profile: dict, session_count: int) -> list[dict]:
     return insights[:6]
 
 
+_WIN_PATTERN_PROMPT = """Create a concise, one-page Win Pattern Report for a lawyer from
+their Personal Legal Twin signals. Identify their strongest repeatable argument pattern,
+precedent and court preferences, trusted analysis style, and one practical way to sharpen
+their approach. Use only the supplied aggregate signals; never invent wins, outcomes,
+ratings, case facts, or causal claims. Write directly to the lawyer in a confident but
+measured professional tone. Use a short title and 3-5 brief paragraphs, with no markdown
+table and no disclaimer."""
+
+
+def _report_signals(profile: dict) -> dict:
+    """Project profile data onto a fixed, non-identifying vocabulary."""
+    suggestion_types = {
+        "opportunity", "risk", "precedent", "pattern", "warning", "step", "framework",
+    }
+    node_types = {"judgment", "strategy", "risk", "argument", "issue", "fact"}
+    court_categories = (
+        ("supreme court", "Supreme Court"),
+        ("high court", "High Court"),
+        ("district court", "District Court"),
+        ("sessions court", "Sessions Court"),
+        ("family court", "Family Court"),
+        ("magistrate", "Magistrate Court"),
+        ("tribunal", "Tribunal"),
+        ("consumer", "Consumer Commission"),
+    )
+    normalized_courts: dict[str, int] = {}
+    for raw_key, raw_count in (profile.get("judgment_courts") or {}).items():
+        if not isinstance(raw_count, (int, float)) or raw_count <= 0:
+            continue
+        lowered = str(raw_key).strip().lower()
+        category = next((label for token, label in court_categories if token in lowered), None)
+        if category:
+            normalized_courts[category] = normalized_courts.get(category, 0) + int(raw_count)
+
+    sanitized = {
+        "agent_scores": {
+            key: int(value)
+            for key, value in (profile.get("agent_scores") or {}).items()
+            if key in _ALL_AGENTS and isinstance(value, (int, float))
+        },
+        "suggestion_accepts": {
+            key: int(value)
+            for key, value in (profile.get("suggestion_accepts") or {}).items()
+            if key in suggestion_types and isinstance(value, (int, float)) and value > 0
+        },
+        "judgment_courts": normalized_courts,
+        "node_type_preferences": {
+            key: int(value)
+            for key, value in (profile.get("node_type_preferences") or {}).items()
+            if key in node_types
+            and isinstance(value, (int, float))
+            and value > 0
+        },
+        "top_agent": profile.get("top_agent") if profile.get("top_agent") in _ALL_AGENTS else None,
+    }
+    draft = profile.get("draft_style_preference")
+    if draft:
+        sanitized["draft_style_preference"] = {
+            "total_copies": int(draft.get("total_copies") or 0),
+            "accept_rate": int(draft.get("accept_rate") or 0),
+        }
+    return sanitized
+
+
+def _report_context(profile: dict, session_count: int) -> str:
+    return json.dumps(
+        {"matter_count": session_count, "computed_profile": _report_signals(profile)},
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def _has_report_evidence(profile: dict) -> bool:
+    """Require several signals including a repeated pattern before asking the model."""
+    signals = _report_signals(profile)
+    groups = [
+        signals["suggestion_accepts"],
+        signals["judgment_courts"],
+        signals["node_type_preferences"],
+    ]
+    counts = [
+        int(value)
+        for group in groups
+        for value in group.values()
+        if isinstance(value, (int, float)) and value > 0
+    ]
+    draft_copies = int((signals.get("draft_style_preference") or {}).get("total_copies") or 0)
+    affinity_signals = sum(
+        1 for score in signals["agent_scores"].values() if score != 50
+    )
+    total_signals = sum(counts) + draft_copies + affinity_signals
+    strongest_repeat = max([*counts, draft_copies], default=0)
+    return total_signals >= 3 and strongest_repeat >= 2
+
+
+def _cached_report_is_fresh(cached, refresh: bool, now: datetime | None = None) -> bool:
+    if refresh or not cached:
+        return False
+    narrative = cached["win_pattern_report"]
+    generated_at = cached["win_pattern_report_generated_at"]
+    if not narrative or not generated_at:
+        return False
+    current = now or datetime.now(timezone.utc)
+    return (current - generated_at).total_seconds() < 86400
+
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.post("/workspace/profile/event")
@@ -647,6 +757,171 @@ async def get_profile_summary(user=Depends(require_user)):
     profile  = compute_profile(events)
     insights = _generate_summary_insights(profile, session_count)
     return {"insights": insights}
+
+
+@router.get("/workspace/profile/win-pattern-report")
+async def get_win_pattern_report(
+    user=Depends(require_user),
+):
+    """Read a cached report; generation is intentionally handled by the POST action."""
+    if user.get("role") not in ("advocate", "lawyer"):
+        raise HTTPException(403, "Win Pattern Reports are available to advocates only")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT event_type, event_data FROM user_learning_events "
+            "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 250",
+            user["id"],
+        )
+        session_count = (await conn.fetchval(
+            "SELECT COUNT(*) FROM workspace_sessions WHERE user_id=$1", user["id"]
+        )) or 0
+        cached = await conn.fetchrow(
+            "SELECT win_pattern_report, win_pattern_report_generated_at "
+            "FROM user_profile WHERE user_id=$1",
+            user["id"],
+        )
+
+    events = [
+        {
+            "event_type": row["event_type"],
+            "data": json.loads(row["event_data"]) if row["event_data"] else {},
+        }
+        for row in reversed(rows)
+    ]
+    profile = compute_profile(events)
+    insights = _generate_summary_insights(profile, session_count)
+
+    can_generate = session_count >= 3 and _has_report_evidence(profile)
+    if not can_generate:
+        return {
+            "mode": "insights",
+            "narrative": None,
+            "insights": insights,
+            "generated_at": None,
+            "cached": False,
+            "matter_count": session_count,
+            "can_generate": False,
+        }
+
+    generated_at = cached["win_pattern_report_generated_at"] if cached else None
+    cache_fresh = _cached_report_is_fresh(cached, False)
+    if cache_fresh:
+        return {
+            "mode": "narrative",
+            "narrative": cached["win_pattern_report"],
+            "insights": insights,
+            "generated_at": generated_at.isoformat(),
+            "cached": True,
+            "matter_count": session_count,
+            "can_generate": True,
+        }
+
+    return {
+        "mode": "insights",
+        "narrative": None,
+        "insights": insights,
+        "generated_at": generated_at.isoformat() if generated_at else None,
+        "cached": False,
+        "matter_count": session_count,
+        "can_generate": True,
+    }
+
+
+@router.post("/workspace/profile/win-pattern-report")
+async def generate_win_pattern_report(user=Depends(require_user)):
+    """Generate or refresh a report with metering, cooldown, and per-user coalescing."""
+    if user.get("role") not in ("advocate", "lawyer"):
+        raise HTTPException(403, "Win Pattern Reports are available to advocates only")
+
+    requested_at = datetime.now(timezone.utc)
+    lock = _REPORT_LOCKS.setdefault(user["id"], asyncio.Lock())
+    async with lock:
+        current = await get_win_pattern_report(user=user)
+        if not current["can_generate"]:
+            return current
+
+        generated_at_raw = current.get("generated_at")
+        if generated_at_raw:
+            generated_at = datetime.fromisoformat(generated_at_raw)
+            # A concurrent caller that waited for this lock reuses the first result.
+            if generated_at >= requested_at:
+                current["cached"] = True
+                return current
+            age = (requested_at - generated_at).total_seconds()
+            if age < _REPORT_REFRESH_COOLDOWN_SECONDS:
+                retry_after = max(1, int(_REPORT_REFRESH_COOLDOWN_SECONDS - age))
+                raise HTTPException(
+                    429,
+                    "Report was refreshed recently. Please try again in a few minutes.",
+                    headers={"Retry-After": str(retry_after)},
+                )
+
+        await reserve_daily_ai_call(user)
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT event_type, event_data FROM user_learning_events "
+                "WHERE user_id=$1 ORDER BY created_at DESC LIMIT 250",
+                user["id"],
+            )
+            session_count = (await conn.fetchval(
+                "SELECT COUNT(*) FROM workspace_sessions WHERE user_id=$1", user["id"]
+            )) or 0
+        events = [
+            {
+                "event_type": row["event_type"],
+                "data": json.loads(row["event_data"]) if row["event_data"] else {},
+            }
+            for row in reversed(rows)
+        ]
+        profile = compute_profile(events)
+        insights = _generate_summary_insights(profile, session_count)
+
+        try:
+            narrative = await awin_pattern_report(
+                _WIN_PATTERN_PROMPT,
+                _report_context(profile, session_count),
+            )
+            if not narrative:
+                raise ValueError("empty report")
+        except Exception as exc:
+            logger.warning("Win Pattern Report generation failed for user %s: %s", user["id"], exc)
+            return {
+                "mode": "insights",
+                "narrative": None,
+                "insights": insights,
+                "generated_at": None,
+                "cached": False,
+                "matter_count": session_count,
+                "can_generate": True,
+            }
+
+        async with pool.acquire() as conn:
+            saved_at = await conn.fetchval(
+                """
+                INSERT INTO user_profile (
+                    user_id, win_pattern_report, win_pattern_report_generated_at
+                ) VALUES ($1, $2, NOW())
+                ON CONFLICT (user_id) DO UPDATE SET
+                    win_pattern_report=$2,
+                    win_pattern_report_generated_at=NOW(),
+                    updated_at=NOW()
+                RETURNING win_pattern_report_generated_at
+                """,
+                user["id"],
+                narrative,
+            )
+        return {
+            "mode": "narrative",
+            "narrative": narrative,
+            "insights": insights,
+            "generated_at": saved_at.isoformat(),
+            "cached": False,
+            "matter_count": session_count,
+            "can_generate": True,
+        }
 
 
 @router.get("/workspace/sessions/{session_id}/cross-matter")

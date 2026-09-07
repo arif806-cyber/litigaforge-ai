@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import AgentPanel, { type AgentState, type CollabEvent } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
-import PersonalTwinPanel, { type TwinProfile, type CrossMatterData } from "@/components/workspace/PersonalTwinPanel";
+import PersonalTwinPanel, { type TwinProfile, type CrossMatterData, type WinPatternReport } from "@/components/workspace/PersonalTwinPanel";
 import SimulationPanel, { type SimState, type SimulationResult, type NodeDelta } from "@/components/workspace/SimulationPanel";
 import SearchPanel from "@/components/workspace/SearchPanel";
 import { LangToggle, STRINGS, getInitialLang, type Lang } from "@/components/workspace/WorkspaceLang";
@@ -282,6 +282,8 @@ export default function ForgeWorkspace() {
   const [twinProfile, setTwinProfile]       = useState<TwinProfile | null>(null);
   const [crossMatter, setCrossMatter]       = useState<CrossMatterData | null>(null);
   const [isLoadingTwin, setIsLoadingTwin]   = useState(false);
+  const [winPatternReport, setWinPatternReport] = useState<WinPatternReport | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [showTour, setShowTour]             = useState(false);
   const [lang, setLang]                     = useState<Lang>(getInitialLang);
   const [toasts, setToasts]                 = useState<ForgeToastItem[]>([]);
@@ -1504,9 +1506,33 @@ export default function ForgeWorkspace() {
     }
   }, [sessionId, isLoadingTwin]);
 
+  const fetchWinPatternReport = useCallback(async (refresh = false) => {
+    if (isLoadingReport) return;
+    setIsLoadingReport(true);
+    try {
+      const response = await api("/workspace/profile/win-pattern-report", {
+        method: refresh ? "POST" : "GET",
+      });
+      let next = await response.json() as WinPatternReport;
+      if (!refresh && next.mode === "insights" && next.can_generate) {
+        const generated = await api("/workspace/profile/win-pattern-report", { method: "POST" });
+        next = await generated.json() as WinPatternReport;
+      }
+      setWinPatternReport(next);
+    } catch {
+      addToast({ type: "error", message: "Could not generate your Win Pattern Report." });
+    } finally {
+      setIsLoadingReport(false);
+    }
+  }, [isLoadingReport]);
+
   useEffect(() => {
     if (rightPanelTab === "twin" && sessionId && !twinProfile && !isLoadingTwin) {
       void fetchTwinData();
+      if (
+        (user?.role === "advocate" || user?.role === "lawyer")
+        && !winPatternReport && !isLoadingReport
+      ) void fetchWinPatternReport();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rightPanelTab, sessionId]);
@@ -1528,6 +1554,7 @@ export default function ForgeWorkspace() {
       await api("/workspace/profile/reset", { method: "DELETE" });
       setTwinProfile(null);
       setCrossMatter(null);
+      setWinPatternReport(null);
       addToast({ type: "success", message: "Learning data reset." });
     } catch {
       addToast({ type: "error", message: "Could not reset learning data." });
@@ -2489,6 +2516,10 @@ export default function ForgeWorkspace() {
                 onToggleLearning={onToggleLearning}
                 onReset={onResetProfile}
                 onRefresh={fetchTwinData}
+                report={winPatternReport}
+                isReportLoading={isLoadingReport}
+                onRefreshReport={() => { void fetchWinPatternReport(true); }}
+                canViewReport={user?.role === "advocate" || user?.role === "lawyer"}
                 onOpenSession={(sid) => openSession({ id: sid, title: "", case_description: "", nodes_json: [], edges_json: [], insights: [], updated_at: "" })}
                 onReactivateSuggestionType={onReactivateSuggestionType}
               />
@@ -2731,6 +2762,10 @@ export default function ForgeWorkspace() {
                   onToggleLearning={onToggleLearning}
                   onReset={onResetProfile}
                   onRefresh={fetchTwinData}
+                  report={winPatternReport}
+                  isReportLoading={isLoadingReport}
+                  onRefreshReport={() => { void fetchWinPatternReport(true); }}
+                  canViewReport={user?.role === "advocate" || user?.role === "lawyer"}
                   onOpenSession={(sid) => openSession({ id: sid, title: "", case_description: "", nodes_json: [], edges_json: [], insights: [], updated_at: "" })}
                   onReactivateSuggestionType={onReactivateSuggestionType}
                 />
