@@ -3,6 +3,7 @@ LitigaForge AI — Community Router
 Legal Q&A, document analyzer, judgment finder, lawyer directory, legal aid.
 """
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -440,6 +441,52 @@ class QuestionRequest(BaseModel):
     question: str
     category: str = "general"
     country: str = "IN"
+    share_anonymously: bool = False
+
+
+_PUBLIC_EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
+_PUBLIC_PHONE_RE = re.compile(r"(?<!\d)(?:\+?91[\s.-]?)?[6-9]\d(?:[\s.-]?\d){8}(?!\d)")
+_PUBLIC_AMOUNT_RE = re.compile(
+    r"(?i)(?:₹|rs\.?|inr|usd|\$|eur|€|gbp|£)\s*[\d,]+(?:\.\d{1,2})?"
+    r"|(?<!\w)[\d,]+(?:\.\d{1,2})?\s*(?:rupees?|lakhs?|crores?|dollars?|euros?|pounds?)\b"
+)
+_PUBLIC_NAMED_PERSON_RE = re.compile(
+    r"(?i)\b(?:mr|mrs|ms|miss|dr|adv(?:ocate)?|shri|smt)\.?\s+[A-Z][A-Za-z.'-]+"
+    r"(?:\s+[A-Z][A-Za-z.'-]+){0,3}"
+)
+_PUBLIC_SELF_NAME_RE = re.compile(
+    r"(?i)\b(?:my name is|i am|i'm|this is)\s+[A-Z][A-Za-z.'-]+"
+    r"(?:\s+[A-Z][A-Za-z.'-]+){0,3}"
+)
+_PUBLIC_LOCALITY_RE = re.compile(
+    r"(?i)\b(?:residing at|resident of|living at|located at|address is|near)\s+"
+    r"[^,.;\n]{2,100}"
+)
+_PUBLIC_PROPER_NAME_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'-]{1,40}(?:\s+[A-Z][A-Za-z.'-]{1,40}){1,3}\b"
+)
+_PUBLIC_PLACE_RE = re.compile(
+    r"\b(?:in|at|from)\s+[A-Z][A-Za-z.'-]{1,50}"
+    r"(?:\s+[A-Z][A-Za-z.'-]{1,50}){0,3}\b"
+)
+
+
+def redact_public_question(question: str) -> str:
+    """Create a conservative public copy; the owner's original is untouched."""
+    redacted = _PUBLIC_EMAIL_RE.sub("[email removed]", question)
+    redacted = _PUBLIC_PHONE_RE.sub("[phone removed]", redacted)
+    redacted = _PUBLIC_AMOUNT_RE.sub("[amount removed]", redacted)
+    redacted = _PUBLIC_NAMED_PERSON_RE.sub("[name removed]", redacted)
+    redacted = _PUBLIC_SELF_NAME_RE.sub("[name removed]", redacted)
+    redacted = _PUBLIC_LOCALITY_RE.sub("[locality removed]", redacted)
+    redacted = _PUBLIC_PROPER_NAME_RE.sub("[name removed]", redacted)
+    redacted = _PUBLIC_PLACE_RE.sub("[locality removed]", redacted)
+    return re.sub(r"[ \t]+", " ", redacted).strip()
+
+
+def normalize_public_question(question: str) -> str:
+    normalized = re.sub(r"\s+", " ", question).strip().casefold()
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 @router.post("/ask", status_code=202)
@@ -496,30 +543,61 @@ Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimer
         answer = add_disclaimer(validate_ai_response(answer))
         if not answer.strip():
             answer = "Our AI advisors are temporarily busy. Please try again in a moment, or consult a local advocate directly."
+        public_question = redact_public_question(safe_question) if req.share_anonymously else None
+        public_answer = redact_public_question(answer) if req.share_anonymously else None
+        normalized_question = normalize_public_question(public_question) if public_question else None
         row = await fetchrow(
-            "INSERT INTO legal_questions (user_id, question, category, ai_answer, country) "
-            "VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at",
-            uid, safe_question, req.category, answer, country,
+            """INSERT INTO legal_questions
+               (user_id, question, public_question, public_answer, normalized_question,
+                share_anonymously, moderation_status, category, ai_answer, country)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               ON CONFLICT (normalized_question)
+               WHERE normalized_question IS NOT NULL
+               DO NOTHING
+               RETURNING id, created_at""",
+            uid, safe_question, public_question, public_answer, normalized_question,
+            req.share_anonymously, "pending" if req.share_anonymously else "private",
+            req.category, answer, country,
         )
+        queued_for_moderation = bool(row)
+        # Keep a duplicate question private to its owner rather than losing it or
+        # creating another moderation/public-feed copy.
+        if not row:
+            row = await fetchrow(
+                """INSERT INTO legal_questions
+                   (user_id, question, share_anonymously, moderation_status,
+                    category, ai_answer, country)
+                   VALUES ($1, $2, FALSE, 'private', $3, $4, $5)
+                   RETURNING id, created_at""",
+                uid, safe_question, req.category, answer, country,
+            )
         return {"id": row["id"], "question": safe_question, "category": req.category,
-                "country": country, "answer": answer, "created_at": str(row["created_at"])}
+                "country": country, "answer": answer,
+                "sharing_status": "pending" if queued_for_moderation else "private",
+                "created_at": str(row["created_at"])}
     return await enqueue_job(uid, work)
 
 
 @router.get("/ask")
 async def list_questions(response: Response, limit: int = 20, category: Optional[str] = None, country: str = "IN"):
-    response.headers["Cache-Control"] = "public, max-age=3600"
+    response.headers["Cache-Control"] = "no-store"
     cc = normalize_code(country)
     if category and category != "all":
         rows = await fetch(
-            "SELECT id, question, category, ai_answer, country, upvotes, created_at "
-            "FROM legal_questions WHERE category=$1 AND country=$2 ORDER BY created_at DESC LIMIT $3",
+            "SELECT id, public_question AS question, category, public_answer AS ai_answer, country, upvotes, created_at "
+            "FROM legal_questions WHERE category=$1 AND country=$2 "
+            "AND share_anonymously=TRUE AND moderation_status='approved' "
+            "AND public_question IS NOT NULL AND public_answer IS NOT NULL "
+            "ORDER BY created_at DESC LIMIT $3",
             category, cc, limit,
         )
     else:
         rows = await fetch(
-            "SELECT id, question, category, ai_answer, country, upvotes, created_at "
-            "FROM legal_questions WHERE country=$1 ORDER BY created_at DESC LIMIT $2",
+            "SELECT id, public_question AS question, category, public_answer AS ai_answer, country, upvotes, created_at "
+            "FROM legal_questions WHERE country=$1 "
+            "AND share_anonymously=TRUE AND moderation_status='approved' "
+            "AND public_question IS NOT NULL AND public_answer IS NOT NULL "
+            "ORDER BY created_at DESC LIMIT $2",
             cc, limit,
         )
     for r in rows:

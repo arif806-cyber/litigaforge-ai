@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, CheckCircle, XCircle, RotateCcw, Users, Briefcase,
-  Search, Loader2, AlertTriangle, Clock
+  Search, Loader2, AlertTriangle, Clock, MessageSquare
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ interface AdminUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<"pending" | "users">("pending");
+  const [tab, setTab] = useState<"pending" | "questions" | "users">("pending");
   const [rejectReason, setRejectReason] = useState<Record<number, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<number | null>(null);
   const queryClient = useQueryClient();
@@ -71,6 +71,7 @@ export default function AdminPage() {
 
       <div className="flex gap-2 border-b border-border">
         <TabButton active={tab === "pending"} onClick={() => setTab("pending")} icon={Briefcase} label="Pending Lawyers" />
+        <TabButton active={tab === "questions"} onClick={() => setTab("questions")} icon={MessageSquare} label="Question Moderation" />
         <TabButton active={tab === "users"} onClick={() => setTab("users")} icon={Users} label="All Users" />
       </div>
 
@@ -84,12 +85,62 @@ export default function AdminPage() {
             setShowRejectInput={setShowRejectInput}
             queryClient={queryClient}
           />
+        ) : tab === "questions" ? (
+          <QuestionModerationTab key="questions" queryClient={queryClient} />
         ) : (
           <UsersTab key="users" queryClient={queryClient} />
         )}
       </AnimatePresence>
     </div>
   );
+}
+
+function QuestionModerationTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["admin-pending-questions"],
+    queryFn: () => apiFetch("/admin/questions/pending"),
+  });
+  const approve = useMutation({
+    mutationFn: (id: number) => apiFetch(`/admin/questions/${id}/approve`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-pending-questions"] }),
+  });
+  const reject = useMutation({
+    mutationFn: (id: number) => apiFetch(`/admin/questions/${id}/reject`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-pending-questions"] }),
+  });
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (isError) return (
+    <div className="flex flex-col items-center gap-3 py-12">
+      <AlertTriangle className="w-8 h-8 text-destructive" />
+      <p className="text-destructive">{(error as Error)?.message || "Failed to load moderation queue."}</p>
+      <Button variant="outline" onClick={() => refetch()}>Retry</Button>
+    </div>
+  );
+  const questions = data?.questions || [];
+  if (!questions.length) return <div className="text-center py-16 text-muted-foreground">No questions awaiting review.</div>;
+  return <div className="space-y-4">
+    {questions.map((question: any) => (
+      <div key={question.id} className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Private original — admin only</p>
+          <p className="text-sm">{question.question}</p>
+        </div>
+        <div className="rounded-lg bg-muted/60 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Redacted public version</p>
+          <p className="text-sm font-medium">{question.public_question}</p>
+          <p className="text-sm whitespace-pre-line mt-3 pt-3 border-t border-border">{question.public_answer}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => approve.mutate(question.id)} disabled={approve.isPending || reject.isPending}>
+            <CheckCircle className="w-4 h-4 mr-1" /> Approve
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => reject.mutate(question.id)} disabled={approve.isPending || reject.isPending}>
+            <XCircle className="w-4 h-4 mr-1" /> Reject
+          </Button>
+        </div>
+      </div>
+    ))}
+  </div>;
 }
 
 function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: React.ElementType; label: string }) {

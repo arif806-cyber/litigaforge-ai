@@ -28,3 +28,4 @@
 - [LitigaForge public marketplace safety](litigaforge-public-marketplace-safety.md) — public lawyer data is allowlisted; matching stays fail-closed until verified local supply exists.
 - [LitigaForge Workspace SSE](litigaforge-workspace-sse.md) — first frame precedes DB/provider work; every Workspace SSE path must bypass GZip or small frames remain buffered.
 - [LitigaForge async AI jobs](litigaforge-async-ai-jobs.md) — long browser AI calls use DB-backed jobs + polling; structured model outputs need strict size caps or JSON truncates before closing.
+- [LitigaForge Q&A privacy](litigaforge-question-privacy.md) — legal questions are owner-private by default; public Q&A requires explicit opt-in, separate redacted copies, admin approval, and deduplication.

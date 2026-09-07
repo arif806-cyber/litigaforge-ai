@@ -410,6 +410,13 @@ async def lifespan(app: FastAPI):
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
                 question TEXT NOT NULL,
+                public_question TEXT,
+                public_answer TEXT,
+                normalized_question TEXT,
+                share_anonymously BOOLEAN NOT NULL DEFAULT FALSE,
+                moderation_status TEXT NOT NULL DEFAULT 'private',
+                moderated_at TIMESTAMP,
+                moderated_by INTEGER REFERENCES users(id),
                 category TEXT,
                 ai_answer TEXT,
                 country TEXT DEFAULT 'IN',
@@ -418,6 +425,30 @@ async def lifespan(app: FastAPI):
             )
         """)
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IN'")
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS public_question TEXT")
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS public_answer TEXT")
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS normalized_question TEXT")
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS share_anonymously BOOLEAN NOT NULL DEFAULT FALSE")
+        # No default on the first ADD lets us identify legacy rows exactly once.
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS moderation_status TEXT")
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMP")
+        await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS moderated_by INTEGER REFERENCES users(id)")
+        await conn.execute("""
+            UPDATE legal_questions
+            SET share_anonymously = FALSE,
+                moderation_status = 'private',
+                public_question = NULL,
+                public_answer = NULL,
+                normalized_question = NULL
+            WHERE moderation_status IS NULL
+        """)
+        await conn.execute("ALTER TABLE legal_questions ALTER COLUMN moderation_status SET DEFAULT 'private'")
+        await conn.execute("ALTER TABLE legal_questions ALTER COLUMN moderation_status SET NOT NULL")
+        await conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_legal_questions_normalized_public
+            ON legal_questions (normalized_question)
+            WHERE normalized_question IS NOT NULL
+        """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS ai_usage_daily (
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

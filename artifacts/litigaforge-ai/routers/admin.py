@@ -27,6 +27,54 @@ class RejectRequest(BaseModel):
     reason: str = ""
 
 
+@router.get("/admin/questions/pending")
+async def admin_pending_questions(current_user: dict = Depends(get_superuser)):
+    rows = await fetch(
+        """SELECT id, question, public_question, public_answer, category, country, created_at
+           FROM legal_questions
+           WHERE share_anonymously = TRUE AND moderation_status = 'pending'
+           ORDER BY created_at ASC"""
+    )
+    for row in rows:
+        row["created_at"] = str(row["created_at"])
+    return {"total": len(rows), "questions": rows}
+
+
+@router.post("/admin/questions/{question_id}/approve")
+async def admin_approve_question(
+    question_id: int,
+    current_user: dict = Depends(get_superuser),
+):
+    row = await fetchrow(
+        """UPDATE legal_questions
+           SET moderation_status='approved', moderated_at=NOW(), moderated_by=$2
+           WHERE id=$1 AND share_anonymously=TRUE AND moderation_status='pending'
+           RETURNING id""",
+        question_id, current_user["id"],
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Pending question not found")
+    return {"success": True, "question_id": question_id, "status": "approved"}
+
+
+@router.post("/admin/questions/{question_id}/reject")
+async def admin_reject_question(
+    question_id: int,
+    current_user: dict = Depends(get_superuser),
+):
+    row = await fetchrow(
+        """UPDATE legal_questions
+           SET moderation_status='rejected', share_anonymously=FALSE,
+               normalized_question=NULL, moderated_at=NOW(), moderated_by=$2
+           WHERE id=$1 AND moderation_status='pending'
+           RETURNING id""",
+        question_id, current_user["id"],
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Pending question not found")
+    return {"success": True, "question_id": question_id, "status": "rejected"}
+
+
 def _notify_approved(name: str, email: str, phone: str) -> None:
     """Fire-and-forget: WhatsApp + email to the newly approved advocate."""
     wa_msg = (

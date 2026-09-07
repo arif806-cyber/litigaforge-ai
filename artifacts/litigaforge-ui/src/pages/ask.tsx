@@ -160,6 +160,7 @@ export default function Ask() {
 
   const [question, setQuestion] = useState(() => paramQ || localStorage.getItem("litigaforge:ask:question") || "");
   const [category, setCategory] = useState(initialCategory);
+  const [shareAnonymously, setShareAnonymously] = useState(false);
   const [browseCategory, setBrowseCategory] = useState("all");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [clarifyOpen, setClarifyOpen] = useState(false);
@@ -213,7 +214,7 @@ export default function Ask() {
 
   const { data: qaList, refetch, isLoading: qaLoading, isError: qaError, error: qaErrorData } = useQuery<{ questions: QAItem[]; total: number }>({
     queryKey: ["questions", browseCategory, activeCode],
-    queryFn: () => apiFetch(`/ask?limit=20&country=${activeCode}${browseCategory !== "all" ? `&category=${browseCategory}` : ""}`),
+    queryFn: () => apiFetch(`/ask?privacy=2&limit=20&country=${activeCode}${browseCategory !== "all" ? `&category=${browseCategory}` : ""}`),
     staleTime: 30000,
   });
 
@@ -233,11 +234,12 @@ export default function Ask() {
     : undefined;
 
   const askMutation = useMutation({
-    mutationFn: (data: { question: string; category: string; country: string }) =>
+    mutationFn: (data: { question: string; category: string; country: string; share_anonymously: boolean }) =>
       runLongJob<{ answer: string; category: string }>("/ask", { method: "POST", body: data }),
     onSuccess: (data) => {
       setMessages(prev => [...prev, { id: Date.now(), role: "assistant", content: data.answer, category: data.category }]);
       setQuestion("");
+      setShareAnonymously(false);
       refetch();
     },
     onError: (err) => {
@@ -293,7 +295,12 @@ export default function Ask() {
     const userText = question.trim();
     const finalQuestion = extraDetails ? `${userText}\n\n${extraDetails}` : userText;
     setMessages(prev => [...prev, { id: Date.now(), role: "user", content: userText, category }]);
-    askMutation.mutate({ question: finalQuestion, category, country: activeCode });
+    askMutation.mutate({
+      question: finalQuestion,
+      category,
+      country: activeCode,
+      share_anonymously: shareAnonymously,
+    });
   };
 
   const clearChat = () => setMessages([]);
@@ -405,8 +412,9 @@ export default function Ask() {
               ))}
             </div>
 
-            <form onSubmit={handleSubmit} className="flex items-end gap-3">
-              <textarea
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="flex items-end gap-3">
+                <textarea
                 ref={textareaRef}
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
@@ -415,8 +423,8 @@ export default function Ask() {
                 rows={2}
                 className="flex-1 px-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none shadow-sm"
                 data-testid="input-question"
-              />
-              <Button
+                />
+                <Button
                 type="submit"
                 size="lg"
                 disabled={!question.trim() || askMutation.isPending}
@@ -427,7 +435,23 @@ export default function Ask() {
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <Send className="w-4 h-4" />}
                 <span className="hidden sm:inline ml-2">Send</span>
-              </Button>
+                </Button>
+              </div>
+              <label className="flex items-start gap-2.5 text-sm text-foreground cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  checked={shareAnonymously}
+                  onChange={(event) => setShareAnonymously(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                  data-testid="checkbox-share-anonymously"
+                />
+                <span>
+                  <span className="font-medium">Share anonymously to help others</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Optional. Your question stays private unless you check this box. Shared copies are redacted and reviewed before publication.
+                  </span>
+                </span>
+              </label>
             </form>
             <p className="text-[11px] text-muted-foreground/70">
               Press <kbd className="px-1 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Enter</kbd> to send, <kbd className="px-1 py-0.5 rounded bg-muted border border-border text-[10px] font-mono">Shift+Enter</kbd> for a new line.
