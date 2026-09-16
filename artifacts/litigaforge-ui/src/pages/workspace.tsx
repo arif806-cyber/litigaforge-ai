@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
 import ForgeTour, { checkForgeToured } from "@/components/workspace/ForgeTour";
 import { useAuth } from "@/lib/auth-context";
-import AgentPanel, { type AgentState, type CollabEvent } from "@/components/workspace/AgentPanel";
+import AgentPanel, { type AgentState, type CollabEvent, type LiveJudgment } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
 import ProactivePanel, { type Suggestion } from "@/components/workspace/ProactivePanel";
 import PersonalTwinPanel, { type TwinProfile, type CrossMatterData, type WinPatternReport } from "@/components/workspace/PersonalTwinPanel";
@@ -894,6 +894,29 @@ export default function ForgeWorkspace() {
               setAgentStates(prev => ({
                 ...prev,
                 [agentId]: { status: "thinking", text: "", reasoning: undefined, canvasNodeAdded: false },
+              }));
+            } else if (type === "ik_fetched") {
+              const cases = Array.isArray(event.judgments)
+                ? event.judgments.filter((item): item is LiveJudgment => (
+                    typeof item === "object"
+                    && item !== null
+                    && typeof (item as Record<string, unknown>).title === "string"
+                    && (
+                      (item as Record<string, unknown>).url === undefined
+                      || typeof (item as Record<string, unknown>).url === "string"
+                    )
+                  ))
+                : [];
+              setAgentStates(prev => ({
+                ...prev,
+                research: {
+                  ...(prev.research ?? { status: "thinking", text: "" }),
+                  liveJudgments: {
+                    count: typeof event.count === "number" ? event.count : cases.length,
+                    query: typeof event.query === "string" ? event.query : "",
+                    cases,
+                  },
+                },
               }));
             } else if (type === "agent_reasoning") {
               setAgentStates(prev => ({

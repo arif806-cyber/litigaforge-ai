@@ -6,10 +6,20 @@ import { runLongJob } from "@/lib/api";
 
 export type AgentStatus = "idle" | "thinking" | "done";
 
+export interface LiveJudgment {
+  title: string;
+  url?: string;
+}
+
 export interface AgentState {
   status: AgentStatus;
   text: string;
   reasoning?: string;
+  liveJudgments?: {
+    count: number;
+    query: string;
+    cases: LiveJudgment[];
+  };
   feedback?: "up" | "down" | null;
   askQuestion?: string;
   askResponse?: string;
@@ -374,6 +384,58 @@ function AgentCard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Live IndianKanoon sources */}
+      {def.id === "research" && state.liveJudgments && state.liveJudgments.count > 0 && (
+        <details style={{ margin: "0 12px 6px" }}>
+          <summary style={{
+            width: "fit-content",
+            cursor: "pointer",
+            listStylePosition: "inside",
+            fontSize: 9,
+            fontWeight: 700,
+            color: "#5eead4",
+            background: "rgba(20,184,166,0.1)",
+            border: "1px solid rgba(20,184,166,0.28)",
+            padding: "4px 7px",
+            borderRadius: 8,
+          }}>
+            🔍 {state.liveJudgments.count} live judgment{state.liveJudgments.count === 1 ? "" : "s"} fetched from IndianKanoon
+          </summary>
+          <div style={{
+            marginTop: 5,
+            padding: "6px 8px",
+            borderRadius: 7,
+            background: "rgba(0,0,0,0.2)",
+            border: "1px solid rgba(20,184,166,0.16)",
+          }}>
+            {state.liveJudgments.cases.length > 0 ? (
+              <ul style={{ margin: 0, paddingLeft: 15, display: "flex", flexDirection: "column", gap: 4 }}>
+                {state.liveJudgments.cases.map((judgment, index) => (
+                  <li key={`${judgment.url ?? judgment.title}-${index}`} style={{ color: "#64748b", fontSize: 9.5, lineHeight: 1.4 }}>
+                    {judgment.url ? (
+                      <a
+                        href={judgment.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#99f6e4", textDecoration: "underline", textUnderlineOffset: 2 }}
+                      >
+                        {judgment.title}
+                      </a>
+                    ) : (
+                      <span style={{ color: "#cbd5e1" }}>{judgment.title}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ color: "#94a3b8", fontSize: 9.5 }}>
+                Source details were not provided for this search.
+              </div>
+            )}
+          </div>
+        </details>
+      )}
 
       {/* Streaming / output text */}
       <AnimatePresence>

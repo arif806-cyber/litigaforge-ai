@@ -979,7 +979,21 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
                 if ik_docs:
                     ik_block = _format_ik_for_prompt(ik_docs)
                     prompt = ik_block + "\n\n" + prompt
-                    yield sse({"type": "ik_fetched", "count": len(ik_docs), "query": ik_query})
+                    judgments = [
+                        {
+                            "title": (doc.get("title") or "Unknown Case")[:200],
+                            "url": f"https://indiankanoon.org/doc/{doc.get('tid') or doc.get('docid')}/"
+                            if doc.get("tid") or doc.get("docid")
+                            else None,
+                        }
+                        for doc in ik_docs
+                    ]
+                    yield sse({
+                        "type": "ik_fetched",
+                        "count": len(ik_docs),
+                        "query": ik_query,
+                        "judgments": judgments,
+                    })
                     logger.info(
                         "IK pre-fetch: %d judgments injected into Research Agent prompt (query: %s)",
                         len(ik_docs), ik_query[:60],
