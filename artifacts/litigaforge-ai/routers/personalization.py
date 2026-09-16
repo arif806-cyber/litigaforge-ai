@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from auth import require_user, reserve_daily_ai_call
+from auth import require_user, reserve_hourly_ai_call
 from database import get_pool
 from llm.legal_llm import awin_pattern_report
 from llm.nim_embed import aembed_canvases, canvas_to_text, vec_to_str
@@ -858,7 +858,7 @@ async def generate_win_pattern_report(user=Depends(require_user)):
                     headers={"Retry-After": str(retry_after)},
                 )
 
-        await reserve_daily_ai_call(user)
+        await reserve_hourly_ai_call(user)
         pool = await get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(

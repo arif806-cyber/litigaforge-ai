@@ -459,6 +459,15 @@ async def lifespan(app: FastAPI):
             )
         """)
         await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_usage_hourly (
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                usage_hour TIMESTAMPTZ NOT NULL,
+                call_count INTEGER NOT NULL DEFAULT 0 CHECK (call_count >= 0),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, usage_hour)
+            )
+        """)
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS anonymous_ai_usage_daily (
                 ip_hash TEXT NOT NULL,
                 usage_date DATE NOT NULL DEFAULT CURRENT_DATE,

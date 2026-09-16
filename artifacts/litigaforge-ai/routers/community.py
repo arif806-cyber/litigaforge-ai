@@ -752,7 +752,7 @@ async def analyze_document(
     request: Request,
     current_user: dict = Depends(require_ai_user),
 ):
-    # require_ai_user already reserves an atomic per-user daily AI call.
+    # require_ai_user already reserves an atomic per-user hourly AI call.
     # Replit's shared, rotating proxy IPs are not a stable user identity and
     # must not be used to reject authenticated analyzer requests.
     try:

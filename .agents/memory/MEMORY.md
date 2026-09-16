@@ -30,3 +30,4 @@
 - [LitigaForge async AI jobs](litigaforge-async-ai-jobs.md) — long browser AI calls use DB-backed jobs + polling; structured model outputs need strict size caps or JSON truncates before closing.
 - [LitigaForge Q&A privacy](litigaforge-question-privacy.md) — legal questions are owner-private by default; public Q&A requires explicit opt-in, separate redacted copies, admin approval, and deduplication.
 - [LitigaForge proxy rate limits](litigaforge-proxy-rate-limits.md) — do not use proxy-IP buckets for authenticated mutations; Replit/Google proxy IPs are shared and rotate between one browser’s requests.
+- [LitigaForge authenticated AI quota](litigaforge-ai-quota.md) — every authenticated plan shares a flat 20-call clock-hour limit; keep it atomic and user-based, never proxy-IP-based.

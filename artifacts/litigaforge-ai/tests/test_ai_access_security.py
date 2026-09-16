@@ -1,4 +1,4 @@
-"""Regression tests for paid AI authentication and daily metering boundaries."""
+"""Regression tests for paid AI authentication and metering boundaries."""
 import os
 import sys
 from unittest.mock import AsyncMock, patch
@@ -11,32 +11,31 @@ os.environ.setdefault("SESSION_SECRET", "test-secret-123456789012345678901234567
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
 
 from auth import (
-    AI_DAILY_LIMITS,
+    AI_HOURLY_LIMIT,
     ANONYMOUS_ASK_DAILY_LIMIT,
     require_ask_access,
-    reserve_daily_ai_call,
+    reserve_hourly_ai_call,
 )
 from rate_limit import get_client_ip
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("tier", "expected_limit"),
-    [("free", 5), ("professional", 50), ("advocate_pro", 200)],
-)
-async def test_user_ai_call_reservation_uses_daily_plan_limit(tier, expected_limit):
+@pytest.mark.parametrize("tier", ["free", "professional", "advocate_pro"])
+async def test_every_plan_uses_same_hourly_ai_limit(tier):
     with patch("auth._fetchrow", AsyncMock(return_value={"call_count": 1})) as fetchrow:
         user = {"id": 9, "subscription_tier": tier}
-        assert await reserve_daily_ai_call(user) == user
-    assert fetchrow.await_args.args[-1] == expected_limit
+        assert await reserve_hourly_ai_call(user) == user
+    assert fetchrow.await_args.args[-1] == AI_HOURLY_LIMIT == 20
+    assert "date_trunc('hour', CURRENT_TIMESTAMP)" in fetchrow.await_args.args[0]
 
 
 @pytest.mark.asyncio
 async def test_user_ai_call_limit_is_atomic_and_returns_429():
     with patch("auth._fetchrow", AsyncMock(return_value=None)):
         with pytest.raises(HTTPException) as exc:
-            await reserve_daily_ai_call({"id": 9, "subscription_tier": "free"})
+            await reserve_hourly_ai_call({"id": 9, "subscription_tier": "free"})
     assert exc.value.status_code == 429
+    assert exc.value.headers["Retry-After"] == "3600"
 
 
 class _Request:

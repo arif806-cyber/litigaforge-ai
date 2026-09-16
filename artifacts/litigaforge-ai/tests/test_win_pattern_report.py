@@ -171,7 +171,7 @@ async def test_recent_forced_refresh_is_throttled_before_metering(monkeypatch):
         raise AssertionError("cooldown must run before usage is reserved")
 
     monkeypatch.setattr(personalization, "get_win_pattern_report", current_report)
-    monkeypatch.setattr(personalization, "reserve_daily_ai_call", fail_meter)
+    monkeypatch.setattr(personalization, "reserve_hourly_ai_call", fail_meter)
 
     with pytest.raises(personalization.HTTPException) as exc:
         await personalization.generate_win_pattern_report(
@@ -225,7 +225,7 @@ async def test_concurrent_generation_is_coalesced_and_metered_once(monkeypatch):
 
     personalization._REPORT_LOCKS.pop(92, None)
     monkeypatch.setattr(personalization, "get_win_pattern_report", current_report)
-    monkeypatch.setattr(personalization, "reserve_daily_ai_call", meter)
+    monkeypatch.setattr(personalization, "reserve_hourly_ai_call", meter)
     monkeypatch.setattr(personalization, "awin_pattern_report", llm)
     monkeypatch.setattr(personalization, "get_pool", fake_pool)
 

@@ -34,7 +34,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
-from auth import require_user, reserve_daily_ai_call
+from auth import require_user, reserve_hourly_ai_call
 from database import (
     fetch as db_fetch,
     fetchrow as db_fetchrow,
@@ -113,7 +113,7 @@ async def require_livetrack(user: dict = Depends(require_user)) -> dict:
 
 
 async def require_livetrack_ai(user: dict = Depends(require_livetrack)) -> dict:
-    return await reserve_daily_ai_call(user)
+    return await reserve_hourly_ai_call(user)
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
