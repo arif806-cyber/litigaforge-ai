@@ -132,12 +132,13 @@ class ClarifyRequest(BaseModel):
 
 
 @router.post("/clarify")
-@limiter.limit("10/minute")
 async def clarify_input(req: ClarifyRequest, request: Request,
                         current_user: dict = Depends(require_ai_user)):
     """Given the user's draft input, return up to 3 short, jurisdiction-aware
     clarifying questions that would materially improve the answer. Returns an
     empty list when the input is already detailed enough."""
+    # This is an authenticated, per-user-metered AI operation. Replit's shared
+    # proxy addresses must not be used as an additional user-level quota.
     try:
         safe_text = sanitize_text(req.text or "", max_length=4000, field_name="text")
     except ValueError as e:
@@ -746,12 +747,14 @@ class DocumentRequest(BaseModel):
 
 
 @router.post("/document/analyze", status_code=202)
-@limiter.limit("10/minute")
 async def analyze_document(
     req: DocumentRequest,
     request: Request,
     current_user: dict = Depends(require_ai_user),
 ):
+    # require_ai_user already reserves an atomic per-user daily AI call.
+    # Replit's shared, rotating proxy IPs are not a stable user identity and
+    # must not be used to reject authenticated analyzer requests.
     try:
         safe_text = sanitize_text(req.document_text, max_length=8000, field_name="document_text")
     except ValueError as e:
@@ -986,7 +989,6 @@ Document text to analyze:
 
 
 @router.post("/document/analyze-file", status_code=202)
-@limiter.limit("10/minute")
 async def analyze_document_file(
     request: Request,
     file: UploadFile = File(...),
@@ -995,6 +997,7 @@ async def analyze_document_file(
     context: str = "",
     current_user: dict = Depends(require_ai_user),
 ):
+    # Authenticated usage is metered by require_ai_user, not by shared proxy IP.
     # UploadFile is request-scoped and is closed after this response, so copy a
     # bounded payload before scheduling the durable job.
     data = await file.read(10 * 1024 * 1024 + 1)

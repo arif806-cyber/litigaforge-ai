@@ -106,9 +106,17 @@ def test_all_user_facing_paid_ai_routes_have_metering_dependency():
         assert dependency in calls, name
 
 
-def test_ask_and_clarify_are_ip_limited_to_ten_per_minute():
+def test_anonymous_ask_is_ip_limited_but_authenticated_clarify_is_not():
     import inspect
     from routers import community
 
     assert '@limiter.limit("10/minute")' in inspect.getsource(community.ask_legal_question)
-    assert '@limiter.limit("10/minute")' in inspect.getsource(community.clarify_input)
+    assert "@limiter.limit" not in inspect.getsource(community.clarify_input)
+
+
+def test_authenticated_document_analyzers_do_not_use_shared_proxy_ip_limits():
+    import inspect
+    from routers import community
+
+    assert "@limiter.limit" not in inspect.getsource(community.analyze_document)
+    assert "@limiter.limit" not in inspect.getsource(community.analyze_document_file)

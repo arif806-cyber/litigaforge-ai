@@ -94,12 +94,15 @@ class CaseRequirementRequest(BaseModel):
 
 
 @router.post("/cases/requirements")
-@limiter.limit("5/hour")
 async def create_case_requirement(
     req: CaseRequirementRequest,
     request: Request,
     current_user: Optional[dict] = Depends(get_current_user),
 ):
+    # Do not add an IP-based SlowAPI limit here. Replit's proxy addresses are
+    # shared and may change between requests, so legitimate signed-in users can
+    # exhaust one another's buckets. create_case_requirement_with_quota applies
+    # the authenticated user's plan limit atomically in PostgreSQL.
     if not current_user:
         raise HTTPException(401, "Login required to post a case")
     if not current_user.get("email_verified") and os.getenv("ALLOW_UNVERIFIED") != "1":

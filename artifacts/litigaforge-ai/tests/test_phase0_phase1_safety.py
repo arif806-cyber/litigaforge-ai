@@ -64,13 +64,38 @@ async def test_sixth_free_case_returns_upgrade_response():
 
     with patch("routers.matching.create_case_requirement_with_quota",
                AsyncMock(side_effect=PermissionError)):
-        response = await create_case_requirement.__wrapped__(
+        response = await create_case_requirement(
             CaseRequirementRequest(title="Civil matter", case_type="civil"),
             None,
             {"id": 4, "email_verified": True, "subscription_tier": "free"},
         )
     assert response.status_code == 402
     assert b"Free plan limit reached" in response.body
+
+
+@pytest.mark.asyncio
+async def test_case_creation_is_not_limited_by_shared_proxy_ip(monkeypatch):
+    from routers.matching import CaseRequirementRequest, create_case_requirement
+
+    monkeypatch.delenv("MATCHING_ENABLED", raising=False)
+    created = {
+        "id": 42,
+        "created_at": "2026-09-16T00:00:00",
+    }
+    with patch(
+        "routers.matching.create_case_requirement_with_quota",
+        AsyncMock(return_value=created),
+    ) as create_with_quota:
+        for _ in range(6):
+            response = await create_case_requirement(
+                CaseRequirementRequest(title="Civil matter", case_type="civil"),
+                None,
+                {"id": 4, "email_verified": True, "subscription_tier": "professional"},
+            )
+            assert response["case"]["id"] == 42
+
+    assert create_with_quota.await_count == 6
+    assert not hasattr(create_case_requirement, "__wrapped__")
 
 
 @pytest.mark.asyncio

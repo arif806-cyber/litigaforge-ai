@@ -1,7 +1,10 @@
 const BASE = "/litigaforge";
 
 // Public endpoints that should NOT trigger a /login redirect on 401
-const PUBLIC_PATH = /^\/(ask|clarify|contact|document\/analyze|documents\/paid|documents\/free|jobs\/|judgments|lawyers|legal-aid|chains|healthz|memory|stats|cases\?|research\/profile)/;
+// Only routes that genuinely permit anonymous access belong here. Protected AI
+// routes and their job-status polls must refresh an expired access cookie before
+// surfacing an authentication error.
+const PUBLIC_PATH = /^\/(ask|contact|judgments|lawyers|legal-aid|chains|healthz|memory|stats|cases\?|research\/profile)/;
 
 // Guard against concurrent refresh calls
 let _refreshing: Promise<boolean> | null = null;
@@ -53,26 +56,27 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
   const res = await fetch(`${BASE}${path}`, baseInit);
 
   if (res.status === 401) {
-    if (!PUBLIC_PATH.test(path)) {
-      // Attempt a silent token refresh and retry once
-      const refreshed = await _tryRefresh();
-      if (refreshed) {
-        const retry = await fetch(`${BASE}${path}`, baseInit);
-        if (!retry.ok) {
-          if (retry.status === 401) {
-            window.location.href = "/login";
-            return;
-          }
-          const detail = await _extractError(retry);
-          throw new ApiRequestError(detail || `API error ${retry.status}`, retry.status);
+    // Always attempt one silent refresh. Public endpoints normally never return
+    // 401, and this keeps protected routes working even if an allowlist entry
+    // becomes stale when backend access rules change.
+    const refreshed = await _tryRefresh();
+    if (refreshed) {
+      const retry = await fetch(`${BASE}${path}`, baseInit);
+      if (!retry.ok) {
+        if (retry.status === 401 && !PUBLIC_PATH.test(path)) {
+          window.location.href = "/login";
+          return;
         }
-        return retry.json();
+        const detail = await _extractError(retry);
+        throw new ApiRequestError(detail || `API error ${retry.status}`, retry.status);
       }
-      // Refresh failed — session is truly expired
+      return retry.json();
+    }
+    // Refresh failed — redirect only when the requested route requires auth.
+    if (!PUBLIC_PATH.test(path)) {
       window.location.href = "/login";
       return;
     }
-    // Public endpoint 401 — fall through to error handling below
   }
 
   if (!res.ok) {

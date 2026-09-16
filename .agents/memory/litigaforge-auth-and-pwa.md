@@ -15,6 +15,14 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 **Why:** without refresh-on-401, a genuinely logged-in user is bounced to logged-out state after the short-lived access cookie expires.
 
+# Every API 401 gets one silent refresh attempt
+
+- `apiFetch` must attempt one silent refresh and retry after every 401. The public-path allowlist only controls whether a failed refresh redirects to login; it must never suppress the refresh attempt. Protected AI submissions, clarification, document generation/analysis, and owned job polling all rely on this.
+
+**Why:** Classifying clarification, the document analyzer, or job polling as public caused an expired 15-minute access cookie to surface as an authentication error even while the valid refresh cookie was still present. Access rules can change while frontend allowlists become stale.
+
+**How to apply:** Keep the public list accurate for redirect behavior, but never gate refresh attempts on it. Anonymous endpoints normally do not return 401, so the universal refresh attempt is harmless for valid public requests.
+
 # A stale VitePWA service worker masks source/build changes in the preview browser
 
 - `devOptions.enabled:false` means the Vite dev server registers NO service worker, but a worker from a prior built-app load persists in the browser profile. It updates only when the Node frontend server provides a fresh `sw.js`, so source changes can appear stale while that server is down.
