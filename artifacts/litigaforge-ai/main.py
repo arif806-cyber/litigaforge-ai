@@ -757,6 +757,15 @@ async def lifespan(app: FastAPI):
         # ── Email verification on users ───────────────────────────────────────
         try:
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE")
+            # Accounts created before email verification launched could never
+            # have completed the flow. Grandfather only that legacy cohort;
+            # registrations from the launch onward remain unverified by default.
+            legacy_verified = await conn.execute("""
+                UPDATE users
+                SET email_verified = TRUE
+                WHERE email_verified IS NOT TRUE
+                  AND created_at < TIMESTAMPTZ '2026-06-06 06:33:35+00'
+            """)
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS email_verification_tokens (
                     id SERIAL PRIMARY KEY,
@@ -766,7 +775,10 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
-            logger.info("Migration: email_verified + email_verification_tokens added")
+            logger.info(
+                "Migration: email verification ready; legacy accounts grandfathered: %s",
+                legacy_verified,
+            )
         except Exception as me:
             logger.warning("Migration email_verify: %s", me)
 

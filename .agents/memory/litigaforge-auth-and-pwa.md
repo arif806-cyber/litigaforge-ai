@@ -23,6 +23,14 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 **How to apply:** Keep the public list accurate for redirect behavior, but never gate refresh attempts on it. Anonymous endpoints normally do not return 401, so the universal refresh attempt is harmless for valid public requests.
 
+# Legacy accounts predate email verification
+
+Accounts created before the email-verification launch at 2026-06-06 06:33:35 UTC are grandfathered as verified. Accounts created on or after that cutoff remain unverified until they complete the email-link flow.
+
+**Why:** Older accounts were assigned `email_verified = false` when the column was introduced even though no verification flow existed when they registered. Blocking them from case posting and advocate onboarding was therefore impossible for them to prevent.
+
+**How to apply:** Keep the cutoff migration idempotent and restricted to the pre-launch cohort. Never broaden it to new registrations or disable verification checks on protected submissions.
+
 # A stale VitePWA service worker masks source/build changes in the preview browser
 
 - `devOptions.enabled:false` means the Vite dev server registers NO service worker, but a worker from a prior built-app load persists in the browser profile. It updates only when the Node frontend server provides a fresh `sw.js`, so source changes can appear stale while that server is down.

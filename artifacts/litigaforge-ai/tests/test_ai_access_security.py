@@ -119,3 +119,12 @@ def test_authenticated_document_analyzers_do_not_use_shared_proxy_ip_limits():
 
     assert "@limiter.limit" not in inspect.getsource(community.analyze_document)
     assert "@limiter.limit" not in inspect.getsource(community.analyze_document_file)
+
+
+def test_pre_verification_accounts_are_grandfathered_only_before_launch():
+    import inspect
+    from main import lifespan
+
+    source = inspect.getsource(lifespan)
+    assert "created_at < TIMESTAMPTZ '2026-06-06 06:33:35+00'" in source
+    assert "SET email_verified = TRUE" in source
