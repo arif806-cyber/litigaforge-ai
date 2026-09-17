@@ -779,6 +779,7 @@ class DocumentRequest(BaseModel):
     document_type: str = "contract"
     country: str = "IN"
     context: str = ""
+    mode: str = "analyze"
 
 
 @router.post("/document/analyze", status_code=202)
@@ -805,9 +806,35 @@ async def analyze_document(
 
     cfg = get_config(req.country)
     label = _doc_label(req.document_type)
-    guidance = _doc_type_guidance(req.document_type)
-    context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
-    prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {label} under {cfg['name']} law.
+    if req.mode == "correct":
+        if not safe_context:
+            raise HTTPException(422, "Correction details are required")
+        prompt = f"""You are revising a {label} under {cfg['name']} law.
+
+Update the original document using only the user-supplied details below.
+- Return the complete corrected document, not a risk assessment or explanation.
+- Preserve all original clauses, headings, numbering, party obligations, and wording unless a supplied answer requires a change.
+- Replace placeholders and add narrowly required clauses using the supplied facts.
+- Do not invent names, dates, amounts, jurisdictions, or commercial terms.
+- Do not include markdown fences.
+
+User-supplied correction details:
+---
+{safe_context}
+---
+
+Original document:
+---
+{safe_text[:8000]}
+---
+
+Return ONLY valid JSON:
+{{"corrected_document":"<complete corrected document text>"}}"""
+        max_tokens = 5000
+    else:
+        guidance = _doc_type_guidance(req.document_type)
+        context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
+        prompt = f"""You are {advisor_descriptor(req.country)} reviewing a {label} under {cfg['name']} law.
 
 {jurisdiction_block(req.country)}
 {context_block}
@@ -819,9 +846,10 @@ Document text to analyze:
 ---
 {safe_text[:8000]}
 ---"""
+        max_tokens = 2500
 
     async def work():
-        raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, req.country), 2500)
+        raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, req.country), max_tokens)
         raw = validate_ai_response(raw)
         try:
             result = _extract_json_object(raw)
@@ -832,6 +860,14 @@ Document text to analyze:
                 len(raw),
             )
             raise ValueError("Document analysis returned an invalid response") from exc
+        if req.mode == "correct":
+            corrected_document = result.get("corrected_document")
+            if not isinstance(corrected_document, str) or len(corrected_document.strip()) < 50:
+                raise ValueError("Document correction returned an invalid document")
+            return {
+                "corrected_document": corrected_document.strip(),
+                "document_type": req.document_type,
+            }
         return {"analysis": result, "document_type": req.document_type}
     return await enqueue_job(current_user["id"], work)
 
@@ -876,6 +912,7 @@ async def _analyze_document_file_work(
     document_type: str = "contract",
     country: str = "IN",
     context: str = "",
+    mode: str = "analyze",
     current_user: dict = Depends(require_ai_user),
 ):
     """Analyze uploaded file (PDF, DOCX, TXT, PNG, JPG). Extracts text then runs AI analysis."""
@@ -989,9 +1026,35 @@ async def _analyze_document_file_work(
 
     cfg = get_config(country)
     label = _doc_label(document_type)
-    guidance = _doc_type_guidance(document_type)
-    context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
-    prompt = f"""You are {advisor_descriptor(country)} reviewing a {label} under {cfg['name']} law.
+    if mode == "correct":
+        if not safe_context:
+            raise HTTPException(422, "Correction details are required")
+        prompt = f"""You are revising a {label} under {cfg['name']} law.
+
+Update the original document using only the user-supplied details below.
+- Return the complete corrected document, not a risk assessment or explanation.
+- Preserve all original clauses, headings, numbering, party obligations, and wording unless a supplied answer requires a change.
+- Replace placeholders and add narrowly required clauses using the supplied facts.
+- Do not invent names, dates, amounts, jurisdictions, or commercial terms.
+- Do not include markdown fences.
+
+User-supplied correction details:
+---
+{safe_context}
+---
+
+Original document:
+---
+{extracted_text[:8000]}
+---
+
+Return ONLY valid JSON:
+{{"corrected_document":"<complete corrected document text>"}}"""
+        max_tokens = 5000
+    else:
+        guidance = _doc_type_guidance(document_type)
+        context_block = f"\nAdditional context provided by the user:\n{safe_context}\n" if safe_context else ""
+        prompt = f"""You are {advisor_descriptor(country)} reviewing a {label} under {cfg['name']} law.
 
 {jurisdiction_block(country)}
 {context_block}
@@ -1003,8 +1066,9 @@ Document text to analyze:
 ----
 {extracted_text[:8000]}
 ----"""
+        max_tokens = 2500
 
-    raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, country), 2500)
+    raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, country), max_tokens)
     raw = validate_ai_response(raw)
     try:
         result = _extract_json_object(raw)
@@ -1015,6 +1079,15 @@ Document text to analyze:
             len(raw),
         )
         raise ValueError("Document analysis returned an invalid response") from exc
+    if mode == "correct":
+        corrected_document = result.get("corrected_document")
+        if not isinstance(corrected_document, str) or len(corrected_document.strip()) < 50:
+            raise ValueError("Document correction returned an invalid document")
+        return {
+            "corrected_document": corrected_document.strip(),
+            "document_type": document_type,
+            "source": analysis_source,
+        }
     return {
         "analysis": result,
         "document_type": document_type,
@@ -1030,6 +1103,7 @@ async def analyze_document_file(
     document_type: str = "contract",
     country: str = "IN",
     context: str = "",
+    mode: str = "analyze",
     current_user: dict = Depends(require_ai_user),
 ):
     # Authenticated usage is metered by require_ai_user, not by shared proxy IP.
@@ -1046,7 +1120,7 @@ async def analyze_document_file(
     return await enqueue_job(
         current_user["id"],
         lambda: _analyze_document_file_work(
-            request, copied, document_type, country, context, current_user
+            request, copied, document_type, country, context, mode, current_user
         ),
     )
 

@@ -271,6 +271,7 @@ export default function Review() {
   const [followUpsToComplete, setFollowUpsToComplete] = useState<RecommendationFollowUp[]>([]);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [hasRegenerated, setHasRegenerated] = useState(false);
+  const [correctedDocument, setCorrectedDocument] = useState("");
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -286,6 +287,7 @@ export default function Review() {
     setFollowUpsToComplete(normalized.recommendation_follow_ups);
     setFollowUpAnswers({});
     setHasRegenerated(false);
+    setCorrectedDocument("");
   }, []);
 
   useEffect(() => {
@@ -295,20 +297,21 @@ export default function Review() {
   }, [docText, docType, inputMode]);
 
   const analyzeText = useMutation({
-    mutationFn: (context: string) => runLongJob("/document/analyze", {
+    mutationFn: ({ context, mode }: { context: string; mode: "analyze" | "correct" }) => runLongJob("/document/analyze", {
       method: "POST",
-      body: { document_text: docText, document_type: docType, country: activeCode, context },
+      body: { document_text: docText, document_type: docType, country: activeCode, context, mode },
     }),
   });
 
   const analyzeFile = useMutation({
-    mutationFn: async (context: string) => {
+    mutationFn: async ({ context, mode }: { context: string; mode: "analyze" | "correct" }) => {
       if (!uploadedFile) throw new Error("No file selected");
       const form = new FormData();
       form.append("file", uploadedFile);
       form.append("document_type", docType);
       form.append("country", activeCode);
       form.append("context", context);
+      form.append("mode", mode);
       return runLongJob("/document/analyze-file", {
         method: "POST",
         body: form,
@@ -319,9 +322,9 @@ export default function Review() {
   const runAnalyze = (extraDetails: string) => {
     setClarifyOpen(false);
     if (inputMode === "upload" && uploadedFile) {
-      analyzeFile.mutate(extraDetails, { onSuccess: acceptAnalysis });
+      analyzeFile.mutate({ context: extraDetails, mode: "analyze" }, { onSuccess: acceptAnalysis });
     } else {
-      analyzeText.mutate(extraDetails, { onSuccess: acceptAnalysis });
+      analyzeText.mutate({ context: extraDetails, mode: "analyze" }, { onSuccess: acceptAnalysis });
     }
   };
 
@@ -364,63 +367,37 @@ export default function Review() {
     ].join("\n");
 
     const onSuccess = (data: unknown) => {
-      setResult(normalizeAnalysis(data));
+      const payload = (data ?? {}) as Record<string, unknown>;
+      const corrected = typeof payload.corrected_document === "string"
+        ? payload.corrected_document.trim()
+        : "";
+      if (!corrected) return;
+      setCorrectedDocument(corrected);
       setHasRegenerated(true);
       setCorrectionOpen(false);
     };
 
     if (inputMode === "upload" && uploadedFile) {
-      analyzeFile.mutate(correctionContext, { onSuccess });
+      analyzeFile.mutate({ context: correctionContext, mode: "correct" }, { onSuccess });
     } else {
-      analyzeText.mutate(correctionContext, { onSuccess });
+      analyzeText.mutate({ context: correctionContext, mode: "correct" }, { onSuccess });
     }
   };
 
   const downloadCorrectedReport = () => {
-    if (!result || !correctedReportReady) return;
+    if (!correctedDocument || !correctedReportReady) return;
 
-    const lines = [
-      "LITIGAFORGE AI — DOCUMENT REVIEW & CORRECTIONS",
-      `Document type: ${selectedType.label}`,
-      `Jurisdiction: ${activeConfig?.name ?? activeCode.toUpperCase()}`,
-      `Risk score: ${Math.round(result.risk_score)}/100`,
-      "",
-      "EXECUTIVE SUMMARY",
-      result.summary,
-      "",
-      "IDENTIFIED RISKS",
-      ...result.risks.flatMap((risk, index) => [
-        `${index + 1}. [${risk.severity}] ${risk.issue}${risk.section ? ` (Section ${risk.section})` : ""}`,
-      ]),
-      "",
-      "MISSING CLAUSES",
-      ...(result.missing_clauses.length
-        ? result.missing_clauses.map((clause, index) => `${index + 1}. ${clause}`)
-        : ["None identified"]),
-      "",
-      "USER-SUPPLIED CORRECTIONS",
-      ...followUpsToComplete.flatMap((followUp) => {
-        const recommendation = recommendationsToCorrect[followUp.recommendation_index] ?? "";
-        return [
-          `${followUp.recommendation_index + 1}. Recommendation: ${recommendation}`,
-          ...followUp.fields.map((field) => `   ${field.label}: ${followUpAnswers[field.id]?.trim() ?? ""}`),
-          "",
-        ];
-      }),
-      "REGENERATED RECOMMENDATIONS",
-      ...(result.recommendations.length
-        ? result.recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`)
-        : ["No further recommendations identified"]),
-      "",
-      "LEGAL NOTICE",
-      "This AI-generated review and the recorded corrections are for informational purposes and do not replace advice from a qualified lawyer.",
-    ];
-
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const escapedDocument = correctedDocument
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Georgia,'Times New Roman',serif;font-size:12pt;line-height:1.6;margin:1in;color:#111}pre{font:inherit;white-space:pre-wrap}</style></head><body><pre>${escapedDocument}</pre></body></html>`;
+    const blob = new Blob([html], { type: "application/msword;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `litigaforge-corrected-${docType}-review.txt`;
+    const originalName = uploadedFile?.name.replace(/\.[^.]+$/, "") || `${docType}-document`;
+    anchor.download = `${originalName}-corrected.doc`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -822,10 +799,10 @@ export default function Review() {
                           : <LockKeyhole className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />}
                         <div>
                           <p className="text-sm font-semibold text-foreground">
-                            {correctedReportReady ? "Regenerated report is ready" : "Regenerate the analysis to unlock download"}
+                            {correctedReportReady ? "Corrected document is ready" : "Generate the corrected document to unlock download"}
                           </p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            Enter the recommended details in a popup and the analyzer will review the document again.
+                            Your answers will be applied to the original document. The risk assessment is not included in the download.
                           </p>
                         </div>
                       </div>
@@ -847,7 +824,7 @@ export default function Review() {
                           data-testid="download-corrected-report"
                         >
                           <Download className="mr-2 h-4 w-4" />
-                          Download
+                          Download Corrected Document
                         </Button>
                       </div>
                     </div>
@@ -875,7 +852,7 @@ export default function Review() {
           <DialogHeader>
             <DialogTitle>Provide Recommended Details</DialogTitle>
             <DialogDescription>
-              Complete every field. LitigaForge AI will analyze the document again using your answers.
+              Complete every field. LitigaForge AI will apply your answers to the original document.
             </DialogDescription>
           </DialogHeader>
 
@@ -944,7 +921,7 @@ export default function Review() {
                 data-testid="regenerate-corrected-analysis"
               >
                 {isAnalyzing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isAnalyzing ? "Regenerating…" : "Regenerate Analysis"}
+                {isAnalyzing ? "Updating Document…" : "Generate Corrected Document"}
               </Button>
             </div>
           </div>
