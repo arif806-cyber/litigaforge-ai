@@ -12,6 +12,7 @@ Endpoints (all prefixed with BASE_PATH from main.py):
   POST   /workspace/sessions/{id}/analyze               — SSE streaming multi-agent analysis
   POST   /workspace/sessions/{id}/agent/{agent_id}/ask — SSE direct question to one agent
   POST   /workspace/sessions/{id}/search               — Indian Kanoon judgment search
+  POST   /workspace/sessions/{id}/refresh-ik           — refresh Research Agent IK cache
 """
 import asyncio
 import hashlib
@@ -366,23 +367,26 @@ def _compute_impact_score(doc: dict) -> int:
     return max(30, min(98, score))
 
 
-async def _cached_ik_search(conn, query: str, max_results: int = 8) -> list[dict]:
+async def _cached_ik_search(
+    conn, query: str, max_results: int = 8, force_refresh: bool = False,
+) -> list[dict]:
     """Search IK API with 24 h DB caching keyed by normalised query hash."""
     qhash = hashlib.md5(query.lower().strip().encode()).hexdigest()
 
     # Cache hit?
-    row = await conn.fetchrow(
-        "SELECT results_json, fetched_at FROM ikanoon_search_cache WHERE query_hash=$1",
-        qhash,
-    )
-    if row:
-        age = datetime.now(timezone.utc) - row["fetched_at"]
-        if age < timedelta(hours=24):
-            await conn.execute(
-                "UPDATE ikanoon_search_cache SET hit_count = hit_count + 1 WHERE query_hash=$1",
-                qhash,
-            )
-            return list(row["results_json"])[:max_results]
+    if not force_refresh:
+        row = await conn.fetchrow(
+            "SELECT results_json, fetched_at FROM ikanoon_search_cache WHERE query_hash=$1",
+            qhash,
+        )
+        if row:
+            age = datetime.now(timezone.utc) - row["fetched_at"]
+            if age < timedelta(hours=24):
+                await conn.execute(
+                    "UPDATE ikanoon_search_cache SET hit_count = hit_count + 1 WHERE query_hash=$1",
+                    qhash,
+                )
+                return list(row["results_json"])[:max_results]
 
     if not IK_TOKEN:
         return []
@@ -418,6 +422,72 @@ async def _cached_ik_search(conn, query: str, max_results: int = 8) -> list[dict
         logger.warning("IK cache write: %s", exc)
 
     return docs[:max_results]
+
+
+def _ik_query_hash(query: str) -> str:
+    return hashlib.md5(query.lower().strip().encode()).hexdigest()
+
+
+async def _session_ik_docs(
+    conn,
+    session_id: int,
+    user_id: int,
+    query: str,
+    max_results: int = 5,
+    force_refresh: bool = False,
+) -> tuple[list[dict], bool]:
+    """Return session-pinned IK docs, refreshing only when changed, stale, or forced."""
+    row = await conn.fetchrow(
+        "SELECT last_ik_query, last_ik_docs, last_ik_fetched_at "
+        "FROM workspace_sessions WHERE id=$1 AND user_id=$2 FOR UPDATE",
+        session_id, user_id,
+    )
+    if not row:
+        raise HTTPException(404, "Session not found")
+
+    fetched_at = row["last_ik_fetched_at"]
+    query_matches = (
+        bool(row["last_ik_query"])
+        and _ik_query_hash(row["last_ik_query"]) == _ik_query_hash(query)
+    )
+    is_fresh = (
+        fetched_at is not None
+        and datetime.now(timezone.utc) - fetched_at < timedelta(hours=24)
+    )
+    if not force_refresh and query_matches and is_fresh and row["last_ik_docs"] is not None:
+        return list(row["last_ik_docs"])[:max_results], True
+
+    docs = await _cached_ik_search(
+        conn, query, max_results=max_results, force_refresh=force_refresh,
+    )
+    await conn.execute(
+        "UPDATE workspace_sessions "
+        "SET last_ik_query=$1, last_ik_docs=$2::jsonb, last_ik_fetched_at=NOW() "
+        "WHERE id=$3 AND user_id=$4",
+        query, json.dumps(docs), session_id, user_id,
+    )
+    return docs, False
+
+
+@router.post("/workspace/sessions/{session_id}/refresh-ik")
+async def refresh_session_ik(
+    session_id: int, request: Request, user=Depends(require_ai_user),
+):
+    """Force a live refresh of the Research Agent's session-pinned IK results."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT case_description FROM workspace_sessions "
+            "WHERE id=$1 AND user_id=$2",
+            session_id, user["id"],
+        )
+        if not row:
+            raise HTTPException(404, "Session not found")
+        query = _build_ik_query(row["case_description"] or "")
+        docs, _ = await _session_ik_docs(
+            conn, session_id, user["id"], query, max_results=5, force_refresh=True,
+        )
+    return {"ok": True, "query": query, "count": len(docs), "docs": docs}
 
 
 def _doc_to_node(doc: dict, idx: int = 0, query: str = "") -> dict:
@@ -907,7 +977,13 @@ async def _auto_create_case_folder(
 
 # ─── Multi-Agent Analysis  (SSE streaming) ────────────────────────────────────
 
-async def _stream_analysis(case_description: str, context: str, profile_ctx: str = ""):
+async def _stream_analysis(
+    case_description: str,
+    context: str,
+    profile_ctx: str = "",
+    session_id: int | None = None,
+    user_id: int | None = None,
+):
     """Async generator: SSE events for each agent's analysis with reasoning & collaboration."""
 
     def sse(data: dict) -> str:
@@ -970,12 +1046,14 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
         )
 
         # ── IK pre-fetch: inject real live judgments for Research Agent ──────
-        if agent["id"] == "research" and IK_TOKEN:
+        if agent["id"] == "research" and session_id is not None and user_id is not None:
             ik_query = _build_ik_query(case_description)
             try:
                 _pool_ik = await get_pool()
                 async with _pool_ik.acquire() as _conn:
-                    ik_docs = await _cached_ik_search(_conn, ik_query, max_results=5)
+                    ik_docs, session_cache_hit = await _session_ik_docs(
+                        _conn, session_id, user_id, ik_query, max_results=5,
+                    )
                 if ik_docs:
                     ik_block = _format_ik_for_prompt(ik_docs)
                     prompt = ik_block + "\n\n" + prompt
@@ -993,6 +1071,7 @@ async def _stream_analysis(case_description: str, context: str, profile_ctx: str
                         "count": len(ik_docs),
                         "query": ik_query,
                         "judgments": judgments,
+                        "session_cache_hit": session_cache_hit,
                     })
                     logger.info(
                         "IK pre-fetch: %d judgments injected into Research Agent prompt (query: %s)",
@@ -1193,7 +1272,9 @@ async def analyze_session(
             except Exception as profile_error:
                 logger.debug("Profile context skipped: %s", profile_error)
 
-            async for chunk in _stream_analysis(case_desc, body.context, profile_ctx):
+            async for chunk in _stream_analysis(
+                case_desc, body.context, profile_ctx, session_id, user["id"],
+            ):
                 yield chunk
                 if '"agent_done"' in chunk:
                     try:

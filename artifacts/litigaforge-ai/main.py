@@ -959,10 +959,23 @@ async def lifespan(app: FastAPI):
                     case_description TEXT DEFAULT '',
                     nodes_json JSONB NOT NULL DEFAULT '[]',
                     edges_json JSONB NOT NULL DEFAULT '[]',
+                    last_ik_query TEXT,
+                    last_ik_docs JSONB,
+                    last_ik_fetched_at TIMESTAMPTZ,
                     created_at TIMESTAMPTZ DEFAULT NOW(),
                     updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            await conn.execute(
+                "ALTER TABLE workspace_sessions ADD COLUMN IF NOT EXISTS last_ik_query TEXT"
+            )
+            await conn.execute(
+                "ALTER TABLE workspace_sessions ADD COLUMN IF NOT EXISTS last_ik_docs JSONB"
+            )
+            await conn.execute(
+                "ALTER TABLE workspace_sessions "
+                "ADD COLUMN IF NOT EXISTS last_ik_fetched_at TIMESTAMPTZ"
+            )
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_workspace_sessions_user "
                 "ON workspace_sessions (user_id, updated_at DESC)"
