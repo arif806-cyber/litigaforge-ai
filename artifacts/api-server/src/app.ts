@@ -6,7 +6,6 @@ import pinoHttp from "pino-http";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import router from "./routes";
-import { WebhookHandlers } from "./webhookHandlers";
 import { logger } from "./lib/logger";
 import { BLOG_REDIRECTS } from "./lib/blogRedirects";
 import { isTrustedBrowserOrigin } from "./lib/origins";
@@ -16,7 +15,7 @@ const app: Express = express();
 app.disable("x-powered-by");
 
 // CORS is a browser concern only. Allowing requests with no Origin preserves
-// Stripe webhooks, MCP clients, and internal reverse-proxy traffic, while only
+// MCP clients and internal reverse-proxy traffic, while only
 // trusted LitigaForge and Replit-preview browser origins receive CORS headers.
 const apiCors = cors({
   origin(origin, callback) {
@@ -68,36 +67,6 @@ app.use(compression());
 // Access-Control-Allow-Origin headers for pages that may be served by Express.
 // This is mounted before API routes and API reverse proxies below.
 app.use("/api", apiCors);
-
-// ── Stripe webhook ────────────────────────────────────────────────────────
-// MUST be registered with the raw body parser BEFORE express.json(), otherwise
-// signature verification fails because the body is already parsed.
-app.post(
-  "/api/stripe/webhook",
-  express.raw({ type: "application/json" }),
-  async (req, res): Promise<void> => {
-    const signature = req.headers["stripe-signature"];
-    if (!signature) {
-      res.status(400).json({ error: "Missing stripe-signature" });
-      return;
-    }
-    try {
-      const sig = Array.isArray(signature) ? signature[0]! : signature;
-      if (!Buffer.isBuffer(req.body)) {
-        logger.error(
-          "STRIPE WEBHOOK ERROR: req.body is not a Buffer — express.json() ran first.",
-        );
-        res.status(500).json({ error: "Webhook processing error" });
-        return;
-      }
-      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
-      res.status(200).json({ received: true });
-    } catch (err) {
-      logger.error({ err }, "Stripe webhook error");
-      res.status(400).json({ error: "Webhook processing error" });
-    }
-  },
-);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
