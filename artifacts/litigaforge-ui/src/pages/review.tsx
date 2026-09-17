@@ -59,6 +59,90 @@ interface AnalysisResult {
   missing_clauses: string[];
   jurisdiction_issues: string[];
   recommendations: string[];
+  recommendation_follow_ups: RecommendationFollowUp[];
+}
+
+type FollowUpFieldType = "text" | "date" | "number" | "textarea";
+
+interface FollowUpField {
+  id: string;
+  key: string;
+  label: string;
+  field_type: FollowUpFieldType;
+  placeholder: string;
+  required: boolean;
+}
+
+interface RecommendationFollowUp {
+  recommendation_index: number;
+  fields: FollowUpField[];
+}
+
+function fallbackFollowUpFields(recommendation: string, recommendationIndex: number): FollowUpField[] {
+  const text = recommendation.toLowerCase();
+  const fields: Omit<FollowUpField, "id">[] = [];
+  const add = (key: string, label: string, field_type: FollowUpFieldType, placeholder: string) => {
+    if (!fields.some((field) => field.key === key)) {
+      fields.push({ key, label, field_type, placeholder, required: true });
+    }
+  };
+
+  if (text.includes("parties") || text.includes("party name")) {
+    add("first_party_name", "Enter first party name", "text", "e.g., ABC Private Limited");
+    add("second_party_name", "Enter second party name", "text", "e.g., Rahul Sharma");
+  }
+  if (text.includes("effective date") || text.includes("commencement date")) {
+    add("effective_date", "Enter effective date", "date", "");
+  }
+  if (text.includes("governing") && (text.includes("law") || text.includes("state"))) {
+    add("governing_state_law", "Enter governing state law", "text", "e.g., Laws of Karnataka, India");
+  }
+  if (text.includes("payment amount") || text.includes("specific inr") || text.includes("amounts")) {
+    add("payment_amount", "Enter payment amount", "number", "e.g., 50000");
+  }
+  if (text.includes("due date") || text.includes("payment schedule")) {
+    add("payment_due_dates", "Enter payment due date or schedule", "textarea", "e.g., 50% on signing; balance by 30 June 2026");
+  }
+  if (text.includes("mode of payment")) {
+    add("payment_mode", "Enter mode of payment", "text", "e.g., Bank transfer");
+  }
+  if (text.includes("interest")) {
+    add("interest_rate", "Enter late-payment interest rate", "number", "e.g., 18");
+  }
+  if (text.includes("arbitration")) {
+    add("arbitration_seat", "Enter arbitration seat", "text", "e.g., Bengaluru");
+    add("arbitration_rules", "Enter governing arbitration rules", "text", "e.g., DIAC Rules");
+    add("arbitrator_count", "Enter number of arbitrators", "number", "e.g., 1");
+  }
+  if (text.includes("cure period")) {
+    add("cure_period_days", "Enter cure period in days", "number", "e.g., 15");
+  }
+  if (text.includes("material breach")) {
+    add("material_breach_examples", "Enter examples of material breach", "textarea", "e.g., Non-payment, confidentiality breach, or unauthorized assignment");
+  }
+  if (text.includes("confidential")) {
+    add("confidential_information", "Describe the information that must remain confidential", "textarea", "e.g., Customer data, pricing, source code, and business plans");
+  }
+  if (text.includes("force majeure")) {
+    add("force_majeure_events", "Enter covered force-majeure events", "textarea", "e.g., Natural disasters, war, epidemic, and government restrictions");
+  }
+  if (text.includes("liability") || text.includes("indemnif")) {
+    add("liability_cap", "Enter the liability or indemnity cap", "number", "e.g., 100000");
+  }
+
+  if (fields.length === 0) {
+    add(
+      "requested_details",
+      `Enter the information needed for this recommendation`,
+      "textarea",
+      recommendation,
+    );
+  }
+
+  return fields.map((field) => ({
+    ...field,
+    id: `${recommendationIndex}:${field.key}`,
+  }));
 }
 
 // The backend returns { analysis: { risk_score: 0–100, red_flags, missing_clauses,
@@ -103,6 +187,47 @@ function normalizeAnalysis(data: unknown): AnalysisResult {
       : [];
 
   const scoreNum = Number(a.risk_score);
+  const recommendations = Array.isArray(a.recommendations)
+    ? (a.recommendations as unknown[]).map(String)
+    : [];
+  const rawFollowUps = Array.isArray(a.recommendation_follow_ups)
+    ? a.recommendation_follow_ups
+    : [];
+  const parsedFollowUps = rawFollowUps.flatMap((item): RecommendationFollowUp[] => {
+    if (!item || typeof item !== "object") return [];
+    const followUp = item as Record<string, unknown>;
+    const recommendationIndex = Number(followUp.recommendation_index);
+    if (!Number.isInteger(recommendationIndex) || recommendationIndex < 0 || recommendationIndex >= recommendations.length) return [];
+    if (!Array.isArray(followUp.fields)) return [];
+
+    const fields = followUp.fields.flatMap((rawField, fieldIndex): FollowUpField[] => {
+      if (!rawField || typeof rawField !== "object") return [];
+      const field = rawField as Record<string, unknown>;
+      const key = String(field.key ?? `field_${fieldIndex}`).trim();
+      const label = String(field.label ?? "").trim();
+      const rawType = String(field.field_type ?? "text");
+      const fieldType: FollowUpFieldType = ["text", "date", "number", "textarea"].includes(rawType)
+        ? rawType as FollowUpFieldType
+        : "text";
+      if (!label) return [];
+      return [{
+        id: `${recommendationIndex}:${key}`,
+        key,
+        label,
+        field_type: fieldType,
+        placeholder: String(field.placeholder ?? ""),
+        required: field.required !== false,
+      }];
+    });
+    return fields.length ? [{ recommendation_index: recommendationIndex, fields }] : [];
+  });
+  const recommendationFollowUps = recommendations.map((recommendation, recommendationIndex) => {
+    const supplied = parsedFollowUps.find((item) => item.recommendation_index === recommendationIndex);
+    return supplied ?? {
+      recommendation_index: recommendationIndex,
+      fields: fallbackFollowUpFields(recommendation, recommendationIndex),
+    };
+  });
 
   return {
     summary: typeof a.summary === "string" ? a.summary : "",
@@ -110,7 +235,8 @@ function normalizeAnalysis(data: unknown): AnalysisResult {
     risks,
     missing_clauses: Array.isArray(a.missing_clauses) ? (a.missing_clauses as unknown[]).map(String) : [],
     jurisdiction_issues: jurisdiction,
-    recommendations: Array.isArray(a.recommendations) ? (a.recommendations as unknown[]).map(String) : [],
+    recommendations,
+    recommendation_follow_ups: recommendationFollowUps,
   };
 }
 
@@ -140,8 +266,9 @@ export default function Review() {
   const [docType, setDocType] = useState(() => localStorage.getItem("litigaforge:analyzer:type") || "contract");
   const [docTypeOpen, setDocTypeOpen] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [corrections, setCorrections] = useState<Record<number, string>>({});
+  const [followUpAnswers, setFollowUpAnswers] = useState<Record<string, string>>({});
   const [recommendationsToCorrect, setRecommendationsToCorrect] = useState<string[]>([]);
+  const [followUpsToComplete, setFollowUpsToComplete] = useState<RecommendationFollowUp[]>([]);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [hasRegenerated, setHasRegenerated] = useState(false);
   const [clarifyOpen, setClarifyOpen] = useState(false);
@@ -156,7 +283,8 @@ export default function Review() {
     const normalized = normalizeAnalysis(data);
     setResult(normalized);
     setRecommendationsToCorrect(normalized.recommendations);
-    setCorrections({});
+    setFollowUpsToComplete(normalized.recommendation_follow_ups);
+    setFollowUpAnswers({});
     setHasRegenerated(false);
   }, []);
 
@@ -206,10 +334,13 @@ export default function Review() {
   const canAnalyze = inputMode === "paste"
     ? docText.trim().length >= 50
     : uploadedFile !== null;
-  const completedCorrections = recommendationsToCorrect.filter(
-    (_, index) => corrections[index]?.trim(),
+  const requiredFollowUpFields = followUpsToComplete.flatMap((followUp) =>
+    followUp.fields.filter((field) => field.required),
+  );
+  const completedCorrections = requiredFollowUpFields.filter(
+    (field) => followUpAnswers[field.id]?.trim(),
   ).length;
-  const correctionsRequired = recommendationsToCorrect.length;
+  const correctionsRequired = requiredFollowUpFields.length;
   const correctionsComplete = Boolean(
     result && correctionsRequired > 0 && completedCorrections === correctionsRequired,
   );
@@ -222,11 +353,14 @@ export default function Review() {
       "The user has supplied the following information to address the previous recommendations.",
       "Regenerate the complete document analysis using these corrections. Update the risk score, risks, missing clauses, summary, and recommendations to reflect the supplied information.",
       "",
-      ...recommendationsToCorrect.flatMap((recommendation, index) => [
-        `Recommendation ${index + 1}: ${recommendation}`,
-        `User input: ${corrections[index].trim()}`,
-        "",
-      ]),
+      ...followUpsToComplete.flatMap((followUp) => {
+        const recommendation = recommendationsToCorrect[followUp.recommendation_index] ?? "";
+        return [
+          `Recommendation ${followUp.recommendation_index + 1}: ${recommendation}`,
+          ...followUp.fields.map((field) => `${field.label}: ${followUpAnswers[field.id]?.trim() ?? ""}`),
+          "",
+        ];
+      }),
     ].join("\n");
 
     const onSuccess = (data: unknown) => {
@@ -265,11 +399,14 @@ export default function Review() {
         : ["None identified"]),
       "",
       "USER-SUPPLIED CORRECTIONS",
-      ...recommendationsToCorrect.flatMap((recommendation, index) => [
-        `${index + 1}. Recommendation: ${recommendation}`,
-        `   User input: ${corrections[index].trim()}`,
-        "",
-      ]),
+      ...followUpsToComplete.flatMap((followUp) => {
+        const recommendation = recommendationsToCorrect[followUp.recommendation_index] ?? "";
+        return [
+          `${followUp.recommendation_index + 1}. Recommendation: ${recommendation}`,
+          ...followUp.fields.map((field) => `   ${field.label}: ${followUpAnswers[field.id]?.trim() ?? ""}`),
+          "",
+        ];
+      }),
       "REGENERATED RECOMMENDATIONS",
       ...(result.recommendations.length
         ? result.recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`)
@@ -743,27 +880,52 @@ export default function Review() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {recommendationsToCorrect.map((recommendation, index) => (
-              <div key={index} className="rounded-xl border border-border bg-muted/20 p-4">
-                <label htmlFor={`recommendation-correction-${index}`} className="block text-sm font-semibold text-foreground">
-                  {index + 1}. {recommendation}
-                </label>
-                <textarea
-                  id={`recommendation-correction-${index}`}
-                  value={corrections[index] ?? ""}
-                  onChange={(event) => {
-                    setCorrections((current) => ({
-                      ...current,
-                      [index]: event.target.value,
-                    }));
-                    setHasRegenerated(false);
-                  }}
-                  rows={3}
-                  maxLength={1500}
-                  placeholder="Enter the missing or corrected information…"
-                  className="mt-3 w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
+            {followUpsToComplete.map((followUp) => (
+              <fieldset key={followUp.recommendation_index} className="rounded-xl border border-border bg-muted/20 p-4">
+                <legend className="px-1 text-sm font-semibold leading-snug text-foreground">
+                  {followUp.recommendation_index + 1}. {recommendationsToCorrect[followUp.recommendation_index]}
+                </legend>
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {followUp.fields.map((field) => {
+                    const inputClassName = "mt-2 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
+                    return (
+                      <div key={field.id} className={field.field_type === "textarea" ? "sm:col-span-2" : undefined}>
+                        <label htmlFor={`follow-up-${field.id}`} className="block text-xs font-semibold text-foreground">
+                          {field.label} {field.required && <span className="text-red-500">*</span>}
+                        </label>
+                        {field.field_type === "textarea" ? (
+                          <textarea
+                            id={`follow-up-${field.id}`}
+                            value={followUpAnswers[field.id] ?? ""}
+                            onChange={(event) => {
+                              setFollowUpAnswers((current) => ({ ...current, [field.id]: event.target.value }));
+                              setHasRegenerated(false);
+                            }}
+                            rows={3}
+                            maxLength={800}
+                            placeholder={field.placeholder}
+                            className={`${inputClassName} resize-y`}
+                          />
+                        ) : (
+                          <input
+                            id={`follow-up-${field.id}`}
+                            type={field.field_type}
+                            value={followUpAnswers[field.id] ?? ""}
+                            onChange={(event) => {
+                              setFollowUpAnswers((current) => ({ ...current, [field.id]: event.target.value }));
+                              setHasRegenerated(false);
+                            }}
+                            maxLength={field.field_type === "number" ? undefined : 300}
+                            min={field.field_type === "number" ? 0 : undefined}
+                            placeholder={field.placeholder}
+                            className={inputClassName}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </fieldset>
             ))}
           </div>
 

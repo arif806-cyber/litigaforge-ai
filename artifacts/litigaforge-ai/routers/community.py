@@ -633,12 +633,39 @@ _NOTICE_TYPES      = {"legal_notice"}
 
 _JSON_OUTPUT_BUDGET = """
 STRICT OUTPUT BUDGET:
-- Keep the complete JSON response under 1,200 words.
+- Keep the complete JSON response under 1,500 words.
 - Return at most 5 items in each array.
 - Keep each array item under 35 words.
+- Return at most 12 follow-up fields in total.
 - Keep compliance_notes and summary under 120 words each.
 - Finish and close the JSON object before the output limit; never start an item
   you cannot complete.
+""".strip()
+
+_FOLLOW_UP_SCHEMA = (
+    '  "recommendation_follow_ups": [\n'
+    "    {\n"
+    '      "recommendation_index": <zero-based index of the matching recommendation>,\n'
+    '      "fields": [\n'
+    "        {\n"
+    '          "key": "<short_unique_snake_case_key>",\n'
+    '          "label": "<specific question the user can answer, e.g. Enter first party name>",\n'
+    '          "field_type": "<text|date|number|textarea>",\n'
+    '          "placeholder": "<brief example answer>",\n'
+    '          "required": true\n'
+    "        }\n"
+    "      ]\n"
+    "    }\n"
+    "  ],\n"
+)
+
+_FOLLOW_UP_INSTRUCTIONS = """
+For every recommendation, create recommendation_follow_ups that asks for each
+distinct fact needed to apply it. Never use one generic "describe your changes"
+field. For example, a recommendation to define parties, effective date,
+governing state law, and payment amounts must produce separate fields for first
+party name, second party name, effective date, governing state law, and payment
+amount. Ask only for facts the user can supply; use precise, plain-English labels.
 """.strip()
 
 
@@ -658,12 +685,14 @@ def _doc_type_guidance(doc_type: str) -> str:
             "- Stamp duty and registration requirements under applicable state law\n"
             "- Compliance with Transfer of Property Act, Registration Act, or relevant statutes\n\n"
             "Assign risk_score based on contractual risk to the weaker party (0=no risk, 100=extremely risky).\n\n"
+            f"{_FOLLOW_UP_INSTRUCTIONS}\n\n"
             "Return ONLY this JSON (no markdown, no extra text):\n"
             "{\n"
             '  "risk_score": <0-100 integer>,\n'
             '  "missing_clauses": ["<absent or inadequately drafted contractual provision>", ...],\n'
             '  "red_flags": ["<unfair or risky contractual clause>", ...],\n'
             '  "recommendations": ["<specific improvement to this contract>", ...],\n'
+            f"{_FOLLOW_UP_SCHEMA}"
             '  "compliance_notes": "<stamp duty, registration, and statutory compliance notes>",\n'
             '  "summary": "<brief plain-English summary of this contract>"\n'
             "}"
@@ -682,12 +711,14 @@ def _doc_type_guidance(doc_type: str) -> str:
             "- Compliance with CPC, CrPC, or the applicable High Court / Supreme Court Rules\n"
             "- Strength and coherence of legal arguments, grounds, or averments (if any)\n\n"
             "Assign risk_score based on procedural/documentary risk (0=complete and sound, 100=seriously defective).\n\n"
+            f"{_FOLLOW_UP_INSTRUCTIONS}\n\n"
             "Return ONLY this JSON (no markdown, no extra text):\n"
             "{\n"
             '  "risk_score": <0-100 integer>,\n'
             '  "missing_clauses": ["<missing legal ground, required attachment, or mandatory component — NOT a contractual clause>", ...],\n'
             '  "red_flags": ["<procedural defect, incorrect entry, or legal error in this document>", ...],\n'
             '  "recommendations": ["<specific improvement to this court document>", ...],\n'
+            f"{_FOLLOW_UP_SCHEMA}"
             '  "compliance_notes": "<compliance with CPC/CrPC/High Court Rules and applicable procedural law>",\n'
             f'  "summary": "<what this {label} contains, which court/bench/parties are involved, and any notable observations>"\n'
             "}"
@@ -703,12 +734,14 @@ def _doc_type_guidance(doc_type: str) -> str:
             "- Clear identification of sender, recipient, amounts, and relief claimed\n"
             "- Whether the notice creates a valid legal record for future proceedings\n\n"
             "Assign risk_score based on effectiveness and legal completeness (0=complete, 100=seriously defective).\n\n"
+            f"{_FOLLOW_UP_INSTRUCTIONS}\n\n"
             "Return ONLY this JSON (no markdown, no extra text):\n"
             "{\n"
             '  "risk_score": <0-100 integer>,\n'
             '  "missing_clauses": ["<missing demand element, statutory requirement, or required information>", ...],\n'
             '  "red_flags": ["<deficiency or error in this legal notice>", ...],\n'
             '  "recommendations": ["<specific improvement to this notice>", ...],\n'
+            f"{_FOLLOW_UP_SCHEMA}"
             '  "compliance_notes": "<statutory notice-period compliance and formal requirements>",\n'
             '  "summary": "<brief summary of what this notice demands and its legal basis>"\n'
             "}"
@@ -727,12 +760,14 @@ def _doc_type_guidance(doc_type: str) -> str:
         "- Other: fitness for the document's evident legal purpose\n\n"
         "Assign risk_score based on the document's fitness for its own legal purpose "
         "(0=complete and sound, 100=seriously defective).\n\n"
+        f"{_FOLLOW_UP_INSTRUCTIONS}\n\n"
         "Return ONLY this JSON (no markdown, no extra text):\n"
         "{\n"
         '  "risk_score": <0-100 integer>,\n'
         '  "missing_clauses": ["<missing element required for this specific document type>", ...],\n'
         '  "red_flags": ["<defect, error, or risk in this document>", ...],\n'
         '  "recommendations": ["<specific improvement for this document>", ...],\n'
+        f"{_FOLLOW_UP_SCHEMA}"
         '  "compliance_notes": "<applicable law and compliance notes for the identified document type>",\n'
         '  "summary": "<FIRST state the document type identified, then summarise what it contains and its legal significance>"\n'
         "}"
@@ -764,7 +799,7 @@ async def analyze_document(
         raise HTTPException(400, "Document too short — paste at least 50 characters")
 
     try:
-        safe_context = sanitize_text(req.context or "", max_length=1500, field_name="context") if req.context else ""
+        safe_context = sanitize_text(req.context or "", max_length=6000, field_name="context") if req.context else ""
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -948,7 +983,7 @@ async def _analyze_document_file_work(
         )
 
     try:
-        safe_context = sanitize_text(context, max_length=1500, field_name="context") if context else ""
+        safe_context = sanitize_text(context, max_length=6000, field_name="context") if context else ""
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
