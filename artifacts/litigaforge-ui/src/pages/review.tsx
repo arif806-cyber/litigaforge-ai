@@ -8,6 +8,13 @@ import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useCountry } from "@/hooks/useCountry";
 import { REVIEW_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
@@ -134,6 +141,9 @@ export default function Review() {
   const [docTypeOpen, setDocTypeOpen] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [corrections, setCorrections] = useState<Record<number, string>>({});
+  const [recommendationsToCorrect, setRecommendationsToCorrect] = useState<string[]>([]);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [hasRegenerated, setHasRegenerated] = useState(false);
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -143,8 +153,11 @@ export default function Review() {
   const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
 
   const acceptAnalysis = useCallback((data: unknown) => {
-    setResult(normalizeAnalysis(data));
+    const normalized = normalizeAnalysis(data);
+    setResult(normalized);
+    setRecommendationsToCorrect(normalized.recommendations);
     setCorrections({});
+    setHasRegenerated(false);
   }, []);
 
   useEffect(() => {
@@ -158,7 +171,6 @@ export default function Review() {
       method: "POST",
       body: { document_text: docText, document_type: docType, country: activeCode, context },
     }),
-    onSuccess: acceptAnalysis,
   });
 
   const analyzeFile = useMutation({
@@ -174,15 +186,14 @@ export default function Review() {
         body: form,
       });
     },
-    onSuccess: acceptAnalysis,
   });
 
   const runAnalyze = (extraDetails: string) => {
     setClarifyOpen(false);
     if (inputMode === "upload" && uploadedFile) {
-      analyzeFile.mutate(extraDetails);
+      analyzeFile.mutate(extraDetails, { onSuccess: acceptAnalysis });
     } else {
-      analyzeText.mutate(extraDetails);
+      analyzeText.mutate(extraDetails, { onSuccess: acceptAnalysis });
     }
   };
 
@@ -195,16 +206,44 @@ export default function Review() {
   const canAnalyze = inputMode === "paste"
     ? docText.trim().length >= 50
     : uploadedFile !== null;
-  const completedCorrections = result?.recommendations.filter(
+  const completedCorrections = recommendationsToCorrect.filter(
     (_, index) => corrections[index]?.trim(),
-  ).length ?? 0;
-  const correctionsRequired = result?.recommendations.length ?? 0;
+  ).length;
+  const correctionsRequired = recommendationsToCorrect.length;
   const correctionsComplete = Boolean(
     result && correctionsRequired > 0 && completedCorrections === correctionsRequired,
   );
+  const correctedReportReady = correctionsComplete && hasRegenerated;
+
+  const regenerateWithCorrections = () => {
+    if (!correctionsComplete || isAnalyzing) return;
+
+    const correctionContext = [
+      "The user has supplied the following information to address the previous recommendations.",
+      "Regenerate the complete document analysis using these corrections. Update the risk score, risks, missing clauses, summary, and recommendations to reflect the supplied information.",
+      "",
+      ...recommendationsToCorrect.flatMap((recommendation, index) => [
+        `Recommendation ${index + 1}: ${recommendation}`,
+        `User input: ${corrections[index].trim()}`,
+        "",
+      ]),
+    ].join("\n");
+
+    const onSuccess = (data: unknown) => {
+      setResult(normalizeAnalysis(data));
+      setHasRegenerated(true);
+      setCorrectionOpen(false);
+    };
+
+    if (inputMode === "upload" && uploadedFile) {
+      analyzeFile.mutate(correctionContext, { onSuccess });
+    } else {
+      analyzeText.mutate(correctionContext, { onSuccess });
+    }
+  };
 
   const downloadCorrectedReport = () => {
-    if (!result || !correctionsComplete) return;
+    if (!result || !correctedReportReady) return;
 
     const lines = [
       "LITIGAFORGE AI — DOCUMENT REVIEW & CORRECTIONS",
@@ -225,12 +264,17 @@ export default function Review() {
         ? result.missing_clauses.map((clause, index) => `${index + 1}. ${clause}`)
         : ["None identified"]),
       "",
-      "RECOMMENDATIONS & USER CORRECTIONS",
-      ...result.recommendations.flatMap((recommendation, index) => [
+      "USER-SUPPLIED CORRECTIONS",
+      ...recommendationsToCorrect.flatMap((recommendation, index) => [
         `${index + 1}. Recommendation: ${recommendation}`,
-        `   Correction completed: ${corrections[index].trim()}`,
+        `   User input: ${corrections[index].trim()}`,
         "",
       ]),
+      "REGENERATED RECOMMENDATIONS",
+      ...(result.recommendations.length
+        ? result.recommendations.map((recommendation, index) => `${index + 1}. ${recommendation}`)
+        : ["No further recommendations identified"]),
+      "",
       "LEGAL NOTICE",
       "This AI-generated review and the recorded corrections are for informational purposes and do not replace advice from a qualified lawyer.",
     ];
@@ -606,85 +650,69 @@ export default function Review() {
                   </div>
                 )}
 
-                {/* Recommendations and corrections */}
+                {/* Recommendations and correction workflow */}
                 {result.recommendations.length > 0 && (
                   <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 md:col-span-2">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5">
                       <div>
                         <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          Correct the Recommendations
+                          Recommendations
                         </h3>
                         <p className="mt-1.5 text-xs text-muted-foreground">
-                          Record what you changed for every recommendation to unlock your corrected report.
+                          Provide the requested information, then let the analyzer regenerate the report.
                         </p>
                       </div>
-                      <span className={cn(
-                        "w-fit rounded-full border px-3 py-1 text-xs font-semibold",
-                        correctionsComplete
-                          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300"
-                          : "border-border bg-muted text-muted-foreground",
-                      )}>
-                        {completedCorrections} of {correctionsRequired} completed
-                      </span>
+                      {hasRegenerated && (
+                        <span className="w-fit rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300">
+                          Regenerated
+                        </span>
+                      )}
                     </div>
-                    <ol className="space-y-4">
+                    <ol className="space-y-3">
                       {result.recommendations.map((r, i) => (
-                        <li key={i} className="rounded-xl border border-border bg-muted/20 p-4">
-                          <div className="flex items-start gap-3 text-sm font-medium text-foreground/80">
-                            <span className={cn(
-                              "mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                              corrections[i]?.trim()
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                                : "bg-muted text-muted-foreground",
-                            )}>
-                              {corrections[i]?.trim() ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
-                            </span>
-                            <span className="leading-snug">{r}</span>
-                          </div>
-                          <label htmlFor={`recommendation-correction-${i}`} className="mt-4 block text-xs font-semibold text-foreground">
-                            What did you change? <span className="text-red-500">*</span>
-                          </label>
-                          <textarea
-                            id={`recommendation-correction-${i}`}
-                            value={corrections[i] ?? ""}
-                            onChange={(event) => setCorrections((current) => ({
-                              ...current,
-                              [i]: event.target.value,
-                            }))}
-                            rows={3}
-                            maxLength={1500}
-                            placeholder="Describe the clause, wording, or information you corrected…"
-                            className="mt-2 w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                          />
+                        <li key={i} className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4 text-sm font-medium text-foreground/80">
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-500" />
+                          <span className="leading-snug">{r}</span>
                         </li>
                       ))}
                     </ol>
 
                     <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-3">
-                        {correctionsComplete
+                        {correctedReportReady
                           ? <FileCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
                           : <LockKeyhole className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />}
                         <div>
                           <p className="text-sm font-semibold text-foreground">
-                            {correctionsComplete ? "Corrected report is ready" : "Complete all corrections to download"}
+                            {correctedReportReady ? "Regenerated report is ready" : "Regenerate the analysis to unlock download"}
                           </p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            The download includes the analysis, recommendations, and your recorded corrections.
+                            Enter the recommended details in a popup and the analyzer will review the document again.
                           </p>
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        onClick={downloadCorrectedReport}
-                        disabled={!correctionsComplete}
-                        className="w-full sm:w-auto"
-                        data-testid="download-corrected-report"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Corrected Report
-                      </Button>
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setCorrectionOpen(true)}
+                          className="w-full sm:w-auto"
+                          data-testid="open-correction-dialog"
+                        >
+                          {hasRegenerated ? "Update Inputs" : "Enter Recommended Details"}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={downloadCorrectedReport}
+                          disabled={!correctedReportReady}
+                          className="w-full sm:w-auto"
+                          data-testid="download-corrected-report"
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -704,6 +732,62 @@ export default function Review() {
         proceedLabel="Analyse Document"
         storageKey="litigaforge:analyzer:context"
       />
+
+      <Dialog open={correctionOpen} onOpenChange={setCorrectionOpen}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Provide Recommended Details</DialogTitle>
+            <DialogDescription>
+              Complete every field. LitigaForge AI will analyze the document again using your answers.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {recommendationsToCorrect.map((recommendation, index) => (
+              <div key={index} className="rounded-xl border border-border bg-muted/20 p-4">
+                <label htmlFor={`recommendation-correction-${index}`} className="block text-sm font-semibold text-foreground">
+                  {index + 1}. {recommendation}
+                </label>
+                <textarea
+                  id={`recommendation-correction-${index}`}
+                  value={corrections[index] ?? ""}
+                  onChange={(event) => {
+                    setCorrections((current) => ({
+                      ...current,
+                      [index]: event.target.value,
+                    }));
+                    setHasRegenerated(false);
+                  }}
+                  rows={3}
+                  maxLength={1500}
+                  placeholder="Enter the missing or corrected information…"
+                  className="mt-3 w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              {completedCorrections} of {correctionsRequired} fields completed
+            </p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setCorrectionOpen(false)} disabled={isAnalyzing}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={regenerateWithCorrections}
+                disabled={!correctionsComplete || isAnalyzing}
+                data-testid="regenerate-corrected-analysis"
+              >
+                {isAnalyzing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isAnalyzing ? "Regenerating…" : "Regenerate Analysis"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }
