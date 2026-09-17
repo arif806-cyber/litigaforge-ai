@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { runLongJob } from "@/lib/api";
-import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown, Upload, FileText, X, FileCheck } from "lucide-react";
+import { FileSearch, Loader2, AlertTriangle, AlertCircle, CheckCircle2, Info, ChevronDown, Upload, FileText, X, FileCheck, Download, LockKeyhole } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
@@ -133,6 +133,7 @@ export default function Review() {
   const [docType, setDocType] = useState(() => localStorage.getItem("litigaforge:analyzer:type") || "contract");
   const [docTypeOpen, setDocTypeOpen] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [corrections, setCorrections] = useState<Record<number, string>>({});
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -140,6 +141,11 @@ export default function Review() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedType = DOC_TYPES.find(d => d.id === docType) ?? DOC_TYPES[0];
+
+  const acceptAnalysis = useCallback((data: unknown) => {
+    setResult(normalizeAnalysis(data));
+    setCorrections({});
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("litigaforge:analyzer:text", docText);
@@ -152,7 +158,7 @@ export default function Review() {
       method: "POST",
       body: { document_text: docText, document_type: docType, country: activeCode, context },
     }),
-    onSuccess: (data) => setResult(normalizeAnalysis(data)),
+    onSuccess: acceptAnalysis,
   });
 
   const analyzeFile = useMutation({
@@ -168,9 +174,7 @@ export default function Review() {
         body: form,
       });
     },
-    onSuccess: (data) => {
-      setResult(normalizeAnalysis(data));
-    },
+    onSuccess: acceptAnalysis,
   });
 
   const runAnalyze = (extraDetails: string) => {
@@ -191,6 +195,56 @@ export default function Review() {
   const canAnalyze = inputMode === "paste"
     ? docText.trim().length >= 50
     : uploadedFile !== null;
+  const completedCorrections = result?.recommendations.filter(
+    (_, index) => corrections[index]?.trim(),
+  ).length ?? 0;
+  const correctionsRequired = result?.recommendations.length ?? 0;
+  const correctionsComplete = Boolean(
+    result && correctionsRequired > 0 && completedCorrections === correctionsRequired,
+  );
+
+  const downloadCorrectedReport = () => {
+    if (!result || !correctionsComplete) return;
+
+    const lines = [
+      "LITIGAFORGE AI — DOCUMENT REVIEW & CORRECTIONS",
+      `Document type: ${selectedType.label}`,
+      `Jurisdiction: ${activeConfig?.name ?? activeCode.toUpperCase()}`,
+      `Risk score: ${Math.round(result.risk_score)}/100`,
+      "",
+      "EXECUTIVE SUMMARY",
+      result.summary,
+      "",
+      "IDENTIFIED RISKS",
+      ...result.risks.flatMap((risk, index) => [
+        `${index + 1}. [${risk.severity}] ${risk.issue}${risk.section ? ` (Section ${risk.section})` : ""}`,
+      ]),
+      "",
+      "MISSING CLAUSES",
+      ...(result.missing_clauses.length
+        ? result.missing_clauses.map((clause, index) => `${index + 1}. ${clause}`)
+        : ["None identified"]),
+      "",
+      "RECOMMENDATIONS & USER CORRECTIONS",
+      ...result.recommendations.flatMap((recommendation, index) => [
+        `${index + 1}. Recommendation: ${recommendation}`,
+        `   Correction completed: ${corrections[index].trim()}`,
+        "",
+      ]),
+      "LEGAL NOTICE",
+      "This AI-generated review and the recorded corrections are for informational purposes and do not replace advice from a qualified lawyer.",
+    ];
+
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `litigaforge-corrected-${docType}-review.txt`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     if (!isAnalyzing) {
@@ -552,21 +606,86 @@ export default function Review() {
                   </div>
                 )}
 
-                {/* Recommendations */}
+                {/* Recommendations and corrections */}
                 {result.recommendations.length > 0 && (
-                  <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8">
-                     <h3 className="text-sm font-bold text-foreground mb-5 flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                       Recommendations
-                    </h3>
-                    <ul className="space-y-4">
+                  <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 md:col-span-2">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5">
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          Correct the Recommendations
+                        </h3>
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                          Record what you changed for every recommendation to unlock your corrected report.
+                        </p>
+                      </div>
+                      <span className={cn(
+                        "w-fit rounded-full border px-3 py-1 text-xs font-semibold",
+                        correctionsComplete
+                          ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300"
+                          : "border-border bg-muted text-muted-foreground",
+                      )}>
+                        {completedCorrections} of {correctionsRequired} completed
+                      </span>
+                    </div>
+                    <ol className="space-y-4">
                       {result.recommendations.map((r, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-foreground/80 font-medium">
-                          <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                          <span className="leading-snug">{r}</span>
+                        <li key={i} className="rounded-xl border border-border bg-muted/20 p-4">
+                          <div className="flex items-start gap-3 text-sm font-medium text-foreground/80">
+                            <span className={cn(
+                              "mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                              corrections[i]?.trim()
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                                : "bg-muted text-muted-foreground",
+                            )}>
+                              {corrections[i]?.trim() ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+                            </span>
+                            <span className="leading-snug">{r}</span>
+                          </div>
+                          <label htmlFor={`recommendation-correction-${i}`} className="mt-4 block text-xs font-semibold text-foreground">
+                            What did you change? <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            id={`recommendation-correction-${i}`}
+                            value={corrections[i] ?? ""}
+                            onChange={(event) => setCorrections((current) => ({
+                              ...current,
+                              [i]: event.target.value,
+                            }))}
+                            rows={3}
+                            maxLength={1500}
+                            placeholder="Describe the clause, wording, or information you corrected…"
+                            className="mt-2 w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          />
                         </li>
                       ))}
-                    </ul>
+                    </ol>
+
+                    <div className="mt-6 flex flex-col gap-3 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        {correctionsComplete
+                          ? <FileCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+                          : <LockKeyhole className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />}
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {correctionsComplete ? "Corrected report is ready" : "Complete all corrections to download"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            The download includes the analysis, recommendations, and your recorded corrections.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={downloadCorrectedReport}
+                        disabled={!correctionsComplete}
+                        className="w-full sm:w-auto"
+                        data-testid="download-corrected-report"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Corrected Report
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
