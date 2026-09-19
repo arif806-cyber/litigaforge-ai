@@ -9,11 +9,13 @@ tags: ["India", "legal rights", "2026", "employment law", "LitigaForge"]
 readTime: "7 min read"
 author: "LitigaForge AI Editorial Team"
 authorUrl: "https://litigaforge.com/about"
-canonicalUrl: "https://blog.litigaforge.com/blog/understanding-divorce-and-alimony-laws-in-india-what-women-n"
+canonicalUrl: "https://litigaforge.com/blog/understanding-divorce-and-alimony-laws-in-india-what-women-n"
 schema: "FAQPage"
 ---
 
 # Understanding divorce and alimony laws in India: What w — Legal Guide 2026
+
+> **Legal information, not legal advice.** This guide is for general information and does not replace advice from a qualified advocate.
 
 This is one of the most common legal questions in India. Here is exactly what the law says and what your rights are.
 
@@ -43,9 +45,9 @@ Many people weaken their legal position by waiting too long, not documenting com
 
 ## How LitigaForge AI Helps
 
-LitigaForge AI analyses your specific contract or situation in seconds, identifies the exact legal clauses that apply, generates the correct legal notice automatically, and connects you with verified advocates when needed...
+LitigaForge provides practical legal tools and can help you organize the next steps for your situation...
 
-> **Key takeaway:** Get your free AI legal analysis at litigaforge.com in 60 seconds.
+> **Key takeaway:** Keep records of the facts and documents relevant to your claim.
 
 ---
 
@@ -61,15 +63,15 @@ Generally 1 to 3 years depending on the claim type. Acting sooner is always bett
 
 ### Do I need a lawyer?
 
-For straightforward cases, LitigaForge AI handles drafting and analysis. For complex disputes, we connect you with a verified advocate.
+For complex disputes, consider consulting a qualified advocate.
 
 ### How much does it cost to take legal action?
 
-Costs vary. LitigaForge AI provides a free initial analysis so you know your options before spending anything.
+Costs vary by the facts, forum, and representation required.
 
 ---
 
-*Get your free AI legal analysis at litigaforge.com — results in 60 seconds.*
+Explore case tracking and legal tools at litigaforge.com.
 
 **Related LitigaForge feature:** [Legal Notice Generator](https://blog.litigaforge.com)
 

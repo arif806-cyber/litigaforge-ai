@@ -18,9 +18,9 @@ const OG_IMAGE = `${SITE}/opengraph.jpg`;
 // canonical (optional) → override canonical href (e.g. /privacy-policy → /privacy)
 const ROUTES = {
   '/': {
-    title: 'LitigaForge AI \u2014 Telangana & Andhra Pradesh Legal Information',
-    ogTitle: 'LitigaForge AI \u2014 Legal Information',
-    desc: 'AI-assisted legal information, document analysis, judgment research and advocate tools for Telangana and Andhra Pradesh.',
+    title: 'LitigaForge \u2014 case tracking and legal tools for Telangana & Andhra Pradesh advocates',
+    ogTitle: 'LitigaForge \u2014 Telangana & Andhra Pradesh advocate tools',
+    desc: 'Case tracking and legal tools for advocates in Telangana and Andhra Pradesh.',
   },
   '/ask': {
     title: 'Free Legal Information Q&amp;A | LitigaForge AI',
@@ -33,22 +33,22 @@ const ROUTES = {
     desc: 'Get an AI risk score (0\u2013100), missing clauses and recommendations for any contract, agreement, FIR or court notice. Free document analysis.',
   },
   '/lawyers': {
-    title: 'Advocate Directory | LitigaForge AI',
+    title: 'Advocate directory | LitigaForge',
     ogTitle: 'Advocate Directory',
-    desc: 'Browse human-verified advocates when available. If no eligible advocate is available, the directory shows an honest empty state.',
+    desc: 'Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.',
   },
   '/judgments': {
-    title: 'Judgment Finder \u2014 Search Case Law | LitigaForge AI',
+    title: 'Judgment Finder \u2014 Search Case Law | LitigaForge',
     ogTitle: 'Judgment Finder \u2014 Search Case Law',
     desc: 'Search judgments by keyword, court or case number. Relevant precedents with citation links \u2014 free case law research.',
   },
   '/legal-aid': {
-    title: 'Free Legal Aid Finder \u2014 Eligibility &amp; Helplines | LitigaForge AI',
+    title: 'Free Legal Aid Finder \u2014 Eligibility &amp; Helplines | LitigaForge',
     ogTitle: 'Free Legal Aid Finder \u2014 Eligibility &amp; Helplines',
     desc: 'Check eligibility for free legal aid and find contacts and helplines for your region. Legal help for everyone, regardless of income.',
   },
   '/free-documents': {
-    title: 'Free Legal Document Templates \u2014 AI-Generated | LitigaForge AI',
+    title: 'Free Legal Document Templates | LitigaForge',
     ogTitle: 'Free Legal Document Templates \u2014 AI-Generated',
     desc: 'Generate free legal documents instantly \u2014 rental agreements, notices, affidavits, employment letters and NDAs, customized for your jurisdiction.',
   },
@@ -58,12 +58,12 @@ const ROUTES = {
     desc: 'Compare Free, Professional ₹999, and Advocate Pro ₹2,499 plans for legal-information and advocate productivity tools.',
   },
   '/about': {
-    title: 'About LitigaForge AI \u2014 Telangana &amp; Andhra Pradesh',
+    title: 'About LitigaForge \u2014 Telangana &amp; Andhra Pradesh',
     ogTitle: 'About LitigaForge AI',
     desc: 'LitigaForge AI supports clearer legal information, document analysis, judgment research and advocate tools in Telangana and Andhra Pradesh.',
   },
   '/contact': {
-    title: 'Contact LitigaForge AI \u2014 Support &amp; Inquiries',
+    title: 'Contact LitigaForge \u2014 Support &amp; Inquiries',
     ogTitle: 'Contact LitigaForge AI',
     desc: 'Get in touch with LitigaForge AI for support, partnership or media inquiries. We\u2019re here to help with any questions about our legal platform.',
   },
@@ -102,20 +102,23 @@ const ROUTES = {
     title: 'Sign In | LitigaForge AI',
     ogTitle: 'Sign In \u2014 LitigaForge AI',
     desc: 'Sign in to access legal-information tools, document analysis, judgment research and advocate workspace features.',
+    noIndex: true,
   },
   '/register': {
     title: 'Create a Free Account | LitigaForge AI',
     ogTitle: 'Create a Free Account \u2014 LitigaForge AI',
     desc: 'Create a free account for legal-information tools, document analysis and judgment research. No credit card required.',
+    noIndex: true,
   },
 };
 
-function inject(html, routePath, { title, ogTitle, desc, canonical }) {
+function inject(html, routePath, { title, ogTitle, desc, canonical, noIndex = false }) {
   const canonUrl = `${SITE}${canonical ?? routePath}`;
   const ogUrl = `${SITE}${routePath}`;
   return html
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description"[^>]*>/, `<meta name="description" content="${desc}"/>`)
+    .replace(/<meta name="robots"[^>]*>/, `<meta name="robots" content="${noIndex ? 'noindex, nofollow' : 'index, follow'}"/>`)
     .replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${canonUrl}"/>`)
     .replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${ogUrl}"/>`)
     .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${ogTitle}"/>`)

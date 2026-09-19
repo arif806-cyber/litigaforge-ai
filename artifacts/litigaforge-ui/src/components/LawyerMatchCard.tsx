@@ -7,9 +7,6 @@ interface MatchShape {
   lawyer_name: string;
   district?: string;
   experience_years?: number;
-  rating?: number;
-  hourly_rate?: number;
-  match_score: number;
   ai_explanation?: string;
   client_message?: string;
   status: string;
@@ -23,34 +20,6 @@ interface LawyerMatchCardProps {
   onDecline: (id: number) => void;
   /** data-testid prefix for E2E tests */
   testIdPrefix?: string;
-}
-
-function MatchRing({ score }: { score: number }) {
-  const radius       = 22;
-  const circumference = 2 * Math.PI * radius;
-  const offset       = circumference - (score / 100) * circumference;
-  const color =
-    score >= 80 ? "#22c55e" :
-    score >= 60 ? "#f59e0b" : "#ef4444";
-
-  return (
-    <div className="relative w-14 h-14 flex-shrink-0">
-      <svg width="56" height="56" className="-rotate-90" aria-hidden="true">
-        <circle cx="28" cy="28" r={radius} stroke="#e5e7eb" strokeWidth="4" fill="none" />
-        <circle
-          cx="28" cy="28" r={radius}
-          stroke={color} strokeWidth="4" fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.6s ease" }}
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold select-none">
-        {score}%
-      </span>
-    </div>
-  );
 }
 
 function LawyerAvatar({ name }: { name: string }) {
@@ -82,8 +51,6 @@ export function LawyerMatchCard({
       data-testid={`${testIdPrefix}-${match.id}`}
       className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-sm border border-border hover:border-primary/20 hover:shadow-md transition-all"
     >
-      <MatchRing score={match.match_score} />
-
       <LawyerAvatar name={match.lawyer_name} />
 
       <div className="flex-1 min-w-0">
@@ -94,15 +61,6 @@ export function LawyerMatchCard({
             .filter(Boolean)
             .join(" · ")}
         </p>
-
-        {match.hourly_rate && (
-          <p className="text-xs text-amber-600 mt-0.5 font-medium">
-            ₹{match.hourly_rate.toLocaleString("en-IN")}/hr
-            {match.rating != null && match.rating > 0 && (
-              <span className="ml-2 text-amber-500">★ {match.rating}</span>
-            )}
-          </p>
-        )}
 
         {match.ai_explanation && (
           <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">

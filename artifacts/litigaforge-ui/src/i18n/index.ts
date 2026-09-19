@@ -50,8 +50,8 @@ export type CountryTranslations = Record<string, Translation>;
 const translations: Record<string, CountryTranslations> = {
   IN: {
     en: {
-      hero_title: "AI Legal Help for India",
-      hero_sub: "Know your rights. Find lawyers.",
+      hero_title: "LitigaForge — case tracking and legal tools for Telangana & Andhra Pradesh advocates",
+      hero_sub: "Track cases, research judgments, manage documents, and connect with advocates.",
       services: "Legal Services",
       pain_prompt: "What is your legal problem?",
       cta: "Get Free Legal Help",

@@ -140,9 +140,8 @@ async def _check_login_and_session(client: httpx.AsyncClient, results: list) -> 
         plaintext = await _bootstrap_reserved_user()
         resp = await client.post("/auth/login", json={"email": HEALTHCHECK_EMAIL, "password": plaintext})
         resp.raise_for_status()
-        token = resp.json().get("token")
-        if not token:
-            raise RuntimeError("login succeeded but no token was returned")
+        if "lf_token" not in resp.cookies:
+            raise RuntimeError("login succeeded but no access cookie was returned")
         _record(results, "auth_login", "critical", "ok", started, "login OK")
     except Exception as e:
         _record(results, "auth_login", "critical", "fail", started, f"{type(e).__name__}: {e}")
@@ -151,7 +150,7 @@ async def _check_login_and_session(client: httpx.AsyncClient, results: list) -> 
 
     started2 = datetime.now(timezone.utc)
     try:
-        resp2 = await client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+        resp2 = await client.get("/auth/me")
         resp2.raise_for_status()
         me = resp2.json()
         if me.get("email") != HEALTHCHECK_EMAIL:

@@ -1,7 +1,7 @@
 """
 JWT authentication + password hashing for LitigaForge AI.
 Uses bcrypt directly (avoids passlib 1.7.x / bcrypt 4.x+ compatibility issues).
-Access token: JWT, 15 min, httpOnly cookie "lf_token".
+Access token: JWT, 1 day, httpOnly cookie "lf_token".
 Refresh token: opaque 32-byte urlsafe token, 7 days, httpOnly cookie "lf_refresh",
                stored in the refresh_tokens DB table.
 """
@@ -51,7 +51,7 @@ elif SECRET_KEY == _DEV_SECRET_FALLBACK:
         "SESSION_SECRET is the dev default value — rotate it before going to production."
     )
 ALGORITHM = "HS256"
-ACCESS_TOKEN_MINUTES = 15
+ACCESS_TOKEN_MINUTES = 24 * 60
 REFRESH_TOKEN_DAYS = 7
 
 
@@ -115,7 +115,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_token(user_id: int) -> str:
-    """Short-lived JWT access token (15 min)."""
+    """JWT access token with a one-day lifetime; refresh remains cookie-only."""
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_MINUTES)
     return jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -136,14 +136,8 @@ def decode_token(token: str) -> int:
 # ── FastAPI dependencies ───────────────────────────────────────────────────────
 
 def _extract_token(request: Request) -> str | None:
-    """Read access token from cookie first, then Authorization header fallback."""
-    token = request.cookies.get("lf_token")
-    if token:
-        return token
-    auth = request.headers.get("Authorization", "")
-    if auth.lower().startswith("bearer "):
-        return auth[7:].strip()
-    return None
+    """Read the access token exclusively from the httpOnly browser cookie."""
+    return request.cookies.get("lf_token")
 
 
 def _token_dependency(request: Request) -> str | None:
@@ -195,7 +189,10 @@ async def reserve_hourly_ai_call(user: dict) -> dict:
 
 async def require_ai_user(current_user: dict = Depends(require_user)) -> dict:
     """Strict auth plus an atomic per-user hourly AI-call reservation."""
-    return await reserve_hourly_ai_call(current_user)
+    user = await reserve_hourly_ai_call(current_user)
+    from ai_budget import reserve_global_ai_capacity
+    await reserve_global_ai_capacity()
+    return user
 
 
 async def require_ask_access(
@@ -204,7 +201,10 @@ async def require_ask_access(
 ) -> dict | None:
     """Meter logged-in users; allow only two anonymous /ask calls per IP/day."""
     if current_user:
-        return await reserve_hourly_ai_call(current_user)
+        user = await reserve_hourly_ai_call(current_user)
+        from ai_budget import reserve_global_ai_capacity
+        await reserve_global_ai_capacity()
+        return user
 
     ip_hash = hashlib.sha256(get_client_ip(request).encode("utf-8")).hexdigest()
     row = await _fetchrow(
@@ -222,6 +222,8 @@ async def require_ask_access(
             status_code=401,
             detail="Anonymous question limit reached. Please log in to continue.",
         )
+    from ai_budget import reserve_global_ai_capacity
+    await reserve_global_ai_capacity()
     return None
 
 

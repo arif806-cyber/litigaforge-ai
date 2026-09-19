@@ -9,14 +9,14 @@ import logging
 import os
 import re
 import secrets
-from typing import List, Optional
+from typing import List, Literal, Optional
 
-import requests as _req
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from auth import get_current_user, require_ai_user, require_ask_access
+from ai_budget import AICapReached, reserve_global_ai_capacity
 from rate_limit import limiter
 from database import fetchrow, fetch, execute, fetchval
 from cache import cache_get, cache_set, cache_key
@@ -40,52 +40,20 @@ _BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 # ── AI helpers ──────────────────────────────────────────────────────────────────────
 
 def _claude(prompt: str, max_tokens: int = 2000) -> str:
-    base = os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "").rstrip("/")
-    key  = os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
-    if not base or not key:
-        return ""
     try:
-        r = _req.post(
-            f"{base}/messages",
-            headers={"x-api-key": key, "anthropic-version": "2023-06-01",
-                     "content-type": "application/json"},
-            json={"model": "claude-sonnet-4-6", "max_tokens": max_tokens,
-                  "messages": [{"role": "user", "content": prompt}]},
-            timeout=60,
-        )
-        if r.ok:
-            return r.json()["content"][0]["text"]
-        logger.warning("Claude HTTP %s: %s", r.status_code, r.text[:200])
+        return legal_llm.complete("", prompt, max_tokens=max_tokens)
     except Exception as e:
-        logger.warning("Claude error: %s", e)
+        logger.warning("Portable LLM error: %s", e)
     return ""
 
 
 def _gemini(prompt: str, max_tokens: int = 2000) -> str:
-    base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
-    key  = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "")
-    if not base or not key:
-        return ""
-    try:
-        r = _req.post(
-            f"{base}/models/gemini-2.5-flash:generateContent",
-            headers={"x-goog-api-key": key},
-            json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"maxOutputTokens": max_tokens}},
-            timeout=60,
-        )
-        if r.ok:
-            cands = r.json().get("candidates", [])
-            if cands:
-                return cands[0]["content"]["parts"][0]["text"]
-    except Exception as e:
-        logger.warning("Gemini error: %s", e)
-    return ""
+    return _claude(prompt, max_tokens)
 
 
 def _ai(prompt: str, max_tokens: int = 2000) -> str:
-    """Claude → Gemini cascade."""
-    return _claude(prompt, max_tokens) or _gemini(prompt, max_tokens)
+    """Use the provider-neutral LiteLLM layer."""
+    return legal_llm.complete("", prompt, max_tokens=max_tokens)
 
 
 def _extract_json_object(text: str) -> dict:
@@ -708,7 +676,7 @@ def _doc_type_guidance(doc_type: str) -> str:
             "- Procedural correctness (jurisdiction, limitation, proper forum, mandatory pre-litigation notices)\n"
             "- Completeness of required legal elements for this type of court document\n"
             "- Accuracy of party names, case/CNR numbers, court/bench details, and dates\n"
-            "- Compliance with CPC, CrPC, or the applicable High Court / Supreme Court Rules\n"
+            "- Compliance with CPC, BNSS/BSA, or the applicable High Court / Supreme Court Rules; use CrPC/Evidence Act only for pre-1 July 2024 matters\n"
             "- Strength and coherence of legal arguments, grounds, or averments (if any)\n\n"
             "Assign risk_score based on procedural/documentary risk (0=complete and sound, 100=seriously defective).\n\n"
             f"{_FOLLOW_UP_INSTRUCTIONS}\n\n"
@@ -719,7 +687,7 @@ def _doc_type_guidance(doc_type: str) -> str:
             '  "red_flags": ["<procedural defect, incorrect entry, or legal error in this document>", ...],\n'
             '  "recommendations": ["<specific improvement to this court document>", ...],\n'
             f"{_FOLLOW_UP_SCHEMA}"
-            '  "compliance_notes": "<compliance with CPC/CrPC/High Court Rules and applicable procedural law>",\n'
+            '  "compliance_notes": "<compliance with CPC/BNSS/BSA and applicable procedural law; historical CrPC/Evidence Act note only where relevant>",\n'
             f'  "summary": "<what this {label} contains, which court/bench/parties are involved, and any notable observations>"\n'
             "}"
         )
@@ -754,7 +722,7 @@ def _doc_type_guidance(doc_type: str) -> str:
         "(court order, petition, cause list, affidavit, sale deed, notice, vakalatnama, etc.).\n"
         "State the identified document type at the very start of the summary field.\n\n"
         "Then analyze it on its own terms — apply the analysis framework appropriate to what it actually is:\n"
-        "- Court documents: procedural correctness, completeness, CPC/CrPC compliance\n"
+        "- Court documents: procedural correctness, completeness, CPC/BNSS/BSA compliance; use CrPC/Evidence Act only for pre-1 July 2024 matters\n"
         "- Contracts/deeds: contractual risk, missing clauses, stamp duty\n"
         "- Notices: demand completeness, statutory notice periods\n"
         "- Other: fitness for the document's evident legal purpose\n\n"
@@ -775,14 +743,15 @@ def _doc_type_guidance(doc_type: str) -> str:
 
 
 class DocumentRequest(BaseModel):
-    document_text: str
-    document_type: str = "contract"
-    country: str = "IN"
-    context: str = ""
-    mode: str = "analyze"
+    document_text: str = Field(..., max_length=8000)
+    document_type: str = Field("contract", max_length=80)
+    country: str = Field("IN", max_length=8)
+    context: str = Field("", max_length=6000)
+    mode: Literal["analyze", "correct"] = "analyze"
 
 
 @router.post("/document/analyze", status_code=202)
+@limiter.limit("10/minute")
 async def analyze_document(
     req: DocumentRequest,
     request: Request,
@@ -1097,6 +1066,7 @@ Document text to analyze:
 
 
 @router.post("/document/analyze-file", status_code=202)
+@limiter.limit("10/minute")
 async def analyze_document_file(
     request: Request,
     file: UploadFile = File(...),
@@ -1264,8 +1234,15 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
     prov_name, _ = caselaw_provider(req.country)
 
     # ── Step 1: try NIM semantic search against real DB judgments ──────────────
-    db_results = await _search_judgments_semantic(safe_query, req.court or "")
-    search_source = "nim_semantic"
+    # Semantic search is optional: preserve keyword/database results if the
+    # shared daily AI capacity is exhausted.
+    try:
+        await reserve_global_ai_capacity(raise_http=False)
+        db_results = await _search_judgments_semantic(safe_query, req.court or "")
+        search_source = "nim_semantic"
+    except AICapReached:
+        db_results = []
+        search_source = "keyword"
 
     # ── Step 2: keyword fallback if semantic search returned nothing ───────────
     if not db_results:

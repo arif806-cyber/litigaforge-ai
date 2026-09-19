@@ -23,7 +23,7 @@ const PRICING: Record<string, CountryPricing> = {
     basic: {
       price: 499,
       period: "month",
-      features: ["20 AI questions", "5 document drafts", "Case tracking", "WhatsApp alerts"],
+      features: ["20 AI questions", "5 document drafts", "Case tracking"],
     },
     pro: {
       price: 1499,
@@ -70,7 +70,7 @@ const PRICING: Record<string, CountryPricing> = {
   },
   AE: {
     currency: "AED",
-    free: { price: 0, features: ["3 AI questions", "UAE law basics", "Emergency cheque steps"] },
+    free: { price: 0, features: ["3 AI questions", "Indian law basics", "Emergency cheque steps"] },
     basic: {
       price: 35,
       period: "month",
@@ -79,7 +79,7 @@ const PRICING: Record<string, CountryPricing> = {
     pro: {
       price: 99,
       period: "month",
-      features: ["Unlimited everything", "Arabic RTL interface", "DIFC specialist routing", "WhatsApp support"],
+      features: ["Unlimited everything", "Arabic RTL interface", "DIFC specialist routing"],
     },
     per_doc: { price: 49 },
   },

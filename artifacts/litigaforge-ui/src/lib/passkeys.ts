@@ -85,10 +85,12 @@ export async function registerPasskey(_token?: string): Promise<void> {
 }
 
 export async function authenticatePasskey(): Promise<{
-  token: string;
   user: Record<string, unknown>;
 }> {
-  const optRes = await fetch(`${BASE}/auth/passkey/login-options`, { method: "POST" });
+  const optRes = await fetch(`${BASE}/auth/passkey/login-options`, {
+    method: "POST",
+    credentials: "include",
+  });
   if (!optRes.ok) throw new Error("Could not get passkey login options");
   const options = await optRes.json();
 

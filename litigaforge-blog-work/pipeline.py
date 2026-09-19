@@ -19,7 +19,7 @@ import base64
 import asyncio
 import httpx
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # ─── CONFIG FROM ENVIRONMENT ─────────────────────────────────────────────────
 GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
@@ -32,19 +32,16 @@ GITHUB_TOKEN    = (
 )
 GITHUB_REPO     = os.environ.get("GITHUB_REPO", "arif806-cyber/litigaforge-blog")
 INDEXNOW_KEY    = os.environ.get("INDEXNOW_KEY", "")
-BLOG_DOMAIN     = os.environ.get("BLOG_DOMAIN", "blog.litigaforge.com")
+BLOG_DOMAIN     = os.environ.get("BLOG_DOMAIN", "litigaforge.com")
 SCORE_THRESHOLD = int(os.environ.get("SCORE_THRESHOLD", "60"))
-MAX_ARTICLES    = int(os.environ.get("MAX_ARTICLES", "3"))  # per run
+MAX_ARTICLES    = int(os.environ.get("MAX_ARTICLES", "3"))
+MAX_ARTICLES_PER_WEEK = 3
+INDIA_COUNTRY = "India"
 
 # ─── SUBREDDITS TO MONITOR ───────────────────────────────────────────────────
 SUBREDDITS = [
     ("LegalAdviceIndia", "India"),
-    ("legaladvice",      "USA"),
     ("india",            "India"),
-    ("UKLegal",          "UK"),
-    ("dubai",            "UAE"),
-    ("auslaw",           "Australia"),
-    ("legaladviceuk",    "UK"),
     ("Entrepreneur",     "India"),   # startup founders asking legal Q's
 ]
 
@@ -129,20 +126,10 @@ async def fetch_reddit_posts() -> list[dict]:
 # Curated legal topics for when Reddit is blocked
 _CURATED_TOPICS = [
     {"title": "How to send a legal notice to your employer for wrongful termination in India", "country": "India", "subreddit": "r/LegalAdviceIndia", "upvotes": 420, "comments": 85, "score": 0},
-    {"title": "Understanding tenant rights in the UAE: What to do when your landlord won't return the security deposit", "country": "UAE", "subreddit": "r/dubai", "upvotes": 380, "comments": 72, "score": 0},
-    {"title": "Can my employer force me to sign a non-compete agreement in California? Legal rights explained", "country": "USA", "subreddit": "r/legaladvice", "upvotes": 510, "comments": 120, "score": 0},
-    {"title": "UK employment law: How to claim unfair dismissal and what compensation you may receive", "country": "UK", "subreddit": "r/legaladviceuk", "upvotes": 350, "comments": 60, "score": 0},
-    {"title": "Understanding Australia's workplace bullying laws and how to file a complaint with Fair Work", "country": "Australia", "subreddit": "r/auslaw", "upvotes": 290, "comments": 45, "score": 0},
     {"title": "Consumer rights in India: What to do when an e-commerce company refuses to refund a defective product", "country": "India", "subreddit": "r/LegalAdviceIndia", "upvotes": 460, "comments": 95, "score": 0},
-    {"title": "Family law in Canada: How child custody decisions are made and what factors the court considers", "country": "Canada", "subreddit": "r/legaladvice", "upvotes": 320, "comments": 55, "score": 0},
-    {"title": "Singapore employment law: Notice period requirements and when you can leave without serving notice", "country": "Singapore", "subreddit": "r/legaladvice", "upvotes": 270, "comments": 40, "score": 0},
-    {"title": "Germany labour law: How to claim compensation for overtime that was never paid", "country": "Germany", "subreddit": "r/legaladvice", "upvotes": 310, "comments": 50, "score": 0},
     {"title": "Startup founder legal guide: How to protect your intellectual property when hiring contractors in India", "country": "India", "subreddit": "r/Entrepreneur", "upvotes": 340, "comments": 65, "score": 0},
-    {"title": "Rental agreement disputes in the UK: What to do when your landlord increases rent illegally", "country": "UK", "subreddit": "r/legaladviceuk", "upvotes": 390, "comments": 78, "score": 0},
     {"title": "How to file a consumer complaint against a fraudulent builder in India — NCDRC and RERA explained", "country": "India", "subreddit": "r/LegalAdviceIndia", "upvotes": 480, "comments": 110, "score": 0},
-    {"title": "US immigration law: H-1B visa rights and what to do when your employer violates your terms", "country": "USA", "subreddit": "r/legaladvice", "upvotes": 440, "comments": 88, "score": 0},
     {"title": "Understanding divorce and alimony laws in India: What women need to know about maintenance rights", "country": "India", "subreddit": "r/LegalAdviceIndia", "upvotes": 520, "comments": 135, "score": 0},
-    {"title": "UAE labour law: End of service gratuity calculation and when employers must pay it", "country": "UAE", "subreddit": "r/dubai", "upvotes": 370, "comments": 68, "score": 0},
 ]
 
 
@@ -159,10 +146,10 @@ def _get_curated_topics() -> list[dict]:
 # ─── STEP 2: GENERATE ARTICLE ────────────────────────────────────────────────
 # Try Gemini first, fall back to Groq if Gemini fails or hits limit
 
-ARTICLE_PROMPT = """You are a senior legal content writer for LitigaForge AI (litigaforge.com).
-LitigaForge is an AI-powered legal platform operating in India, USA, UK, UAE, Germany, Australia, Canada, Singapore.
+ARTICLE_PROMPT = """You are a senior legal content writer for LitigaForge (litigaforge.com).
+LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.
 
-A Reddit post is trending: "{title}" in {country}.
+A Reddit post is trending: "{title}" in India.
 
 Write a comprehensive, SEO-optimized 2000-word legal article that directly answers this question.
 Use real law names, sections, and case references where applicable.
@@ -170,11 +157,11 @@ Use real law names, sections, and case references where applicable.
 Return ONLY valid JSON — no markdown fences, no preamble, no explanation:
 
 {{
-  "title": "SEO H1 title — max 60 chars, include country and year 2026",
+  "title": "SEO H1 title — max 60 chars, include India or Telangana/Andhra Pradesh where natural",
   "metaDescription": "Meta description — max 155 chars, include primary keyword",
   "slug": "url-slug-lowercase-hyphens-no-special-chars",
   "readTime": "X min read",
-  "country": "{country}",
+  "country": "India",
   "legalArea": "Employment Law | Tenancy | Contract | Consumer | Corporate | Family",
   "intro": "2-sentence compelling hook that directly addresses the Reddit question",
   "sections": [
@@ -187,7 +174,7 @@ Return ONLY valid JSON — no markdown fences, no preamble, no explanation:
   "faq": [
     {{"q": "Common question", "a": "Concise answer under 80 words"}}
   ],
-  "cta": "One sentence CTA to try LitigaForge AI free at litigaforge.com",
+  "cta": "One sentence describing a relevant LitigaForge legal tool",
   "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
   "internalLink": "Contract Review | Legal Notice Generator | Case Analysis"
 }}
@@ -195,7 +182,7 @@ Return ONLY valid JSON — no markdown fences, no preamble, no explanation:
 Requirements:
 - Minimum 5 sections
 - Minimum 4 FAQ entries
-- Include actual Indian/UAE/UK law names and sections
+- Focus on Indian law, especially Telangana and Andhra Pradesh practice
 - No fluff — every sentence must add value
 - Optimized for Google Featured Snippets (direct answers, numbered lists)
 """
@@ -261,7 +248,8 @@ async def call_groq(prompt: str) -> str:
 
 async def generate_article(post: dict) -> dict:
     """Try Groq (primary) → Gemini (fallback) → fallback template"""
-    prompt = ARTICLE_PROMPT.format(title=post["title"], country=post["country"])
+    post = {**post, "country": INDIA_COUNTRY}
+    prompt = ARTICLE_PROMPT.format(title=post["title"], country=INDIA_COUNTRY)
 
     raw = None
     source = None
@@ -303,7 +291,7 @@ async def generate_article(post: dict) -> dict:
 
             article = json.loads(clean)
             print(f"  ✓ Article generated via {source}: {article.get('title', '')[:50]}...")
-            return article
+            return _normalize_article(article, post)
         except json.JSONDecodeError as e:
             print(f"  ⚠ JSON parse error: {e}")
             # Try to extract JSON with regex
@@ -312,7 +300,7 @@ async def generate_article(post: dict) -> dict:
                 if match:
                     article = json.loads(match.group(0))
                     print(f"  ✓ Article extracted via regex: {article.get('title', '')[:50]}...")
-                    return article
+                    return _normalize_article(article, post)
             except json.JSONDecodeError:
                 pass
 
@@ -320,12 +308,12 @@ async def generate_article(post: dict) -> dict:
     print("  ⚠ Using fallback template")
     slug = re.sub(r"[^a-z0-9\s-]", "", post["title"].lower())
     slug = re.sub(r"\s+", "-", slug).strip("-")[:60]
-    return {
-        "title":         f"{post['title'][:55]} — Legal Guide 2026",
-        "metaDescription": f"Complete legal guide: {post['title'][:80]}. Expert AI analysis for {post['country']} by LitigaForge.",
+    return _normalize_article({
+        "title":         f"{post['title']} — Legal Guide 2026",
+        "metaDescription": f"Indian legal guide: {post['title']}. Practical information for Telangana and Andhra Pradesh.",
         "slug":          slug,
         "readTime":      "7 min read",
-        "country":       post["country"],
+        "country":       INDIA_COUNTRY,
         "legalArea":     "Employment Law",
         "intro":         f"This is one of the most common legal questions in {post['country']}. Here is exactly what the law says and what your rights are.",
         "sections": [
@@ -351,8 +339,8 @@ async def generate_article(post: dict) -> dict:
             },
             {
                 "h2":          "How LitigaForge AI Helps",
-                "body":        "LitigaForge AI analyses your specific contract or situation in seconds, identifies the exact legal clauses that apply, generates the correct legal notice automatically, and connects you with verified advocates when needed...",
-                "keyTakeaway": "Get your free AI legal analysis at litigaforge.com in 60 seconds."
+                "body":        "LitigaForge provides practical legal tools to help organize the facts, documents, and next steps for your situation...",
+                "keyTakeaway": "Use a clear timeline and keep supporting documents together."
             }
         ],
         "faq": [
@@ -361,10 +349,31 @@ async def generate_article(post: dict) -> dict:
             {"q": "Do I need a lawyer?",                       "a": "For straightforward cases, LitigaForge AI handles drafting and analysis. For complex disputes, we connect you with a verified advocate."},
             {"q": "How much does it cost to take legal action?","a": "Costs vary. LitigaForge AI provides a free initial analysis so you know your options before spending anything."},
         ],
-        "cta":          "Get your free AI legal analysis at litigaforge.com — results in 60 seconds.",
-        "tags":         [post["country"], "legal rights", "2026", "employment law", "LitigaForge"],
+        "cta":          "Explore LitigaForge case tracking and legal tools for advocates.",
+        "tags":         [INDIA_COUNTRY, "Telangana", "Andhra Pradesh", "legal rights", "LitigaForge"],
         "internalLink": "Legal Notice Generator"
-    }
+    }, post)
+
+
+def _title_at_word_boundary(title: str, max_chars: int = 60) -> str:
+    """Keep generated titles readable; never cut through a word."""
+    title = " ".join(str(title or "").split())
+    if len(title) <= max_chars:
+        return title
+    boundary = title[:max_chars].rsplit(" ", 1)[0].rstrip(" ,:;—-")
+    return boundary or title
+
+
+def _normalize_article(article: dict, post: dict) -> dict:
+    """Enforce editorial invariants regardless of model output."""
+    article = dict(article)
+    article["title"] = _title_at_word_boundary(article.get("title") or post["title"])
+    article["country"] = INDIA_COUNTRY
+    article["metaDescription"] = " ".join(str(article.get("metaDescription") or "").split())[:155].rsplit(" ", 1)[0]
+    article["slug"] = re.sub(r"[^a-z0-9\s-]", "", str(article.get("slug") or post["title"]).lower())
+    article["slug"] = re.sub(r"\s+", "-", article["slug"]).strip("-")[:80].rstrip("-")
+    article["cta"] = str(article.get("cta") or "Explore LitigaForge case tracking and legal tools for advocates.")
+    return article
 
 
 # ─── JSON-LD SCHEMA INJECTION ───────────────────────────────────────────────
@@ -473,6 +482,26 @@ def _linkify_citations_md(text: str) -> str:
     return result
 
 
+_INTERNAL_LINKS = {
+    "Contract Review": "https://litigaforge.com/review",
+    "Legal Notice Generator": "https://litigaforge.com/free-documents",
+    "Judgment Search": "https://litigaforge.com/judgments",
+    "Case Tracking": "https://litigaforge.com/cnr-tracker",
+}
+
+
+def _meaningful_internal_links(raw: str) -> list[tuple[str, str]]:
+    """Allow only curated topic phrases; generic words are never link targets."""
+    if not raw:
+        return []
+    found = []
+    lowered = raw.lower()
+    for phrase, url in _INTERNAL_LINKS.items():
+        if phrase.lower() in lowered:
+            found.append((phrase, url))
+    return found[:3]
+
+
 # ─── STEP 3: BUILD MARKDOWN ──────────────────────────────────────────────────
 def build_markdown(article: dict, post: dict) -> str:
     sections_md = "\n\n".join(
@@ -493,6 +522,13 @@ def build_markdown(article: dict, post: dict) -> str:
     article_jsonld = _build_article_jsonld(article, post, BLOG_DOMAIN)
     faq_jsonld = _build_faq_jsonld(article)
     jsonld_block = "\n".join(filter(None, [article_jsonld, faq_jsonld]))
+
+    links_md = " · ".join(
+        f"[{label}]({url})" for label, url in _meaningful_internal_links(article.get("internalLink", ""))
+    )
+    related_md = f"**Related LitigaForge tools:** {links_md}" if links_md else ""
+    reviewer = os.environ.get("BLOG_REVIEWER_NAME", "").strip()
+    reviewer_md = f"\n**Reviewed by:** {reviewer}\n" if reviewer else ""
 
     return f"""---
 title: "{article['title']}"
@@ -515,6 +551,9 @@ schema: "Article+FAQPage"
 
 {_linkify_citations_md(article.get('intro', ''))}
 
+> **Legal information, not legal advice.** This guide is for general information and does not replace advice from a qualified advocate.
+{reviewer_md}
+
 {sections_md}
 
 ---
@@ -525,9 +564,9 @@ schema: "Article+FAQPage"
 
 ---
 
-*{article['cta']}*
+{f"*{article['cta']}*" if article.get('country') == INDIA_COUNTRY else ""}
 
-**Related LitigaForge feature:** [{article.get('internalLink', 'AI Legal Analysis')}](https://{BLOG_DOMAIN})
+{related_md}
 
 <!-- auto-published by LitigaForge Content Pipeline -->
 <!-- source: {post['subreddit']} | score: {post['score']} | upvotes: {post['upvotes']} -->
@@ -645,16 +684,24 @@ async def main():
 
     # Step 1: Fetch Reddit
     print("📡 Step 1: Fetching Reddit posts...")
-    posts = await fetch_reddit_posts()
+    posts = [p for p in await fetch_reddit_posts() if p.get("country") == INDIA_COUNTRY]
 
     if not posts:
         print("No qualifying posts found this run.")
         return
 
+    # Enforce a hard weekly editorial ceiling, regardless of workflow inputs.
+    weekly_published = _published_this_week()
+    remaining_this_week = max(0, MAX_ARTICLES_PER_WEEK - weekly_published)
+    run_limit = min(MAX_ARTICLES, remaining_this_week)
+    if run_limit == 0:
+        print("Weekly India editorial limit reached (3 articles).")
+        return
+
     # Step 2–5: Pipeline for top N posts
     published_count = 0
     for post in posts:
-        if published_count >= MAX_ARTICLES:
+        if published_count >= run_limit:
             break
 
         if post["score"] < SCORE_THRESHOLD:
@@ -706,13 +753,38 @@ async def main():
         print(f"   Cloudflare Pages deploys automatically in ~45s")
 
         # Pause between articles to avoid rate limits
-        if published_count < MAX_ARTICLES:
+        if published_count < run_limit:
             await asyncio.sleep(5)
 
     print(f"\n{'='*55}")
     print(f"  Pipeline complete — {published_count} articles published")
     print(f"  Total published to date: {len(published_slugs)}")
     print("="*55 + "\n")
+
+
+def _published_this_week(now: datetime | None = None) -> int:
+    """Count generated India articles in the current UTC Monday-Sunday window."""
+    now = now or datetime.now(timezone.utc)
+    monday = (now - timedelta(days=now.weekday())).date()
+    count = 0
+    content_dir = os.path.join("src", "content", "blog")
+    if not os.path.isdir(content_dir):
+        return 0
+    for filename in os.listdir(content_dir):
+        if not filename.endswith(".md"):
+            continue
+        try:
+            text = open(os.path.join(content_dir, filename), encoding="utf-8").read()
+            country = re.search(r'^country:\s*["\']?([^"\']+)["\']?\s*$', text, re.MULTILINE)
+            date_match = re.search(r'^date:\s*["\']?([^"\']+)["\']?\s*$', text, re.MULTILINE)
+            if not country or country.group(1).strip() != INDIA_COUNTRY or not date_match:
+                continue
+            published = datetime.fromisoformat(date_match.group(1).strip().replace("Z", "+00:00")).date()
+            if published >= monday:
+                count += 1
+        except (OSError, ValueError):
+            continue
+    return count
 
 
 if __name__ == "__main__":

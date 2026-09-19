@@ -4,10 +4,9 @@
 
 import { getCollection } from 'astro:content';
 
-const posts = (await getCollection('blog'))
+const posts = (await getCollection('blog', ({ data }) => data.country === 'India'))
   .sort((a, b) => new Date(b.data.date) - new Date(a.data.date));
 
-const countries = [...new Set(posts.map(p => p.data.country))];
 ---
 
 <!DOCTYPE html>
@@ -16,8 +15,9 @@ const countries = [...new Set(posts.map(p => p.data.country))];
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Legal Guides & Resources — LitigaForge AI</title>
-  <meta name="description" content="Free legal guides for India, UAE, UK, USA and more. AI-powered analysis by LitigaForge." />
-  <link rel="canonical" href="https://blog.litigaforge.com/blog" />
+  <meta name="description" content="Indian legal guides focused on Telangana and Andhra Pradesh advocates, case tracking, and practical legal tools." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://litigaforge.com/blog" />
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <style>
@@ -61,7 +61,7 @@ const countries = [...new Set(posts.map(p => p.data.country))];
 
   <div class="hero">
     <h1>Legal Guides & Resources</h1>
-    <p>AI-powered legal insights for India, UAE, UK, USA and more</p>
+  <p>Legal information and practical tools for Telangana and Andhra Pradesh advocates</p>
   </div>
 
   <div class="stats">
@@ -70,8 +70,8 @@ const countries = [...new Set(posts.map(p => p.data.country))];
       <div class="stat-label">Legal Guides</div>
     </div>
     <div class="stat">
-      <div class="stat-num">{countries.length}</div>
-      <div class="stat-label">Countries Covered</div>
+      <div class="stat-num">2</div>
+      <div class="stat-label">Indian States Focused</div>
     </div>
     <div class="stat">
       <div class="stat-num">Free</div>
@@ -80,10 +80,7 @@ const countries = [...new Set(posts.map(p => p.data.country))];
   </div>
 
   <div class="filters">
-    <a href="/blog" class="filter-btn active">All Countries</a>
-    {countries.map(c => (
-      <a href={`/blog?country=${c}`} class="filter-btn">{c}</a>
-    ))}
+    <a href="/blog" class="filter-btn active">India · Telangana &amp; Andhra Pradesh</a>
   </div>
 
   <div class="grid">

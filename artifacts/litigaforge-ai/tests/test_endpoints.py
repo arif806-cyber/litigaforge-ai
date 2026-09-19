@@ -304,13 +304,13 @@ def test_resend_verification_auth_required():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def test_commission_calculation():
-    from payments import (
-        calc_commission_paise, COMMISSION_MIN, COMMISSION_MAX, COMMISSION_DEFAULT,
-    )
-    assert calc_commission_paise("", 0) == COMMISSION_DEFAULT
-    assert calc_commission_paise("", 5000) == COMMISSION_MIN       # 8% → ₹400 < min
-    assert calc_commission_paise("", 100000) == COMMISSION_MAX     # 8% → ₹8k > max
-    assert calc_commission_paise("Flexible / Discuss", 50000) >= COMMISSION_MIN
+    from payments import calc_commission_paise
+
+    # The client booking fee is flat and must never vary with case budget.
+    assert calc_commission_paise("", 0) == 19900
+    assert calc_commission_paise("", 5000) == 19900
+    assert calc_commission_paise("", 100000) == 19900
+    assert calc_commission_paise("Flexible / Discuss", 50000) == 19900
 
 
 # ══════════════════════════════════════════════════════════════════════════════

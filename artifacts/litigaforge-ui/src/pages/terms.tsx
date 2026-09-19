@@ -6,7 +6,11 @@ import { useCountry } from "@/hooks/useCountry";
 import { TERMS_COPY } from "@/lib/country-copy";
 
 const EFFECTIVE_DATE = "1 June 2026";
-const CONTACT_EMAIL = "legal@litigaforge.com";
+const CONTACT_EMAIL = "info@arivex.ai";
+const ENTITY_NAME = "Arivex AI Private Limited";
+const ENTITY_CIN = "U62011TS2026PTC221286";
+const REGISTERED_OFFICE = import.meta.env.VITE_REGISTERED_OFFICE?.trim();
+const GRIEVANCE_OFFICER = import.meta.env.VITE_GRIEVANCE_OFFICER?.trim();
 
 export default function TermsOfService() {
   const { activeCode } = useCountry();
@@ -32,19 +36,19 @@ export default function TermsOfService() {
           </div>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-900">
-          <strong>Please read carefully.</strong> By creating an account or using LitigaForge AI, you agree to these Terms. If you do not agree, do not use the platform.
+           <strong>Please read carefully.</strong> By creating an account or using LitigaForge, you agree to these Terms. If you do not agree, do not use the platform.
         </div>
       </div>
 
-      <Section icon={<Scale className="w-4 h-4" />} title="1. About LitigaForge AI">
+       <Section icon={<Scale className="w-4 h-4" />} title="1. About LitigaForge">
         <p>
-          LitigaForge AI ("<strong>Platform</strong>", "<strong>we</strong>", "<strong>us</strong>") is a legal-technology marketplace that connects clients
+           {ENTITY_NAME} ("<strong>Platform</strong>", "<strong>we</strong>", "<strong>us</strong>") operates LitigaForge, a legal-technology marketplace that connects clients
           with verified legal professionals. We also provide AI-assisted legal information tools.
         </p>
         <p className="mt-2">
           <strong>We are not a law firm and do not provide legal advice.</strong> The Platform is a technology intermediary.
           The attorney-client relationship is formed directly and exclusively between the client and the
-          legal professional — LitigaForge AI is not a party to that relationship.
+           legal professional — LitigaForge is not a party to that relationship.
         </p>
       </Section>
 
@@ -62,7 +66,7 @@ export default function TermsOfService() {
       <Section icon={<AlertTriangle className="w-4 h-4" />} title="3. No Legal Advice — Important Disclaimer">
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900 mt-2">
           <p><strong>AI outputs are not legal advice.</strong> The AI-generated content on this Platform (case strategies, document analysis, legal Q&A, judgment summaries) is for informational and educational purposes only. It is not a substitute for professional legal advice from a qualified advocate.</p>
-          <p className="mt-2">Always consult a licensed advocate before making any legal decision. LitigaForge AI, its directors, employees, and AI providers accept no liability for reliance on AI-generated content.</p>
+           <p className="mt-2">Always consult a licensed advocate before making any legal decision. {ENTITY_NAME}, its directors, employees, and AI providers accept no liability for reliance on AI-generated content.</p>
         </div>
       </Section>
 
@@ -86,7 +90,7 @@ export default function TermsOfService() {
           <li>Advocates must maintain a valid Bar Council enrolment at all times.</li>
           <li>Advocates must comply with the Bar Council of India Rules on professional conduct, including rules on advertising and fee transparency.</li>
           <li>Advocates are solely responsible for the legal advice and services they provide to clients.</li>
-          <li>LitigaForge AI is not liable for the quality, outcome, or any aspect of the legal services provided by advocates on this Platform.</li>
+           <li>{ENTITY_NAME} is not liable for the quality, outcome, or any aspect of the legal services provided by advocates on this Platform.</li>
           <li>Advocates must keep client information confidential in accordance with professional ethics rules.</li>
         </ul>
       </Section>
@@ -103,7 +107,7 @@ export default function TermsOfService() {
 
       <Section icon={<FileText className="w-4 h-4" />} title="7. Intellectual Property">
         <ul className="space-y-1.5 text-sm list-disc list-inside">
-          <li>All Platform code, design, AI models, and branding are owned by LitigaForge AI and protected by copyright.</li>
+           <li>All Platform code, design, AI models, and branding are owned by {ENTITY_NAME} and protected by copyright.</li>
           <li>You retain ownership of the content you upload (case documents, descriptions). By uploading, you grant us a limited licence to process and store it solely to provide the service.</li>
           <li>AI-generated outputs (strategies, summaries, document drafts) are provided to you for personal/professional use. You may not resell or redistribute them as standalone products.</li>
           <li>You may not use the LitigaForge name, logo, or branding without written permission.</li>
@@ -112,7 +116,7 @@ export default function TermsOfService() {
 
       <Section icon={<XCircle className="w-4 h-4" />} title="8. Limitation of Liability">
         <p className="text-sm">
-          To the maximum extent permitted by Indian law, LitigaForge AI shall not be liable for:
+           To the maximum extent permitted by Indian law, {ENTITY_NAME} shall not be liable for:
         </p>
         <ul className="space-y-1.5 text-sm list-disc list-inside mt-2">
           <li>Any outcome of legal proceedings, whether or not an advocate was found via this Platform</li>
@@ -142,14 +146,16 @@ export default function TermsOfService() {
       <Section icon={<Mail className="w-4 h-4" />} title="11. Contact">
         <div className="bg-muted/40 rounded-xl p-4 text-sm space-y-1 border border-border">
           <p><strong>Legal / Grievance Officer</strong></p>
-          <p>LitigaForge AI</p>
+           <p>{ENTITY_NAME} · CIN {ENTITY_CIN}</p>
           <p>Email: <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a></p>
+           {REGISTERED_OFFICE && <p>Registered office: {REGISTERED_OFFICE}</p>}
+           {GRIEVANCE_OFFICER && <p>Grievance officer: {GRIEVANCE_OFFICER}</p>}
           <p>Response time: within 72 hours</p>
         </div>
       </Section>
 
       <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>LitigaForge AI · Terms of Service · Effective {EFFECTIVE_DATE}</span>
+         <span>{ENTITY_NAME} · Terms of Service · Effective {EFFECTIVE_DATE}</span>
         <div className="flex items-center gap-4">
           <Link href="/privacy"><span className="text-primary hover:underline cursor-pointer">Privacy Policy</span></Link>
           <Link href="/legal-aid"><span className="text-primary hover:underline cursor-pointer">Legal Aid</span></Link>

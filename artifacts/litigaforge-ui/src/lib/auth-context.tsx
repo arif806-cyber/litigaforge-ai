@@ -17,7 +17,7 @@ function dashboardUrl(role: string): string {
 }
 
 // Only accept app-relative destinations. Auth links are public input, so never
-// turn a `next` parameter (or a stale sessionStorage value) into an open redirect.
+// turn a `next` parameter (or a stale return-path value) into an open redirect.
 export function safeAuthNext(value: string | null | undefined): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\"))
     return null;
@@ -67,7 +67,7 @@ interface AuthCtx {
   register: (name: string, email: string, password: string, role?: string, recaptchaToken?: string) => Promise<void>;
   googleLogin: (credential: string, role?: string) => Promise<void>;
   appleLogin: (idToken: string, firstName?: string, lastName?: string, role?: string) => Promise<void>;
-  passkeyLogin: (token: string, user: User) => void;
+  passkeyLogin: (user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // The access cookie is short-lived. On a 401, attempt one silent refresh
       // (using the long-lived refresh cookie) and re-check before giving up, so
       // a genuinely logged-in user stays signed in across a cold reload instead
-      // of being bounced once their access token expires.
+      // of being bounced once their cookie-based access token expires.
       if (res.status === 401 && (await _tryRefresh())) {
         res = await fetch(`${BASE}/auth/me`, {
           credentials: "include",
@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     navigateAfterAuth(data.user?.role ?? "client");
   };
 
-  const passkeyLogin = (_jwtToken: string, userData: User) => {
+  const passkeyLogin = (userData: User) => {
     setUser(userData);
     navigateAfterAuth(userData.role ?? "client");
   };
@@ -213,8 +213,8 @@ export function useAuth() {
 
 export const TIER_LABELS: Record<string, string> = {
   free: "Free",
-  professional: "Professional",
-  advocate_pro: "Advocate Pro",
+  professional: "Advocate Pro",
+  advocate_pro: "Chamber",
 };
 
 export const TIER_LIMITS: Record<string, number> = {

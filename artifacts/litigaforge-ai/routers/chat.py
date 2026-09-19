@@ -9,7 +9,7 @@ Endpoints:
   POST /chat/messages                         — send a message (broadcasts via WS)
   GET  /chat/threads/{id}/messages?before=    — paginated history (latest 50 / cursor)
   POST /chat/threads/{id}/mark-read           — upsert thread_read_state
-  WS   /ws/chat/{id}?token=                  — real-time message push
+  WS   /ws/chat/{id}                         — real-time message push (httpOnly cookie)
 """
 import json
 import asyncio
@@ -70,15 +70,17 @@ class ChatConnectionManager:
 chat_manager = ChatConnectionManager()
 
 
-# ── WS endpoint: /ws/chat/{thread_id}?token=<jwt> ───────────────────────────
+# ── WS endpoint: /ws/chat/{thread_id} (httpOnly cookie auth) ────────────────
 
 @router.websocket("/ws/chat/{thread_id}")
-async def chat_ws(thread_id: int, ws: WebSocket, token: Optional[str] = Query(None)):
+async def chat_ws(thread_id: int, ws: WebSocket):
     """
-    Real-time push for a chat thread. Auth via ?token= (same JWT from localStorage).
+    Real-time push for a chat thread. Auth is taken from the browser's httpOnly
+    access cookie automatically included in the WebSocket handshake.
     Verifies the caller is the client or lawyer on this thread before accepting.
     """
     # Verify token
+    token = ws.cookies.get("lf_token")
     if not token:
         await ws.close(code=4001)
         return
@@ -112,52 +114,22 @@ async def chat_ws(thread_id: int, ws: WebSocket, token: Optional[str] = Query(No
 
 
 # ── AI helpers ───────────────────────────────────────────────────────────────
+from llm import legal_llm
 
 def _claude(prompt: str, max_tokens: int = 2000) -> str:
-    base = os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "").rstrip("/")
-    key  = os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
-    if not base or not key:
-        return ""
     try:
-        r = _req.post(
-            f"{base}/messages",
-            headers={"x-api-key": key, "anthropic-version": "2023-06-01",
-                     "content-type": "application/json"},
-            json={"model": "claude-sonnet-4-6", "max_tokens": max_tokens,
-                  "messages": [{"role": "user", "content": prompt}]},
-            timeout=60,
-        )
-        if r.ok:
-            return r.json()["content"][0]["text"]
+        return legal_llm.complete("", prompt, max_tokens=max_tokens)
     except Exception:
-        pass
+        return ""
     return ""
 
 
 def _gemini(prompt: str, max_tokens: int = 2000) -> str:
-    base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
-    key  = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "")
-    if not base or not key:
-        return ""
-    try:
-        r = _req.post(
-            f"{base}/models/gemini-2.5-flash:generateContent",
-            headers={"x-goog-api-key": key},
-            json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"maxOutputTokens": max_tokens}},
-            timeout=60,
-        )
-        if r.ok:
-            cands = r.json().get("candidates", [])
-            if cands:
-                return cands[0]["content"]["parts"][0]["text"]
-    except Exception:
-        pass
-    return ""
+    return _claude(prompt, max_tokens)
 
 
 def _ai(prompt: str, max_tokens: int = 2000) -> str:
-    return _claude(prompt, max_tokens) or _gemini(prompt, max_tokens)
+    return legal_llm.complete("", prompt, max_tokens=max_tokens)
 
 
 # ── AI Legal Chat / Drafting ─────────────────────────────────────────────────

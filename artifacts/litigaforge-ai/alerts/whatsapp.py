@@ -9,10 +9,22 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
 ADVOCATE_WHATSAPP = os.getenv("ADVOCATE_WHATSAPP", "")
+TWILIO_SANDBOX_SENDER = "whatsapp:+14155238886"
+
+
+def whatsapp_alerts_enabled() -> bool:
+    """Expose only safe capability state; never expose Twilio credentials."""
+    sender = os.getenv("TWILIO_WHATSAPP_FROM", TWILIO_SANDBOX_SENDER).strip().lower()
+    return bool(sender and sender != TWILIO_SANDBOX_SENDER)
 
 
 def send_whatsapp_alert(message: str, to: Optional[str] = None, alert_type: str = "info") -> dict:
     recipient = to or ADVOCATE_WHATSAPP
+
+    if not whatsapp_alerts_enabled():
+        from logger import get_logger
+        get_logger("litigaforge.whatsapp").info("WhatsApp alerts unavailable while Twilio sandbox sender is configured")
+        return {"success": False, "error": "WhatsApp alerts coming soon"}
 
     if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
         from logger import get_logger

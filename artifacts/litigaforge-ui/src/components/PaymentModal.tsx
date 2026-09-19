@@ -180,7 +180,7 @@ export function PaymentModal({ matchId, lawyerName, caseTitle, budgetRange, onCl
                     { icon: <Phone className="w-3.5 h-3.5" />, text: "Lawyer's direct phone number" },
                     { icon: <Mail className="w-3.5 h-3.5" />, text: "Lawyer's email address" },
                     { icon: <Star className="w-3.5 h-3.5" />, text: "AI-matched for your case — one-time fee" },
-                    { icon: <ShieldCheck className="w-3.5 h-3.5" />, text: "Platform guarantee on verified advocates" },
+                    { icon: <ShieldCheck className="w-3.5 h-3.5" />, text: "Bar enrolment checked by LitigaForge where displayed" },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2.5 text-[12px] text-gray-600">
                       <span className="text-emerald-500">{item.icon}</span>

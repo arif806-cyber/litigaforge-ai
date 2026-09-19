@@ -30,7 +30,7 @@ const UI: Record<string, Record<string, string>> = {
     de: "Erstellte Dokumente", fr: "Documents générés",
   },
   lawyers: {
-    en: "Verified advocates", es: "Abogados verificados", hi: "सत्यापित अधिवक्ता",
+    en: "Advocate profiles", es: "Perfiles de abogados", hi: "अधिवक्ता प्रोफ़ाइल",
     te: "ధ్రువీకరించబడిన న్యాయవాదులు", ar: "محامون موثّقون",
     de: "Verifizierte Anwälte", fr: "Avocats vérifiés",
   },
@@ -45,9 +45,9 @@ const UI: Record<string, Record<string, string>> = {
     de: "Einreichfertige Dokumente", fr: "Documents prêts à déposer",
   },
   lawyers_q: {
-    en: "Bar-verified directory", es: "Directorio verificado", hi: "सत्यापित निर्देशिका",
-    te: "ధ్రువీకరించబడిన డైరెక్టరీ", ar: "دليل محامين موثّق",
-    de: "Verifiziertes Anwaltsverzeichnis", fr: "Annuaire d’avocats vérifiés",
+    en: "Advocate directory", es: "Directorio de abogados", hi: "अधिवक्ता निर्देशिका",
+    te: "న్యాయవాదుల డైరెక్టరీ", ar: "دليل المحامين",
+    de: "Anwaltsverzeichnis", fr: "Annuaire d’avocats",
   },
 };
 

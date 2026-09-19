@@ -95,8 +95,8 @@ export const articles: Article[] = [
       {
         heading: "5. Use AI Matching Platforms",
         blocks: [
-          p("Modern legal tech platforms like LitigaForge AI use AI to match clients with verified advocates based on case type, location, language preference, experience, and budget. This cuts the search time from days to minutes and ensures you only see lawyers who have been verified on the platform."),
-          p("You can post your case requirement anonymously, receive match proposals from interested lawyers with AI-calculated match scores (0–100), and then choose whom to contact. This removes much of the uncertainty from the traditional referral-based system."),
+          p("Modern legal tech platforms like LitigaForge help clients review advocate profiles by case type, location, language preference, experience, and budget."),
+          p("You can post your case requirement anonymously, review proposals, and choose whom to contact. This makes the referral process clearer."),
         ],
       },
       {

@@ -52,32 +52,32 @@ const MIME = {
 // title / description / canonical / ogTitle / ogDesc / noIndex / jsonld
 const ROUTE_META = {
   "/": {
-    title: "LitigaForge AI — AI-Powered Legal Platform | Find Lawyers Worldwide",
+    title: "LitigaForge — case tracking and legal tools for Telangana & Andhra Pradesh advocates",
     description:
-      "LitigaForge AI connects you with verified lawyers and provides instant AI-powered legal guidance, document analysis, and free legal aid — available globally in English, Hindi, and Telugu.",
+      "Case tracking and legal tools for advocates in Telangana and Andhra Pradesh.",
     canonical: "/",
   },
 
   "/lawyers": {
-    title: "Find Verified Lawyers | AI Lawyer Matching | LitigaForge AI",
+    title: "Advocate directory | LitigaForge",
     description:
-      "Browse AI-verified advocates and get matched with top lawyers for your case — each scored 0–100 for compatibility. Free to search across India, US, UK, UAE, Australia, Canada, Singapore, and Germany.",
+      "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
     canonical: "/lawyers",
     jsonld: {
       "@context": "https://schema.org",
       "@type": "Service",
       name: "AI Lawyer Matching — LitigaForge AI",
-      description: "AI-powered lawyer matching — browse verified advocates scored 0–100 for your case type.",
+       description: "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
       provider: { "@type": "Organization", name: "LitigaForge AI", url: "https://litigaforge.com" },
       serviceType: "Lawyer Matching Platform",
-      areaServed: ["India", "United States", "United Kingdom", "United Arab Emirates", "Australia", "Canada", "Singapore", "Germany"],
+       areaServed: ["Telangana", "Andhra Pradesh"],
     },
   },
 
   "/ask": {
-    title: "Ask Legal Questions — Instant AI Answers | LitigaForge AI",
+    title: "Legal information tools | LitigaForge",
     description:
-      "Ask any legal question and get instant AI-powered answers grounded in your country's law — property, criminal, family, tax, immigration, and more. Free, no signup required.",
+      "Legal information tools for Telangana and Andhra Pradesh advocates and clients.",
     canonical: "/ask",
     jsonld: {
       "@context": "https://schema.org",
@@ -181,7 +181,7 @@ const ROUTE_META = {
   "/blog": {
     title: "Legal News & Insights | LitigaForge AI Blog",
     description:
-      "Read the latest legal news, case law analysis, and practical legal guides from LitigaForge AI. Updated daily across India, the US, UK, UAE, and more.",
+      "Read India-focused legal news, case law analysis, and practical guides for Telangana and Andhra Pradesh.",
     canonical: "/blog",
   },
 
@@ -227,9 +227,9 @@ const PREFIX_META = [
   {
     prefix: "/judgments/",
     meta: {
-      title: "Court Judgment | LitigaForge AI",
+       title: "Court judgment | LitigaForge",
       description:
-        "Read the full text and AI summary of this court judgment on LitigaForge AI — India's AI-powered legal research platform.",
+         "Read an Indian court judgment and case-law summary on LitigaForge.",
       jsonld: {
         "@context": "https://schema.org",
         "@type": "Article",
@@ -247,15 +247,15 @@ const PREFIX_META = [
   {
     prefix: "/lawyers/",
     meta: {
-      title: "Find Lawyers in Your City | LitigaForge AI",
+       title: "Advocates in your city | LitigaForge",
       description:
-        "Find verified lawyers in your city — browse by practice area, language, and rating on LitigaForge AI.",
+         "Browse advocate profiles by practice area and location in Telangana and Andhra Pradesh.",
     },
   },
   {
     prefix: "/free-documents/",
     meta: {
-      title: "Free Legal Document | LitigaForge AI",
+       title: "Free legal document template | LitigaForge",
       description: "Download and auto-fill this free AI-generated legal document template on LitigaForge AI.",
     },
   },
@@ -292,11 +292,13 @@ function stripCountry(rawPath) {
 
 function getMeta(rawPath) {
   const base = stripCountry(rawPath);
-  if (ROUTE_META[base]) return { ...ROUTE_META[base], _path: base };
+  const protectedPrefixes = ["/client-dashboard", "/lawyer-dashboard", "/subscription", "/ask", "/review", "/post-case", "/my-cases", "/matches", "/documents", "/legal-chat", "/admin", "/forgeos", "/workspace", "/messages", "/cnr-tracker", "/settings", "/lawyers/register", "/forgot-password", "/verify-email", "/reset-password"];
+  const protectedRoute = protectedPrefixes.some((prefix) => base === prefix || base.startsWith(`${prefix}/`));
+  if (ROUTE_META[base]) return { ...ROUTE_META[base], noIndex: ROUTE_META[base].noIndex || protectedRoute, _path: base };
   for (const { prefix, meta } of PREFIX_META) {
-    if (base.startsWith(prefix)) return { ...meta, _path: base };
+    if (base.startsWith(prefix)) return { ...meta, noIndex: meta.noIndex || protectedRoute, _path: base };
   }
-  return { ...ROUTE_META["/"], _path: "/" };
+  return { ...ROUTE_META["/"], noIndex: protectedRoute, _path: base };
 }
 
 function injectMeta(rawPath) {

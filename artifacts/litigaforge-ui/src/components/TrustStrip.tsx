@@ -16,9 +16,9 @@ const UI: Record<string, Record<string, string>> = {
     de: "Für Telangana und Andhra Pradesh entwickelt", fr: "Conçu pour le Telangana et l’Andhra Pradesh",
   },
   verified: {
-    en: "Human-verified advocates when available", es: "Abogados verificados por personas cuando estén disponibles", hi: "उपलब्ध होने पर मानव-सत्यापित अधिवक्ता",
-    te: "ధ్రువీకరించబడిన న్యాయవాదులు", ar: "محامون موثّقون",
-    de: "Verifizierte Anwälte", fr: "Avocats vérifiés",
+    en: "Admin-checked enrolment badge where shown", es: "Inscripción revisada donde se indique", hi: "जहाँ दिखे वहाँ नामांकन जाँचा गया",
+    te: "చూపిన చోట నమోదు తనిఖీ", ar: "فحص التسجيل حيثما يظهر",
+    de: "Geprüfter Status, wo angezeigt", fr: "Inscription contrôlée lorsqu’indiquée",
   },
   grounded: {
     en: "Grounded in local law", es: "Basado en la ley local", hi: "स्थानीय कानून पर आधारित",

@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import asyncio
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ai_brain import _call_claude, _call_openai, _call_gemini, get_active_providers
+from llm import legal_llm
 from ai_safety import safe_ai_output
 from jurisdiction import get_config, localize_currency, normalize_code
 from auth import require_ai_user
@@ -124,7 +124,7 @@ Include these sections:
 1. Reference to Advocate (if provided)
 2. Subject Line
 3. Facts of the Case
-4. Legal Basis (cite relevant sections of CPC, Contract Act, or specific state law)
+4. Legal Basis (cite relevant sections of CPC, Contract Act, or specific state law; for criminal/procedure/evidence matters from 1 July 2024 onward use BNS/BNSS/BSA, and use IPC/CrPC/Evidence Act only for pre-1 July 2024 matters)
 5. Specific Demand
 6. Consequences of Non-Compliance
 7. Reply Deadline
@@ -635,28 +635,15 @@ async def _generate_document_work(
         f"references with the correct {cfg['name']} equivalents. No markdown formatting."
     )
 
-    # Cascade: Claude → GPT-5 → Gemini → template fallback
+    # Provider-neutral LiteLLM call; the configured model can be switched to
+    # Bedrock/Gemini/OpenAI without changing this router.
     document_text = None
     try:
         document_text = await asyncio.to_thread(
-            _call_claude, system=sys_msg, user=prompt, temperature=0.3, max_tokens=8000
+            legal_llm.complete, sys_msg, prompt, 0.3, 8000
         )
     except Exception:
-        pass
-    if not document_text:
-        try:
-            document_text = await asyncio.to_thread(
-                _call_openai, system=sys_msg, user=prompt, temperature=0.3, max_tokens=8000
-            )
-        except Exception:
-            pass
-    if not document_text:
-        try:
-            document_text = await asyncio.to_thread(
-                _call_gemini, system=sys_msg, user=prompt, temperature=0.3, max_tokens=8192
-            )
-        except Exception:
-            pass
+        document_text = None
     if not document_text:
         document_text = f"""LEGAL DOCUMENT: {template.title}
 

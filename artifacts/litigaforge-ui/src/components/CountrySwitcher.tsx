@@ -11,13 +11,6 @@ interface CountryItem {
 
 const ALL_COUNTRIES: CountryItem[] = [
   { code: "IN", name: "India",          flag: "🇮🇳" },
-  { code: "US", name: "United States",  flag: "🇺🇸" },
-  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
-  { code: "AE", name: "UAE",            flag: "🇦🇪" },
-  { code: "AU", name: "Australia",      flag: "🇦🇺" },
-  { code: "CA", name: "Canada",         flag: "🇨🇦" },
-  { code: "SG", name: "Singapore",      flag: "🇸🇬" },
-  { code: "DE", name: "Germany",        flag: "🇩🇪" },
 ];
 
 // Single source of truth for which presentation to mount, so only ONE menu

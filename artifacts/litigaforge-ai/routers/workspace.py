@@ -29,12 +29,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-import ai_brain as _ai_brain
-
 from auth import require_user, require_ai_user
 from database import get_pool
 from llm import legal_llm
-from llm.config import LEGAL_SYSTEM_PROMPT as _LEGAL_SYSTEM_PROMPT
 from llm.nim_embed import aembed_canvas, vec_to_str
 from case_law_search import search_case_law
 from jobs import collect_sse, enqueue_job
@@ -680,7 +677,7 @@ _AGENTS = [
             "(motor accident / criminal / property / family / service / consumer / labour / "
             "commercial / constitutional / other) and the main applicable statute.\n\n"
             "STEP 2 — LEGAL FRAMEWORK: Break the case into parallel legal tracks. "
-            "Example for motor accident: (a) Criminal — FIR + s.279/304A IPC; "
+            "Example for motor accident: (a) Criminal — FIR + applicable BNS sections (use IPC only if the offence predates 1 July 2024); "
             "(b) Compensation — MACT claim u/s 166 Motor Vehicles Act; "
             "(c) Insurance — compulsory third-party policy claim. "
             "Adapt to the actual case type — name each track and its governing statute.\n\n"
@@ -1091,31 +1088,13 @@ async def _stream_analysis(
                     response = (value or "").strip()
         except Exception as _primary_exc:
             logger.warning(
-                "Agent %s — LiteLLM error (%s: %s); trying ai_brain cascade",
+                "Agent %s — portable LiteLLM error (%s: %s)",
                 agent["id"], type(_primary_exc).__name__, _primary_exc,
             )
             yield sse({"type": "provider_error", "agent": agent["id"],
-                       "error": "Primary analysis provider was unavailable; trying fallback."})
-            # ── Fallback: ai_brain Claude → Gemini → Groq cascade ────────────
-            try:
-                async for event, value in _await_provider_with_heartbeats(
-                    _ai_brain.call_llm_async(
-                        _LEGAL_SYSTEM_PROMPT, prompt, temperature=0.3, max_tokens=2000,
-                    )
-                ):
-                    if event == "heartbeat":
-                        yield ": heartbeat\n\n"
-                    else:
-                        response = (value or "").strip()
-            except Exception as _fallback_exc:
-                logger.warning("Agent %s — ai_brain cascade also failed: %s", agent["id"], _fallback_exc)
-                response = ""
+                       "error": "The AI analysis is temporarily unavailable. Please try again shortly."})
         if not response:
-            response = (
-                f"REASONING: Examining {agent['role']} from available case details.\n"
-                f"---\n{agent['name']} analysis requires more specific case information. "
-                "Please add case details for a comprehensive assessment."
-            )
+            response = "AI analysis temporarily unavailable. Please try again shortly."
 
         # ── Parse reasoning + analysis ──────────────────────────────────────
         reasoning = ""
@@ -1468,8 +1447,8 @@ async def _get_proactive_insights_work(
         "EXAMPLES:\n"
         "step|⚡|File MACT petition u/s 166 Motor Vehicles Act at District Tribunal|"
         "File within 3 years of accident. Claim from insurer + owner. FIR not required for s.166 MVA civil claim.\n"
-        "framework|🏛️|3 tracks: Criminal (s.304A IPC) + MACT Compensation + Insurance Claim|"
-        "Criminal: FIR to chargesheet to trial u/s 279 and 304A IPC. MACT: compensation u/s 166 MVA. Insurance: claim against compulsory motor policy.\n"
+        "framework|🏛️|3 tracks: Criminal (applicable BNS sections) + MACT Compensation + Insurance Claim|"
+        "Criminal: FIR to chargesheet to trial under applicable BNS/BNSS provisions (IPC/CrPC only for pre-1 July 2024 offences). MACT: compensation u/s 166 MVA. Insurance: claim against compulsory motor policy.\n"
         "precedent|⚖️|Sarla Verma v. DTC (2009 SC) — structured MACT compensation formula|"
         "Supreme Court laid down standard multiplier method for motor accident compensation. Binding on all MACT courts in India.\n"
         "warning|⚠️|Limitation: MACT claim must be filed within 3 years of accident date|"

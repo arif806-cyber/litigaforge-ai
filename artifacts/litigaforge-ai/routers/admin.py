@@ -192,13 +192,30 @@ async def admin_list_users(
     offset = max((page - 1) * limit, 0)
     rows = await fetch(
         """SELECT id, name, email, subscription_tier,
-                  cases_this_month, is_superuser, created_at
+                  cases_this_month, is_superuser, email_verified, created_at
            FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2""",
         limit, offset,
     )
     for r in rows:
         r["created_at"] = str(r["created_at"])
     return {"page": page, "limit": limit, "users": rows}
+
+
+@router.post("/admin/users/{user_id}/verify-email")
+async def admin_verify_user_email(
+    user_id: int,
+    current_user: dict = Depends(get_superuser),
+):
+    """Manually verify a user's email when SMTP delivery is unavailable."""
+    row = await fetchrow(
+        "UPDATE users SET email_verified = TRUE WHERE id = $1 "
+        "RETURNING id, email, email_verified",
+        user_id,
+    )
+    if not row:
+        raise HTTPException(404, "User not found")
+    logger.info("Admin manually verified email for user_id=%s admin_id=%s", user_id, current_user["id"])
+    return {"message": "User email verified", "user": dict(row)}
 
 
 @router.post("/admin/users/{user_id}/reset-usage")

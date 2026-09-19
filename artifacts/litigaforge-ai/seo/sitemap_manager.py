@@ -38,10 +38,7 @@ TODAY = date.today().isoformat()
 STATIC_ROUTES: list[tuple[str, str, str]] = [
     ("/",               "1.0", "daily"),
     ("/lawyers",        "0.9", "daily"),
-    ("/ask",            "0.9", "daily"),
     ("/judgments",      "0.9", "daily"),
-    ("/post-case",      "0.8", "weekly"),
-    ("/subscription",   "0.8", "weekly"),
     ("/legal-aid",      "0.8", "weekly"),
     ("/free-documents", "0.8", "weekly"),
     ("/about",          "0.6", "monthly"),
@@ -61,6 +58,16 @@ def _entry(loc: str, lastmod: str = TODAY, changefreq: str = "weekly", priority:
         f"    <priority>{priority}</priority>\n"
         "  </url>"
     )
+
+
+def _is_india_blog_url(url: str) -> bool:
+    """Only expose articles explicitly identified as India-focused."""
+    value = url.lower()
+    return any(token in value for token in (
+        "/india", "/indian", "/telangana", "/andhra", "/hyderabad",
+        "/supreme-court", "/high-court", "/nalsa", "/tslsa", "/ap-",
+        "/in/",
+    ))
 
 
 async def _fetch_judgment_urls(timeout: float = 10.0) -> list[dict]:
@@ -87,7 +94,7 @@ async def _fetch_blog_urls(timeout: float = 15.0) -> list[dict]:
             return [
                 {"url": loc, "lastmod": TODAY}
                 for loc in locs
-                if "/blog/" in loc and loc.startswith("http")
+                if "/blog/" in loc and loc.startswith("http") and _is_india_blog_url(loc)
             ]
     except Exception:
         return []
@@ -102,6 +109,8 @@ async def build_sitemap_xml() -> str:
 
     for item in await _fetch_judgment_urls():
         url = item.get("url") or f"{SITE_URL}{item.get('path', '')}"
+        if not url.startswith(SITE_URL) or "/judgments" not in url:
+            continue
         lastmod = item.get("lastmod") or TODAY
         entries.append(_entry(url, lastmod, "weekly", "0.8"))
 

@@ -605,7 +605,7 @@ WRITING PRINCIPLES:
 1. TONE: Authoritative and concise. Use precise legal terminology ("mandates", "prohibits", "entitles"). Avoid hedging — never write "maybe", "perhaps", or "it is suggested".
 2. STATUTORY COMPLIANCE (CRITICAL):
    - Criminal matters (offence on or after 1 July 2024): cite Bharatiya Nyaya Sanhita (BNS) 2023 for substantive offences and Bharatiya Nagarik Suraksha Sanhita (BNSS) 2023 for procedure.
-   - Legacy cases (offence before 1 July 2024): cite IPC 1860 for the offence; note that BNSS 2023 now governs procedural aspects.
+   - For offences or proceedings before 1 July 2024, cite the applicable IPC/CrPC/Evidence Act provision and clearly label it historical. For matters on or after 1 July 2024, use BNS, BNSS and BSA.
    - Evidence: cite Bharatiya Sakshya Adhiniyam (BSA) 2023 for all admissibility questions.
 3. LOCAL JURISDICTION:
    - Explicitly differentiate between the Telangana High Court and the Andhra Pradesh High Court when identifying the forum.
@@ -718,7 +718,7 @@ Case ID: {case_id}
 REFINE_INSTRUCTIONS = {
     "refine": """Refine this section: improve clarity, structure, and completeness. Keep every fact from the original. Add any missing detail that strengthens the analysis without inventing facts. Maintain the same format (bullets, tables, etc.).""",
     "aggressive": """Make this section more aggressive and assertive. Use stronger legal language. Frame positions as demands rather than suggestions. Emphasize the strongest legal remedies available. Highlight opponent vulnerabilities. Use phrases like "strictly mandates", "categorically requires", "unequivocally entitled to". Keep all facts; do not add unsupported claims.""",
-    "provisions": """Expand this section with additional legal provisions, statutes, rules, and regulations. Add specific section numbers, sub-sections, and relevant amendments. Include procedural rules (CPC CrPC rules, tribunal rules) where applicable. Reference relevant SEBI/CGST/RBI/MV Act provisions. Keep existing content; add supplementary provisions.""",
+    "provisions": """Expand this section with additional legal provisions, statutes, rules, and regulations. Add specific section numbers, sub-sections, and relevant amendments. Use BNSS/BSA for matters from 1 July 2024 onward; mention CrPC/Evidence Act only for pre-1 July 2024 matters. Include CPC rules, tribunal rules, and relevant SEBI/CGST/RBI/MV Act provisions. Keep existing content; add supplementary provisions.""",
     "simplify": """Simplify this section into plain, accessible English. Shorten sentences. Remove dense legal jargon where possible (but keep Act names and section numbers). Use analogies or plain explanations for complex concepts. A client with no legal background should understand it. Preserve all factual content and legal accuracy.""",
 }
 

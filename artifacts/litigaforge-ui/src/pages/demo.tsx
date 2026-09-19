@@ -175,7 +175,6 @@ export default function Demo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [litSteps, setLitSteps] = useState<number[]>([]);
-  const [scoreVal, setScoreVal] = useState(60);
 
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number | null>(null);
@@ -209,22 +208,8 @@ export default function Demo() {
     });
   }
 
-  const scoreRef = useRef(false);
-
   const activateScene = useCallback((idx: number) => {
     setScene(idx);
-    if (idx === 3 && !scoreRef.current) {
-      scoreRef.current = true;
-      let v = 60, target = 94, dur = 1200, start: number | null = null;
-      const step = (ts: number) => {
-        if (!start) start = ts;
-        const p = Math.min((ts - start) / dur, 1);
-        const ease = 1 - Math.pow(1 - p, 3);
-        setScoreVal(Math.round(v + (target - v) * ease));
-        if (p < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    }
     if (idx === 2) {
       litTimersRef.current.forEach(clearTimeout);
       setLitSteps([]);
@@ -272,12 +257,10 @@ export default function Demo() {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     pausedAtRef.current = 0;
     startRef.current = null;
-    scoreRef.current = false;
     litTimersRef.current.forEach(clearTimeout);
     setProgress(0);
     setScene(-1);
     setLitSteps([]);
-    setScoreVal(60);
     setIsDone(false);
     setTimeout(() => {
       setScene(0);
@@ -329,9 +312,9 @@ export default function Demo() {
 
       {/* ── Scene 1: Hero ── */}
       <section className={`d-scene${scene === 0 ? " d-active" : ""}`}>
-        <div className="d-s1-item"><div className="d-badge"><span className="d-badge-dot" />Legal AI · Worldwide</div></div>
+        <div className="d-s1-item"><div className="d-badge"><span className="d-badge-dot" />Telangana &amp; Andhra Pradesh legal tools</div></div>
         <h1 className="d-h1 d-s1-item"><span className="l1">Legal Intelligence</span><span className="l2">Built for Your Courts</span></h1>
-        <p className="d-sub d-s1-item">Post your case. Get <strong>AI-matched</strong> with a verified advocate in minutes.<br />Local expertise. Faster legal help. Built for your courts.</p>
+        <p className="d-sub d-s1-item">Post your case. Get <strong>AI-matched</strong> with a verified advocate.<br />Local expertise. Legal help built for your courts.</p>
         <div className="d-btns d-s1-item">
           <button className="d-btn-p">Get Started Free</button>
           <button className="d-btn-o">▶&nbsp; Watch 60-sec Demo</button>
@@ -345,16 +328,15 @@ export default function Demo() {
 
       {/* ── Scene 2: Trust ── */}
       <section className={`d-scene${scene === 1 ? " d-active" : ""}`}>
-        <div className="d-head"><h2 className="d-h2">Trusted from day one</h2></div>
+        <div className="d-head"><h2 className="d-h2">Built for legal workflows</h2></div>
         <p className="d-trust-sub">Everything you need to choose your advocate with confidence.</p>
         <div className="d-trust-grid">
           {[
-            ["⭐", <><strong>4.9</strong> avg. rating</>],
             ["👥", <><strong>2,400+</strong> users helped</>],
-            ["✅", "Verified advocates only"],
+            ["✅", "Advocate profiles with enrolment status"],
             ["🆓", "Free to start"],
             ["🔒", "Anonymous posting"],
-            ["⚡", "Matched in < 2 min"],
+            ["⚡", "Relevant advocate suggestions"],
           ].map(([ico, label], i) => (
             <div key={i} className="d-chip">
               <span style={{ fontSize: "1.1rem" }}>{ico as string}</span>
@@ -362,7 +344,7 @@ export default function Demo() {
             </div>
           ))}
         </div>
-        <p className="d-tagline"><strong>Post your case</strong> · <strong>Get matched in minutes</strong> · <strong>Choose with confidence</strong></p>
+        <p className="d-tagline"><strong>Post your case</strong> · <strong>Review relevant advocates</strong> · <strong>Choose with confidence</strong></p>
       </section>
 
       {/* ── Scene 3: Product Flow ── */}
@@ -373,10 +355,10 @@ export default function Demo() {
           {[
             { icon: "🗂️", label: "Post Your Case", desc: "Describe your issue in seconds",
               card: <><div className="d-sc-label">Case details</div><div className="d-sc-row"><div className="d-sc-dot" />Property dispute · Hyderabad</div><div className="d-sc-row"><div className="d-sc-dot" />Telugu · English</div><div><span className="d-sc-tag">Civil</span><span className="d-sc-tag">₹5k–₹20k</span></div></> },
-            { icon: "🤖", label: "AI Analyzes", desc: "Multi-model AI scores every advocate",
-              card: <><div className="d-sc-label">AI Processing</div><div className="d-ai-pulse">{[0,1,2,3,4].map(i=><div key={i} className="d-ai-bar" />)}</div><div style={{marginTop:".4rem",fontSize:".67rem",color:"#60a5fa",textAlign:"center"}}>Scoring 100+ advocates…</div></> },
-            { icon: "⚖️", label: "Get Matched", desc: "Review scored proposals, choose yours",
-              card: <><div className="d-sc-label">Your matches</div><div className="d-sc-row"><div className="d-sc-dot" style={{background:"#10b981"}} />Adv. Priya Sharma · 94%</div><div className="d-sc-row"><div className="d-sc-dot" style={{background:"#60a5fa"}} />Adv. Ravi Kumar · 87%</div><div className="d-sc-row"><div className="d-sc-dot" style={{background:"#818cf8"}} />Adv. Anita Rao · 81%</div></> },
+             { icon: "🤖", label: "AI Analyzes", desc: "AI reviews the details of your case",
+               card: <><div className="d-sc-label">AI Processing</div><div className="d-ai-pulse">{[0,1,2,3,4].map(i=><div key={i} className="d-ai-bar" />)}</div><div style={{marginTop:".4rem",fontSize:".67rem",color:"#60a5fa",textAlign:"center"}}>Finding relevant practice areas…</div></> },
+             { icon: "⚖️", label: "Get Suggestions", desc: "Review relevant advocates and choose yours",
+               card: <><div className="d-sc-label">Suggested advocates</div><div className="d-sc-row"><div className="d-sc-dot" style={{background:"#10b981"}} />Adv. Priya Sharma · Criminal Law</div><div className="d-sc-row"><div className="d-sc-dot" style={{background:"#60a5fa"}} />Adv. Ravi Kumar · Criminal Law</div><div className="d-sc-row"><div className="d-sc-dot" style={{background:"#818cf8"}} />Adv. Anita Rao · Criminal Law</div></> },
           ].map((step, i) => (
             <div key={i} className={`d-step${litSteps.includes(i) ? " d-lit" : ""}`}>
               {i < 2 && <div className="d-connector" />}
@@ -391,8 +373,8 @@ export default function Demo() {
 
       {/* ── Scene 4: AI Match ── */}
       <section className={`d-scene${scene === 3 ? " d-active" : ""}`}>
-        <h2 className="d-match-h">Your top match — <span style={{ color: "#60a5fa" }}>{scoreVal}% fit</span></h2>
-        <p className="d-match-sub">AI picked the advocate who best fits your case, location &amp; language.</p>
+        <h2 className="d-match-h">A relevant advocate for your case</h2>
+        <p className="d-match-sub">Review practice area, location, language, and experience before you decide.</p>
         <div className="d-card-wrap">
           <div className="d-card">
             <div className="d-mc-top">
@@ -405,10 +387,6 @@ export default function Demo() {
                   </div>
                 </div>
                 <div className="d-mc-spec">Criminal Law · Hyderabad &nbsp;·&nbsp; 12 yrs exp</div>
-              </div>
-              <div className="d-mc-score-wrap">
-                <div className="d-mc-score">{scoreVal}%</div>
-                <div className="d-mc-score-lbl">Match</div>
               </div>
             </div>
             <div className="d-row">
@@ -423,9 +401,9 @@ export default function Demo() {
             </div>
             <div className="d-why"><strong>⚡ Why we matched you:</strong> Priya has defended 80+ criminal cases across Hyderabad courts, is fluent in Telugu, and has strong precedents in IPC sections relevant to your case.</div>
             <div className="d-meta">
-              <span>⭐ 4.8 rating</span>
-              <span>🕐 Responds in 1 hr</span>
-              <span>₹500 / 30 min</span>
+              <span>✓ Enrolment status shown</span>
+              <span>⌖ Hyderabad courts</span>
+              <span>☑ Practice areas listed</span>
             </div>
             <div className="d-ctas">
               <button className="d-mc-p">Connect Now</button>
@@ -439,12 +417,12 @@ export default function Demo() {
       <section className={`d-scene${scene === 4 ? " d-active" : ""}`}>
         <div className="d-f5-item"><div className="d-final-badge">✦ &nbsp;Start free today</div></div>
         <h2 className="d-final-h d-f5-item"><span className="l1">Your advocate is waiting.</span><span className="l2">Built for Your Courts</span></h2>
-        <p className="d-sub d-f5-item" style={{ maxWidth: 480 }}>Post your case. Get AI-matched in minutes.<br /><strong style={{ color: "#10b981" }}>First match consultation is free — no credit card required.</strong></p>
+        <p className="d-sub d-f5-item" style={{ maxWidth: 480 }}>Post your case and review relevant advocate suggestions.<br /><strong style={{ color: "#10b981" }}>Start exploring legal tools for free.</strong></p>
         <div className="d-btns d-f5-item">
           <button className="d-btn-p" onClick={() => window.location.href = "/register"}>Get Started Free →</button>
           <button className="d-btn-o" onClick={replay}>▶&nbsp; Replay Demo</button>
         </div>
-        <p className="d-final-promise d-f5-item">Verified advocates · Anonymous posting · 100% free to start</p>
+        <p className="d-final-promise d-f5-item">Enrolment status where checked · Anonymous posting · Free to start</p>
       </section>
 
       {/* ── Controls ── */}

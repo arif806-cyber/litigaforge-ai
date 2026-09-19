@@ -33,7 +33,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ai_brain import _call_claude, _call_openai, _call_gemini
+from llm import legal_llm
 from auth import require_ai_user
 from ai_safety import safe_ai_output
 from database import execute, fetchrow
@@ -224,19 +224,12 @@ SYSTEM_MSG = (
 
 
 def _generate_letter(prompt: str) -> str:
-    text: Optional[str] = None
-    for fn, kwargs in (
-        (_call_claude, {"max_tokens": 4000}),
-        (_call_openai, {"max_tokens": 4000}),
-        (_call_gemini, {"max_tokens": 4096}),
-    ):
-        try:
-            text = fn(system=SYSTEM_MSG, user=prompt, temperature=0.3, **kwargs)
-        except Exception:
-            text = None
-        if text:
-            return safe_ai_output(text)
-    return ""
+    try:
+        return safe_ai_output(
+            legal_llm.complete(SYSTEM_MSG, prompt, temperature=0.3, max_tokens=4000)
+        )
+    except Exception:
+        return ""
 
 
 # ── Models ────────────────────────────────────────────────────────────────────

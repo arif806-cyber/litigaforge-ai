@@ -236,6 +236,7 @@ export default function LawyerDashboard() {
     queryFn: () => apiFetch("/lawyer/cases"),
     enabled: !!user,
     staleTime: 30000,
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 
@@ -244,6 +245,7 @@ export default function LawyerDashboard() {
     queryFn: () => apiFetch("/lawyer/documents"),
     enabled: !!user,
     staleTime: 30000,
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 
@@ -252,6 +254,7 @@ export default function LawyerDashboard() {
     queryFn: () => apiFetch("/matches/lawyer"),
     enabled: !!user,
     staleTime: 30000,
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 
@@ -1249,7 +1252,7 @@ export default function LawyerDashboard() {
               <p className="text-[12px] text-emerald-400 leading-relaxed">
                 <strong>Estimate basis:</strong> ₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")} per accepted case (industry average for Telangana &amp; AP District Courts).
                 Actual earnings depend on your agreed fee with each client.
-                Connect your billing system or update your profile hourly rate for precise tracking.
+                Connect your billing system or record agreed case fees for more precise tracking.
               </p>
             </div>
 

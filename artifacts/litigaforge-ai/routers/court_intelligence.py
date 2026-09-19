@@ -407,16 +407,11 @@ async def ask_about_case(
         from llm.legal_llm import acomplete
         answer = await acomplete(system_prompt, body.question, temperature=0.1)
     except Exception as llm_err:
-        logger.warning("[/ask] LiteLLM failed; trying ai_brain cascade: %s", llm_err)
-        try:
-            from ai_brain import get_ai_response  # type: ignore[import]
-            answer = await get_ai_response(system=system_prompt, prompt=body.question)
-        except Exception as fallback_err:
-            logger.error("[/ask] Both LLM paths failed: %s", fallback_err)
-            raise HTTPException(
-                status_code=503,
-                detail="AI service temporarily unavailable — please try again shortly.",
-            )
+        logger.error("[/ask] Portable LiteLLM failed: %s", llm_err)
+        raise HTTPException(
+            status_code=503,
+            detail="AI service temporarily unavailable — please try again shortly.",
+        )
 
     if not answer:
         raise HTTPException(

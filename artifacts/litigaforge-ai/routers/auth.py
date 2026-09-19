@@ -3,6 +3,9 @@ LitigaForge AI — Auth Router
 Registration, login, logout, token refresh, and user profile.
 """
 from datetime import datetime, timedelta
+import asyncio
+import time
+from collections import defaultdict, deque
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -20,6 +23,7 @@ from database import (
     delete_refresh_token, delete_all_user_refresh_tokens,
     execute as db_execute, fetch as db_fetch,
     fetchrow as db_fetchrow,
+    get_pool,
 )
 from rate_limit import limiter
 from sanitizer import sanitize_text
@@ -33,6 +37,7 @@ from email.mime.text import MIMEText
 logger = get_logger("litigaforge.auth")
 
 router = APIRouter(tags=["auth"])
+_registration_email_attempts: dict[str, deque[float]] = defaultdict(deque)
 
 
 class RegisterRequest(BaseModel):
@@ -48,7 +53,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-async def _issue_tokens(user_id: int, response: Response) -> str:
+async def _issue_tokens(user_id: int, response: Response) -> None:
     """Create access + refresh tokens, set cookies, persist refresh token."""
     access_token = create_token(user_id)
     refresh_token = create_refresh_token()
@@ -56,11 +61,10 @@ async def _issue_tokens(user_id: int, response: Response) -> str:
     await store_refresh_token(user_id, refresh_token, expires_at)
     set_auth_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token)
-    return access_token
 
 
 @router.post("/auth/register")
-@limiter.limit("5/hour")
+@limiter.limit("30/hour")
 async def register(req: RegisterRequest, request: Request, response: Response):
     if len(req.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
@@ -70,8 +74,16 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         safe_name = sanitize_text(req.name, max_length=100, field_name="name")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', req.email):
+    normalized_email = req.email.strip().lower()
+    if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', normalized_email):
         raise HTTPException(status_code=422, detail="Invalid email format")
+    now = time.monotonic()
+    attempts = _registration_email_attempts[normalized_email]
+    while attempts and now - attempts[0] > 3600:
+        attempts.popleft()
+    if len(attempts) >= 5:
+        raise HTTPException(status_code=429, detail="Too many registration attempts for this email. Please try again later.")
+    attempts.append(now)
     # `lawyer` remains readable for legacy accounts; new registrations use advocate.
     if req.role not in ("client", "advocate", "lawyer"):
         raise HTTPException(status_code=422, detail="Role must be client or advocate")
@@ -101,32 +113,32 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         logger.warning("RECAPTCHA_SECRET is not configured; registration is protected only by rate limiting")
     try:
         user = await create_user(
-            email=req.email,
+            email=normalized_email,
             name=safe_name,
             password_hash=hash_password(req.password),
             role=safe_role,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
-    token = await _issue_tokens(user["id"], response)
+    await _issue_tokens(user["id"], response)
     # Send verification email (no-op if SMTP not configured)
     try:
         vtoken = await _create_verification_token(user["id"])
-        await _send_verification_email(req.email, vtoken)
+        await _send_verification_email(normalized_email, vtoken)
     except Exception:
         pass
-    return {"user": user, "token": token}
+    return {"user": user}
 
 
 @router.post("/auth/login")
 @limiter.limit("5/minute")
 async def login(req: LoginRequest, request: Request, response: Response):
-    user = await get_user_by_email(req.email)
+    user = await get_user_by_email(req.email.strip().lower())
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     user.pop("password_hash", None)
-    token = await _issue_tokens(user["id"], response)
-    return {"user": user, "token": token}
+    await _issue_tokens(user["id"], response)
+    return {"user": user}
 
 
 @router.post("/auth/google")
@@ -143,7 +155,9 @@ async def google_oauth(request: Request, response: Response):
     if not credential:
         raise HTTPException(status_code=400, detail="Missing Google credential")
 
-    google_client_id = _os.getenv("GOOGLE_CLIENT_ID")
+    google_client_id = (_os.getenv("GOOGLE_CLIENT_ID") or "").strip()
+    if not google_client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
 
     # Verify ID token with Google's tokeninfo endpoint
     try:
@@ -159,9 +173,10 @@ async def google_oauth(request: Request, response: Response):
     except _httpx.RequestError:
         raise HTTPException(status_code=503, detail="Could not reach Google to verify token")
 
-    # Verify audience when CLIENT_ID is configured
-    if google_client_id and token_info.get("aud") != google_client_id:
+    if token_info.get("aud") != google_client_id:
         raise HTTPException(status_code=401, detail="Token audience mismatch")
+    if str(token_info.get("email_verified", "")).lower() != "true":
+        raise HTTPException(status_code=401, detail="Google email is not verified")
 
     email = token_info.get("email", "").lower().strip()
     if not email:
@@ -173,7 +188,9 @@ async def google_oauth(request: Request, response: Response):
     except ValueError:
         name = email.split("@")[0]
 
-    safe_role = role if role in ("client", "lawyer") else "client"
+    if role not in ("client", "advocate"):
+        raise HTTPException(status_code=422, detail="Role must be client or advocate")
+    safe_role = role
 
     user = await get_user_by_email(email)
     if not user:
@@ -191,14 +208,22 @@ async def google_oauth(request: Request, response: Response):
     else:
         user.pop("password_hash", None)
 
-    token = await _issue_tokens(user["id"], response)
+    await _issue_tokens(user["id"], response)
     logger.info(f"Google OAuth: user {user['id']} ({email})")
-    return {"user": user, "token": token}
+    return {"user": user}
 
 
 @router.get("/auth/me")
 async def me(current_user: dict = Depends(require_user)):
-    return current_user
+    # Expiry is checked on every authenticated session refresh so a stale
+    # subscription can never remain visible merely because the JWT is valid.
+    # Keep the request bounded to this account; the scheduler handles all users.
+    from routers.subscription import expire_subscription_for_user
+    await expire_subscription_for_user(current_user["id"])
+    fresh_user = await get_user_by_id(current_user["id"])
+    if not fresh_user:
+        raise HTTPException(401, "User account no longer exists")
+    return fresh_user
 
 
 class UpdateProfileRequest(BaseModel):
@@ -216,6 +241,7 @@ async def update_profile(
     """Update display name and/or email. DPDP Act 2023 § 12(a) — Right to Correction."""
     user_id = current_user["id"]
     updates: dict = {}
+    email_changed = False
 
     if req.name is not None:
         name = sanitize_text(req.name.strip(), max_length=100, field_name="name")
@@ -230,7 +256,10 @@ async def update_profile(
         existing = await get_user_by_email(email)
         if existing and existing["id"] != user_id:
             raise HTTPException(409, "Email already in use by another account")
+        email_changed = email != (current_user.get("email") or "").strip().lower()
         updates["email"] = email
+        if email_changed:
+            updates["email_verified"] = False
 
     if not updates:
         raise HTTPException(400, "No fields to update")
@@ -238,11 +267,14 @@ async def update_profile(
     set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(updates))
     values = list(updates.values())
     row = await db_fetchrow(
-        f"UPDATE users SET {set_clause} WHERE id = $1 RETURNING id, name, email, subscription_tier, is_superuser, created_at",
+        f"UPDATE users SET {set_clause} WHERE id = $1 RETURNING id, name, email, email_verified, subscription_tier, is_superuser, created_at",
         user_id, *values,
     )
     if not row:
         raise HTTPException(404, "User not found")
+    if email_changed:
+        token = await _create_verification_token(user_id)
+        await _send_verification_email(email, token)
     logger.info("Profile updated: user_id=%s fields=%s", user_id, list(updates.keys()))
     return row
 
@@ -276,11 +308,24 @@ async def refresh_token(request: Request, response: Response):
 
     # Rotate: delete old refresh token and issue a fresh pair
     await delete_refresh_token(raw)
-    token = await _issue_tokens(user_id, response)
-    return {"token": token}
+    await _issue_tokens(user_id, response)
+    return {"ok": True}
 
 
-async def _send_verification_email(email: str, token: str) -> bool:
+def _frontend_account_url(path: str, token: str) -> str:
+    """Build a main-site account link, never a raw backend route."""
+    base_url = (
+        _os.getenv("FRONTEND_URL")
+        or _os.getenv("PUBLIC_SITE_URL")
+        or _os.getenv("APP_URL")
+        or "https://litigaforge.com"
+    ).rstrip("/")
+    if base_url.endswith("/litigaforge"):
+        base_url = base_url[: -len("/litigaforge")]
+    return f"{base_url}{path}?token={token}"
+
+
+def _send_verification_email_sync(email: str, token: str) -> bool:
     """Send verification email via SMTP. Returns True on success, False if SMTP not configured."""
     import smtplib
     smtp_host = _os.getenv("SMTP_HOST")
@@ -290,8 +335,7 @@ async def _send_verification_email(email: str, token: str) -> bool:
     smtp_user = _os.getenv("SMTP_USER", "")
     smtp_pass = _os.getenv("SMTP_PASSWORD", "")
     smtp_from = _os.getenv("SMTP_FROM", smtp_user)
-    base_url = _os.getenv("APP_URL", "https://litigaforge.com")
-    verify_url = f"{base_url}/litigaforge/auth/verify?token={token}"
+    verify_url = _frontend_account_url("/verify-email", token)
     body = (
         f"Welcome to LitigaForge AI!\n\n"
         f"Please verify your email address by clicking the link below:\n\n"
@@ -319,6 +363,11 @@ async def _send_verification_email(email: str, token: str) -> bool:
     except Exception as exc:
         logger.warning("SMTP send failed for %s: %s", email, exc)
         return False
+
+
+async def _send_verification_email(email: str, token: str) -> bool:
+    """Run blocking SMTP off the event loop."""
+    return await asyncio.to_thread(_send_verification_email_sync, email, token)
 
 
 async def _create_verification_token(user_id: int) -> str:
@@ -420,58 +469,93 @@ async def delete_account(
     """
     user_id = current_user["id"]
 
-    # 1. Revoke all active sessions first
-    await delete_all_user_refresh_tokens(user_id)
-
-    # 2. Delete files from Object Storage (or legacy local disk)
-    docs = await db_fetch(
+    # 1. Delete files from the configured provider (or legacy local disk)
+    docs = list(await db_fetch(
         "SELECT file_path FROM client_documents WHERE client_id = $1", user_id
+    ))
+    advocate_docs = await db_fetch(
+        """SELECT file_url AS file_path FROM lawyer_documents
+           WHERE lawyer_id = $1 AND COALESCE(file_url, '') <> ''""",
+        user_id,
     )
+    docs.extend(advocate_docs)
     for doc in docs:
         fp = doc.get("file_path") or ""
         if not fp:
             continue
+        if fp.startswith(("http://", "https://")):
+            # External references are removed with the row, but are not objects
+            # owned by LitigaForge and must not be deleted remotely.
+            continue
         if not fp.startswith("/"):
             # Object storage key
             try:
-                from replit.object_storage import Client as _OSClient
-                _OSClient().delete(fp)
-            except Exception:
-                pass
+                from storage import get_object_storage
+                storage = get_object_storage()
+                if storage is None:
+                    raise RuntimeError("configured object storage is unavailable")
+                storage.delete(fp)
+            except Exception as exc:
+                logger.error("Account erasure could not delete object %s: %s", fp, exc)
+                raise HTTPException(
+                    503,
+                    "Account deletion is temporarily unavailable because stored files "
+                    "could not be removed. Please retry.",
+                )
         else:
             try:
                 p = _pathlib.Path(fp)
                 if p.is_file():
                     _os.remove(p)
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.error("Account erasure could not delete local file %s: %s", fp, exc)
+                raise HTTPException(
+                    503,
+                    "Account deletion is temporarily unavailable because stored files "
+                    "could not be removed. Please retry.",
+                )
 
-    # 3. Delete DB records in FK-safe order
-    # Chat messages
-    await db_execute("DELETE FROM chat_messages WHERE sender_id = $1", user_id)
-    # Chat threads belonging to client's matches
-    match_ids = await db_fetch(
-        "SELECT id FROM matches WHERE client_id = $1", user_id
-    )
-    for m in match_ids:
-        await db_execute("DELETE FROM chat_threads WHERE match_id = $1", m["id"])
-    # Documents
-    await db_execute("DELETE FROM client_documents WHERE client_id = $1", user_id)
-    # Matches
-    await db_execute("DELETE FROM matches WHERE client_id = $1 OR lawyer_id IN "
-                     "(SELECT id FROM lawyers WHERE user_id = $1)", user_id)
-    # Case requirements
-    await db_execute("DELETE FROM case_requirements WHERE user_id = $1", user_id)
-    # Lawyer cases where client
-    await db_execute("DELETE FROM lawyer_cases WHERE client_id = $1", user_id)
-    # Nullify lawyer profile link (preserve public profile, remove personal link)
-    await db_execute("UPDATE lawyers SET user_id = NULL WHERE user_id = $1", user_id)
-    # Legal questions
-    await db_execute("DELETE FROM legal_questions WHERE user_id = $1", user_id)
-    # Subscriptions
-    await db_execute("DELETE FROM subscriptions WHERE user_id = $1", user_id)
-    # Finally delete the user
-    await db_execute("DELETE FROM users WHERE id = $1", user_id)
+    # 2. Delete all related records in one DB transaction. Threads must be
+    # removed before matches for both client-owned and advocate-owned matches;
+    # chat_messages cascade from chat_threads.
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("DELETE FROM refresh_tokens WHERE user_id = $1", user_id)
+            await conn.execute(
+                """DELETE FROM chat_threads
+                   WHERE match_id IN (
+                     SELECT m.id FROM matches m
+                     LEFT JOIN lawyers l ON l.id = m.lawyer_id
+                     WHERE m.client_id = $1 OR l.user_id = $1
+                   )""",
+                user_id,
+            )
+            await conn.execute("DELETE FROM chat_messages WHERE sender_id = $1", user_id)
+            await conn.execute("DELETE FROM client_documents WHERE client_id = $1", user_id)
+            await conn.execute(
+                """DELETE FROM matches
+                   WHERE client_id = $1
+                      OR lawyer_id IN (SELECT id FROM lawyers WHERE user_id = $1)""",
+                user_id,
+            )
+            await conn.execute("DELETE FROM case_requirements WHERE user_id = $1", user_id)
+            # Preserve documents uploaded by other clients before removing
+            # advocate-owned case records.
+            await conn.execute(
+                """UPDATE client_documents SET case_id = NULL
+                   WHERE case_id IN (
+                     SELECT id FROM lawyer_cases WHERE lawyer_id = $1
+                   )""",
+                user_id,
+            )
+            await conn.execute("DELETE FROM lawyer_documents WHERE lawyer_id = $1", user_id)
+            await conn.execute("DELETE FROM lawyer_cases WHERE lawyer_id = $1", user_id)
+            await conn.execute("DELETE FROM lawyer_cases WHERE client_id = $1", user_id)
+            await conn.execute("DELETE FROM lawyers WHERE user_id = $1", user_id)
+            await conn.execute("DELETE FROM legal_questions WHERE user_id = $1", user_id)
+            await conn.execute("DELETE FROM subscriptions WHERE user_id = $1", user_id)
+            await conn.execute("DELETE FROM users WHERE id = $1", user_id)
 
     # 4. Clear browser cookies
     clear_auth_cookie(response)
@@ -511,7 +595,7 @@ async def _create_password_reset_token(user_id: int) -> str:
     return token
 
 
-async def _send_password_reset_email(email: str, token: str) -> bool:
+def _send_password_reset_email_sync(email: str, token: str) -> bool:
     """Send password reset email via SMTP."""
     import smtplib
     smtp_host = _os.getenv("SMTP_HOST")
@@ -521,8 +605,7 @@ async def _send_password_reset_email(email: str, token: str) -> bool:
     smtp_user = _os.getenv("SMTP_USER", "")
     smtp_pass = _os.getenv("SMTP_PASSWORD", "")
     smtp_from = _os.getenv("SMTP_FROM", smtp_user)
-    base_url = _os.getenv("APP_URL", "https://litigaforge.com")
-    reset_url = f"{base_url}/litigaforge/reset-password?token={token}"
+    reset_url = _frontend_account_url("/reset-password", token)
     body = (
         f"LitigaForge AI — Password Reset\n\n"
         f"You requested a password reset. Click the link below to set a new password:\n\n"
@@ -592,15 +675,21 @@ async def _send_password_reset_email(email: str, token: str) -> bool:
         return False
 
 
+async def _send_password_reset_email(email: str, token: str) -> bool:
+    """Run blocking SMTP off the event loop."""
+    return await asyncio.to_thread(_send_password_reset_email_sync, email, token)
+
+
 @router.post("/auth/forgot-password")
 @limiter.limit("3/minute")
 async def forgot_password(req: ForgotPasswordRequest, request: Request):
     """Request password reset. Always returns success to prevent email enumeration."""
-    user = await get_user_by_email(req.email)
+    normalized_email = req.email.strip().lower()
+    user = await get_user_by_email(normalized_email)
     if user:
         token = await _create_password_reset_token(user["id"])
-        sent = await _send_password_reset_email(req.email, token)
-        logger.info("Password reset requested for user_id=%s email=%s sent=%s", user["id"], req.email, sent)
+        sent = await _send_password_reset_email(normalized_email, token)
+        logger.info("Password reset requested for user_id=%s email=%s sent=%s", user["id"], normalized_email, sent)
     return {"message": "If an account with that email exists, a password reset link has been sent."}
 
 
@@ -644,7 +733,9 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
     import httpx as _httpx_apple
     from jose import jwt as _jose_jwt, JWTError as _JWTError
 
-    apple_client_id = _os.getenv("APPLE_CLIENT_ID", "")
+    apple_client_id = (_os.getenv("APPLE_CLIENT_ID") or "").strip()
+    if not apple_client_id:
+        raise HTTPException(503, "Apple sign-in is not configured")
 
     # Fetch Apple public keys
     try:
@@ -666,7 +757,7 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
         raise HTTPException(400, "No matching Apple public key — token may be expired")
 
     # Verify token
-    _decode_opts = {"verify_aud": bool(apple_client_id)}
+    _decode_opts = {"verify_aud": True}
     try:
         _claims = _jose_jwt.decode(
             req.id_token,
@@ -683,8 +774,15 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
         raise HTTPException(401, "Apple token issuer mismatch")
 
     apple_user_id = _claims.get("sub", "")
-    email = _claims.get("email") or f"apple_{apple_user_id[:12]}@privaterelay.appleid.com"
-    email_hidden = _claims.get("email_verified") is None  # relay email
+    email = (
+        _claims.get("email")
+        or f"apple_{apple_user_id[:12]}@privaterelay.appleid.com"
+    ).strip().lower()
+    if str(_claims.get("email_verified", "")).lower() != "true":
+        raise HTTPException(401, "Apple email is not verified")
+    email_hidden = False
+    if req.role not in ("client", "advocate"):
+        raise HTTPException(422, "Role must be client or advocate")
 
     # Build display name — Apple only sends name on first sign-in
     display_name = " ".join(filter(None, [req.first_name, req.last_name])).strip()
@@ -708,10 +806,9 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
             if not user:
                 raise HTTPException(500, "Account creation failed")
 
-    token = await _issue_tokens(user["id"], response)
+    await _issue_tokens(user["id"], response)
     logger.info("apple_login: user_id=%s email_hidden=%s", user["id"], email_hidden)
     return {
-        "token": token,
         "user": {
             "id": user["id"],
             "email": user["email"],

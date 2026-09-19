@@ -30,7 +30,7 @@ interface MyRequirement {
 interface MatchProposal {
   id: number; case_requirement_id: number; lawyer_id: number; lawyer_name: string;
   lawyer_email: string; lawyer_phone: string; bar_number: string; district: string;
-  experience_years: number; rating: number; hourly_rate: number; match_score: number;
+  experience_years: number; match_score: number;
   ai_explanation: string; client_message: string; status: string; created_at: string;
 }
 interface ClientCase {
@@ -132,6 +132,12 @@ export default function ClientDashboard() {
   const copy = CLIENT_DASHBOARD_COPY[activeCode.toUpperCase()] ?? CLIENT_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
+  const { data: alertConfig } = useQuery<{ whatsapp_enabled: boolean; message?: string | null }>({
+    queryKey: ["alerts-config"],
+    queryFn: () => apiFetch("/alerts/config"),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
   const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
   const [payingMatch, setPayingMatch] = useState<MatchProposal | null>(null);
   const [showMatchDetail, setShowMatchDetail] = useState<MatchProposal | null>(null);
@@ -445,7 +451,7 @@ export default function ClientDashboard() {
                     </div>
                     <p className="font-semibold text-foreground text-base mb-1">{t.no_cases_yet}</p>
                     <p className="text-sm text-muted-foreground mb-4 max-w-[240px] leading-relaxed">
-                      Post your first case and get matched with verified advocates
+                      Post your first case and review relevant advocate profiles
                     </p>
                     <button onClick={() => setLocation("/post-case")}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
@@ -596,7 +602,7 @@ export default function ClientDashboard() {
                     <p className="font-semibold text-foreground mb-1">No {matchTab} proposals</p>
                     <p className="text-sm text-muted-foreground max-w-[220px] leading-relaxed">
                       {matchTab === "pending"
-                        ? "Post a case to get AI-matched with verified advocates"
+                        ? "Post a case to review relevant advocate profiles"
                         : `No ${matchTab} proposals yet`}
                     </p>
                     {matchTab === "pending" && (
@@ -723,7 +729,8 @@ export default function ClientDashboard() {
                   <p className="font-bold text-sm text-white">Upgrade to Professional</p>
                 </div>
                 <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "rgba(245,183,84,0.7)" }}>
-                  Priority matching · Unlimited AI · WhatsApp alerts
+                   Priority matching · Unlimited AI ·{" "}
+                   {alertConfig?.whatsapp_enabled ? "WhatsApp alerts" : "WhatsApp alerts coming soon"}
                 </p>
                 <button onClick={() => setLocation("/subscription")}
                   className="w-full text-xs font-bold py-2.5 rounded-xl text-[#0A0B10] transition-colors hover:opacity-90"
@@ -955,7 +962,6 @@ export default function ClientDashboard() {
         {showMatchDetail && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <ScoreRing score={showMatchDetail.match_score} size={72} showLabel={false} className="flex-shrink-0" data-testid="dashboard-match-detail-score-ring" />
               <div>
                 <p className="font-bold text-foreground text-base">{showMatchDetail.lawyer_name}</p>
                 <p className="text-[12px] text-muted-foreground">{showMatchDetail.district} · Bar: {showMatchDetail.bar_number}</p>
@@ -964,9 +970,6 @@ export default function ClientDashboard() {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Experience", value: `${showMatchDetail.experience_years} years` },
-                { label: "Rating",     value: showMatchDetail.rating > 0 ? `${showMatchDetail.rating} / 5 ★` : "N/A" },
-                { label: "Rate",       value: `₹${showMatchDetail.hourly_rate}/hr` },
-                { label: "Match",      value: `${showMatchDetail.match_score}%` },
               ].map((item) => (
                 <div key={item.label} className="rounded-xl p-3 bg-muted/40 border border-border">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{item.label}</p>
@@ -1038,7 +1041,7 @@ export default function ClientDashboard() {
           matchId={payingMatch.id}
           lawyerName={payingMatch.lawyer_name}
           caseTitle={`Case #${payingMatch.case_requirement_id}`}
-          budgetRange={payingMatch.hourly_rate ? `₹${payingMatch.hourly_rate}/hr` : undefined}
+          budgetRange={undefined}
           onClose={() => setPayingMatch(null)}
           onSuccess={() => { setPayingMatch(null); qc.invalidateQueries({ queryKey: ["client-matches"] }); }}
         />

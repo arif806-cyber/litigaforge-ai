@@ -5,6 +5,7 @@ Case management + document uploads + AI analysis for advocates.
 import json
 import os
 import time
+import asyncio
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
@@ -279,26 +280,25 @@ async def list_lawyer_documents(
 # ── AI Document Analysis ────────────────────────────────────────────────────────
 
 def _ai(prompt: str, max_tokens: int = 2500) -> str:
-    """Call AI via Replit AI Integrations proxy."""
-    import requests as _req
-    base = os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "").rstrip("/")
-    key = os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
-    if not base or not key:
-        return ""
+    """Call AI through the portable LiteLLM layer."""
     try:
-        r = _req.post(
-            f"{base}/messages",
-            headers={"x-api-key": key, "anthropic-version": "2023-06-01",
-                     "content-type": "application/json"},
-            json={"model": "claude-sonnet-4-6", "max_tokens": max_tokens,
-                  "messages": [{"role": "user", "content": prompt}]},
-            timeout=60,
-        )
-        if r.ok:
-            return r.json()["content"][0]["text"]
+        from llm import legal_llm
+        return legal_llm.complete("", prompt, max_tokens=max_tokens)
     except Exception:
-        pass
+        return ""
     return ""
+
+
+async def _ai_async(prompt: str, max_tokens: int = 2500) -> str:
+    """Call portable LiteLLM without blocking the FastAPI event loop."""
+    from llm import legal_llm
+
+    async_complete = getattr(legal_llm, "acomplete", None)
+    if callable(async_complete):
+        return await async_complete("", prompt, max_tokens=max_tokens)
+    return await asyncio.to_thread(
+        legal_llm.complete, "", prompt, max_tokens=max_tokens
+    )
 
 
 def _extract_json_object(text: str) -> dict:
@@ -347,7 +347,7 @@ Document text:
 {text}
 ---"""
 
-    raw = _ai(wrap_user_prompt(prompt), 2500)
+    raw = await _ai_async(wrap_user_prompt(prompt), 2500)
     raw = validate_ai_response(raw)
     try:
         result = _extract_json_object(raw)
@@ -532,8 +532,10 @@ async def upload_client_document(
     obj_key = f"uploads/{unique_name}"
     stored_path = obj_key  # default: object storage key
     try:
-        from replit.object_storage import Client as _OSClient
-        storage = _OSClient()
+        from storage import get_object_storage
+        storage = get_object_storage()
+        if storage is None:
+            raise RuntimeError("Object storage is unavailable")
         storage.upload_from_bytes(obj_key, content)
         logger.info("client %s: file %s uploaded to object storage", current_user["id"], obj_key)
     except Exception as ose:
@@ -603,8 +605,10 @@ async def upload_requirement_document(
     obj_key = f"uploads/{unique_name}"
     stored_path = obj_key
     try:
-        from replit.object_storage import Client as _OSClient
-        storage = _OSClient()
+        from storage import get_object_storage
+        storage = get_object_storage()
+        if storage is None:
+            raise RuntimeError("Object storage is unavailable")
         storage.upload_from_bytes(obj_key, content)
     except Exception as ose:
         logger.warning("Object storage unavailable (%s) — falling back to local disk", ose)
@@ -712,8 +716,10 @@ async def delete_client_document(
     fp = doc.get("file_path") or ""
     if fp and not fp.startswith("/"):
         try:
-            from replit.object_storage import Client as _OSClient
-            _OSClient().delete(fp)
+            from storage import get_object_storage
+            storage = get_object_storage()
+            if storage is not None:
+                storage.delete(fp)
         except Exception as e:
             logger.warning("Object storage delete failed for %s: %s", fp, e)
     elif fp:

@@ -14,7 +14,7 @@ export function ResponseTimerBadge({ requestedAt }: ResponseTimerBadgeProps) {
       }`}
     >
       {urgent
-        ? `⏱ ${minutesElapsed}m — respond soon to keep your match score`
+        ? `⏱ ${minutesElapsed}m — this request is waiting for a response`
         : `Requested ${minutesElapsed}m ago`}
     </div>
   );

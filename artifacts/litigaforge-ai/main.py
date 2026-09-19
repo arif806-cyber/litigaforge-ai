@@ -405,6 +405,35 @@ async def lifespan(app: FastAPI):
                 payment_ref TEXT
             )
         """)
+        await conn.execute(
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS "
+            "billing_period TEXT NOT NULL DEFAULT 'monthly'"
+        )
+        await conn.execute(
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS "
+            "is_trial BOOLEAN NOT NULL DEFAULT FALSE"
+        )
+        await conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_subscriptions_user_trial
+            ON subscriptions (user_id)
+            WHERE is_trial = TRUE
+        """)
+        await conn.execute("""
+            WITH duplicates AS (
+                SELECT id, ROW_NUMBER() OVER (
+                    PARTITION BY payment_ref ORDER BY id
+                ) AS rn
+                FROM subscriptions
+                WHERE payment_ref IS NOT NULL
+            )
+            UPDATE subscriptions SET payment_ref = NULL
+            WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
+        """)
+        await conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_subscriptions_payment_ref
+            ON subscriptions (payment_ref)
+            WHERE payment_ref IS NOT NULL
+        """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS legal_questions (
                 id SERIAL PRIMARY KEY,
@@ -474,6 +503,15 @@ async def lifespan(app: FastAPI):
                 call_count INTEGER NOT NULL DEFAULT 0 CHECK (call_count >= 0),
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (ip_hash, usage_date)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_usage_global_daily (
+                usage_date DATE PRIMARY KEY DEFAULT CURRENT_DATE,
+                call_count INTEGER NOT NULL DEFAULT 0 CHECK (call_count >= 0),
+                estimated_spend_usd NUMERIC(12, 4) NOT NULL DEFAULT 0
+                    CHECK (estimated_spend_usd >= 0),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
         await conn.execute("""
@@ -586,6 +624,30 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE matches ALTER COLUMN payment_status SET DEFAULT 'none'")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_payment_id TEXT")
+        # Idempotency and race-safety for match payments/threads. Clean up any
+        # legacy duplicates before adding the constraints so startup remains
+        # safe on databases created by older versions.
+        await conn.execute("""
+            WITH duplicates AS (
+                SELECT id, ROW_NUMBER() OVER (
+                    PARTITION BY commission_payment_id ORDER BY id
+                ) AS rn
+                FROM matches
+                WHERE commission_payment_id IS NOT NULL
+                  AND commission_payment_id <> 'DEMO_PAID'
+            )
+            UPDATE matches SET commission_payment_id = NULL
+            WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
+        """)
+        # Recreate this partial index so older deployments that indexed the
+        # shared demo marker receive the corrected predicate as well.
+        await conn.execute("DROP INDEX IF EXISTS uq_matches_commission_payment_id")
+        await conn.execute("""
+            CREATE UNIQUE INDEX uq_matches_commission_payment_id
+            ON matches (commission_payment_id)
+            WHERE commission_payment_id IS NOT NULL
+              AND commission_payment_id <> 'DEMO_PAID'
+        """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_threads (
                 id SERIAL PRIMARY KEY,
@@ -593,6 +655,22 @@ async def lifespan(app: FastAPI):
                 title TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        """)
+        await conn.execute("""
+            WITH duplicates AS (
+                SELECT id, ROW_NUMBER() OVER (
+                    PARTITION BY match_id ORDER BY id
+                ) AS rn
+                FROM chat_threads
+                WHERE match_id IS NOT NULL
+            )
+            DELETE FROM chat_threads
+            WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
+        """)
+        await conn.execute("DROP INDEX IF EXISTS uq_chat_threads_match_id")
+        await conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_chat_threads_match_id
+            ON chat_threads (match_id)
         """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
@@ -1300,6 +1378,11 @@ async def lifespan(app: FastAPI):
         "SESSION_SECRET is required — set it in Replit Secrets"
     assert os.environ.get("DATABASE_URL"), \
         "DATABASE_URL is required"
+    if not (os.getenv("SMTP_HOST") and os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD")):
+        logger.warning(
+            "SMTP is not fully configured; email verification and password reset emails "
+            "cannot be delivered. Admins can manually verify users from the admin panel."
+        )
     logger.info("✓ Startup checks passed")
 
     # Daily judgment-ingestion scheduler (production only; benign no-op without a
@@ -1311,6 +1394,12 @@ async def lifespan(app: FastAPI):
     # is unconfigured instead of silently mock-sending). None when disabled.
     from digest import start_scheduler as _start_digest_scheduler
     app.state.digest_scheduler = _start_digest_scheduler()
+
+    # Daily subscription expiry sweep. This is intentionally cancellable so
+    # reloads/shutdowns never leave a task running against a closed pool.
+    from routers.subscription import expire_subscriptions as _expire_subscriptions
+    from subscription_scheduler import start_scheduler as _start_subscription_scheduler
+    app.state.subscription_scheduler = _start_subscription_scheduler(_expire_subscriptions)
 
     # Daily product health check (production only). Deliberately independent
     # of FORGEOS_ENABLED — the table + scheduler must exist and run even if
@@ -1384,7 +1473,7 @@ async def lifespan(app: FastAPI):
                 _cache[_p] = _snap
                 _pw_count += 1
             else:
-                _cache[_p] = _build_prerender_html(_ti, _de, _schema_html)
+                _cache[_p] = _build_prerender_html(_ti, _de, _schema_html, _fe_path)
         app.state.prerender_cache = _cache
         _strategy = f"Playwright×{_pw_count}" if _pw_count else "synthetic"
         logger.info("bot-prerender: cached %d routes (%s)", len(_cache), _strategy)
@@ -1499,6 +1588,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("digest: scheduler shutdown error: %s", e)
+    _ssched = getattr(app.state, "subscription_scheduler", None)
+    if _ssched is not None:
+        _ssched.cancel()
+        try:
+            await _ssched
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("subscription expiry scheduler shutdown error: %s", e)
     _forgeos_sched = getattr(app.state, "forgeos_scheduler", None)
     if _forgeos_sched is not None:
         _forgeos_sched.cancel()
@@ -1660,7 +1758,7 @@ _BOT_PRERENDER_ROUTES: dict = {
 }
 
 
-def _build_prerender_html(page_title: str, meta_desc: str, schema_html: str) -> str:
+def _build_prerender_html(page_title: str, meta_desc: str, schema_html: str, page_path: str = "/") -> str:
     """Minimal crawler-visible HTML with JSON-LD; used when Playwright is unavailable."""
     _su = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com")
     return (
@@ -1668,12 +1766,12 @@ def _build_prerender_html(page_title: str, meta_desc: str, schema_html: str) -> 
         f'<meta name="viewport" content="width=device-width,initial-scale=1">'
         f'<title>{page_title}</title>'
         f'<meta name="description" content="{meta_desc}">'
-        f'<link rel="canonical" href="{_su}">'
+        f'<link rel="canonical" href="{_su}{page_path if page_path.startswith("/") else "/" + page_path}">'
         f'<meta property="og:title" content="{page_title}">'
         f'<meta property="og:description" content="{meta_desc}">'
         f'{schema_html}</head><body>'
         f'<h1>{page_title}</h1><p>{meta_desc}</p>'
-        f'<a href="{_su}">LitigaForge AI — AI-Powered Legal Platform</a>'
+        f'<a href="{_su}">LitigaForge — case tracking and legal tools for Telangana and Andhra Pradesh advocates</a>'
         f'</body></html>'
     )
 
@@ -1918,11 +2016,8 @@ English, Telugu, Hindi"""
 # Every download goes through this endpoint which verifies ownership first.
 
 def _get_storage():
-    try:
-        from replit.object_storage import Client as _OSClient
-        return _OSClient()
-    except Exception:
-        return None
+    from storage import get_object_storage
+    return get_object_storage()
 
 
 # ── Public static file serving (no auth — for user guide / public assets) ───

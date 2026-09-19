@@ -20,7 +20,7 @@ import PricingSection from "@/components/PricingSection";
 import SocialProofBar from "@/components/SocialProofBar";
 import TrustStrip from "@/components/TrustStrip";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
-import { MarginRuleCard, PaperSurface, ScoreRing, Stamp, Chip } from "@/components/case-file-os";
+import { MarginRuleCard, PaperSurface, Stamp, Chip } from "@/components/case-file-os";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getLandingContent } from "@/lib/countryLandingData";
 
@@ -39,8 +39,8 @@ const L: Record<string, Record<string, string>> = {
   eyebrow: { en: "AI Legal Operating System", es: "Sistema legal con IA", hi: "AI लीगल ऑपरेटिंग सिस्टम", te: "AI లీగల్ ఆపరేటింగ్ సిస్టమ్", ar: "نظام قانوني بالذكاء الاصطناعي", de: "KI-Rechtsbetriebssystem", fr: "Système juridique IA" },
   ask_free: { en: "Ask a Legal Question Free", es: "Haz una consulta legal gratis", hi: "मुफ़्त कानूनी सवाल पूछें", te: "ఉచితంగా న్యాయ ప్రశ్న అడగండి", ar: "اطرح سؤالاً قانونياً مجاناً", de: "Rechtsfrage kostenlos stellen", fr: "Posez une question juridique gratuitement" },
   benefit_free: { en: "Free to start", es: "Gratis para empezar", hi: "शुरू करना मुफ़्त", te: "ప్రారంభం ఉచితం", ar: "ابدأ مجاناً", de: "Kostenlos starten", fr: "Gratuit au départ" },
-  benefit_verified: { en: "Advocate directory when available", es: "Directorio de abogados cuando esté disponible", hi: "उपलब्ध होने पर अधिवक्ता निर्देशिका", te: "అందుబాటులో ఉన్నప్పుడు న్యాయవాది డైరెక్టరీ", ar: "دليل المحامين عند توفره", de: "Anwaltsverzeichnis, wenn verfügbar", fr: "Annuaire d’avocats lorsqu’il est disponible" },
-  benefit_instant: { en: "Instant AI answers", es: "Respuestas IA al instante", hi: "तुरंत AI उत्तर", te: "తక్షణ AI సమాధానాలు", ar: "إجابات فورية بالذكاء الاصطناعي", de: "Sofortige KI-Antworten", fr: "Réponses IA instantanées" },
+  benefit_verified: { en: "Admin-checked enrolment badge where shown", es: "Inscripción revisada donde se indique", hi: "जहाँ दिखे वहाँ नामांकन जाँचा गया", te: "చూపిన చోట నమోదు తనిఖీ", ar: "فحص التسجيل حيثما يظهر", de: "Geprüfter Status, wo angezeigt", fr: "Inscription contrôlée lorsqu’indiquée" },
+  benefit_instant: { en: "AI-assisted legal information", es: "Información jurídica asistida por IA", hi: "AI-सहायित कानूनी जानकारी", te: "AI సహాయక న్యాయ సమాచారం", ar: "معلومات قانونية بمساعدة الذكاء الاصطناعي", de: "KI-gestützte Rechtsinformationen", fr: "Information juridique assistée par IA" },
   hero_micro: { en: "No credit card needed · Free legal Q&A", es: "Sin tarjeta · Consultas legales gratis", hi: "क्रेडिट कार्ड नहीं चाहिए · मुफ़्त कानूनी प्रश्नोत्तर", te: "క్రెడిట్ కార్డ్ అవసరం లేదు · ఉచిత న్యాయ ప్రశ్నోత్తరాలు", ar: "بدون بطاقة ائتمان · أسئلة قانونية مجانية", de: "Keine Kreditkarte · Kostenlose Rechtsfragen", fr: "Sans carte bancaire · Questions juridiques gratuites" },
   ai_live: { en: "AI · live", es: "IA · en vivo", hi: "AI · लाइव", te: "AI · లైవ్", ar: "ذكاء اصطناعي · مباشر", de: "KI · live", fr: "IA · en direct" },
   sample_label: { en: "Sample case file", es: "Expediente de muestra", hi: "नमूना केस फ़ाइल", te: "నమూనా కేసు ఫైల్", ar: "ملف قضية نموذجي", de: "Beispiel-Fallakte", fr: "Dossier exemple" },
@@ -62,7 +62,7 @@ const L: Record<string, Record<string, string>> = {
   docs_sub: { en: "AI-drafted, ready to fill and file.", es: "Redactados por IA, listos para completar y presentar.", hi: "AI द्वारा तैयार, भरने और दाखिल करने को तैयार।", te: "AI ద్వారా రూపొందించబడింది, పూరించి దాఖలు చేయడానికి సిద్ధం.", ar: "صياغة بالذكاء الاصطناعي، جاهزة للتعبئة والتقديم.", de: "KI-erstellt, zum Ausfüllen und Einreichen bereit.", fr: "Rédigés par IA, prêts à remplir et déposer." },
   lawyers_heading: { en: "Are you an advocate?", es: "¿Eres abogado?", hi: "क्या आप अधिवक्ता हैं?", te: "మీరు న్యాయవాదినా?", ar: "هل أنت محامٍ؟", de: "Sind Sie Anwalt?", fr: "Êtes-vous avocat ?" },
   lawyers_sub: { en: "Apply for human review, then use research, drafting, and case workspace tools for your practice.", es: "Solicita revisión humana y utiliza herramientas de investigación, redacción y espacio de trabajo.", hi: "मानव समीक्षा के लिए आवेदन करें, फिर शोध, मसौदा और कार्यक्षेत्र उपकरणों का उपयोग करें।", te: "మానవ సమీక్ష కోసం దరఖాస్తు చేసి, పరిశోధన, డ్రాఫ్టింగ్ మరియు వర్క్‌స్పేస్ సాధనాలను ఉపయోగించండి.", ar: "تقدم للمراجعة البشرية ثم استخدم أدوات البحث والصياغة ومساحة العمل.", de: "Beantragen Sie eine menschliche Prüfung und nutzen Sie Forschungs-, Entwurfs- und Arbeitsbereichswerkzeuge.", fr: "Demandez un examen humain, puis utilisez les outils de recherche, de rédaction et d’espace de travail." },
-  lawyers_b1: { en: "Verified profile & Bar badge", es: "Perfil verificado e insignia", hi: "सत्यापित प्रोफ़ाइल और बैज", te: "ధ్రువీకరించబడిన ప్రొఫైల్ & బ్యాడ్జ్", ar: "ملف موثّق وشارة نقابة", de: "Verifiziertes Profil & Abzeichen", fr: "Profil vérifié et badge" },
+  lawyers_b1: { en: "Admin-checked enrolment badge where shown", es: "Inscripción revisada donde se indique", hi: "जहाँ दिखे वहाँ नामांकन जाँचा गया", te: "చూపిన చోట నమోదు తనిఖీ", ar: "فحص التسجيل حيثما يظهر", de: "Geprüfter Status, wo angezeigt", fr: "Inscription contrôlée lorsqu’indiquée" },
   lawyers_b2: { en: "AI-matched client requests", es: "Solicitudes de clientes por IA", hi: "AI-मिलान क्लाइंट अनुरोध", te: "AI-మ్యాచ్ క్లయింట్ అభ్యర్థనలు", ar: "طلبات عملاء بالذكاء الاصطناعي", de: "KI-vermittelte Mandate", fr: "Demandes clients via IA" },
   lawyers_b3: { en: "Case & document workspace", es: "Espacio de casos y documentos", hi: "केस और दस्तावेज़ वर्कस्पेस", te: "కేసు & పత్రాల వర్క్‌స్పేస్", ar: "مساحة عمل للقضايا والمستندات", de: "Fall- & Dokumentbereich", fr: "Espace dossiers et documents" },
   lawyers_cta: { en: "Join as an Advocate", es: "Únete como abogado", hi: "अधिवक्ता के रूप में जुड़ें", te: "న్యాయవాదిగా చేరండి", ar: "انضم كمحامٍ", de: "Als Anwalt beitreten", fr: "Rejoindre en tant qu’avocat" },
@@ -83,7 +83,8 @@ interface CountryLandingProps {
 }
 
 export default function CountryLanding({ countryCode = "IN" }: CountryLandingProps) {
-  const cc = countryCode.toUpperCase();
+  // LitigaForge currently serves the India product scope only.
+  const cc = "IN";
   const { t, lang } = useLanguage(cc);
   const content = getLandingContent(cc);
   const isRtl = lang === "ar";
@@ -258,7 +259,10 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
                       <Chip>{tr("next_hearing")}: ·····</Chip>
                     </div>
                   </div>
-                  <ScoreRing score={92} size={92} showLabel={false} data-testid="hero-score-ring" />
+                  <div className="flex h-[92px] w-[92px] shrink-0 flex-col items-center justify-center rounded-full border border-primary/30 bg-primary/5 text-center">
+                    <ShieldCheck className="h-6 w-6 text-primary" />
+                    <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Case tools</span>
+                  </div>
                 </div>
 
                 <div className="my-4 border-t border-border/70" />
@@ -292,7 +296,7 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
             </span>
             <h2 className="text-2xl md:text-3xl font-bold">See LitigaForge in action</h2>
             <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-              Watch how advocates turn a case brief into a court-ready package — strategy, precedents, and client memo — in under a minute.
+              See how advocates can organize a case brief into strategy notes, precedents, and a client memo.
             </p>
           </div>
 

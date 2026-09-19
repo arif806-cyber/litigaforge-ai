@@ -41,7 +41,7 @@ export function defaultTitle(code: string): string {
 export function defaultDescription(code: string): string {
   const name = getCountryName(code);
   if (code.toUpperCase() === "IN") {
-    return "AI-powered legal platform connecting clients with verified advocates in India. Get legal information, document analysis, and case matching.";
+    return "Case tracking and legal tools for Telangana and Andhra Pradesh advocates, including legal information, document analysis, and case matching.";
   }
   if (code.toUpperCase() === "DE") {
     return "KI-gest\u00fctzte Rechtsplattform. Verbinden Sie sich mit verifizierten Anw\u00e4lten, analysieren Sie Dokumente und erhalten Sie sofortige Rechtsberatung.";
@@ -110,8 +110,8 @@ export const BLOG_COPY: Record<string, { title: string; description: string; sub
 
 export const TERMS_COPY: Record<string, { description: string; about: string; jurisdiction: string }> = {
   IN: {
-    description: "LitigaForge AI Terms of Service \u2014 the rules and conditions for using our platform to connect with verified advocates in India.",
-    about: "LitigaForge AI is a legal-technology marketplace that connects clients with verified advocates registered with the Bar Councils of India. We also provide AI-assisted legal information tools.",
+    description: "LitigaForge AI Terms of Service \u2014 the rules and conditions for using our legal tools and advocate directory in Telangana and Andhra Pradesh.",
+    about: "LitigaForge AI is a legal-technology marketplace operated by Arivex AI Private Limited. We provide case tracking, an advocate directory, and AI-assisted legal information tools.",
     jurisdiction: "Any disputes shall be subject to the exclusive jurisdiction of the courts at Hyderabad, Telangana.",
   },
   US: {
@@ -154,7 +154,7 @@ export const TERMS_COPY: Record<string, { description: string; about: string; ju
 export const PRIVACY_COPY: Record<string, { description: string; about: string }> = {
   IN: {
     description: "LitigaForge AI Privacy Policy \u2014 how we collect, use and protect your personal data under the Digital Personal Data Protection Act 2023.",
-    about: "LitigaForge AI is a legal-technology platform connecting clients with verified advocates in India. We are the Data Fiduciary under the DPDP Act 2023 for all personal data processed on this platform.",
+    about: "LitigaForge AI is a legal-technology platform operated by Arivex AI Private Limited. We are the Data Fiduciary under the DPDP Act 2023 for personal data processed on this platform.",
   },
   US: {
     description: "LitigaForge AI Privacy Policy \u2014 how we collect, use and protect your personal data.",
@@ -187,7 +187,7 @@ export const PRIVACY_COPY: Record<string, { description: string; about: string }
 };
 
 export const POST_CASE_COPY: Record<string, { locationPlaceholder: string; pageTitle: string; pageSubtitle: string }> = {
-  IN: { locationPlaceholder: "e.g., Hyderabad, Telangana", pageTitle: "Post a Case", pageSubtitle: "Describe your legal matter and get matched with verified advocates" },
+  IN: { locationPlaceholder: "e.g., Hyderabad, Telangana", pageTitle: "Post a Case", pageSubtitle: "Describe your legal matter and receive proposals from relevant advocates" },
   US: { locationPlaceholder: "e.g., Los Angeles, California", pageTitle: "Post a Case", pageSubtitle: "Describe your legal matter and get matched with verified attorneys" },
   GB: { locationPlaceholder: "e.g., London, England", pageTitle: "Post a Case", pageSubtitle: "Describe your legal matter and get matched with verified solicitors" },
   AE: { locationPlaceholder: "e.g., Dubai, UAE", pageTitle: "Post a Case", pageSubtitle: "Describe your legal matter and get matched with verified legal consultants" },
@@ -231,7 +231,7 @@ export const LEGAL_AID_COPY: Record<string, { pageTitle: string; pageSubtitle: s
 };
 
 export const LAWYERS_COPY: Record<string, { pageTitle: string; pageSubtitle: string }> = {
-  IN: { pageTitle: "Lawyer Directory", pageSubtitle: "Browse verified advocates across India. Filter by city, practice area, language, and rating." },
+  IN: { pageTitle: "Advocate Directory", pageSubtitle: "Browse advocate profiles for Telangana and Andhra Pradesh. Filter by city, practice area, and language." },
   US: { pageTitle: "Attorney Directory", pageSubtitle: "Browse verified attorneys across the United States. Filter by state, practice area, and rating." },
   GB: { pageTitle: "Solicitor Directory", pageSubtitle: "Browse verified solicitors across the United Kingdom. Filter by city, practice area, and rating." },
   AE: { pageTitle: "Legal Consultant Directory", pageSubtitle: "Browse verified legal consultants across the UAE. Filter by emirate, practice area, and rating." },

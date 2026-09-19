@@ -30,13 +30,6 @@ interface CountryMeta {
 
 const COUNTRY_META: Record<string, CountryMeta> = {
   IN: { name: "India",          flag: "🇮🇳", currency: "₹" },
-  US: { name: "United States",  flag: "🇺🇸", currency: "$" },
-  GB: { name: "United Kingdom", flag: "🇬🇧", currency: "£" },
-  AE: { name: "UAE",            flag: "🇦🇪", currency: "د.إ" },
-  AU: { name: "Australia",      flag: "🇦🇺", currency: "A$" },
-  CA: { name: "Canada",         flag: "🇨🇦", currency: "CA$" },
-  SG: { name: "Singapore",      flag: "🇸🇬", currency: "S$" },
-  DE: { name: "Germany",        flag: "🇩🇪", currency: "€" },
 };
 
 export function useCountry() {
@@ -44,7 +37,7 @@ export function useCountry() {
   // preference, then India.
   const urlCode = getCountryFromPath();
   const stored = (localStorage.getItem("country_override") || "").toUpperCase();
-  const activeCode = urlCode ? urlCode.toUpperCase() : (COUNTRY_META[stored] ? stored : "IN");
+  const activeCode = "IN";
 
   const [activeConfig, setActiveConfig] = useState<CountryConfig | null>(null);
   const [loading, setLoading] = useState(true);

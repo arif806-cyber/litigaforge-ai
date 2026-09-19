@@ -22,9 +22,10 @@ import json
 import os
 
 SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com").rstrip("/")
-ORG_NAME = "LitigaForge AI"
+ORG_NAME = "Arivex AI Private Limited"
+PRODUCT_NAME = "LitigaForge"
 LOGO_URL = f"{SITE_URL}/logo.png"
-CONTACT_EMAIL = "legal@litigaforge.com"
+CONTACT_EMAIL = "info@arivex.ai"
 
 
 # ── Shared org fragment ───────────────────────────────────────────────────────
@@ -34,6 +35,8 @@ def _org_fragment() -> dict:
         "@type": "Organization",
         "@id": f"{SITE_URL}/#organization",
         "name": ORG_NAME,
+        "legalName": ORG_NAME,
+        "identifier": "U62011TS2026PTC221286",
         "url": SITE_URL,
         "logo": {"@type": "ImageObject", "url": LOGO_URL},
         "contactPoint": {

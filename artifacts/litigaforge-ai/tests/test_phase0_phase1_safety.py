@@ -147,6 +147,19 @@ async def test_case_overview_remains_available_when_matching_is_off(monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_case_overview_reports_ai_unavailable_instead_of_faking_analysis():
+    from routers.matching import case_ai_overview
+
+    with patch("routers.matching.fetchrow", AsyncMock(return_value={
+        "id": 42, "case_type": "civil", "location": "Hyderabad", "description": "",
+    })), patch("routers.matching._ai", return_value=""):
+        result = await case_ai_overview(42, {"id": 8})
+    assert result == {
+        "overview": "The AI case overview is temporarily unavailable. Please try again shortly."
+    }
+
+
+@pytest.mark.asyncio
 async def test_analyze_returns_job_before_generation_work():
     from routers.workspace import AnalyzeBody, analyze_session
 

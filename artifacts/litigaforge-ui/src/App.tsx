@@ -15,6 +15,7 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { GlobalCommandPalette } from "@/components/GlobalCommandPalette";
 import { viewTransitionAroundNav } from "@/lib/view-transitions";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import {
   getAppBase,
   getCountryFromPath,
@@ -26,6 +27,8 @@ import {
 
 const Login               = lazy(() => import("@/pages/login"));
 const ForgotPassword      = lazy(() => import("@/pages/forgot-password"));
+const VerifyEmail          = lazy(() => import("@/pages/verify-email"));
+const ResetPassword        = lazy(() => import("@/pages/reset-password"));
 const Subscription        = lazy(() => import("@/pages/subscription"));
 const Ask                 = lazy(() => import("@/pages/ask"));
 const Review              = lazy(() => import("@/pages/review"));
@@ -380,6 +383,8 @@ function Router() {
         <Route path="/register" component={Login} />
         <Route path="/signup" component={SignupRedirect} />
         <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/" component={CountryRoot} />
         <Route>
           <Layout>
@@ -496,6 +501,7 @@ function App() {
                   <KeyboardShortcuts />
                   <GlobalCommandPalette />
                   <Analytics />
+                  <InstallPrompt />
                   {/* <FirstVisitDisclaimer /> */}
                   <Router />
                 </WouterRouter>

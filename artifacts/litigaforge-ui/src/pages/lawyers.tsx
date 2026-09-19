@@ -6,7 +6,7 @@ import { getCountryFromPath } from "@/lib/country";
 import { useAuth, safeAuthNext } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
 import { LAWYERS_COPY } from "@/lib/country-copy";
-import { Users, Phone, Mail, Star, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle, Globe2 } from "lucide-react";
+import { Users, Phone, Mail, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle, Globe2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SEOHelmet } from "@/components/SEOHelmet";
@@ -23,54 +23,12 @@ interface CountryDir {
   languages: string[];
 }
 
-const GENERIC_AREAS = [
-  "Employment Law", "Family Law", "Immigration", "Property & Real Estate",
-  "Criminal Defense", "Civil Litigation", "Corporate & Business", "Consumer Protection",
-  "Personal Injury", "Contract Disputes", "Tax", "Intellectual Property",
-];
-
 const COUNTRY_DIR: Record<string, CountryDir> = {
   IN: {
     name: "India", currency: "₹", barLabel: "BCI", barPlaceholder: "TS/XXXX/YYYY",
     regions: ["Hyderabad", "Rangareddy", "Warangal", "Karimnagar", "Khammam", "Nizamabad", "Nalgonda", "Medak", "Adilabad", "Mahbubnagar"],
     practiceAreas: ["Property & Real Estate", "Criminal Defense", "Family Law", "GST & Tax", "Banking & Finance", "Labour Law", "Civil Matters", "Corporate Law", "Motor Accident Claims", "Consumer Forum", "Revenue Law", "RERA", "Insolvency", "Intellectual Property", "NDPS"],
     languages: ["Telugu", "English", "Hindi", "Urdu", "Tamil", "Bengali"],
-  },
-  US: {
-    name: "United States", currency: "$", barLabel: "State Bar No.", barPlaceholder: "Bar No.",
-    regions: ["California", "New York", "Texas", "Florida", "Illinois", "Washington", "Massachusetts", "Georgia"],
-    practiceAreas: GENERIC_AREAS, languages: ["English", "Spanish"],
-  },
-  GB: {
-    name: "United Kingdom", currency: "£", barLabel: "SRA No.", barPlaceholder: "SRA No.",
-    regions: ["London", "Manchester", "Birmingham", "Leeds", "Glasgow", "Bristol", "Edinburgh"],
-    practiceAreas: GENERIC_AREAS, languages: ["English"],
-  },
-  AE: {
-    name: "United Arab Emirates", currency: "د.إ", barLabel: "MOJ Licence", barPlaceholder: "MOJ Licence No.",
-    regions: ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah"],
-    practiceAreas: ["Labour & Employment", "Tenancy & Real Estate", "Business Setup", "Visa & Immigration", "Cheque & Debt", "Traffic & Accidents", "Family Law", "Criminal Defense", "Commercial Disputes"],
-    languages: ["Arabic", "English", "Hindi", "Urdu"],
-  },
-  AU: {
-    name: "Australia", currency: "A$", barLabel: "Practising Cert.", barPlaceholder: "Cert. No.",
-    regions: ["New South Wales", "Victoria", "Queensland", "Western Australia", "South Australia", "Tasmania", "ACT"],
-    practiceAreas: GENERIC_AREAS, languages: ["English"],
-  },
-  CA: {
-    name: "Canada", currency: "CA$", barLabel: "Law Society No.", barPlaceholder: "LSO No.",
-    regions: ["Ontario", "Quebec", "British Columbia", "Alberta", "Manitoba", "Nova Scotia"],
-    practiceAreas: GENERIC_AREAS, languages: ["English", "French"],
-  },
-  SG: {
-    name: "Singapore", currency: "S$", barLabel: "Practising Cert.", barPlaceholder: "Cert. No.",
-    regions: ["Central", "East", "West", "North", "North-East"],
-    practiceAreas: GENERIC_AREAS, languages: ["English", "Mandarin", "Malay", "Tamil"],
-  },
-  DE: {
-    name: "Germany", currency: "€", barLabel: "RAK No.", barPlaceholder: "RAK No.",
-    regions: ["Berlin", "Bayern", "Hamburg", "Nordrhein-Westfalen", "Hessen", "Baden-Württemberg"],
-    practiceAreas: GENERIC_AREAS, languages: ["German", "English"],
   },
 };
 
@@ -82,9 +40,6 @@ interface Lawyer {
   practice_areas: string[];
   languages: string[];
   experience_years: number;
-  rating: number;
-  review_count?: number;
-  hourly_rate?: number;
   bio: string;
   verified: boolean;
 }
@@ -103,23 +58,14 @@ function LawyerCard({ lawyer, dir }: { lawyer: Lawyer; dir: CountryDir }) {
             {lawyer.verified && (
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 flex-shrink-0">
                 <BadgeCheck className="w-3.5 h-3.5" />
-                Bar Council Verified
+                Bar enrolment checked by LitigaForge
               </span>
             )}
           </div>
           <div className="flex items-center flex-wrap gap-y-1 gap-x-3 text-sm text-muted-foreground font-medium">
             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{lawyer.district}</span>
             <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" />{lawyer.experience_years}y exp</span>
-            {lawyer.hourly_rate && (
-              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-                {dir.currency}{lawyer.hourly_rate.toLocaleString()}/hr
-              </span>
-            )}
           </div>
-        </div>
-        <div className="flex flex-col items-center justify-center bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 min-w-[56px] flex-shrink-0">
-           <Star className="w-4 h-4 text-amber-500 fill-amber-500 mb-1" />
-           <span className="text-sm font-bold text-amber-400 font-mono leading-none">{lawyer.rating}</span>
         </div>
       </div>
 
@@ -355,8 +301,8 @@ export default function LawyersPage() {
     ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        "name": `Verified Lawyers — ${dir.name}`,
-        "description": `AI-matched verified advocates listed by region and practice area on LitigaForge AI`,
+        "name": `Advocate Directory — ${dir.name}`,
+        "description": `Advocate profiles listed by region and practice area on LitigaForge`,
         "itemListElement": (data.lawyers as Lawyer[]).slice(0, 20).map((l, i) => ({
           "@type": "ListItem",
           "position": i + 1,
@@ -365,18 +311,6 @@ export default function LawyersPage() {
             "name": l.name,
             "description": l.bio || l.practice_areas.join(", ") || "Verified advocate",
             "areaServed": l.district,
-            ...(l.hourly_rate ? { "priceRange": `${dir.currency}${l.hourly_rate}/hr` } : {}),
-            ...(l.rating > 0 && (l.review_count ?? 0) > 0
-              ? {
-                  "aggregateRating": {
-                    "@type": "AggregateRating",
-                    "ratingValue": l.rating,
-                    "reviewCount": l.review_count,
-                    "bestRating": 5,
-                    "worstRating": 1,
-                  },
-                }
-              : {}),
           },
         })),
       }
@@ -391,8 +325,8 @@ export default function LawyersPage() {
       ) : undefined}>
       <div className="space-y-8">
         <SEOHelmet
-          title={`Find Verified Lawyers in ${dir.name} | LitigaForge`}
-          description={`Search verified advocates across ${dir.name}. Filter by region, practice area, language, and ratings. View credentials and contact directly.`}
+          title={`Advocates in ${dir.name} | LitigaForge`}
+          description={`Find advocates across ${dir.name}. Filter by region, practice area, language, and location.`}
           canonical="/lawyers"
           keywords={`find lawyer ${dir.name}, verified advocate ${dir.name}, advocate directory, legal help ${dir.name}`}
           structuredData={lawyersStructuredData}
@@ -456,7 +390,7 @@ export default function LawyersPage() {
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-2">Our verified directory is expanding to {dir.name}</h3>
                 <p className="text-muted-foreground font-medium max-w-md text-center mb-8">
-                  We're onboarding verified advocates in {dir.name} now. In the meantime, you can still post your case and our AI will help match you, or be the first advocate listed here.
+                  We're onboarding advocates in {dir.name} now. In the meantime, you can still post your case or be the first advocate listed here.
                 </p>
                 {user?.role === "lawyer" || user?.role === "advocate" ? (
                   <Button onClick={() => setShowRegister(true)} size="lg">

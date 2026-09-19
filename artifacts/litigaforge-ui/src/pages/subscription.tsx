@@ -15,6 +15,13 @@ interface Plan {
   id: string;
   name: string;
   price_inr: number;
+  monthly_price_inr: number;
+  annual_price_inr: number;
+  gst_percent: number;
+  gst_label: string;
+  annual_savings_label?: string;
+  trial_days?: number;
+  chamber_advocates?: number;
   cases_per_month: number;
   ai_label: string;
   features: string[];
@@ -29,7 +36,7 @@ const TIER_ICONS: Record<string, React.ElementType> = {
 const TIER_ACCENT: Record<string, string> = {
   free: "border-border bg-card",
   professional: "border-primary/50 bg-primary/5 shadow-md shadow-primary/5",
-  advocate_pro: "border-amber-500/50 bg-amber-50 dark:bg-amber-900/10 shadow-lg shadow-amber-500/10",
+  advocate_pro: "border-amber-500/50 bg-card shadow-lg shadow-amber-500/10",
 };
 
 export default function Subscription() {
@@ -41,6 +48,7 @@ export default function Subscription() {
   const [error, setError] = useState<string | null>(null);
   const [razorpayError, setRazorpayError] = useState<string | null>(null);
   const [downgrading, setDowngrading] = useState(false);
+  const [annualBilling, setAnnualBilling] = useState(false);
 
   const country = getCountryFromPath();
 
@@ -85,10 +93,10 @@ export default function Subscription() {
   });
 
   const createOrder = useMutation({
-    mutationFn: (tier: string) =>
+    mutationFn: ({ tier, billingPeriod }: { tier: string; billingPeriod: "monthly" | "annual" }) =>
       apiFetch("/subscription/create-order", {
         method: "POST",
-        body: JSON.stringify({ tier }),
+        body: JSON.stringify({ tier, billing_period: billingPeriod }),
       }),
   });
 
@@ -103,6 +111,13 @@ export default function Subscription() {
   const downgrade = useMutation({
     mutationFn: () =>
       apiFetch("/subscription/downgrade", {
+        method: "POST",
+      }),
+  });
+
+  const startTrial = useMutation({
+    mutationFn: () =>
+      apiFetch("/subscription/start-trial", {
         method: "POST",
       }),
   });
@@ -144,8 +159,10 @@ export default function Subscription() {
     setRazorpayError(null);
 
     try {
+      const billingPeriod = annualBilling ? "annual" : "monthly";
+      const plan = plans?.find((item) => item.id === tier);
       await loadRazorpayScript();
-      const orderData = await createOrder.mutateAsync(tier);
+      const orderData = await createOrder.mutateAsync({ tier, billingPeriod });
       if (
         !orderData?.order_id
         || !orderData?.amount
@@ -160,10 +177,11 @@ export default function Subscription() {
         amount: orderData.amount,
         currency: orderData.currency,
         name: "LitigaForge AI",
-        description:
-          tier === "professional"
-            ? "Professional Plan \u2014 \u20b9999/month"
-            : "Advocate Pro \u2014 \u20b92,499/month",
+        description: `${plan?.name ?? tier} — ₹${(
+          billingPeriod === "annual"
+            ? plan?.annual_price_inr
+            : plan?.monthly_price_inr
+        )?.toLocaleString("en-IN")}/${billingPeriod === "annual" ? "year" : "month"} + 18% GST`,
         order_id: orderData.order_id,
         handler: async (response: any) => {
           try {
@@ -172,6 +190,7 @@ export default function Subscription() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               tier,
+              billing_period: billingPeriod,
             });
             if (verify.success) {
               await refreshUser();
@@ -224,14 +243,34 @@ export default function Subscription() {
     void handleRazorpayUpgrade(tier);
   };
 
+  const handleTrial = async () => {
+    if (!user) {
+      window.location.href = buildCountryUrl(country ?? "in", "login");
+      return;
+    }
+    setUpgrading("professional-trial");
+    setSuccess(null);
+    setError(null);
+    try {
+      await startTrial.mutateAsync();
+      await refreshUser();
+      setSuccess("Advocate Pro free trial");
+    } catch (e: any) {
+      setError(e.message || "Unable to start the free trial.");
+    } finally {
+      setUpgrading(null);
+    }
+  };
+
   const renderPrice = (plan: Plan) => {
-    if (plan.price_inr === 0) {
+    const price = annualBilling ? plan.annual_price_inr : plan.monthly_price_inr;
+    if (price === 0) {
       return <span className="text-4xl font-bold text-foreground">Free</span>;
     }
     return (
       <>
-        <span className="text-4xl font-bold text-foreground tracking-tight">₹{plan.price_inr.toLocaleString("en-IN")}</span>
-        <span className="text-base text-muted-foreground font-medium mb-1.5">/mo</span>
+        <span className="text-4xl font-bold text-foreground tracking-tight">₹{price.toLocaleString("en-IN")}</span>
+        <span className="text-base text-muted-foreground font-medium mb-1.5">{annualBilling ? "/yr" : "/mo"}</span>
       </>
     );
   };
@@ -242,8 +281,8 @@ export default function Subscription() {
 
   return (<>
       <SEOHelmet
-        title="Pricing Plans — Free & Professional Legal AI | LitigaForge AI"
-        description="Compare LitigaForge AI plans: Free (5 queries/month), Professional (₹999/month, unlimited queries), and Advocate Pro (₹2,499/month, full practice management). Start free today."
+        title="Pricing Plans — Advocate Pro & Chamber | LitigaForge AI"
+        description="Compare LitigaForge AI plans: Free, Advocate Pro from ₹999/month, and Chamber from ₹2,499/month, plus 18% GST. Annual plans include 2 months free."
         canonical="/subscription"
         keywords="litigaforge pricing, legal ai plans, lawyer matching subscription, legal ai free, professional legal help india"
       />
@@ -375,6 +414,30 @@ export default function Subscription() {
           </div>
         )}
 
+        <div className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border bg-card p-1 shadow-sm">
+          <Button
+            type="button"
+            variant={!annualBilling ? "default" : "ghost"}
+            size="sm"
+            className="rounded-full"
+            onClick={() => setAnnualBilling(false)}
+          >
+            Monthly
+          </Button>
+          <Button
+            type="button"
+            variant={annualBilling ? "default" : "ghost"}
+            size="sm"
+            className="rounded-full"
+            onClick={() => setAnnualBilling(true)}
+          >
+            Annual
+            <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+              2 months free
+            </span>
+          </Button>
+        </div>
+
         {isLoading ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {[1,2,3].map(i => (
@@ -438,6 +501,12 @@ export default function Subscription() {
                     <div className="mb-2 flex items-end gap-1.5">
                       {renderPrice(plan)}
                     </div>
+                    {plan.price_inr > 0 && (
+                      <p className="mb-3 text-xs font-semibold text-muted-foreground">
+                        {plan.gst_label}
+                        {annualBilling && plan.annual_savings_label ? ` · ${plan.annual_savings_label}` : ""}
+                      </p>
+                    )}
                     <p className="text-sm font-medium text-foreground/70 bg-background/50 inline-block px-3 py-1 rounded-lg border border-border/50">
                       {plan.cases_per_month === -1 ? "Unlimited cases" : `${plan.cases_per_month} cases included`}
                     </p>
@@ -473,9 +542,27 @@ export default function Subscription() {
                     )}
                   </Button>
 
+                  {plan.id === "professional" && !isCurrent && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="mt-3 h-12 w-full"
+                      onClick={() => void handleTrial()}
+                      disabled={upgrading === "professional-trial" || startTrial.isPending}
+                    >
+                      {upgrading === "professional-trial" ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting trial…</>
+                      ) : (
+                        "Start 30-day free trial"
+                      )}
+                    </Button>
+                  )}
+
                   {plan.price_inr > 0 && (
                     <p className="text-xs text-muted-foreground text-center mt-3 font-medium">
-                      Powered by Razorpay. Your payment is secure and encrypted.
+                      {plan.id === "professional" && "Trial requires no payment. "}
+                      Paid plans are secured by Razorpay.
                     </p>
                   )}
                 </motion.div>

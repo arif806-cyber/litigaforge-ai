@@ -6,7 +6,11 @@ import { useCountry } from "@/hooks/useCountry";
 import { PRIVACY_COPY } from "@/lib/country-copy";
 
 const EFFECTIVE_DATE = "1 June 2026";
-const CONTACT_EMAIL = "legal@litigaforge.com";
+const CONTACT_EMAIL = "info@arivex.ai";
+const ENTITY_NAME = "Arivex AI Private Limited";
+const ENTITY_CIN = "U62011TS2026PTC221286";
+const REGISTERED_OFFICE = import.meta.env.VITE_REGISTERED_OFFICE?.trim();
+const GRIEVANCE_OFFICER = import.meta.env.VITE_GRIEVANCE_OFFICER?.trim();
 
 export default function PrivacyPolicy() {
   const { activeCode } = useCountry();
@@ -37,11 +41,14 @@ export default function PrivacyPolicy() {
       </div>
 
       <Section icon={<Scale className="w-4 h-4" />} title="1. Who We Are">
-        <p>{copy.about}</p>
+         <p>{ENTITY_NAME} (CIN {ENTITY_CIN}) operates LitigaForge.</p>
+         <p className="mt-2">{copy.about}</p>
         <p className="mt-2">
           <strong>Contact for data matters:</strong>{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a>
-        </p>
+         </p>
+         {REGISTERED_OFFICE && <p className="mt-2"><strong>Registered office:</strong> {REGISTERED_OFFICE}</p>}
+         {GRIEVANCE_OFFICER && <p className="mt-1"><strong>Grievance officer:</strong> {GRIEVANCE_OFFICER}</p>}
       </Section>
 
       <Section icon={<Eye className="w-4 h-4" />} title="2. What Data We Collect">
@@ -67,7 +74,7 @@ export default function PrivacyPolicy() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             { label: "Passwords", detail: "bcrypt-hashed with random salt — never stored or logged in plain text" },
-            { label: "Tokens", detail: "15-minute JWT access tokens + 7-day httpOnly cookie refresh tokens" },
+            { label: "Tokens", detail: "1-day httpOnly access cookie + 7-day httpOnly refresh cookie" },
             { label: "SQL injection", detail: "100% parameterized queries via asyncpg — user input never concatenated into SQL" },
             { label: "File uploads", detail: "Allowlisted extensions (PDF/DOC/DOCX/JPG/PNG/TXT) + 25 MB limit + MIME validation" },
             { label: "Document access", detail: "All uploaded files served through authenticated endpoints — no public URLs" },
@@ -187,7 +194,10 @@ export default function PrivacyPolicy() {
       <Section icon={<Mail className="w-4 h-4" />} title="12. Contact & Grievance Officer">
         <div className="bg-muted/40 rounded-xl p-4 text-sm space-y-1 border border-border">
           <p><strong>Data Protection Officer / Grievance Officer</strong></p>
-          <p>LitigaForge AI</p>
+           <p>{ENTITY_NAME}</p>
+           <p>CIN {ENTITY_CIN}</p>
+          {REGISTERED_OFFICE && <p>Registered office: {REGISTERED_OFFICE}</p>}
+          {GRIEVANCE_OFFICER && <p>Grievance officer: {GRIEVANCE_OFFICER}</p>}
           <p>Email: <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a></p>
           <p>Response time: within 72 hours</p>
         </div>
@@ -198,7 +208,7 @@ export default function PrivacyPolicy() {
       </Section>
 
       <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>LitigaForge AI · Privacy Policy · Effective {EFFECTIVE_DATE}</span>
+         <span>{ENTITY_NAME} · Privacy Policy · Effective {EFFECTIVE_DATE}</span>
         <div className="flex items-center gap-4">
           <Link href="/terms"><span className="text-primary hover:underline cursor-pointer">Terms of Service</span></Link>
           <Link href="/legal-aid"><span className="text-primary hover:underline cursor-pointer">Legal Aid</span></Link>

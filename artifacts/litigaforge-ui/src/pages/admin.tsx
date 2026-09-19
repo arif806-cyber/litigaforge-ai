@@ -31,6 +31,7 @@ interface AdminUser {
   subscription_tier: string;
   cases_this_month: number;
   is_superuser: boolean;
+  email_verified: boolean;
   created_at: string;
 }
 
@@ -330,6 +331,10 @@ function UsersTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClie
     mutationFn: (userId: number) => apiFetch(`/admin/users/${userId}/reset-usage`, { method: "POST" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
   });
+  const verifyMutation = useMutation({
+    mutationFn: (userId: number) => apiFetch(`/admin/users/${userId}/verify-email`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
 
   if (isLoading) {
     return (
@@ -380,6 +385,17 @@ function UsersTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClie
                   {new Date(u.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3">
+                  {!u.email_verified && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="mr-1 h-7 text-xs"
+                      onClick={() => verifyMutation.mutate(u.id)}
+                      disabled={verifyMutation.isPending}
+                    >
+                      <CheckCircle className="mr-1 h-3 w-3" /> Verify
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"

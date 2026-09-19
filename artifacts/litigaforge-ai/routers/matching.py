@@ -11,9 +11,10 @@ from pydantic import BaseModel
 
 from auth import get_current_user, require_ai_user
 from rate_limit import limiter
-from database import fetchrow, fetch, execute, executemany, create_case_requirement_with_quota
+from database import fetchrow, fetch, execute, executemany, get_pool, create_case_requirement_with_quota
 from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt
+from llm import legal_llm
 from logger import get_logger
 
 logger = get_logger("litigaforge.matching")
@@ -25,53 +26,18 @@ router = APIRouter(tags=["matching"])
 import json
 import os
 import re
-import requests as _req
-
-def _claude(prompt: str, max_tokens: int = 2000) -> str:
-    base = os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "").rstrip("/")
-    key  = os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
-    if not base or not key:
-        return ""
+async def _ai(prompt: str, max_tokens: int = 2000) -> str:
+    """Use the portable LiteLLM provider selected by LLM_MODEL."""
     try:
-        r = _req.post(
-            f"{base}/messages",
-            headers={"x-api-key": key, "anthropic-version": "2023-06-01",
-                     "content-type": "application/json"},
-            json={"model": "claude-sonnet-4-6", "max_tokens": max_tokens,
-                  "messages": [{"role": "user", "content": prompt}]},
-            timeout=60,
+        return await legal_llm.acomplete(
+            legal_llm.LEGAL_SYSTEM_PROMPT if hasattr(legal_llm, "LEGAL_SYSTEM_PROMPT") else
+            "You are a careful legal matching assistant. Do not invent facts.",
+            prompt,
+            max_tokens=max_tokens,
         )
-        if r.ok:
-            return r.json()["content"][0]["text"]
-    except Exception:
-        pass
-    return ""
-
-
-def _gemini(prompt: str, max_tokens: int = 2000) -> str:
-    base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
-    key  = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "")
-    if not base or not key:
+    except Exception as exc:
+        logger.warning("Matching AI unavailable: %s", type(exc).__name__)
         return ""
-    try:
-        r = _req.post(
-            f"{base}/models/gemini-2.5-flash:generateContent",
-            headers={"x-goog-api-key": key},
-            json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"maxOutputTokens": max_tokens}},
-            timeout=60,
-        )
-        if r.ok:
-            cands = r.json().get("candidates", [])
-            if cands:
-                return cands[0]["content"]["parts"][0]["text"]
-    except Exception:
-        pass
-    return ""
-
-
-def _ai(prompt: str, max_tokens: int = 2000) -> str:
-    return _claude(prompt, max_tokens) or _gemini(prompt, max_tokens)
 
 
 def _extract_json_array(text: str) -> list:
@@ -147,6 +113,19 @@ async def list_case_requirements(
     case_type: Optional[str] = None,
     status: Optional[str] = None,
 ):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    is_advocate = current_user.get("role") in ("advocate", "lawyer")
+    viewer_lawyer_id = None
+    if is_advocate:
+        viewer = await fetchrow(
+            "SELECT id FROM lawyers WHERE user_id = $1 AND verified = TRUE "
+            "AND verification_status = 'verified'",
+            current_user["id"],
+        )
+        if not viewer:
+            raise HTTPException(403, "Only verified advocates can browse client cases")
+        viewer_lawyer_id = viewer["id"]
     conds, params = [], []
     if case_type:
         conds.append("case_type = $" + str(len(params) + 1))
@@ -154,9 +133,41 @@ async def list_case_requirements(
     if status:
         conds.append("status = $" + str(len(params) + 1))
         params.append(status)
+    if not is_advocate:
+        conds.append("user_id = $" + str(len(params) + 1))
+        params.append(current_user["id"])
     where = ("WHERE " + " AND ".join(conds)) if conds else ""
+    reveal_param = len(params) + 1
+    reveal_value = viewer_lawyer_id if is_advocate else current_user["id"]
+    params.append(reveal_value)
+    reveal_match = (
+        f"m.lawyer_id = ${reveal_param}" if is_advocate
+        else f"m.client_id = ${reveal_param}"
+    )
+    reveal_status = (
+        "m.status = 'accepted'" if is_advocate
+        else "m.status IN ('accepted', 'interested')"
+    )
     rows = await fetch(
-        f"""SELECT id, user_id, title, case_type, description, location,
+        f"""SELECT id, user_id, title, case_type,
+                  CASE WHEN NOT is_anonymous OR user_id = ${reveal_param}
+                    OR EXISTS (
+                      SELECT 1 FROM matches m
+                      WHERE m.case_requirement_id = case_requirements.id
+                        AND {reveal_match}
+                        AND m.payment_status = 'paid'
+                         AND {reveal_status}
+                    )
+                    THEN description ELSE NULL END AS description,
+                  CASE WHEN NOT is_anonymous OR user_id = ${reveal_param}
+                    OR EXISTS (
+                      SELECT 1 FROM matches m
+                      WHERE m.case_requirement_id = case_requirements.id
+                        AND {reveal_match}
+                        AND m.payment_status = 'paid'
+                         AND {reveal_status}
+                    )
+                    THEN location ELSE NULL END AS location,
                   budget_range, is_anonymous, status, created_at
            FROM case_requirements {where}
            ORDER BY created_at DESC LIMIT 100""",
@@ -192,7 +203,7 @@ class UpdateRequirementRequest(BaseModel):
     description: str = ""
     location: str = ""
     budget_range: str = ""
-    is_anonymous: bool = False
+    is_anonymous: Optional[bool] = None
 
 
 @router.get("/cases/requirements/{req_id}")
@@ -319,28 +330,16 @@ Two to three sentences summarising what happened and what the client seeks.
 (max 4 bullet points)
 
 **Relevant Laws & Sections**
-List any applicable Indian statutes, IPC sections, or civil/motor vehicle acts.
+List applicable Indian statutes and sections using BNS for substantive offences,
+BNSS for criminal procedure, and BSA for evidence for matters from 1 July 2024
+onward. Mention IPC, CrPC, or the Evidence Act only when the offence or
+proceeding predates 1 July 2024, and label that historical applicability.
 
 Keep the entire response under 300 words. Be specific, practical, and jurisdiction-aware."""
 
-    overview = _ai(prompt, max_tokens=700)
+    overview = await _ai(prompt, max_tokens=700)
     if not overview:
-        ct = case.get("case_type", "legal matter")
-        loc = case.get("location", "the specified location")
-        overview = (
-            f"**Case Summary**\n"
-            f"This is a {ct} case based in {loc}. "
-            f"The client is seeking legal representation for the matter described above.\n\n"
-            f"**Key Legal Issues**\n"
-            f"• Determining liability and applicable legal provisions\n"
-            f"• Gathering documentary evidence to support the claim\n\n"
-            f"**Recommended Next Steps**\n"
-            f"• Consult a qualified advocate specialising in {ct} cases\n"
-            f"• Collect and preserve all relevant documents and evidence\n"
-            f"• File a formal complaint or plaint as appropriate\n\n"
-            f"**Relevant Laws & Sections**\n"
-            f"Applicable statutes will depend on the specific facts; your advocate will advise."
-        )
+        overview = "The AI case overview is temporarily unavailable. Please try again shortly."
     return {"overview": overview}
 
 
@@ -376,11 +375,11 @@ async def ai_match_lawyers(
     # Fetch all verified lawyers
     lawyers = await fetch(
         """SELECT id, name, district, practice_areas, languages,
-                  experience_years, rating, bio, hourly_rate, availability, verification_status
+                  experience_years, bio, availability, verification_status
             FROM lawyers
             WHERE availability = 'available' AND verified = TRUE
               AND verification_status = 'verified' AND COALESCE(is_test, FALSE) = FALSE
-           ORDER BY rating DESC, experience_years DESC""",
+           ORDER BY id""",
     )
 
     if not lawyers:
@@ -478,14 +477,6 @@ async def ai_match_lawyers(
             score += 25
             reasons.append("Related practice area overlap")
 
-        # ── experience_years (max 20 pts) ────────────────────────────────────
-        if l.get("experience_years", 0) >= 10:
-            score += 20
-            reasons.append(f"{l['experience_years']}+ years experience")
-        elif l.get("experience_years", 0) >= 5:
-            score += 10
-            reasons.append(f"{l['experience_years']}+ years experience")
-
         # ── district / cross-district (max 20 pts) ───────────────────────────
         if case_location and case_loc_parts:
             # Cross-district: award points if lawyer matches ANY parsed segment
@@ -512,16 +503,7 @@ async def ai_match_lawyers(
                 score += 10
                 reasons.append("Nearby location")
 
-        # ── rating (max 10 pts) ──────────────────────────────────────────────
-        rating = float(l.get("rating", 0) or 0)
-        if rating >= 4.5:
-            score += 10
-            reasons.append(f"Excellent rating ({rating})")
-        elif rating >= 4.0:
-            score += 5
-            reasons.append(f"Strong rating ({rating})")
-
-        l["match_score"] = min(score, 100)
+        l["match_score"] = min(score, 60)
         l["match_reasons"] = reasons
         scored.append(l)
 
@@ -535,7 +517,6 @@ async def ai_match_lawyers(
     if top:
         all_summary = "\n".join(
             f"- id:{l['id']} {l['name']} ({l['district']}, "
-            f"{l['experience_years']} yrs, rating {l['rating']}, "
             f"practices: {', '.join((l.get('practice_areas') or [])[:3])})"
             for l in top
         )
@@ -558,7 +539,7 @@ Return ONLY a valid JSON object — no markdown, no commentary:
   "explanations": [{{"lawyer_id": <int>, "explanation": "<string>"}}, ...]
 }}"""
 
-        raw = _ai(rerank_prompt, 2000)
+        raw = await _ai(rerank_prompt, 2000)
         try:
             import json as _json
             m = re.search(r'\{.*\}', raw, re.DOTALL)
@@ -589,7 +570,10 @@ Return ONLY a valid JSON object — no markdown, no commentary:
         "case_id": req.case_requirement_id,
         "case_title": case.get("title", ""),
         "total_matches": len(top),
-        "matches": [{k: l[k] for k in l if k not in ("user_id",)} for l in top],
+        "matches": [
+            {k: l[k] for k in l if k not in ("user_id", "match_score", "rating", "hourly_rate")}
+            for l in top
+        ],
     }
 
 
@@ -600,19 +584,19 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
     if not current_user:
         raise HTTPException(401, "Login required")
     rows = await fetch(
-        """SELECT m.id, m.status, m.match_score, m.ai_explanation,
+        """SELECT m.id, m.status, m.ai_explanation,
                   m.client_message, m.lawyer_message, m.created_at,
                   m.payment_status, m.commission_amount,
                   c.title as case_title, c.case_type, c.budget_range,
                   l.id as lawyer_id, l.name as lawyer_name, l.district,
-                  l.practice_areas, l.experience_years, l.rating, l.hourly_rate,
+                  l.practice_areas, l.experience_years,
                   CASE WHEN m.payment_status = 'paid' THEN l.phone ELSE NULL END as lawyer_phone,
                   CASE WHEN m.payment_status = 'paid' THEN l.email ELSE NULL END as lawyer_email
            FROM matches m
            JOIN case_requirements c ON m.case_requirement_id = c.id
            JOIN lawyers l ON m.lawyer_id = l.id
            WHERE m.client_id = $1
-           ORDER BY m.match_score DESC, m.created_at DESC""",
+           ORDER BY m.created_at DESC""",
         current_user["id"],
     )
     for r in rows:
@@ -624,21 +608,35 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
 async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user)):
     if not current_user:
         raise HTTPException(401, "Login required")
-    # Check if current user is a registered lawyer
-    lawyer_row = await fetchrow("SELECT id FROM lawyers WHERE user_id = $1", current_user["id"])
+    # Only verified, active advocate profiles may receive case data.  Keeping
+    # this gate in the profile lookup also prevents suspended/revoked lawyers
+    # from seeing anonymous details through previously-created matches.
+    lawyer_row = await fetchrow(
+        "SELECT id FROM lawyers "
+        "WHERE user_id = $1 AND verified = TRUE "
+        "AND verification_status = 'verified'",
+        current_user["id"],
+    )
     if not lawyer_row:
-        return {"total": 0, "matches": [], "message": "Complete your lawyer profile to receive match notifications"}
+        raise HTTPException(403, "Only verified advocates can view case matches")
     lawyer_id = lawyer_row["id"]
 
     rows = await fetch(
-        """SELECT m.id, m.status, m.match_score, m.ai_explanation,
+        """SELECT m.id, m.status, m.ai_explanation,
                   m.client_message, m.created_at, m.case_requirement_id,
-                  c.title as case_title, c.case_type, c.description, c.location, c.budget_range,
+                  c.title as case_title, c.case_type,
+                  CASE WHEN NOT c.is_anonymous
+                       OR (m.payment_status = 'paid' AND m.status IN ('accepted', 'interested'))
+                       THEN c.description ELSE NULL END AS description,
+                  CASE WHEN NOT c.is_anonymous
+                       OR (m.payment_status = 'paid' AND m.status IN ('accepted', 'interested'))
+                       THEN c.location ELSE NULL END AS location,
+                  c.budget_range, m.payment_status,
                   CASE WHEN c.is_anonymous THEN NULL ELSE c.user_id END as client_user_id
            FROM matches m
            JOIN case_requirements c ON m.case_requirement_id = c.id
            WHERE m.lawyer_id = $1
-           ORDER BY m.match_score DESC, m.created_at DESC""",
+           ORDER BY m.created_at DESC""",
         lawyer_id,
     )
     for r in rows:
@@ -648,7 +646,10 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
 
 # ── Transaction fee endpoints ─────────────────────────────────────────────────
 
-from payments import calc_commission_paise, create_match_order, verify_payment, DEMO_TOKEN
+from payments import (
+    calc_commission_paise, create_match_order, verify_payment, DEMO_TOKEN,
+    demo_payments_enabled, get_client,
+)
 
 
 class VerifyMatchPaymentRequest(BaseModel):
@@ -666,7 +667,7 @@ async def create_match_payment(
     if not current_user:
         raise HTTPException(401, "Login required")
     row = await fetchrow(
-        """SELECT m.*, cr.budget_range
+        """SELECT m.*
            FROM matches m
            JOIN case_requirements cr ON m.case_requirement_id = cr.id
            WHERE m.id = $1""",
@@ -676,12 +677,12 @@ async def create_match_payment(
         raise HTTPException(404, "Match not found")
     if row["client_id"] != current_user["id"]:
         raise HTTPException(403, "Not your match")
-    if row["status"] != "pending":
+    if row["status"] not in {"pending", "interested"}:
         raise HTTPException(400, f"Match is already {row['status']}")
     if (row.get("payment_status") or "pending_payment") == "paid":
         return {"already_paid": True}
 
-    amount_paise = calc_commission_paise(row.get("budget_range") or "")
+    amount_paise = calc_commission_paise()
     await execute(
         "UPDATE matches SET commission_amount = $1 WHERE id = $2",
         amount_paise, match_id,
@@ -699,40 +700,96 @@ async def verify_match_payment(
 ):
     if not current_user:
         raise HTTPException(401, "Login required")
-    match = await fetchrow("SELECT * FROM matches WHERE id = $1", match_id)
-    if not match:
-        raise HTTPException(404, "Match not found")
-    if match["client_id"] != current_user["id"]:
-        raise HTTPException(403, "Not your match")
-
-    if req.demo_token == DEMO_TOKEN:
+    if req.demo_token == DEMO_TOKEN and demo_payments_enabled():
         payment_id = "DEMO_PAID"
     else:
+        if not req.razorpay_order_id or not req.razorpay_payment_id or not req.razorpay_signature:
+            raise HTTPException(400, "A valid Razorpay payment is required")
+        try:
+            provider = get_client()
+            order = provider.order.fetch(req.razorpay_order_id)
+            payment = provider.payment.fetch(req.razorpay_payment_id)
+        except Exception:
+            raise HTTPException(400, "Failed to fetch order or payment from payment provider")
+        notes = order.get("notes") or {}
+        if (
+            payment.get("order_id") != req.razorpay_order_id
+            or payment.get("status") != "captured"
+            or order.get("currency") != "INR"
+            or payment.get("currency") != "INR"
+        ):
+            raise HTTPException(400, "Payment is not a captured INR payment")
         ok = verify_payment(req.razorpay_order_id, req.razorpay_payment_id, req.razorpay_signature)
         if not ok:
             raise HTTPException(400, "Payment verification failed — signature mismatch")
         payment_id = req.razorpay_payment_id
 
-    await execute(
-        """UPDATE matches
-           SET payment_status = 'paid',
-               commission_payment_id = $1,
-               status = 'accepted',
-               updated_at = CURRENT_TIMESTAMP
-           WHERE id = $2""",
-        payment_id, match_id,
-    )
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                match = await conn.fetchrow(
+                    "SELECT * FROM matches WHERE id = $1 FOR UPDATE", match_id
+                )
+                if not match:
+                    raise HTTPException(404, "Match not found")
+                if match["client_id"] != current_user["id"]:
+                    raise HTTPException(403, "Not your match")
+                expected_amount = int(match["commission_amount"] or calc_commission_paise())
+                if req.demo_token == DEMO_TOKEN and demo_payments_enabled():
+                    pass
+                elif (
+                    order.get("amount") != expected_amount
+                    or payment.get("amount") != expected_amount
+                    or str((order.get("notes") or {}).get("match_id")) != str(match_id)
+                    or str((order.get("notes") or {}).get("client_id")) != str(current_user["id"])
+                ):
+                    raise HTTPException(400, "Payment order does not match this match")
 
-    lawyer_row = await fetchrow(
-        """SELECT l.name, l.phone, u.email
-           FROM lawyers l
-           LEFT JOIN users u ON l.user_id = u.id
-           WHERE l.id = $1""",
-        match["lawyer_id"],
-    )
+                if match["payment_status"] == "paid":
+                    if match["commission_payment_id"] != payment_id:
+                        raise HTTPException(409, "Match has already been paid")
+                else:
+                    if payment_id != "DEMO_PAID":
+                        used = await conn.fetchval(
+                            "SELECT id FROM matches WHERE commission_payment_id = $1 FOR UPDATE",
+                            payment_id,
+                        )
+                        if used and used != match_id:
+                            raise HTTPException(409, "This payment has already been used for another match")
+                    await conn.execute(
+                        """UPDATE matches SET payment_status='paid',
+                           commission_payment_id=$1, status='accepted',
+                           updated_at=CURRENT_TIMESTAMP WHERE id=$2""",
+                        payment_id, match_id,
+                    )
+                thread = await conn.fetchrow(
+                    """INSERT INTO chat_threads (match_id, title)
+                       SELECT m.id, COALESCE(cr.title, 'Legal Consultation')
+                       FROM matches m LEFT JOIN case_requirements cr ON cr.id=m.case_requirement_id
+                       WHERE m.id=$1
+                       ON CONFLICT (match_id) DO UPDATE SET match_id=EXCLUDED.match_id
+                       RETURNING id""",
+                    match_id,
+                )
+                thread_id = thread["id"] if thread else await conn.fetchval(
+                    "SELECT id FROM chat_threads WHERE match_id=$1", match_id
+                )
+                lawyer_row = await conn.fetchrow(
+                    """SELECT l.name, l.phone, u.email FROM lawyers l
+                       LEFT JOIN users u ON l.user_id=u.id WHERE l.id=$1""",
+                    match["lawyer_id"],
+                )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if "commission_payment_id" in str(exc) or "unique" in str(exc).lower():
+            raise HTTPException(409, "This payment has already been used for another match")
+        raise
     return {
         "success": True,
         "message": "Payment verified. Lawyer contact details revealed!",
+        "thread_id": thread_id,
         "lawyer_contact": {
             "name":  lawyer_row["name"]  if lawyer_row else None,
             "phone": lawyer_row["phone"] if lawyer_row else None,
@@ -759,6 +816,13 @@ async def accept_match(
     if not is_lawyer and not is_client:
         raise HTTPException(403, "Not authorized")
 
+    if is_lawyer:
+        await execute(
+            "UPDATE matches SET status='interested', updated_at=CURRENT_TIMESTAMP WHERE id=$1",
+            match_id,
+        )
+        return {"message": "Interest recorded. The client must complete payment before engagement begins."}
+
     if is_client:
         ps = (match.get("payment_status") or "pending_payment")
         if ps != "paid":
@@ -767,32 +831,7 @@ async def accept_match(
                 "Platform connection fee required before accepting. Use /matches/{id}/create-payment",
             )
 
-    await execute(
-        "UPDATE matches SET status='accepted', updated_at=CURRENT_TIMESTAMP WHERE id=$1",
-        match_id,
-    )
-
-    # Auto-create a chat thread for this match (idempotent)
-    existing_thread = await fetchrow(
-        "SELECT id FROM chat_threads WHERE match_id = $1", match_id
-    )
-    if existing_thread:
-        thread_id = existing_thread["id"]
-    else:
-        case_row = await fetchrow(
-            """SELECT cr.title FROM case_requirements cr
-               JOIN matches m ON m.case_requirement_id = cr.id
-               WHERE m.id = $1""",
-            match_id,
-        )
-        case_title = case_row["title"] if case_row else "Legal Consultation"
-        new_thread = await fetchrow(
-            "INSERT INTO chat_threads (match_id, title) VALUES ($1, $2) RETURNING id",
-            match_id, case_title,
-        )
-        thread_id = new_thread["id"] if new_thread else None
-
-    return {"message": "Match accepted", "thread_id": thread_id}
+    return {"message": "Payment verified; the match is active."}
 
 
 @router.post("/matches/{match_id}/decline")
@@ -823,7 +862,7 @@ async def decline_match(
 # ── Legacy PUT ────────────────────────────────────────────────────────────────
 
 class UpdateMatchRequest(BaseModel):
-    status: str  # accepted, declined, completed
+    status: str  # declined, completed (accepted only through paid flow)
     message: str = ""
 
 
@@ -846,6 +885,10 @@ async def update_match(
 
     if not is_lawyer and not is_client:
         raise HTTPException(403, "Not authorized")
+    if req.status not in {"declined", "completed"}:
+        raise HTTPException(400, "Only declined or completed status updates are allowed")
+    if req.status == "completed" and (match.get("payment_status") or "pending_payment") != "paid":
+        raise HTTPException(402, "Platform connection fee required before completing this match")
 
     update_fields = ["status = $1", "updated_at = CURRENT_TIMESTAMP"]
     params = [req.status]

@@ -1,6 +1,6 @@
 ---
 title: "Welcome to LitigaForge AI Legal Guides"
-description: "Your source for AI-powered legal insights across India, UAE, UK, USA and more. New articles published automatically every day."
+description: "Indian legal information and practical tools focused on Telangana and Andhra Pradesh advocates."
 slug: "welcome"
 date: "2026-06-11T00:00:00Z"
 country: "India"
@@ -8,13 +8,15 @@ legalArea: "General"
 tags: ["welcome", "legal guides", "LitigaForge", "AI"]
 readTime: "2 min read"
 author: "LitigaForge AI Editorial Team"
-canonicalUrl: "https://blog.litigaforge.com/welcome"
+canonicalUrl: "https://litigaforge.com/blog/welcome"
 schema: "FAQPage"
 ---
 
 # Welcome to LitigaForge AI Legal Guides
 
-LitigaForge AI is an intelligent legal platform that helps individuals and businesses navigate complex legal matters across multiple jurisdictions. Our automated content pipeline continuously monitors trending legal discussions and generates comprehensive, SEO-optimized guides to keep you informed.
+> **Legal information, not legal advice.** This guide is for general information and does not replace advice from a qualified advocate.
+
+LitigaForge provides case tracking and practical legal tools for Telangana and Andhra Pradesh advocates. Our editorial guides explain Indian legal processes in clear language.
 
 ## What You Will Find Here
 
@@ -34,8 +36,8 @@ Every day, our AI pipeline:
 3. Publishes them automatically to this blog
 4. Submits to search engines for instant indexing
 
-All articles are reviewed for accuracy and include practical, actionable advice.
+Articles focus on practical Indian legal processes and next steps.
 
 ---
 
-*Get your free AI legal analysis at [litigaforge.com](https://litigaforge.com) — results in 60 seconds.*
+Explore case tracking and legal tools at [litigaforge.com](https://litigaforge.com).

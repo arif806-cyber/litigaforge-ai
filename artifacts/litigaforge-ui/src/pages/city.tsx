@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
-  MapPin, Star, Clock, ArrowRight, Scale, Users,
+  MapPin, Clock, ArrowRight, Scale, Users,
   BadgeCheck, Building2, ChevronDown, ChevronUp,
 } from "lucide-react";
 
@@ -35,7 +35,7 @@ function buildFaqs(d: CityData): { q: string; a: string }[] {
   return [
     {
       q: `How much does a lawyer cost in ${d.name}?`,
-      a: `Consultation fees in ${d.name} typically range from ${d.avgConsultation}. Full case representation costs ${d.feeRange} depending on the court, the advocate's experience, and case complexity. For High Court appeals, senior advocates from ${hub} may charge significantly more. LitigaForge AI shows each advocate's hourly rate and experience upfront so you can compare before committing.`,
+      a: `Legal fees in ${d.name} vary by the court, the advocate's experience, and case complexity. Ask the advocate for a written fee proposal before engaging them. LitigaForge provides practice-area, location, language, and enrolment information where available.`,
     },
     {
       q: `Which courts operate in ${d.name}?`,
@@ -47,7 +47,7 @@ function buildFaqs(d: CityData): { q: string; a: string }[] {
     },
     {
       q: `How can I find a verified advocate in ${d.name}?`,
-      a: `LitigaForge AI lists verified advocates practising in ${d.name} district, enrolled with the ${bc}. Post your case requirement and receive AI-matched proposals scored by practice area, experience, and district. Free legal aid is available through DLSA ${d.name} for income-eligible citizens (below ₹3 lakh/year), SC/ST, women, and persons in custody. Call the NALSA helpline 15100 for free advice.`,
+      a: `LitigaForge lists advocate profiles practising in ${d.name} district, with enrolment details where admin-checked. Post your case requirement and review relevant proposals. Free legal aid is available through DLSA ${d.name} for income-eligible citizens (below ₹3 lakh/year), SC/ST, women, and persons in custody. Call the NALSA helpline 15100 for free information.`,
     },
   ];
 }
@@ -82,7 +82,7 @@ const CITIES: Record<string, CityData> = {
       { q: "How much does a lawyer cost in Secunderabad?", a: "Advocate fees in Secunderabad are slightly lower than Hyderabad's Banjara Hills rates. Consultations cost ₹800–₹3,000, while full case representation ranges from ₹10,000 to ₹75,000. Cantonment and civil matters are the most common, and experienced advocates for these specialisations charge a premium." },
       { q: "Which courts operate in Secunderabad?", a: "Secunderabad falls under the Hyderabad District Court jurisdiction at Nampally. The Secunderabad Cantonment area has the Cantonment Board and its associated civil authority. Criminal matters are handled at the Metropolitan Magistrate Courts. The Telangana High Court covers all appeals." },
       { q: "What types of cases are most common in Secunderabad?", a: "Cantonment property disputes, lease and tenancy issues in the twin-city corridor, criminal matters at the Secunderabad railway police station jurisdiction, and consumer complaints are the most frequent. Army and defence personnel often need advocates for service-related matters." },
-      { q: "Can I find an advocate in Secunderabad for cantonment matters?", a: "Yes. Secunderabad has advocates who specialise in cantonment board land regulations, military service matters, and the unique property laws that apply in cantonment areas. Use LitigaForge AI to filter by district and find verified advocates with relevant experience." },
+      { q: "Can I find an advocate in Secunderabad for cantonment matters?", a: "Yes. Secunderabad has advocates who specialise in cantonment board land regulations, military service matters, and the unique property laws that apply in cantonment areas. Use LitigaForge to filter by district and review relevant experience." },
     ],
   },
 
@@ -149,7 +149,7 @@ const CITIES: Record<string, CityData> = {
       { q: "How much does a lawyer cost in Warangal?", a: "Advocate fees in Warangal are significantly lower than Hyderabad. Consultations cost ₹500–₹2,000, and full case representation in property or criminal matters ranges from ₹8,000 to ₹50,000. Land dispute cases involving agricultural land may require additional survey and revenue record fees." },
       { q: "Which courts operate in Warangal?", a: "Warangal has the Warangal District Court, Sessions Court at Hanamkonda, Warangal Rural and Urban Magistrate Courts, Consumer Disputes Redressal Forum, and Labour Courts. The Telangana High Court in Hyderabad handles all appeals from Warangal district." },
       { q: "What types of cases are most common in Warangal?", a: "Agricultural land disputes, tenancy and pattadar passbook-related matters, criminal cases at the Sessions Court, and property inheritance disputes are the most common in Warangal. Industrial disputes related to the Kazipet railway junction and textile sector also arise frequently." },
-      { q: "How can I find a property lawyer in Warangal?", a: "LitigaForge AI lists verified advocates in Warangal district filtered by practice area. For agricultural land disputes, you need an advocate familiar with Telangana land revenue records and the Dharani portal. Post your case requirement and receive proposals from matching advocates within 24 hours." },
+      { q: "How can I find a property lawyer in Warangal?", a: "LitigaForge lists advocate profiles in Warangal district filtered by practice area. For agricultural land disputes, you need an advocate familiar with Telangana land revenue records and the Dharani portal. Post your case requirement and review proposals." },
     ],
   },
 
@@ -570,8 +570,7 @@ const ALL_CITIES = Object.entries(CITIES).map(([slug, d]) => ({ slug, name: d.na
 interface Lawyer {
   id: number; name: string; district: string;
   practice_areas: string[]; languages: string[];
-  experience_years: number; rating: number;
-  hourly_rate: number; availability: string;
+  experience_years: number; availability: string;
   verified: boolean; bio: string;
 }
 
@@ -598,16 +597,6 @@ function LawyerCard({ lawyer, i }: { lawyer: Lawyer; i: number }) {
               <MapPin className="w-3 h-3" />{lawyer.district}
             </div>
           </div>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          {lawyer.rating > 0 && (
-            <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
-              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />{lawyer.rating.toFixed(1)}
-            </div>
-          )}
-          {lawyer.hourly_rate > 0 && (
-            <span className="text-xs text-muted-foreground">₹{lawyer.hourly_rate.toLocaleString("en-IN")}/hr</span>
-          )}
         </div>
       </div>
       {lawyer.practice_areas?.length > 0 && (
@@ -718,14 +707,14 @@ export default function CityPage() {
     <>
       <SEOHelmet
         title={`Best Lawyers in ${cityData.name} | LitigaForge AI`}
-        description={`Connect with verified advocates in ${cityData.name}, ${stateLabel}. AI-powered matching for property, criminal, family & civil cases. Free to post your case.`}
+        description={`Browse advocate profiles in ${cityData.name}, ${stateLabel}, by practice area for property, criminal, family and civil matters.`}
         canonical={`/lawyers/${city}`}
         keywords={`lawyer ${cityData.name}, advocate ${cityData.name}, best lawyer ${cityData.name}, verified advocate ${cityData.name}, ${stateLabel} lawyer, ${cityData.name} court advocate`}
         structuredData={{
           "@context": "https://schema.org",
           "@type": "LegalService",
           "name": `LitigaForge AI — Lawyers in ${cityData.name}`,
-          "description": `Find verified advocates in ${cityData.name}, ${stateLabel}. AI-powered matching for all legal matters.`,
+          "description": `Browse advocate profiles in ${cityData.name}, ${stateLabel}, for legal matters.`,
           "url": `https://litiga-forge-ai.replit.app/lawyers/${city}`,
           "areaServed": { "@type": "City", "name": cityData.name, "containedInPlace": { "@type": "State", "name": stateLabel } },
           "mainEntity": {
@@ -752,14 +741,14 @@ export default function CityPage() {
               <span className="text-sm font-semibold text-primary uppercase tracking-widest">{stateLabel}</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-              Find Verified Lawyers in {cityData.name}
+              Advocates in {cityData.name}
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mb-6">
-              AI-powered matching connects you with verified advocates in {cityData.name} for property, criminal, family, and civil matters — free to post, no commitment.
+              Review advocate profiles in {cityData.name} for property, criminal, family, and civil matters — free to post, no commitment.
             </p>
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><BadgeCheck className="w-4 h-4 text-primary" /> Bar Council verified</span>
-              <span className="flex items-center gap-1.5"><Scale className="w-4 h-4 text-primary" /> AI match score (0–100)</span>
+              <span className="flex items-center gap-1.5"><Scale className="w-4 h-4 text-primary" /> Practice-area and location details</span>
               <span className="flex items-center gap-1.5"><Building2 className="w-4 h-4 text-primary" />{cityData.courts[0]}</span>
               <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-primary" />Avg. fee: {cityData.avgConsultation}</span>
             </div>
@@ -885,7 +874,7 @@ export default function CityPage() {
             <div className="bg-gradient-to-br from-primary/8 to-primary/3 border border-primary/20 rounded-2xl p-8 text-center">
               <h2 className="text-xl font-bold text-foreground mb-2">Need a Lawyer in {cityData.name}?</h2>
               <p className="text-muted-foreground text-sm mb-5 max-w-lg mx-auto">
-                Post your case for free. LitigaForge AI scores and ranks verified advocates in {cityData.name} by practice area, experience, and rating — you pick the best fit.
+                Post your case for free. LitigaForge AI helps identify advocates in {cityData.name} by practice area, experience, and location.
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Link href="/post-case">

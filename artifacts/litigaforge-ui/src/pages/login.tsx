@@ -14,14 +14,7 @@ import { useCountry } from "@/hooks/useCountry";
 import { safeAuthNext } from "@/lib/auth-context";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
-  IN: { badge: "India Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates, analyze documents, search Indian judgments, and get AI legal strategy — all in one platform.", trust: "Trusted by advocates across India" },
-  DE: { badge: "Deutschland Legal AI", heading: "Rechtsintelligenz\nfür Ihre Gerichte.", sub: "Verbinden Sie sich mit verifizierten Anwälten, analysieren Sie Dokumente und entwickeln Sie KI-gestützte Rechtsstrategien.", trust: "Trusted by legal professionals across Germany" },
-  AE: { badge: "UAE Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates across the UAE, analyze contracts, and get AI-powered legal strategy — Arabic & English.", trust: "Trusted by legal professionals across the UAE" },
-  US: { badge: "US Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified attorneys, analyze contracts, research case law, and get AI legal strategy — all in one platform.", trust: "Trusted by legal professionals across the United States" },
-  GB: { badge: "UK Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified solicitors and barristers, analyze documents, and get AI-powered legal strategy for England, Wales & Scotland.", trust: "Trusted by legal professionals across the United Kingdom" },
-  AU: { badge: "Australia Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified solicitors, analyze contracts, research Australian case law, and get AI legal strategy.", trust: "Trusted by legal professionals across Australia" },
-  CA: { badge: "Canada Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified lawyers, analyze contracts, and get AI-powered legal strategy — bilingual English & French support.", trust: "Trusted by legal professionals across Canada" },
-  SG: { badge: "Singapore Legal AI", heading: "Legal intelligence\nbuilt for your courts.", sub: "Connect with verified advocates, analyze contracts, and get AI-powered legal strategy for Singapore courts.", trust: "Trusted by legal professionals across Singapore" },
+  IN: { badge: "Telangana & Andhra Pradesh", heading: "Legal tools\nbuilt for your practice.", sub: "Track cases, research Indian judgments, analyze documents, and manage advocate work in one platform.", trust: "Bar enrolment checked by LitigaForge where an advocate is admin-verified" },
 };
 
 type Role = "client" | "lawyer";
@@ -111,7 +104,7 @@ export default function Login() {
     setError("");
     try {
       const data = await authenticatePasskey();
-      passkeyLogin(data.token, data.user as unknown as Parameters<typeof passkeyLogin>[1]);
+      passkeyLogin(data.user as unknown as Parameters<typeof passkeyLogin>[0]);
       trackEvent("login_success", { provider: "passkey" });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Passkey authentication failed");
@@ -193,7 +186,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex bg-background" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-      <SEOHelmet title={isSignIn ? "Sign In" : "Create Account"} description="Access LitigaForge AI legal tools." canonical="/login" />
+      <SEOHelmet title={isSignIn ? "Sign In" : "Create Account"} description="Access LitigaForge legal tools." canonical="/login" noIndex />
 
       {/* Left: Hero panel — navy dark */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 relative overflow-hidden"
@@ -259,7 +252,7 @@ export default function Login() {
           {/* Trust badges */}
           <div className="space-y-2.5">
             {[
-              { icon: "✓", text: "Verified advocates with Bar Council IDs" },
+              { icon: "✓", text: "Bar enrolment checked by LitigaForge where displayed" },
               { icon: "⚡", text: "AI-matched in under 2 minutes" },
               { icon: "🔒", text: "Anonymous case posting available" },
             ].map(({ icon, text }) => (

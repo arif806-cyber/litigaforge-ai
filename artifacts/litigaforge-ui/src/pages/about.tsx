@@ -2,12 +2,8 @@ import { Building2, Target, Globe, Sparkles, BookOpen, Mail, MapPin } from "luci
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 
-const CONTACT_EMAIL = "legal@litigaforge.com";
-
-const MARKETS = [
-  "India", "United States", "United Kingdom", "UAE",
-  "Germany", "Australia", "Canada", "Singapore",
-];
+const CONTACT_EMAIL = "info@arivex.ai";
+const MARKETS = ["Telangana", "Andhra Pradesh"];
 
 const FEATURES = [
   "AI Legal Chat",
@@ -27,8 +23,8 @@ export default function About() {
         data-testid="page-about"
       >
         <SEOHelmet
-          title="About LitigaForge AI"
-          description="LitigaForge AI is a global AI-powered legal platform headquartered in Hyderabad, India, making legal help accessible and affordable to everyone."
+          title="About LitigaForge"
+          description="LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates."
           canonical="/about"
         />
 
@@ -44,16 +40,15 @@ export default function About() {
 
         <Section icon={<Building2 className="w-4 h-4" />} title="Who We Are">
           <p>
-            LitigaForge AI is a global AI-powered legal platform headquartered in Hyderabad, India.
-            We make legal help accessible and affordable to everyone — whether you are an individual,
-            a startup, or a business.
+            LitigaForge is operated by Arivex AI Private Limited and provides case tracking and legal
+            tools for advocates in Telangana and Andhra Pradesh.
           </p>
         </Section>
 
         <Section icon={<Target className="w-4 h-4" />} title="Our Mission">
           <p>
             To bridge the gap between people and legal help using artificial intelligence.
-            Clear legal information should not be a privilege — it should be available to anyone, anywhere.
+            Clear legal information and dependable case tools should be practical for advocates and clients.
           </p>
         </Section>
 

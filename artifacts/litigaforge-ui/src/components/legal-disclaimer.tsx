@@ -71,7 +71,7 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
               <span>LitigaForge AI</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed mt-3 max-w-xs">
-              AI-powered legal answers and verified lawyer matching. Built for clients and advocates who want clarity, fast.
+              Case tracking and legal tools for Telangana and Andhra Pradesh advocates.
             </p>
           </div>
 
@@ -105,7 +105,7 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground/70">
-            &copy; {year} LitigaForge AI. All rights reserved. LitigaForge AI is not a law firm and does not provide legal advice.
+             &copy; {year} Arivex AI Private Limited. LitigaForge is not a law firm and does not provide legal advice.
           </p>
         </div>
       </div>

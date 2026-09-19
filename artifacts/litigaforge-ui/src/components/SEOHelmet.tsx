@@ -4,8 +4,8 @@ import { getPathWithoutCountry } from "@/lib/country";
 const SITE_URL = "https://litigaforge.com";
 const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
 
-const DEFAULT_KEYWORDS =
-  "find a lawyer online, legal AI assistant, legal information, legal document analyzer, case law search, free legal aid, lawyer matching, AI legal help";
+const POSITIONING = "LitigaForge — case tracking and legal tools for Telangana & Andhra Pradesh advocates";
+const DEFAULT_KEYWORDS = "Telangana advocates, Andhra Pradesh advocates, case tracking, legal tools";
 
 const OG_LOCALE: Record<string, string> = {
   IN: "en_IN", US: "en_US", GB: "en_GB", AE: "en_AE",
@@ -33,14 +33,10 @@ export function SEOHelmet({
 }: SEOHelmetProps) {
   const urlCode = (typeof window !== "undefined" ? window.location.pathname.split("/")[1] : "in").toUpperCase();
   const isIndia = urlCode === "IN" || !urlCode;
-  const title = _title ?? (isIndia
-    ? "LitigaForge AI – Legal Information for Telangana & Andhra Pradesh"
-    : "LitigaForge AI – Legal Information for Telangana & Andhra Pradesh");
-  const description = _description ?? (isIndia
-    ? "AI-assisted legal information, document analysis, judgment research, and advocate tools for Telangana and Andhra Pradesh."
-    : "AI-assisted legal information, document analysis, judgment research, and advocate tools for Telangana and Andhra Pradesh.");
+  const title = _title ?? POSITIONING;
+  const description = _description ?? "Case tracking and legal tools for advocates in Telangana and Andhra Pradesh.";
   const keywords = _keywords ?? DEFAULT_KEYWORDS;
-  const fullTitle = title.includes("LitigaForge") ? title : `${title} | LitigaForge AI`;
+  const fullTitle = title.includes("LitigaForge") ? title : `${title} | LitigaForge`;
   // Self-referencing canonical: use the explicit prop when given, otherwise
   // derive it from the current path stripped of its country prefix so every
   // page canonicalizes to its bare URL (e.g. /in/ask and /us/ask -> /ask)

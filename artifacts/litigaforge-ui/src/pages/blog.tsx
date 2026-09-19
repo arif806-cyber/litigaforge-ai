@@ -9,12 +9,12 @@ export default function Blog() {
   return (
     <>
       <SEOHelmet
-        title="Legal Guides & Resources | LitigaForge AI"
-        description="AI-powered legal insights for India, UAE, UK, USA and more."
+        title="India Legal Guides & Resources | LitigaForge"
+        description="Legal information and case-law insights for advocates and clients in Telangana and Andhra Pradesh."
         canonical="/blog"
       />
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Redirecting to LitigaForge AI Legal Blog...</p>
+        <p className="text-muted-foreground">Redirecting to LitigaForge legal guides...</p>
       </div>
     </>
   );

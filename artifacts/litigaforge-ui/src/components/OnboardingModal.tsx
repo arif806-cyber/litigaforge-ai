@@ -15,7 +15,7 @@ const CLIENT_STEPS = [
   {
     title: "Welcome to LitigaForge",
     subtitle: "Your AI-powered legal companion",
-    description: "LitigaForge connects you with verified lawyers and gives you powerful AI tools to understand, prepare, and manage your legal matters.",
+    description: "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
     icon: Sparkles,
     color: "bg-amber-100 text-amber-700",
     iconBg: "bg-amber-50",
@@ -31,7 +31,7 @@ const CLIENT_STEPS = [
   {
     title: "Post a Case & Match",
     subtitle: "Find the right lawyer",
-    description: "Post your legal requirement anonymously if you prefer. Our AI scores and matches you with verified advocates. Review proposals, chat, and hire with confidence.",
+    description: "Post your legal requirement anonymously if you prefer. Review relevant advocate profiles, chat, and choose who to contact.",
     icon: Briefcase,
     color: "bg-emerald-100 text-emerald-700",
     iconBg: "bg-emerald-50",

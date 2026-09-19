@@ -9,11 +9,13 @@ tags: ["Wrongful Termination", "Legal Notice", "India", "Employment Law", "Indus
 readTime: "15 min read"
 author: "LitigaForge AI Editorial Team"
 authorUrl: "https://litigaforge.com/about"
-canonicalUrl: "https://blog.litigaforge.com/blog/how-to-send-legal-notice-for-wrongful-termination-in-india"
+canonicalUrl: "https://litigaforge.com/blog/how-to-send-legal-notice-for-wrongful-termination-in-india"
 schema: "FAQPage"
 ---
 
 # India Wrongful Termination Notice 2026
+
+> **Legal information, not legal advice.** This guide is for general information and does not replace advice from a qualified advocate.
 
 If you've been wrongfully terminated from your job in India, sending a legal notice to your employer is the first step towards seeking justice. In this article, we'll guide you through the process of sending a legal notice for wrongful termination in India, covering the relevant laws, timelines, and practical steps to take.
 

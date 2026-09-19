@@ -7,10 +7,11 @@ import os
 import asyncio
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from pydantic import BaseModel
 
-from auth import require_user, create_token
+from auth import require_user
+from routers.auth import _issue_tokens
 from database import (
     fetchrow as db_fetchrow,
     fetch as db_fetch,
@@ -179,7 +180,7 @@ class _LoginBody(BaseModel):
 
 @router.post("/auth/passkey/login")
 @limiter.limit("10/minute")
-async def passkey_login_verify(body: _LoginBody, request: Request):
+async def passkey_login_verify(body: _LoginBody, request: Request, response: Response):
     session_key = (request.client.host if request.client else "anon")
     async with _challenge_lock:
         challenge = _auth_challenges.pop(session_key, None)
@@ -230,10 +231,9 @@ async def passkey_login_verify(body: _LoginBody, request: Request):
     if not user:
         raise HTTPException(404, "User account not found")
 
-    token = create_token({"sub": str(user["id"]), "email": user["email"]})
+    await _issue_tokens(user["id"], response)
     logger.info("passkey login user_id=%s", user["id"])
     return {
-        "token": token,
         "user": {
             "id": user["id"],
             "email": user["email"],

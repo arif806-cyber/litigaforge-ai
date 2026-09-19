@@ -307,6 +307,8 @@ if (true) { // serve frontend in both dev and production when dist exists
         "author",
         "authors",
       ]);
+      const indiaPath = (slug: string): boolean =>
+        /(?:^|-)(?:india|indian|telangana|andhra|hyderabad|nalsa|tslsa)(?:-|$)|(?:supreme|telangana|andhra-pradesh)-high-court/i.test(slug);
       let pages = 0;
       while (queue.length > 0 && pages < 50) {
         const path = queue.shift()!;
@@ -338,7 +340,7 @@ if (true) { // serve frontend in both dev and production when dist exists
             if (/^\d+$/.test(seg)) {
               const norm = `/blog/${seg}/`;
               if (!visited.has(norm)) queue.push(norm);
-            } else if (!skipSeg.has(seg)) {
+            } else if (!skipSeg.has(seg) && indiaPath(seg)) {
               found.add(`/blog/${seg}`);
             }
             continue;
@@ -425,11 +427,11 @@ if (true) { // serve frontend in both dev and production when dist exists
       _indexHtml = _raw
         .replace(
           /<title>.*?<\/title>/,
-          "<title>LitigaForge AI \u2014 Global Legal Platform</title>",
+          "<title>LitigaForge \u2014 case tracking and legal tools for Telangana &amp; Andhra Pradesh advocates</title>",
         )
         .replace(
           /<meta name="description"[^>]*>/,
-          '<meta name="description" content="AI-powered lawyer matching, legal Q&amp;A, document analysis and free legal aid \u2014 available globally across India, US, UK, UAE, Australia and more." />',
+          '<meta name="description" content="Case tracking and legal tools for advocates in Telangana and Andhra Pradesh." />',
         )
         .replace(
           /<meta property="og:image"[^>]*>/,
@@ -479,20 +481,21 @@ if (true) { // serve frontend in both dev and production when dist exists
       intro: string;
       canonical?: string;
       bodyHtml?: string;
+      noIndex?: boolean;
     }
 
     const _ROUTE_SEO: Record<string, RouteSeoEntry> = {
       "/ask": {
-        title: "Free Legal Q&amp;A — Instant AI Answers | LitigaForge AI",
+        title: "Legal information tools | LitigaForge",
         ogTitle: "Free Legal Q&amp;A — Instant AI Answers",
         description:
-          "Instant AI answers to legal questions, grounded in your laws. Free Q&amp;A — property, family, criminal, consumer and employment.",
+          "Legal information tools for Telangana and Andhra Pradesh advocates and clients.",
         h1: "Ask a Legal Question — Get an Instant AI Answer",
         intro:
           "Type any legal question and LitigaForge AI gives you a clear, plain-language answer grounded in your jurisdiction's laws — free and instant. Browse a growing knowledge base of answered questions across property, family, criminal, consumer and employment law.",
       },
       "/review": {
-        title: "AI Document Analyzer — Risk Score | LitigaForge AI",
+        title: "Legal document tools | LitigaForge",
         ogTitle: "AI Document Analyzer — Free Risk Check",
         description:
           "Get an AI risk score (0–100), missing clauses and recommendations for any contract, agreement, FIR or court notice. Free document analysis.",
@@ -501,16 +504,16 @@ if (true) { // serve frontend in both dev and production when dist exists
           "Upload or paste any legal document — rental agreement, employment contract, FIR, court notice or sale deed — and receive an AI risk score (0–100), a list of missing clauses, and clear recommendations. Free and instant.",
       },
       "/lawyers": {
-        title: "Verified Lawyers — AI Lawyer Matching | LitigaForge AI",
-        ogTitle: "Verified Lawyers — AI Lawyer Matching",
+        title: "Advocate directory | LitigaForge",
+        ogTitle: "Advocate directory | LitigaForge",
         description:
-          "Verified lawyers matched by AI — 0–100 scores, plain-language explanations. Property, family, criminal, consumer and employment.",
-        h1: "Find a Verified Lawyer for Your Case",
+          "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
+        h1: "Browse advocate profiles",
         intro:
-          "Browse verified, rated advocates or post your case and let LitigaForge AI match you with the right lawyer — each scored 0–100 with a plain-language explanation of why they fit your legal issue, location and budget.",
+          "Browse advocate profiles or post a case for relevant practice-area and location suggestions.",
       },
       "/judgments": {
-        title: "Judgment Finder — Search Case Law | LitigaForge AI",
+        title: "Judgment Finder — Search Case Law | LitigaForge",
         ogTitle: "Judgment Finder — Search Case Law",
         description:
           "Search judgments by keyword, court or case number. Relevant precedents with citation links — free case law research.",
@@ -518,8 +521,15 @@ if (true) { // serve frontend in both dev and production when dist exists
         intro:
           "Find relevant court judgments and precedents by keyword, court name or case number. LitigaForge AI surfaces the most relevant case law with citation links so you can research your matter quickly.",
       },
+      "/cnr-tracker": {
+        title: "CNR Case Status Tracker | LitigaForge",
+        ogTitle: "CNR Case Status Tracker | LitigaForge",
+        description: "Track an Indian court case using its CNR number.",
+        h1: "CNR Case Status Tracker",
+        intro: "Enter an Indian court CNR number to review the latest available case status.",
+      },
       "/legal-aid": {
-        title: "Free Legal Aid Finder — Eligibility &amp; Helplines | LitigaForge AI",
+        title: "Free Legal Aid Finder — Eligibility &amp; Helplines | LitigaForge",
         ogTitle: "Free Legal Aid Finder — Eligibility &amp; Helplines",
         description:
           "Check eligibility for free legal aid and find contacts and helplines for your region. Legal help for everyone, regardless of income.",
@@ -528,7 +538,7 @@ if (true) { // serve frontend in both dev and production when dist exists
           "Check whether you qualify for free legal aid and get contact details and toll-free helplines for legal aid services in your region. Everyone deserves legal help, regardless of income.",
       },
       "/free-documents": {
-        title: "Free Legal Document Templates — AI-Generated | LitigaForge AI",
+        title: "Free Legal Document Templates | LitigaForge",
         ogTitle: "Free Legal Document Templates — AI-Generated",
         description:
           "Generate free legal documents instantly — rental agreements, notices, affidavits, employment letters and NDAs, customized for your jurisdiction.",
@@ -537,8 +547,8 @@ if (true) { // serve frontend in both dev and production when dist exists
           "Generate 10+ legal document templates instantly — rental agreements, legal notices, affidavits, employment letters and NDAs — each AI-generated and customized for your jurisdiction. Free to download, share and print.",
       },
       "/subscription": {
-        title: "LitigaForge AI Plans — Free, Professional &amp; Advocate Pro",
-        ogTitle: "LitigaForge AI Pricing &amp; Plans",
+        title: "LitigaForge plans — legal tools",
+        ogTitle: "LitigaForge plans",
         description:
           "Compare plans: free legal tools, Professional for unlimited AI and priority matching, Advocate Pro for full lawyer practice management.",
         h1: "Plans &amp; Pricing",
@@ -546,20 +556,20 @@ if (true) { // serve frontend in both dev and production when dist exists
           "Start free with legal Q&amp;A, document analysis and judgment search. Upgrade to Professional for unlimited AI and priority lawyer matching, or Advocate Pro for full practice and case management.",
       },
       "/about": {
-        title: "About LitigaForge AI — Our Mission &amp; Global Legal Platform",
-        ogTitle: "About LitigaForge AI",
+        title: "About LitigaForge — Telangana &amp; Andhra Pradesh",
+        ogTitle: "About LitigaForge",
         description:
-          "LitigaForge AI makes legal help affordable worldwide — AI lawyer matching, document analysis, instant Q&amp;A and free legal aid.",
-        h1: "About LitigaForge AI",
+          "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
+        h1: "About LitigaForge",
         intro:
-          "LitigaForge AI is on a mission to make legal help affordable and accessible to everyone. We combine AI with verified lawyers to deliver instant guidance, document analysis, case-law search and free legal aid worldwide.",
+          "LitigaForge provides case tracking, document tools, judgment research and advocate workflows for Telangana and Andhra Pradesh.",
       },
       "/contact": {
-        title: "Contact LitigaForge AI — Support &amp; Inquiries",
-        ogTitle: "Contact LitigaForge AI",
+        title: "Contact LitigaForge — Support &amp; Inquiries",
+        ogTitle: "Contact LitigaForge",
         description:
           "Get in touch with the LitigaForge AI team for support, partnership or media inquiries. We are here to help with any questions about our legal platform.",
-        h1: "Contact LitigaForge AI",
+        h1: "Contact LitigaForge",
         intro:
           "Have a question, partnership idea or support request? Reach out to the LitigaForge AI team and we will get back to you. We are here to help you get the legal support you need.",
       },
@@ -619,22 +629,24 @@ if (true) { // serve frontend in both dev and production when dist exists
           "Owed money or wronged? Generate a firm, professional, state-specific demand letter that gets results — often resolving disputes before you ever go to court. Preview free, pay only when you're happy.",
       },
       "/login": {
-        title: "Sign In | LitigaForge AI",
-        ogTitle: "Sign In — LitigaForge AI",
+        title: "Sign In | LitigaForge",
+        ogTitle: "Sign In — LitigaForge",
         description:
-          "Sign in to your LitigaForge AI account to access lawyer matching, your cases, AI legal tools and document analysis.",
-        h1: "Sign In to LitigaForge AI",
+          "Sign in to your LitigaForge account to access case tracking and legal tools.",
+        h1: "Sign In to LitigaForge",
         intro:
-          "Log in to your LitigaForge AI account to manage your cases, message matched lawyers, and use our AI-powered legal tools.",
+          "Log in to manage cases and use LitigaForge legal tools.",
+        noIndex: true,
       },
       "/register": {
-        title: "Create a Free Account | LitigaForge AI",
-        ogTitle: "Create a Free Account — LitigaForge AI",
+        title: "Create a Free Account | LitigaForge",
+        ogTitle: "Create a Free Account — LitigaForge",
         description:
-          "Create a free LitigaForge AI account to ask legal questions, analyze documents, and get matched with verified lawyers. No credit card required.",
-        h1: "Create Your Free LitigaForge AI Account",
+          "Create a free LitigaForge account for case tracking and legal tools. No credit card required.",
+        h1: "Create Your Free LitigaForge Account",
         intro:
-          "Sign up free to ask legal questions, analyze documents, find verified lawyers, and access AI-powered legal tools. No credit card required to start.",
+          "Sign up free for case tracking, judgment research and advocate tools. No credit card required to start.",
+        noIndex: true,
       },
     };
 
@@ -655,8 +667,8 @@ if (true) { // serve frontend in both dev and production when dist exists
         "<p>It works on rental and lease agreements, employment contracts and offer letters, non-disclosure agreements, sale deeds, loan and service agreements, FIRs and court notices — analyzed instantly and free.</p>",
       "/lawyers":
         "<h2>How lawyer matching works</h2>" +
-        "<p>Tell us your case type, location and budget and LitigaForge AI ranks verified advocates from 0 to 100, with a plain-language explanation of why each lawyer fits your matter. You stay in control — review profiles, ratings and practice areas before you connect.</p>" +
-        "<p>Every advocate carries a verification status, so you can see who has confirmed Bar credentials. Browse by practice area — property, family, criminal, consumer, employment, corporate — or post your case and let qualified lawyers come to you.</p>",
+        "<p>Review advocate profiles and practice areas for Telangana and Andhra Pradesh, then choose who to contact.</p>" +
+        "<p>Only advocates whose bar enrolment has been checked may display the badge “Bar enrolment checked by LitigaForge”.</p>",
       "/judgments":
         "<h2>Research case law faster</h2>" +
         "<p>Search reported judgments by keyword, party name, court or citation and LitigaForge AI surfaces the most relevant precedents with links to the full text. Each result includes a concise, plain-language summary so you can decide quickly whether a case is on point.</p>" +
@@ -682,8 +694,8 @@ if (true) { // serve frontend in both dev and production when dist exists
         "<p>Use it for unpaid invoices and debts, broken contracts, withheld security deposits, or property and service damages. A clear, well-structured demand shows the other side you are serious.</p>",
       "/about":
         "<h2>Why we built LitigaForge AI</h2>" +
-        "<p>Legal help is too expensive and too confusing for most people. LitigaForge AI combines artificial intelligence with verified human lawyers to give individuals and small businesses instant, affordable, plain-language guidance — and a clear path to a professional when they need one.</p>" +
-        "<p>The platform spans eight countries and multiple languages, offering legal Q&amp;A, document analysis, case-law research, ready-to-file documents and a free legal-aid finder in one place.</p>",
+        "<p>LitigaForge provides case tracking, document tools, judgment research and advocate workflows for Telangana and Andhra Pradesh.</p>" +
+        "<p>Our tools provide legal information and workflow support; they are not a substitute for advice from a qualified advocate.</p>",
       "/contact":
         "<h2>We&apos;re here to help</h2>" +
         "<p>Whether you have a support question, a partnership proposal or a media request, the LitigaForge AI team is glad to hear from you. Send us a message and we will get back to you as soon as we can.</p>",
@@ -735,26 +747,26 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@graph": [
             {
               "@type": "LegalService",
-              name: "LitigaForge AI — Verified Lawyer Directory & AI Matching",
+              name: "LitigaForge — Advocate Directory",
               url: `${_SITE_URL}/lawyers`,
-              description: "Find and connect with verified, rated advocates across India, the US, UK, UAE, Australia, Canada, Singapore and Germany. AI lawyer matching with transparent 0–100 match scores and plain-language explanations.",
+              description: "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
               serviceType: ["Lawyer Matching", "Legal Consultation", "Advocate Directory"],
-              areaServed: ["India","United States","United Kingdom","Australia","Canada","Singapore","United Arab Emirates","Germany"],
-              provider: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
+              areaServed: ["Telangana", "Andhra Pradesh"],
+              provider: { "@type": "Organization", name: "Arivex AI Private Limited", url: _SITE_URL },
               availableChannel: { "@type": "ServiceChannel", serviceUrl: `${_SITE_URL}/lawyers`, serviceType: "Online", availableLanguage: ["English","Hindi","Telugu"] },
             },
             {
               "@type": "FAQPage",
               mainEntity: [
-                { "@type": "Question", name: "How much does a lawyer cost in India?", acceptedAnswer: { "@type": "Answer", text: "Lawyer fees in India vary by city, specialization, and experience. Junior advocates charge ₹500–₹2,000 per consultation. Senior and specialist advocates charge ₹2,000–₹15,000 per hour. For full case representation, fees range from ₹10,000 to several lakhs depending on court level and complexity. High Court and Supreme Court advocates typically charge more. LitigaForge shows each lawyer's hourly rate so you can match within your budget." } },
+                { "@type": "Question", name: "How much does an advocate cost in India?", acceptedAnswer: { "@type": "Answer", text: "Legal fees vary by city, court, practice area, advocate experience, and case complexity. Ask for a written fee proposal before engaging an advocate. LitigaForge does not set or guarantee advocate fees." } },
                 { "@type": "Question", name: "What type of lawyer do I need for a property dispute in India?", acceptedAnswer: { "@type": "Answer", text: "For property disputes in India, you need a civil lawyer specializing in property law or real estate litigation. For RERA disputes (developer delays or defects), find a RERA specialist. For landlord-tenant disputes, a civil or rent control specialist is appropriate. For title fraud, a criminal lawyer with property experience may also be needed. LitigaForge AI automatically recommends the right specialization when you describe your case." } },
-                { "@type": "Question", name: "How do I verify a lawyer's credentials before hiring in India?", acceptedAnswer: { "@type": "Answer", text: "Verify a lawyer's Bar Council enrollment number on the State Bar Council website (e.g., barcouncilofap.org for Telangana and AP). On LitigaForge AI, every listed advocate displays their Bar enrollment number and a verification badge after our credential check — you see their practice areas, experience, client ratings and consultation fee before connecting." } },
-                { "@type": "Question", name: "Can I consult a lawyer online in India?", acceptedAnswer: { "@type": "Answer", text: "Yes. Online consultations are widely accepted in India. On LitigaForge AI, post your case, get matched with verified advocates, and communicate via secure in-platform chat. For initial advice, document review and legal notices, online consultations are fully effective. Physical court appearances by the lawyer are required for representation, but case strategy can be handled remotely." } },
+                { "@type": "Question", name: "How do I check an advocate's credentials before hiring in India?", acceptedAnswer: { "@type": "Answer", text: "Check the advocate's Bar Council enrolment details with the relevant State Bar Council. LitigaForge displays “Bar enrolment checked by LitigaForge” only when an administrator has reviewed the submitted enrolment information." } },
+                { "@type": "Question", name: "Can I consult an advocate online in India?", acceptedAnswer: { "@type": "Answer", text: "Yes. Online consultations can help with initial information, document review and legal notices. LitigaForge lets you review advocate profiles and communicate through secure in-platform tools." } },
               ],
             },
           ],
         }),
-        _bc2("/lawyers", "Find a Verified Lawyer"),
+        _bc2("/lawyers", "Advocate Directory"),
       ].join("\n"),
 
       "/judgments": [
@@ -789,10 +801,10 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@graph": [
             {
               "@type": "GovernmentService",
-              name: "Free Legal Aid Finder — India & Worldwide",
+              name: "Free Legal Aid Finder — India",
               url: `${_SITE_URL}/legal-aid`,
-              description: "Check eligibility for free legal aid under the Legal Services Authorities Act 1987 and find NALSA, TSLSA, DLSA contacts and toll-free helplines for your region.",
-              provider: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
+              description: "Check eligibility for free legal aid under the Legal Services Authorities Act 1987 and find NALSA, TSLSA, DLSA contacts and toll-free helplines.",
+              provider: { "@type": "Organization", name: "Arivex AI Private Limited", url: _SITE_URL },
               serviceType: "Legal Aid",
               areaServed: [{ "@type": "Country", name: "India" }],
               serviceChannel: { "@type": "ServiceChannel", serviceUrl: `${_SITE_URL}/legal-aid`, serviceType: "Online" },
@@ -877,9 +889,9 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@context": "https://schema.org",
           "@type": "FAQPage",
           mainEntity: [
-            { "@type": "Question", name: "What is included in the free plan on LitigaForge AI?", acceptedAnswer: { "@type": "Answer", text: "The free plan includes: 5 AI legal Q&A queries per month, document analysis (risk scoring and missing clause detection), judgment search, the free legal aid finder, full access to the verified lawyer directory, and free legal document templates. No credit card required. The free plan is permanent — upgrade only when you need more AI queries or priority matching." } },
-            { "@type": "Question", name: "What does the Professional plan include?", acceptedAnswer: { "@type": "Answer", text: "Professional includes: unlimited AI legal Q&A queries, unlimited document analysis, priority lawyer matching (your case is shown to more advocates faster), document upload and management, and all free plan features. Pricing is in your local currency — INR, USD, GBP, EUR, AED, AUD, CAD, or SGD — shown at checkout." } },
-            { "@type": "Question", name: "What is the Advocate Pro plan and who needs it?", acceptedAnswer: { "@type": "Answer", text: "Advocate Pro is designed for practicing lawyers. It includes everything in Professional plus: full case management (CNR integration, hearing dates, case stage tracking), client document workspace, billing tools, hearing date reminders, and a public verified advocate profile visible to potential clients." } },
+            { "@type": "Question", name: "What is included in the free plan on LitigaForge?", acceptedAnswer: { "@type": "Answer", text: "The free plan includes legal information tools, document analysis, judgment search, the free legal aid finder, advocate profiles, and free legal document templates. No credit card required." } },
+            { "@type": "Question", name: "What does the Professional plan include?", acceptedAnswer: { "@type": "Answer", text: "Professional includes expanded AI legal information, document analysis, document upload and management, and all free plan features. Pricing is shown in INR at checkout." } },
+            { "@type": "Question", name: "What is the Advocate Pro plan and who needs it?", acceptedAnswer: { "@type": "Answer", text: "Advocate Pro is designed for practicing advocates and includes case management, client document workspace, billing tools and hearing date reminders." } },
             { "@type": "Question", name: "Can I get a refund if I cancel my LitigaForge AI subscription?", acceptedAnswer: { "@type": "Answer", text: "LitigaForge AI offers a prorated refund for unused days if you cancel within the first 7 days of a billing period. After 7 days, the subscription continues until the end of the cycle and is not refunded. To cancel or request a refund, email support@litigaforge.com." } },
           ],
         }),
@@ -892,14 +904,14 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@type": "AboutPage",
           url: `${_SITE_URL}/about`,
           name: "About LitigaForge AI",
-          description: "LitigaForge AI is an AI-powered legal platform founded in 2024. Our mission: make legal help affordable and accessible worldwide through AI lawyer matching, document analysis, free legal Q&A, and a free legal aid finder.",
+              description: "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
           mainEntity: {
             "@type": "Organization",
-            name: "LitigaForge AI",
+            name: "Arivex AI Private Limited",
             url: _SITE_URL,
             foundingDate: "2024",
-            description: "LitigaForge AI combines artificial intelligence with verified lawyers to deliver instant, affordable legal guidance to individuals and businesses worldwide — spanning 8 countries and multiple languages.",
-            areaServed: ["India","United States","United Kingdom","Australia","Canada","Singapore","United Arab Emirates","Germany"],
+            description: "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
+            areaServed: ["Telangana", "Andhra Pradesh"],
           },
         }),
         _bc2("/about", "About LitigaForge AI"),
@@ -924,7 +936,7 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@graph": [
             {
               "@type": "HowTo",
-              name: "How to Write and Send a Demand Letter in the United States",
+              name: "How to Write and Send a Legal Demand Letter",
               description: "Step-by-step guide to drafting and sending an effective demand letter to resolve a U.S. dispute before court.",
               totalTime: "PT20M",
               step: [
@@ -941,7 +953,7 @@ if (true) { // serve frontend in both dev and production when dist exists
               url: `${_SITE_URL}/us-demand-letter`,
               description: "AI-drafted, state-specific U.S. demand letters for unpaid debts, contract breaches, security deposit disputes, and property damage claims. Preview free, pay on approval.",
               serviceType: "Demand Letter Drafting",
-              areaServed: { "@type": "Country", name: "United States" },
+              areaServed: { "@type": "Country", name: "India" },
               provider: { "@type": "Organization", name: "LitigaForge AI", url: _SITE_URL },
             },
           ],
@@ -977,26 +989,46 @@ if (true) { // serve frontend in both dev and production when dist exists
       bare: string,
     ): (RouteSeoEntry & { canonicalPath: string }) | null => {
       if (bare === "/" || bare === "") return null;
+      const privatePrefixes = [
+        "/login", "/register", "/forgot-password", "/verify-email", "/reset-password",
+        "/settings", "/client-dashboard", "/lawyer-dashboard", "/my-cases",
+        "/matches", "/documents", "/legal-chat", "/admin", "/forgeos", "/workspace",
+        "/messages", "/post-case", "/lawyers/register", "/us-demand-letter",
+      ];
+      const privateRoute = privatePrefixes.some((prefix) => bare === prefix || bare.startsWith(`${prefix}/`));
       const direct = _ROUTE_SEO[bare];
       if (direct)
         return {
           ...direct,
+          noIndex: direct.noIndex || privateRoute,
           canonicalPath: direct.canonical ?? bare,
           bodyHtml: _ROUTE_BODY[bare],
         };
+      if (privateRoute) {
+        return {
+          title: "LitigaForge account",
+          ogTitle: "LitigaForge account",
+          description: "Sign in to manage your LitigaForge account.",
+          h1: "LitigaForge account",
+          intro: "This account page is not intended for search indexing.",
+          canonicalPath: bare,
+          noIndex: true,
+        };
+      }
       const m = bare.match(/^\/lawyers\/([a-z][a-z-]*)$/);
       if (m) {
         const city = _titleCase(m[1] ?? "");
         return {
-          title: `Lawyers in ${city} — Verified Advocates | LitigaForge AI`,
-          ogTitle: `Lawyers in ${city} | LitigaForge AI`,
-          description: `Find and connect with verified, rated lawyers in ${city}. AI-powered lawyer matching with transparent 0–100 match scores. Free to start.`,
-          h1: `Verified Lawyers in ${city}`,
-          intro: `Connect with experienced, verified advocates in ${city}. LitigaForge AI matches you with the right lawyer for your case — each scored 0–100 with a plain-language explanation of the fit.`,
+          title: `Advocates in ${city} | LitigaForge`,
+           ogTitle: `Advocates in ${city} | LitigaForge`,
+          description: `Browse advocate profiles in ${city}. Review practice areas and location details before contacting an advocate.`,
+          h1: `Advocates in ${city}`,
+          intro: `Browse advocate profiles in ${city} and review practice areas and location details before contacting an advocate.`,
           bodyHtml:
             `<h2>Legal help in ${city}</h2>` +
-            `<p>LitigaForge AI connects you with verified, rated advocates practising in ${city} across property, family, criminal, consumer, employment and corporate law. Describe your case and get matched in minutes — each lawyer scored 0–100 for fit, with a plain-language explanation. Prefer to browse first? Review profiles, credentials and ratings before you reach out.</p>`,
+            `<p>LitigaForge lists advocate profiles practising in ${city} across property, family, criminal, consumer, employment and corporate law. Review profiles, credentials and practice areas before you reach out.</p>`,
           canonicalPath: bare,
+          noIndex: privateRoute,
         };
       }
       const p = bare.match(/^\/profile\/([a-z][a-z0-9_]{2,29})\/research$/);
@@ -1043,7 +1075,7 @@ if (true) { // serve frontend in both dev and production when dist exists
       let bare = _stripCountry(reqPath);
       if (bare.length > 1) bare = bare.replace(/\/+$/, "");
       const meta = _routeSeo(bare);
-      if (!meta) return _staticBotHtml; // homepage — hreflang in static HTML is already correct
+      if (!meta) return _staticBotHtml; // homepage — static HTML carries its current metadata
       const canonical = `${_SITE_URL}${meta.canonicalPath}`;
       // Function replacers (not string replacers) so that any `$` in the copy
       // is treated literally and never interpreted as a replacement pattern.
@@ -1052,6 +1084,10 @@ if (true) { // serve frontend in both dev and production when dist exists
         .replace(
           /<meta name="description"[^>]*>/,
           () => `<meta name="description" content="${meta.description}"/>`,
+        )
+        .replace(
+          /<meta name="robots"[^>]*>/,
+          () => `<meta name="robots" content="${meta.noIndex ? "noindex, nofollow" : "index, follow"}"/>`,
         )
         .replace(
           /<link rel="canonical"[^>]*>/,
@@ -1226,6 +1262,7 @@ if (true) { // serve frontend in both dev and production when dist exists
       return _indexHtml
         .replace(/<title>[^<]*<\/title>/, () => `<title>${meta.title}</title>`)
         .replace(/<meta name="description"[^>]*>/, () => `<meta name="description" content="${meta.description}"/>`)
+        .replace(/<meta name="robots"[^>]*>/, () => `<meta name="robots" content="${meta.noIndex ? "noindex, nofollow" : "index, follow"}"/>`)
         .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${canonical}"/>`)
         .replace(/<meta property="og:url"[^>]*>/, () => `<meta property="og:url" content="${ogUrl}"/>`)
         .replace(/<meta property="og:title"[^>]*>/, () => `<meta property="og:title" content="${meta.ogTitle}"/>`)

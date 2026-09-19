@@ -16,8 +16,8 @@ export default function BlogPost() {
   return (
     <>
       <SEOHelmet
-        title="Legal Guides & Resources | LitigaForge AI"
-        description="AI-powered legal insights for India, UAE, UK, USA and more."
+        title="India Legal Article | LitigaForge"
+        description="Legal information and case-law insights for advocates and clients in Telangana and Andhra Pradesh."
         canonical={slug ? `/blog/${slug}` : "/blog"}
       />
       <div className="min-h-screen flex items-center justify-center">

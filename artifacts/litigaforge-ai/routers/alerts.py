@@ -5,9 +5,19 @@ WhatsApp alert and hearing reminder endpoints.
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from alerts.whatsapp import send_whatsapp_alert, send_hearing_reminder
+from alerts.whatsapp import send_whatsapp_alert, send_hearing_reminder, whatsapp_alerts_enabled
 
 router = APIRouter(tags=["alerts"])
+
+
+@router.get("/alerts/config")
+async def alert_config():
+    """Return capability state without exposing Twilio configuration or secrets."""
+    enabled = whatsapp_alerts_enabled()
+    return {
+        "whatsapp_enabled": enabled,
+        "message": None if enabled else "WhatsApp alerts coming soon",
+    }
 
 
 class AlertRequest(BaseModel):

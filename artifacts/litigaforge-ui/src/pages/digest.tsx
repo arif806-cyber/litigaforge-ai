@@ -25,13 +25,6 @@ const PERKS = [
 
 const COUNTRIES = [
   { code: "in", label: "India" },
-  { code: "us", label: "United States" },
-  { code: "uk", label: "United Kingdom" },
-  { code: "ae", label: "United Arab Emirates" },
-  { code: "de", label: "Germany" },
-  { code: "au", label: "Australia" },
-  { code: "ca", label: "Canada" },
-  { code: "sg", label: "Singapore" },
 ];
 
 export default function Digest() {

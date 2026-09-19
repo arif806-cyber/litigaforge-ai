@@ -141,6 +141,20 @@ declare module 'astro:content' {
 
 	type ContentEntryMap = {
 		"blog": {
+"how-to-send-legal-notice-for-wrongful-termination-in-india.md": {
+	id: "how-to-send-legal-notice-for-wrongful-termination-in-india.md";
+  slug: "how-to-send-legal-notice-for-wrongful-termination-in-india";
+  body: string;
+  collection: "blog";
+  data: InferEntrySchema<"blog">
+} & { render(): Render[".md"] };
+"understanding-divorce-and-alimony-laws-in-india-what-women-n.md": {
+	id: "understanding-divorce-and-alimony-laws-in-india-what-women-n.md";
+  slug: "understanding-divorce-and-alimony-laws-in-india-what-women-n";
+  body: string;
+  collection: "blog";
+  data: InferEntrySchema<"blog">
+} & { render(): Render[".md"] };
 "welcome.md": {
 	id: "welcome.md";
   slug: "welcome";
