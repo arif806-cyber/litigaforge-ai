@@ -13,7 +13,7 @@ import time
 from typing import Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from auth import get_current_user
+from auth import decode_token, get_current_user
 
 logger = logging.getLogger("litigaforge.presence")
 router = APIRouter(tags=["presence"])
@@ -35,23 +35,23 @@ def _is_client_online(case_id: int) -> bool:
 
 class ConnectionManager:
     def __init__(self) -> None:
-        self._conns: Dict[int, List[WebSocket]] = {}
+        self._conns: Dict[str, List[WebSocket]] = {}
 
-    async def connect(self, case_id: int, ws: WebSocket) -> None:
+    async def connect(self, channel: str, ws: WebSocket) -> None:
         await ws.accept()
-        self._conns.setdefault(case_id, []).append(ws)
+        self._conns.setdefault(channel, []).append(ws)
 
-    def disconnect(self, case_id: int, ws: WebSocket) -> None:
-        bucket = self._conns.get(case_id, [])
+    def disconnect(self, channel: str, ws: WebSocket) -> None:
+        bucket = self._conns.get(channel, [])
         try:
             bucket.remove(ws)
         except ValueError:
             pass
         if not bucket:
-            self._conns.pop(case_id, None)
+            self._conns.pop(channel, None)
 
-    async def broadcast(self, case_id: int, data: dict) -> None:
-        bucket = list(self._conns.get(case_id, []))
+    async def broadcast(self, channel: str, data: dict) -> None:
+        bucket = list(self._conns.get(channel, []))
         dead: List[WebSocket] = []
         for ws in bucket:
             try:
@@ -59,7 +59,7 @@ class ConnectionManager:
             except Exception:
                 dead.append(ws)
         for ws in dead:
-            self.disconnect(case_id, ws)
+            self.disconnect(channel, ws)
 
 
 manager = ConnectionManager()
@@ -70,14 +70,39 @@ manager = ConnectionManager()
 @router.websocket("/ws/cases/{case_id}")
 async def case_presence_ws(case_id: int, ws: WebSocket):
     """Both clients and lawyers subscribe here to receive presence events."""
-    await manager.connect(case_id, ws)
+    channel = f"case:{case_id}"
+    await manager.connect(channel, ws)
     try:
         while True:
             await ws.receive_text()  # absorb pings; ignore payload
     except WebSocketDisconnect:
-        manager.disconnect(case_id, ws)
+        manager.disconnect(channel, ws)
     except Exception:
-        manager.disconnect(case_id, ws)
+        manager.disconnect(channel, ws)
+
+
+@router.websocket("/ws/messages")
+async def message_notifications_ws(ws: WebSocket):
+    """Authenticated, user-scoped channel for app-wide chat notifications."""
+    token = ws.cookies.get("lf_token")
+    if not token:
+        await ws.close(code=4001)
+        return
+    try:
+        user_id = decode_token(token)
+    except HTTPException:
+        await ws.close(code=4001)
+        return
+
+    channel = f"user:{user_id}"
+    await manager.connect(channel, ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(channel, ws)
+    except Exception:
+        manager.disconnect(channel, ws)
 
 
 # ── Lawyer → client direction ──────────────────────────────────────────────────
@@ -91,7 +116,7 @@ async def track_lawyer_view(
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
     await manager.broadcast(
-        case_id,
+        f"case:{case_id}",
         {"event": "lawyer_viewing", "lawyer_id": current_user["id"]},
     )
     logger.debug("lawyer %s viewing case %s — broadcast sent", current_user["id"], case_id)
@@ -117,7 +142,7 @@ async def client_heartbeat(
 
     if not was_online:
         await manager.broadcast(
-            case_id,
+            f"case:{case_id}",
             {"event": "client_online", "case_id": case_id},
         )
         logger.debug("client user=%s case=%s came online", current_user["id"], case_id)

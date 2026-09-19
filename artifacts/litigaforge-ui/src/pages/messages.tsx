@@ -225,7 +225,7 @@ export default function Messages() {
 
   /* ── Initial message load (latest 50) ── */
   const { data: messagesData, isLoading: msgsLoading } = useQuery({
-    queryKey: ["chat-messages-init", activeThreadId],
+    queryKey: ["chat-messages", activeThreadId],
     queryFn: () => apiFetch(`/chat/threads/${activeThreadId}/messages`),
     enabled: !!activeThreadId,
     // staleTime defaults to 0 so revisiting a thread always refetches fresh history;
@@ -288,6 +288,7 @@ export default function Messages() {
             // Mark read since thread is open, refresh thread list for badge update
             apiFetch(`/chat/threads/${activeThreadId}/mark-read`, { method: "POST" }).catch(() => {});
             qc.invalidateQueries({ queryKey: ["chat-threads"] });
+            qc.invalidateQueries({ queryKey: ["chat-messages", activeThreadId] });
           }
         } catch { /* ignore parse errors */ }
       };

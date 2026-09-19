@@ -19,6 +19,7 @@ import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Translation } from "@/i18n";
+import { useMessageNotifications } from "@/hooks/use-message-notifications";
 
 interface NavEntry {
   href: string;
@@ -471,6 +472,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+  useMessageNotifications();
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">

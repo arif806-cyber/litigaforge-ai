@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket
 from pydantic import BaseModel
 
 from auth import get_current_user, require_ai_user, decode_token
+from routers.presence import manager as notification_manager
 from rate_limit import limiter
 from database import fetchrow, fetch, execute
 from sanitizer import sanitize_text
@@ -272,8 +273,10 @@ async def send_chat_message(
     if not current_user:
         raise HTTPException(401, "Login required")
     auth = await fetchrow(
-        """SELECT m.id FROM matches m
+        """SELECT m.id, m.client_id, l.user_id AS lawyer_user_id
+           FROM matches m
            JOIN chat_threads t ON t.match_id = m.id
+           JOIN lawyers l ON l.id = m.lawyer_id
            WHERE t.id = $1
              AND (m.client_id = $2
                   OR m.lawyer_id IN (SELECT id FROM lawyers WHERE user_id = $3))""",
@@ -307,6 +310,18 @@ async def send_chat_message(
     # Broadcast to all WS subscribers of this thread
     await chat_manager.broadcast(req.thread_id, {
         "event": "new_message",
+        "message": dict(row),
+    })
+
+    recipient_id = (
+        auth["lawyer_user_id"]
+        if current_user["id"] == auth["client_id"]
+        else auth["client_id"]
+    )
+    await notification_manager.broadcast(f"user:{recipient_id}", {
+        "event": "new_message",
+        "thread_id": req.thread_id,
+        "sender_name": current_user.get("name") or "Someone",
         "message": dict(row),
     })
 
