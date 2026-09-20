@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquare, Send, ArrowLeft, Loader2, User, Scale,
   CheckCheck, Plus, ChevronUp,
+  Paperclip, FileText, Download, X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -31,7 +32,20 @@ interface ChatMessage {
   sender_id: number | null;
   sender_role: "user" | "ai";
   content: string;
+  message_type: "text" | "file";
+  file_url: string | null;
+  filename: string | null;
+  file_size: number | null;
   created_at: string;
+}
+
+const MAX_CHAT_FILE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_CHAT_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+
+function formatFileSize(bytes: number | null) {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /* ── Thread list item ────────────────────────────────────────── */
@@ -93,6 +107,7 @@ function MessageBubble({ msg, currentUserId }: { msg: ChatMessage; currentUserId
   const isMe = msg.sender_id === currentUserId;
   const isAI = msg.sender_role === "ai";
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const isFile = msg.message_type === "file" && msg.file_url;
 
   if (isAI) {
     return (
@@ -119,14 +134,36 @@ function MessageBubble({ msg, currentUserId }: { msg: ChatMessage; currentUserId
         </div>
       )}
       <div className={cn("max-w-[75%]", isMe ? "items-end" : "items-start", "flex flex-col")}>
-        <div className={cn(
+        {isFile ? (
+          <a
+            href={`/litigaforge${msg.file_url}`}
+            download={msg.filename ?? undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-2xl border px-3 py-3 min-w-[220px] hover:opacity-90 transition-opacity",
+              isMe
+                ? "bg-primary text-primary-foreground border-primary-foreground/20 rounded-br-sm"
+                : "bg-card border-border text-foreground rounded-bl-sm",
+            )}
+          >
+            <span className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isMe ? "bg-white/15" : "bg-primary/10")}>
+              <FileText className="w-5 h-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold truncate">{msg.filename ?? msg.content}</span>
+              <span className={cn("block text-[11px]", isMe ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                {formatFileSize(msg.file_size)}
+              </span>
+            </span>
+            <Download className="w-4 h-4 flex-shrink-0" />
+          </a>
+        ) : <div className={cn(
           "px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed",
           isMe
             ? "bg-primary text-primary-foreground rounded-br-sm"
             : "bg-card border border-border text-foreground rounded-bl-sm"
         )}>
           {msg.content}
-        </div>
+        </div>}
         <div className={cn("flex items-center gap-1 mt-1", isMe ? "flex-row-reverse" : "flex-row")}>
           <span className="text-[10px] text-muted-foreground">{time}</span>
           {isMe && <CheckCheck className="w-3 h-3 text-muted-foreground" />}
@@ -191,6 +228,8 @@ export default function Messages() {
   const [mobileView, setMobileView] = useState<"list" | "messages">("list");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState("");
 
   // Local message list — managed manually to support WS push + infinite scroll
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
@@ -200,6 +239,7 @@ export default function Messages() {
   const endRef = useRef<HTMLDivElement>(null);
   const msgContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ── Threads query (no polling — WS events trigger invalidation) ── */
   const { data: threadsData, isLoading: threadsLoading } = useQuery({
@@ -245,6 +285,9 @@ export default function Messages() {
     setLocalMessages([]);
     setHasOlderMessages(true);
     setLoadingOlder(false);
+    setSelectedFile(null);
+    setFileError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }, [activeThreadId]);
 
   /* ── Mark read on thread open (clears badge immediately) ── */
@@ -394,6 +437,41 @@ export default function Messages() {
     }
   };
 
+  const handleFileSelected = (file?: File) => {
+    setFileError("");
+    if (!file) return;
+    if (!ACCEPTED_CHAT_FILE_TYPES.includes(file.type)) {
+      setFileError("Choose a PDF, JPG, or PNG file.");
+      return;
+    }
+    if (file.size > MAX_CHAT_FILE_BYTES) {
+      setFileError("File must be 10 MB or smaller.");
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  const handleFileSend = async () => {
+    if (!selectedFile || !activeThreadId || sending) return;
+    setSending(true);
+    setFileError("");
+    try {
+      const form = new FormData();
+      form.append("file", selectedFile);
+      await apiFetch(`/chat/messages/file?thread_id=${activeThreadId}`, {
+        method: "POST",
+        body: form,
+      });
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      qc.invalidateQueries({ queryKey: ["chat-threads"] });
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : "File upload failed.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const selectThread = (thread: ChatThread) => {
     setActiveThreadId(thread.id);
     setMobileView("messages");
@@ -535,7 +613,34 @@ export default function Messages() {
 
                 {/* Composer */}
                 <div className="flex-shrink-0 border-t border-border bg-card px-4 py-3">
+                  {selectedFile && (
+                    <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2">
+                      <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                      <span className="text-xs font-medium truncate flex-1">{selectedFile.name}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatFileSize(selectedFile.size)}</span>
+                      <button onClick={() => setSelectedFile(null)} aria-label="Remove attachment">
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  )}
+                  {fileError && <p className="text-xs text-destructive mb-2">{fileError}</p>}
                   <div className="flex items-end gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                      className="hidden"
+                      onChange={(e) => handleFileSelected(e.target.files?.[0])}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={sending}
+                      className="w-11 h-11 rounded-xl border border-border bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0 hover:text-primary disabled:opacity-40 transition-colors"
+                      aria-label="Attach PDF or image"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
                     <textarea
                       ref={inputRef}
                       data-testid="message-input"
@@ -554,8 +659,8 @@ export default function Messages() {
                     />
                     <button
                       data-testid="message-send-btn"
-                      onClick={handleSend}
-                      disabled={!draft.trim() || sending}
+                      onClick={selectedFile ? handleFileSend : handleSend}
+                      disabled={(!selectedFile && !draft.trim()) || sending}
                       className="w-11 h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 hover:opacity-90 disabled:opacity-40 transition-all active:scale-95"
                       aria-label="Send message"
                     >

@@ -679,9 +679,19 @@ async def lifespan(app: FastAPI):
                 sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 sender_role TEXT DEFAULT 'user',
                 content TEXT NOT NULL,
+                message_type TEXT NOT NULL DEFAULT 'text',
+                file_url TEXT,
+                filename TEXT,
+                file_size INTEGER,
+                file_path TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'text'")
+        await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_url TEXT")
+        await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS filename TEXT")
+        await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_size INTEGER")
+        await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_path TEXT")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS lawyer_cases (
                 id SERIAL PRIMARY KEY,
@@ -2067,17 +2077,28 @@ async def serve_secure_file(
     # Ownership check via DB
     file_url = f"/secure-files/{safe}"
     doc = await db_fetchrow(
-        """SELECT d.client_id, d.file_path, c.lawyer_id
+        """SELECT d.client_id, d.file_path, c.lawyer_id, NULL::INTEGER AS chat_client_id,
+                  NULL::INTEGER AS chat_lawyer_user_id
            FROM client_documents d
            LEFT JOIN lawyer_cases c ON d.case_id = c.id
-           WHERE d.file_url = $1""",
+           WHERE d.file_url = $1
+           UNION ALL
+           SELECT NULL::INTEGER, cm.file_path, NULL::INTEGER, m.client_id, l.user_id
+           FROM chat_messages cm
+           JOIN chat_threads t ON t.id = cm.thread_id
+           JOIN matches m ON m.id = t.match_id
+           JOIN lawyers l ON l.id = m.lawyer_id
+           WHERE cm.file_url = $1
+           LIMIT 1""",
         file_url,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
     uid = current_user["id"]
-    if doc["client_id"] != uid and (doc["lawyer_id"] is None or doc["lawyer_id"] != uid):
+    has_case_access = doc["client_id"] == uid or doc["lawyer_id"] == uid
+    has_chat_access = doc["chat_client_id"] == uid or doc["chat_lawyer_user_id"] == uid
+    if not (has_case_access or has_chat_access):
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Try Object Storage first

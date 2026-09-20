@@ -15,10 +15,12 @@ import json
 import asyncio
 import logging
 import os
+import time
+import uuid
 from typing import Dict, List, Optional
 
 import requests as _req
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from auth import get_current_user, require_ai_user, decode_token
@@ -35,6 +37,16 @@ from jobs import enqueue_job
 
 logger = logging.getLogger("litigaforge.chat")
 router = APIRouter(tags=["chat"])
+
+CHAT_FILE_MAX_BYTES = 10 * 1024 * 1024
+CHAT_FILE_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+CHAT_FILE_MIMES = {"application/pdf", "image/jpeg", "image/png"}
+CHAT_FILE_TYPE_RULES = {
+    ".pdf": ("application/pdf", lambda data: data.startswith(b"%PDF-")),
+    ".jpg": ("image/jpeg", lambda data: data.startswith(b"\xff\xd8\xff")),
+    ".jpeg": ("image/jpeg", lambda data: data.startswith(b"\xff\xd8\xff")),
+    ".png": ("image/png", lambda data: data.startswith(b"\x89PNG\r\n\x1a\n")),
+}
 
 
 # ── Chat WebSocket connection manager ────────────────────────────────────────
@@ -195,6 +207,46 @@ class ChatMessageRequest(BaseModel):
     content: str
 
 
+async def _authorized_chat_participants(thread_id: int, user_id: int):
+    return await fetchrow(
+        """SELECT m.id, m.client_id, l.user_id AS lawyer_user_id
+           FROM matches m
+           JOIN chat_threads t ON t.match_id = m.id
+           JOIN lawyers l ON l.id = m.lawyer_id
+           WHERE t.id = $1
+             AND (m.client_id = $2
+                  OR m.lawyer_id IN (SELECT id FROM lawyers WHERE user_id = $3))""",
+        thread_id, user_id, user_id,
+    )
+
+
+async def _broadcast_chat_message(thread_id: int, current_user: dict, auth: dict, row: dict) -> None:
+    try:
+        await execute(
+            "UPDATE chat_threads SET last_message_at = NOW() WHERE id = $1",
+            thread_id,
+        )
+    except Exception:
+        pass
+
+    await chat_manager.broadcast(thread_id, {
+        "event": "new_message",
+        "message": dict(row),
+    })
+
+    recipient_id = (
+        auth["lawyer_user_id"]
+        if current_user["id"] == auth["client_id"]
+        else auth["client_id"]
+    )
+    await notification_manager.broadcast(f"user:{recipient_id}", {
+        "event": "new_message",
+        "thread_id": thread_id,
+        "sender_name": current_user.get("name") or "Someone",
+        "message": dict(row),
+    })
+
+
 @router.post("/chat/threads")
 async def create_chat_thread(
     req: ChatThreadRequest,
@@ -272,16 +324,7 @@ async def send_chat_message(
 ):
     if not current_user:
         raise HTTPException(401, "Login required")
-    auth = await fetchrow(
-        """SELECT m.id, m.client_id, l.user_id AS lawyer_user_id
-           FROM matches m
-           JOIN chat_threads t ON t.match_id = m.id
-           JOIN lawyers l ON l.id = m.lawyer_id
-           WHERE t.id = $1
-             AND (m.client_id = $2
-                  OR m.lawyer_id IN (SELECT id FROM lawyers WHERE user_id = $3))""",
-        req.thread_id, current_user["id"], current_user["id"],
-    )
+    auth = await _authorized_chat_participants(req.thread_id, current_user["id"])
     if not auth:
         raise HTTPException(403, "Not authorized")
 
@@ -293,38 +336,87 @@ async def send_chat_message(
     row = await fetchrow(
         """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content)
            VALUES ($1, $2, 'user', $3)
-           RETURNING id, thread_id, sender_id, sender_role, content, created_at""",
+           RETURNING id, thread_id, sender_id, sender_role, content, message_type,
+                     file_url, filename, file_size, created_at""",
         req.thread_id, current_user["id"], safe_content,
     )
     row["created_at"] = str(row["created_at"])
+    await _broadcast_chat_message(req.thread_id, current_user, auth, row)
+    return {"message": row}
 
-    # Update thread's last_message_at for fast sorting (best-effort)
+
+@router.post("/chat/messages/file")
+async def send_chat_file(
+    request: Request,
+    thread_id: int,
+    file: UploadFile = File(...),
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+
+    auth = await _authorized_chat_participants(thread_id, current_user["id"])
+    if not auth:
+        raise HTTPException(403, "Not authorized")
+    if not file.filename:
+        raise HTTPException(400, "No file provided")
+
     try:
-        await execute(
-            "UPDATE chat_threads SET last_message_at = NOW() WHERE id = $1",
-            req.thread_id,
+        safe_name = sanitize_text(
+            os.path.basename(file.filename), max_length=255, field_name="filename"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    ext = ("." + safe_name.rsplit(".", 1)[-1].lower()) if "." in safe_name else ""
+    declared_mime = (file.content_type or "").lower().split(";")[0].strip()
+    if ext not in CHAT_FILE_EXTENSIONS or declared_mime not in CHAT_FILE_MIMES:
+        raise HTTPException(400, "Only PDF, JPG, and PNG files are allowed")
+
+    content = await file.read(CHAT_FILE_MAX_BYTES + 1)
+    if not content:
+        raise HTTPException(400, "Uploaded file is empty")
+    if len(content) > CHAT_FILE_MAX_BYTES:
+        raise HTTPException(413, "File too large. Maximum allowed size is 10 MB")
+    expected_mime, has_valid_signature = CHAT_FILE_TYPE_RULES[ext]
+    if declared_mime != expected_mime or not has_valid_signature(content):
+        raise HTTPException(400, "File contents do not match the selected file type")
+
+    unique_name = (
+        f"chat_{thread_id}_user_{current_user['id']}_{int(time.time())}_"
+        f"{uuid.uuid4().hex[:10]}_{safe_name}"
+    )
+    obj_key = f"uploads/{unique_name}"
+    file_url = f"/secure-files/{unique_name}"
+    from storage import get_object_storage
+    storage = get_object_storage()
+    if storage is None:
+        raise HTTPException(503, "File storage is temporarily unavailable")
+    try:
+        storage.upload_from_bytes(obj_key, content)
+    except Exception:
+        logger.exception("Chat file upload failed for thread %s", thread_id)
+        raise HTTPException(503, "File upload failed. Please try again")
+
+    try:
+        row = await fetchrow(
+            """INSERT INTO chat_messages
+                   (thread_id, sender_id, sender_role, content, message_type,
+                    file_url, filename, file_size, file_path)
+               VALUES ($1, $2, 'user', $3, 'file', $4, $5, $6, $7)
+               RETURNING id, thread_id, sender_id, sender_role, content, message_type,
+                         file_url, filename, file_size, created_at""",
+            thread_id, current_user["id"], safe_name, file_url, safe_name,
+            len(content), obj_key,
         )
     except Exception:
-        pass
+        try:
+            storage.delete(obj_key)
+        except Exception:
+            logger.warning("Could not remove orphaned chat object %s", obj_key)
+        raise
 
-    # Broadcast to all WS subscribers of this thread
-    await chat_manager.broadcast(req.thread_id, {
-        "event": "new_message",
-        "message": dict(row),
-    })
-
-    recipient_id = (
-        auth["lawyer_user_id"]
-        if current_user["id"] == auth["client_id"]
-        else auth["client_id"]
-    )
-    await notification_manager.broadcast(f"user:{recipient_id}", {
-        "event": "new_message",
-        "thread_id": req.thread_id,
-        "sender_name": current_user.get("name") or "Someone",
-        "message": dict(row),
-    })
-
+    row["created_at"] = str(row["created_at"])
+    await _broadcast_chat_message(thread_id, current_user, auth, row)
     return {"message": row}
 
 
@@ -350,9 +442,11 @@ async def get_chat_messages(
     if before:
         # Cursor pagination: 50 messages before the timestamp, returned oldest-first
         rows = await fetch(
-            """SELECT id, thread_id, sender_id, sender_role, content, created_at
+            """SELECT id, thread_id, sender_id, sender_role, content, message_type,
+                      file_url, filename, file_size, created_at
                FROM (
-                   SELECT id, thread_id, sender_id, sender_role, content, created_at
+                   SELECT id, thread_id, sender_id, sender_role, content, message_type,
+                          file_url, filename, file_size, created_at
                    FROM chat_messages
                    WHERE thread_id = $1 AND created_at < $2::timestamptz
                    ORDER BY created_at DESC LIMIT 50
@@ -363,9 +457,11 @@ async def get_chat_messages(
     else:
         # Initial load: latest 50, returned oldest-first
         rows = await fetch(
-            """SELECT id, thread_id, sender_id, sender_role, content, created_at
+            """SELECT id, thread_id, sender_id, sender_role, content, message_type,
+                      file_url, filename, file_size, created_at
                FROM (
-                   SELECT id, thread_id, sender_id, sender_role, content, created_at
+                   SELECT id, thread_id, sender_id, sender_role, content, message_type,
+                          file_url, filename, file_size, created_at
                    FROM chat_messages WHERE thread_id = $1
                    ORDER BY created_at DESC LIMIT 50
                ) sub
