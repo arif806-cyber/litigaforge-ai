@@ -1041,7 +1041,6 @@ export default function ClientDashboard() {
           matchId={payingMatch.id}
           lawyerName={payingMatch.lawyer_name}
           caseTitle={`Case #${payingMatch.case_requirement_id}`}
-          budgetRange={undefined}
           onClose={() => setPayingMatch(null)}
           onSuccess={() => { setPayingMatch(null); qc.invalidateQueries({ queryKey: ["client-matches"] }); }}
         />

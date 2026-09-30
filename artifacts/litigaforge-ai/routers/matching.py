@@ -21,6 +21,15 @@ logger = get_logger("litigaforge.matching")
 router = APIRouter(tags=["matching"])
 
 
+def refund_within_decline_window(created_at, now=None) -> bool:
+    """A paid match is refundable through the exact 48-hour boundary."""
+    from datetime import datetime, timezone
+    now = now or datetime.now(timezone.utc)
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return (now - created_at).total_seconds() <= 48 * 3600
+
+
 # ── AI helpers (local copy for matching scoring) ─────────────────────────────
 
 import json
@@ -648,7 +657,7 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
 
 from payments import (
     calc_commission_paise, create_match_order, verify_payment, DEMO_TOKEN,
-    demo_payments_enabled, get_client,
+    demo_payments_enabled, get_client, refund_match_payment,
 )
 
 
@@ -689,6 +698,7 @@ async def create_match_payment(
     )
     order = create_match_order(match_id, current_user["id"], amount_paise)
     order["match_id"] = match_id
+    order["gst_inclusive"] = True
     return order
 
 
@@ -852,11 +862,35 @@ async def decline_match(
     if not is_lawyer and not is_client:
         raise HTTPException(403, "Not authorized")
 
+    refund_pending = False
+    if is_lawyer and match.get("payment_status") == "paid":
+        created = match.get("updated_at") or match.get("created_at")
+        if refund_within_decline_window(created):
+            try:
+                refund_match_payment(match.get("commission_payment_id"), int(match.get("commission_amount") or calc_commission_paise()))
+                await execute(
+                    "UPDATE matches SET status='declined', payment_status='refunded', updated_at=CURRENT_TIMESTAMP WHERE id=$1",
+                    match_id,
+                )
+                return {"message": "Match declined and booking fee refunded", "refunded": True}
+            except Exception as exc:
+                logger.warning("Match refund pending for %s: %s", match_id, type(exc).__name__)
+                refund_pending = True
+                await execute(
+                    """INSERT INTO match_refund_retries
+                       (match_id, payment_id, amount_paise, last_error, next_attempt_at)
+                       VALUES ($1,$2,$3,$4,CURRENT_TIMESTAMP)
+                       ON CONFLICT (match_id) DO UPDATE SET last_error=EXCLUDED.last_error,
+                       next_attempt_at=CURRENT_TIMESTAMP""",
+                    match_id, match.get("commission_payment_id"),
+                    int(match.get("commission_amount") or calc_commission_paise()), str(exc)[:500],
+                )
     await execute(
         "UPDATE matches SET status='declined', updated_at=CURRENT_TIMESTAMP WHERE id=$1",
         match_id,
     )
-    return {"message": "Match declined"}
+    return {"message": "Match declined; refund pending reconciliation" if refund_pending else "Match declined",
+            "refunded": False, "refund_pending": refund_pending}
 
 
 # ── Legacy PUT ────────────────────────────────────────────────────────────────

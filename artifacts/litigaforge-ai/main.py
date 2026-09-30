@@ -619,11 +619,38 @@ async def lifespan(app: FastAPI):
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS account_file_deletion_retries (
+                id BIGSERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                file_path TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                last_error TEXT,
+                next_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, file_path)
+            )
+        """)
+        await conn.execute("ALTER TABLE account_file_deletion_retries ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'")
+        await conn.execute("ALTER TABLE account_file_deletion_retries ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP")
         # ── matches: payment tracking columns (must follow CREATE TABLE matches) ─
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'none'")
         await conn.execute("ALTER TABLE matches ALTER COLUMN payment_status SET DEFAULT 'none'")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_payment_id TEXT")
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS match_refund_retries (
+                match_id INTEGER PRIMARY KEY REFERENCES matches(id) ON DELETE CASCADE,
+                payment_id TEXT NOT NULL,
+                amount_paise INTEGER NOT NULL,
+                last_error TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                next_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await conn.execute("ALTER TABLE match_refund_retries ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'")
+        await conn.execute("ALTER TABLE match_refund_retries ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP")
         # Idempotency and race-safety for match payments/threads. Clean up any
         # legacy duplicates before adding the constraints so startup remains
         # safe on databases created by older versions.
@@ -1409,7 +1436,12 @@ async def lifespan(app: FastAPI):
     # reloads/shutdowns never leave a task running against a closed pool.
     from routers.subscription import expire_subscriptions as _expire_subscriptions
     from subscription_scheduler import start_scheduler as _start_subscription_scheduler
-    app.state.subscription_scheduler = _start_subscription_scheduler(_expire_subscriptions)
+    from maintenance import run_daily_reconciliation as _run_daily_reconciliation
+    async def _daily_sweep() -> int:
+        expired = await _expire_subscriptions()
+        reconciled = await _run_daily_reconciliation()
+        return expired + reconciled
+    app.state.subscription_scheduler = _start_subscription_scheduler(_daily_sweep)
 
     # Daily product health check (production only). Deliberately independent
     # of FORGEOS_ENABLED — the table + scheduler must exist and run even if

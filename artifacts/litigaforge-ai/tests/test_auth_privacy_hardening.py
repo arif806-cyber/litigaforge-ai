@@ -252,7 +252,7 @@ async def test_profile_email_change_requires_new_verification(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_account_erasure_fails_before_db_when_storage_delete_fails(monkeypatch):
+async def test_account_erasure_commits_before_storage_failure_and_queues_retry(monkeypatch):
     import routers.auth as auth_router
 
     monkeypatch.setattr(
@@ -262,13 +262,25 @@ async def test_account_erasure_fails_before_db_when_storage_delete_fails(monkeyp
     )
     storage = type("Storage", (), {"delete": lambda self, key: (_ for _ in ()).throw(RuntimeError("storage down"))})()
     monkeypatch.setattr("storage.get_object_storage", lambda: storage)
-    get_pool = AsyncMock()
-    monkeypatch.setattr(auth_router, "get_pool", get_pool)
-
-    with pytest.raises(Exception) as error:
-        await auth_router.delete_account(_request(), Response(), {"id": 42})
-    assert "stored files" in str(error.value).lower()
-    get_pool.assert_not_awaited()
+    class Conn:
+        def transaction(self):
+            class Tx:
+                async def __aenter__(self): return self
+                async def __aexit__(self, *args): return False
+            return Tx()
+        async def execute(self, *args): return "OK"
+    class Pool:
+        def acquire(self):
+            class Acquire:
+                async def __aenter__(self): return Conn()
+                async def __aexit__(self, *args): return False
+            return Acquire()
+    monkeypatch.setattr(auth_router, "get_pool", AsyncMock(return_value=Pool()))
+    queued = AsyncMock()
+    monkeypatch.setattr(auth_router, "db_execute", queued)
+    await auth_router.delete_account(_request(), Response(), {"id": 42})
+    assert queued.await_count >= 1
+    assert "account_file_deletion_retries" in queued.await_args.args[0]
 
 
 def test_anonymous_update_is_tristate():

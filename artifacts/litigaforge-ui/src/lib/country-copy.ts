@@ -232,13 +232,13 @@ export const LEGAL_AID_COPY: Record<string, { pageTitle: string; pageSubtitle: s
 
 export const LAWYERS_COPY: Record<string, { pageTitle: string; pageSubtitle: string }> = {
   IN: { pageTitle: "Advocate Directory", pageSubtitle: "Browse advocate profiles for Telangana and Andhra Pradesh. Filter by city, practice area, and language." },
-  US: { pageTitle: "Attorney Directory", pageSubtitle: "Browse verified attorneys across the United States. Filter by state, practice area, and rating." },
-  GB: { pageTitle: "Solicitor Directory", pageSubtitle: "Browse verified solicitors across the United Kingdom. Filter by city, practice area, and rating." },
-  AE: { pageTitle: "Legal Consultant Directory", pageSubtitle: "Browse verified legal consultants across the UAE. Filter by emirate, practice area, and rating." },
-  AU: { pageTitle: "Solicitor Directory", pageSubtitle: "Browse verified solicitors across Australia. Filter by state, practice area, and rating." },
-  CA: { pageTitle: "Lawyer Directory", pageSubtitle: "Browse verified lawyers across Canada. Filter by province, practice area, and rating." },
-  SG: { pageTitle: "Advocate Directory", pageSubtitle: "Browse verified advocates across Singapore. Filter by practice area, language, and rating." },
-  DE: { pageTitle: "Anwaltsverzeichnis", pageSubtitle: "Durchsuchen Sie verifizierte Anw\u00e4lte in Deutschland. Filtern nach Stadt, Rechtsgebiet und Bewertung." },
+  US: { pageTitle: "Attorney Directory", pageSubtitle: "Browse attorney profiles across the United States. Filter by state and practice area." },
+  GB: { pageTitle: "Solicitor Directory", pageSubtitle: "Browse solicitor profiles across the United Kingdom. Filter by city and practice area." },
+  AE: { pageTitle: "Legal Consultant Directory", pageSubtitle: "Browse legal consultant profiles across the UAE. Filter by emirate and practice area." },
+  AU: { pageTitle: "Solicitor Directory", pageSubtitle: "Browse solicitor profiles across Australia. Filter by state and practice area." },
+  CA: { pageTitle: "Lawyer Directory", pageSubtitle: "Browse lawyer profiles across Canada. Filter by province and practice area." },
+  SG: { pageTitle: "Advocate Directory", pageSubtitle: "Browse advocate profiles across Singapore. Filter by practice area and language." },
+  DE: { pageTitle: "Anwaltsverzeichnis", pageSubtitle: "Durchsuchen Sie Anwaltsprofile in Deutschland. Filtern nach Stadt und Rechtsgebiet." },
 };
 
 export const CLIENT_DASHBOARD_COPY: Record<string, { pageTitle: string; pageSubtitle: string }> = {

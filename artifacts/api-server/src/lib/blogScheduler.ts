@@ -4,23 +4,34 @@ const BLOG_REPO = "arif806-cyber/litigaforge-blog";
 const WORKFLOW = "pipeline.yml";
 const DISPATCH_URL = `https://api.github.com/repos/${BLOG_REPO}/actions/workflows/${WORKFLOW}/dispatches`;
 
-/**
- * Returns the next "every 2 hours at :15 IST" slot strictly after `now`.
- *
- * :15 IST is minute 45 of an even UTC hour (e.g. 12:45 UTC = 18:15 IST), so the
- * cadence is 00:15, 02:15, 04:15 ... 18:15, 20:15, 22:15 IST.
- */
-function nextSlot(now: Date): Date {
-  const c = new Date(now);
-  c.setUTCSeconds(0, 0);
-  c.setUTCMinutes(45);
-  while (c.getTime() <= now.getTime() || c.getUTCHours() % 2 !== 0) {
-    c.setTime(c.getTime() + 60 * 60 * 1000);
-  }
-  return c;
+/** Return tomorrow's daily dispatch slot (00:45 UTC / 06:15 IST). */
+export function nextSlot(now: Date): Date {
+  const next = new Date(now);
+  next.setUTCHours(0, 45, 0, 0);
+  if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
+  return next;
 }
 
+/** Invalid or unavailable quota is deliberately fail-closed. */
+export function rollingArticleQuota(value: string | undefined): number | null {
+  if (value === undefined || !/^\d+$/.test(value.trim())) return null;
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : null;
+}
+
+let dispatchInFlight = false;
+let lastDispatchDay: string | null = null;
+
 async function triggerBlogPipeline(token: string): Promise<void> {
+  if (dispatchInFlight) return;
+  const quota = rollingArticleQuota(process.env["BLOG_ARTICLES_LAST_7_DAYS"]);
+  if (quota === null || quota >= 3) {
+    logger.warn("blog-scheduler: missing or exhausted rolling 7-day quota — not dispatching");
+    return;
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  if (lastDispatchDay === day) return;
+  dispatchInFlight = true;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   try {
@@ -32,34 +43,31 @@ async function triggerBlogPipeline(token: string): Promise<void> {
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "litigaforge-vm-scheduler",
       },
-      body: JSON.stringify({ ref: "main", inputs: { max_articles: "2" } }),
+      body: JSON.stringify({
+        ref: "main",
+        inputs: {
+          max_articles: String(Math.min(3 - quota, 3)),
+          country: "IN",
+          focus_regions: "Telangana,Andhra Pradesh",
+        },
+      }),
       signal: controller.signal,
     });
     if (res.status === 204) {
-      logger.info("blog-scheduler: pipeline triggered (HTTP 204)");
+      lastDispatchDay = day;
+      logger.info("blog-scheduler: India-focused pipeline triggered (HTTP 204)");
     } else {
-      const body = await res.text().catch(() => "");
-      logger.error(
-        { status: res.status, body },
-        "blog-scheduler: trigger failed",
-      );
+      logger.error({ status: res.status, body: await res.text().catch(() => "") }, "blog-scheduler: trigger failed");
     }
   } catch (err) {
     logger.error({ err }, "blog-scheduler: trigger error");
   } finally {
     clearTimeout(timeout);
+    dispatchInFlight = false;
   }
 }
 
-/**
- * Starts an in-process timer that triggers the LitigaForge blog content pipeline
- * (a GitHub Actions `workflow_dispatch`) every 2 hours, aligned to :15 IST.
- *
- * Runs only in the production deploy (`NODE_ENV === "production"`, which the
- * api-server artifact.toml sets for the live always-on VM), so local dev never
- * fires it. Replit's always-on VM is a reliable timer, unlike GitHub's free
- * `schedule` cron, which silently drops most scheduled runs.
- */
+/** Starts an in-process, fail-closed, at-most-daily India blog scheduler. */
 export function startBlogScheduler(): void {
   if (process.env["NODE_ENV"] !== "production") {
     logger.info("blog-scheduler: non-production environment — disabled");
@@ -67,25 +75,14 @@ export function startBlogScheduler(): void {
   }
   const token = process.env["GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE"];
   if (!token) {
-    logger.warn(
-      "blog-scheduler: GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE not set — disabled",
-    );
+    logger.warn("blog-scheduler: GITHUB_PERSONAL_ACCESS_TOKEN_NOEXPIRE not set — disabled");
     return;
   }
-
   const scheduleNext = (): void => {
     const now = new Date();
     const next = nextSlot(now);
     const delay = next.getTime() - now.getTime();
-    logger.info(
-      `blog-scheduler: next trigger at ${next.toISOString()} (in ${Math.round(
-        delay / 60000,
-      )} min)`,
-    );
-    setTimeout(() => {
-      void triggerBlogPipeline(token).finally(scheduleNext);
-    }, delay);
+    setTimeout(() => void triggerBlogPipeline(token).finally(scheduleNext), delay);
   };
-
   scheduleNext();
 }

@@ -388,7 +388,7 @@ export default function LawyersPage() {
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                   <Globe2 className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-2">Our verified directory is expanding to {dir.name}</h3>
+                 <h3 className="text-xl font-bold text-foreground mb-2">Our directory is expanding to {dir.name}</h3>
                 <p className="text-muted-foreground font-medium max-w-md text-center mb-8">
                   We're onboarding advocates in {dir.name} now. In the meantime, you can still post your case or be the first advocate listed here.
                 </p>

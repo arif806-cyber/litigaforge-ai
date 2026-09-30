@@ -113,6 +113,8 @@ const ROUTES = {
 };
 
 function inject(html, routePath, { title, ogTitle, desc, canonical, noIndex = false }) {
+  const nonIndiaBlog = /^\/(?:us|gb|ae|au|ca|sg|de)\/blog\/[^/]+/i.test(routePath);
+  noIndex = noIndex || nonIndiaBlog;
   const canonUrl = `${SITE}${canonical ?? routePath}`;
   const ogUrl = `${SITE}${routePath}`;
   return html

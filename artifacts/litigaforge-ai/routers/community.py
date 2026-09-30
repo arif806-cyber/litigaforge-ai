@@ -29,6 +29,7 @@ from jurisdiction import (
 )
 from llm import legal_llm
 from jobs import enqueue_job
+from public_ai_policy import enforce_public_ai_policy
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
@@ -462,6 +463,7 @@ def normalize_public_question(question: str) -> str:
 @limiter.limit("10/minute")
 async def ask_legal_question(req: QuestionRequest,
                              request: Request,
+                             _public_policy: None = Depends(enforce_public_ai_policy),
                              current_user: Optional[dict] = Depends(require_ask_access)):
     try:
         safe_question = sanitize_text(req.question, max_length=1000, field_name="question")
@@ -1312,6 +1314,12 @@ class LawyerRegisterRequest(BaseModel):
     country: str = "in"
 
 
+PUBLIC_DIRECTORY_FIELDS = frozenset({
+    "id", "name", "district", "city", "practice_areas", "languages",
+    "experience_years", "bio", "availability", "verification_status", "verified",
+})
+
+
 @router.get("/lawyers")
 async def list_lawyers(
     response: Response,
@@ -1356,16 +1364,16 @@ async def list_lawyers(
     where = "WHERE " + " AND ".join(conds)
     rows = await fetch(
         f"SELECT l.id, l.name, l.district, l.district AS city, l.practice_areas, "
-        f"l.languages, l.experience_years, l.rating, l.bio, l.hourly_rate, "
+        f"l.languages, l.experience_years, l.bio, "
         f"l.availability, l.verification_status, l.verified "
         f"FROM lawyers l "
         f"{where} "
         f"ORDER BY "
-        f"  l.rating DESC, l.experience_years DESC "
+        f"  l.experience_years DESC "
         f"LIMIT 50",
         *params,
     )
-    result = {"total": len(rows), "lawyers": rows}
+    result = {"total": len(rows), "lawyers": [{k: row[k] for k in PUBLIC_DIRECTORY_FIELDS if k in row} for row in rows]}
     await cache_set(ck, result, ttl=300)
     return result
 
@@ -1375,8 +1383,8 @@ async def get_public_lawyer(lawyer_id: int):
     """Public profile deliberately uses the same PII-free allowlist as the list."""
     row = await fetchrow(
         """SELECT id, name, district, district AS city, practice_areas, languages,
-                  experience_years, rating, verification_status, verified, bio,
-                  availability, hourly_rate
+                  experience_years, verification_status, verified, bio,
+                  availability
            FROM lawyers
            WHERE id = $1 AND verified = TRUE AND COALESCE(is_test, FALSE) = FALSE
              AND verification_status = 'verified'""",
@@ -1384,7 +1392,7 @@ async def get_public_lawyer(lawyer_id: int):
     )
     if not row:
         raise HTTPException(404, "Advocate not found")
-    return row
+    return {k: row[k] for k in PUBLIC_DIRECTORY_FIELDS if k in row}
 
 
 @router.post("/lawyers/register")

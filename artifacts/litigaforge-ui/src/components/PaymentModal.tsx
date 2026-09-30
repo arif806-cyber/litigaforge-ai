@@ -16,7 +16,6 @@ interface PaymentModalProps {
   matchId: number;
   lawyerName: string;
   caseTitle: string;
-  budgetRange?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -36,7 +35,7 @@ function formatPaise(paise: number) {
   return `₹${(paise / 100).toLocaleString("en-IN")}`;
 }
 
-export function PaymentModal({ matchId, lawyerName, caseTitle, budgetRange, onClose, onSuccess }: PaymentModalProps) {
+export function PaymentModal({ matchId, lawyerName, caseTitle, onClose, onSuccess }: PaymentModalProps) {
   const [step, setStep] = useState<"idle" | "loading" | "paying" | "success" | "error">("idle");
   const [order, setOrder] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -192,13 +191,10 @@ export function PaymentModal({ matchId, lawyerName, caseTitle, budgetRange, onCl
                 <div className="rounded-xl p-3.5 mb-4 flex items-center justify-between" style={{ background: "#1a2744" }}>
                   <div>
                     <p className="text-[10px] text-blue-200 mb-0.5">Platform Connection Fee</p>
-                    {budgetRange && (
-                      <p className="text-[10px] text-blue-300">Based on budget: {budgetRange}</p>
-                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold text-white">{formatPaise(amountPaise)}</p>
-                    <p className="text-[10px] text-blue-300">one-time · inc. GST</p>
+                     <p className="text-[10px] text-blue-300">one-time · incl. GST</p>
                   </div>
                 </div>
 

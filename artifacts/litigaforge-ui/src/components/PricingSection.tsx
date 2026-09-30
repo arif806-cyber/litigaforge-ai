@@ -66,9 +66,9 @@ const UI: Record<string, Record<string, string>> = {
     en: "/yr", es: "/año", hi: "/वर्ष", te: "/సంవత్సరం", ar: "/سنة", de: "/Jahr", fr: "/an",
   },
   compliance: {
-    en: "Prices in local currency; taxes may apply. LitigaForge is not a law firm and does not guarantee any legal outcome — we provide AI-generated information and verified-lawyer matching, not legal advice.",
-    es: "Precios en moneda local; pueden aplicarse impuestos. LitigaForge no es un bufete de abogados y no garantiza ningún resultado legal: ofrecemos información generada por IA y conexión con abogados verificados, no asesoría legal.",
-    hi: "कीमतें स्थानीय मुद्रा में; कर लागू हो सकते हैं। LitigaForge कोई विधि फर्म नहीं है और किसी कानूनी परिणाम की गारंटी नहीं देता — हम AI-जनित जानकारी और सत्यापित वकील मिलान प्रदान करते हैं, कानूनी सलाह नहीं।",
+    en: "Prices in local currency; taxes may apply. LitigaForge is not a law firm and does not guarantee any legal outcome — we provide AI-generated information and advocate matching, not legal advice.",
+    es: "Precios en moneda local; pueden aplicarse impuestos. LitigaForge no es un bufete de abogados y no garantiza ningún resultado legal: ofrecemos información generada por IA y conexión con abogados, no asesoría legal.",
+    hi: "कीमतें स्थानीय मुद्रा में; कर लागू हो सकते हैं। LitigaForge कोई विधि फर्म नहीं है और किसी कानूनी परिणाम की गारंटी नहीं देता — हम AI-जनित जानकारी और वकील मिलान प्रदान करते हैं, कानूनी सलाह नहीं।",
     te: "ధరలు స్థానిక కరెన్సీలో; పన్నులు వర్తించవచ్చు. LitigaForge ఒక లా సంస్థ కాదు మరియు ఏ న్యాయ ఫలితానికీ హామీ ఇవ్వదు — మేము AI రూపొందించిన సమాచారం మరియు ధ్రువీకరించిన న్యాయవాదుల మ్యాచింగ్ అందిస్తాము, న్యాయ సలహా కాదు.",
     ar: "الأسعار بالعملة المحلية، وقد تُطبَّق ضرائب. LitigaForge ليست مكتب محاماة ولا تضمن أي نتيجة قانونية — نقدّم معلومات مُولَّدة بالذكاء الاصطناعي ومطابقة مع محامين موثّقين، وليست استشارة قانونية.",
     de: "Preise in Landeswährung; ggf. zzgl. Steuern. LitigaForge ist keine Anwaltskanzlei und garantiert kein rechtliches Ergebnis — wir bieten KI-generierte Informationen und die Vermittlung verifizierter Anwälte, keine Rechtsberatung.",

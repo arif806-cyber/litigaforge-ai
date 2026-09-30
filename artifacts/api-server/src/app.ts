@@ -125,6 +125,13 @@ const _blogProxy = async (
       redirect: "follow",
     });
     res.status(upstream.status);
+    // Blog content is India-only. Country-prefixed non-India articles must
+    // not be indexed even when the upstream Worker omits the header.
+    const blogPath = req.path.toLowerCase();
+    const nonIndiaBlog = /^\/(?:us|gb|ae|au|ca|sg|de)\/blog\/[^/]+/.test(blogPath) ||
+      (/^\/blog\/[^/]+/.test(blogPath) &&
+        !/(?:india|indian|telangana|andhra|hyderabad|nalsa|tslsa)/i.test(blogPath));
+    if (nonIndiaBlog) res.setHeader("X-Robots-Tag", "noindex, nofollow");
     for (const h of ["content-type", "cache-control", "etag", "last-modified"]) {
       const v = upstream.headers.get(h);
       if (v) res.setHeader(h, v);
@@ -1273,6 +1280,11 @@ if (true) { // serve frontend in both dev and production when dist exists
 
     if (_indexHtml) {
       const _sendIndex = (req: express.Request, res: express.Response): void => {
+        const path = req.path.toLowerCase();
+        const nonIndiaBlog = /^\/(?:us|gb|ae|au|ca|sg|de)\/blog\/[^/]+/.test(path) ||
+          (/^\/blog\/[^/]+/.test(path) &&
+            !/(?:india|indian|telangana|andhra|hyderabad|nalsa|tslsa)/i.test(path));
+        if (nonIndiaBlog) res.setHeader("X-Robots-Tag", "noindex, nofollow");
         const ua = req.headers["user-agent"] ?? "";
         if (_staticBotHtml && _botPattern.test(ua)) {
           res.setHeader("Cache-Control", "public, max-age=3600");

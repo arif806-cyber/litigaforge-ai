@@ -8,12 +8,16 @@ import {
   Link2, Check, MessageSquareText, FileText,
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { truncateTitle } from "@/lib/title";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SaveToResearch } from "@/components/research";
 import { IKanoonAttribution } from "@/components/IKanoonAttribution";
 import { useAuth } from "@/lib/auth-context";
+
+const REVIEWER_NAME = import.meta.env.VITE_ARTICLE_REVIEWER_NAME?.trim();
+const REVIEWER_ENROLMENT = import.meta.env.VITE_ARTICLE_REVIEWER_ENROLMENT?.trim();
 
 interface RelatedItem {
   case_name: string;
@@ -165,7 +169,7 @@ export default function JudgmentDetail() {
     "@graph": [
       {
         "@type": "BlogPosting",
-        headline: j.case_name,
+        headline: truncateTitle(j.case_name),
         description: summaryShort,
         datePublished: j.judgment_date || undefined,
         dateModified: j.judgment_date || undefined,
@@ -193,7 +197,7 @@ export default function JudgmentDetail() {
 
   return (<>
     <SEOHelmet
-      title={`${j.case_name} (${j.year}) — ${j.court} | LitigaForge`}
+      title={truncateTitle(`${j.case_name} (${j.year}) — ${j.court} | LitigaForge`)}
       description={j.summary_en?.slice(0, 160) || `${j.case_name}: ${j.outcome}`}
       canonical={j.path}
       ogImage={j.og_image_url}
@@ -202,6 +206,11 @@ export default function JudgmentDetail() {
     />
 
     <article className="max-w-4xl mx-auto px-4 md:px-6 py-5 space-y-8">
+      {REVIEWER_NAME && REVIEWER_ENROLMENT && (
+        <p className="text-xs text-muted-foreground">
+          Reviewed by {REVIEWER_NAME} ({REVIEWER_ENROLMENT})
+        </p>
+      )}
       {/* back link */}
       <Link
         href="/judgments"

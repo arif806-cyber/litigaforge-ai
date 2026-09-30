@@ -166,7 +166,6 @@ export default function Matches() {
           matchId={payingMatch.id}
           lawyerName={payingMatch.lawyer_name}
           caseTitle={payingMatch.case_title}
-          budgetRange={payingMatch.budget_range}
           onClose={() => setPayingMatch(null)}
           onSuccess={() => {
             setPayingMatch(null);

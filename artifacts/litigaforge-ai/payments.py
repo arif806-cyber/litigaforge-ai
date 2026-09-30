@@ -104,7 +104,9 @@ def create_match_order(match_id: int, client_id: int, amount_paise: int) -> dict
             "amount": amount_paise,
             "currency": "INR",
             "demo_token": DEMO_TOKEN,
-            "notes": {"match_id": str(match_id), "client_id": str(client_id)},
+            "notes": {"match_id": str(match_id), "client_id": str(client_id),
+                      "gst_inclusive": "true", "purpose": "connection_fee"},
+            "gst_inclusive": True,
         }
     if not _keys_present():
         raise RuntimeError("Live Razorpay keys are required for match payments")
@@ -118,11 +120,22 @@ def create_match_order(match_id: int, client_id: int, amount_paise: int) -> dict
             "match_id": str(match_id),
             "client_id": str(client_id),
             "purpose": "connection_fee",
+            "gst_inclusive": "true",
         },
     })
     order["key"] = key_id
     order["demo_mode"] = False
     return order
+
+
+def refund_match_payment(payment_id: str, amount_paise: int) -> dict:
+    """Refund a paid connection fee; callers persist retry state on failure."""
+    if payment_id == "DEMO_PAID" and demo_payments_enabled():
+        return {"id": "DEMO_REFUND", "status": "processed"}
+    return _get_client().payment.refund(payment_id, {
+        "amount": int(amount_paise),
+        "notes": {"purpose": "connection_fee_refund", "gst_inclusive": "true"},
+    })
 
 
 def verify_payment(

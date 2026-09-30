@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { getPathWithoutCountry } from "@/lib/country";
+import { truncateTitle } from "@/lib/title";
 
 const SITE_URL = "https://litigaforge.com";
 const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
@@ -36,7 +37,7 @@ export function SEOHelmet({
   const title = _title ?? POSITIONING;
   const description = _description ?? "Case tracking and legal tools for advocates in Telangana and Andhra Pradesh.";
   const keywords = _keywords ?? DEFAULT_KEYWORDS;
-  const fullTitle = title.includes("LitigaForge") ? title : `${title} | LitigaForge`;
+  const fullTitle = truncateTitle(title.includes("LitigaForge") ? title : `${title} | LitigaForge`);
   // Self-referencing canonical: use the explicit prop when given, otherwise
   // derive it from the current path stripped of its country prefix so every
   // page canonicalizes to its bare URL (e.g. /in/ask and /us/ask -> /ask)

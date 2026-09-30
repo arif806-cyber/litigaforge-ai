@@ -83,8 +83,8 @@ interface CountryLandingProps {
 }
 
 export default function CountryLanding({ countryCode = "IN" }: CountryLandingProps) {
-  // LitigaForge currently serves the India product scope only.
-  const cc = "IN";
+  const cc = countryCode.toUpperCase();
+  const isIndia = cc === "IN";
   const { t, lang } = useLanguage(cc);
   const content = getLandingContent(cc);
   const isRtl = lang === "ar";
@@ -95,7 +95,7 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
   const arrow = `w-4 h-4 ${isRtl ? "rotate-180" : ""}`;
 
   const navLinks = [
-    { href: "/ask", label: tr("nav_ask"), testid: "link-nav-ask" },
+    ...(isIndia ? [{ href: "/ask", label: tr("nav_ask"), testid: "link-nav-ask" }] : []),
     { href: "/free-documents", label: tr("nav_documents"), testid: "link-nav-documents" },
     { href: "/lawyers", label: tr("nav_find_lawyer"), testid: "link-nav-find-lawyer" },
     { href: "/for-lawyers", label: tr("nav_for_lawyers"), testid: "link-nav-for-lawyers" },
@@ -219,15 +219,15 @@ export default function CountryLanding({ countryCode = "IN" }: CountryLandingPro
                 <Chip>{tr("benefit_instant")}</Chip>
               </div>
 
-              {/* CTAs — primary = Ask (free), secondary = Post a case */}
+              {/* India offers free Ask; other country landings only offer case intake. */}
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-7">
-                <Link
+                {isIndia && <Link
                   href="/ask"
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition shadow-lg shadow-primary/20"
                   data-testid="button-ask-ai"
                 >
                   <Sparkles className="w-4 h-4" /> {tr("ask_free")}
-                </Link>
+                </Link>}
                 <Link
                   href="/post-case"
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-border bg-card font-semibold hover:border-primary/40 transition"

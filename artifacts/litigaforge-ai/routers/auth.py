@@ -469,7 +469,8 @@ async def delete_account(
     """
     user_id = current_user["id"]
 
-    # 1. Delete files from the configured provider (or legacy local disk)
+    # Capture paths before erasure. Database deletion is committed first; file
+    # cleanup is best-effort and can never block the user's right to erasure.
     docs = list(await db_fetch(
         "SELECT file_path FROM client_documents WHERE client_id = $1", user_id
     ))
@@ -479,41 +480,10 @@ async def delete_account(
         user_id,
     )
     docs.extend(advocate_docs)
-    for doc in docs:
-        fp = doc.get("file_path") or ""
-        if not fp:
-            continue
-        if fp.startswith(("http://", "https://")):
-            # External references are removed with the row, but are not objects
-            # owned by LitigaForge and must not be deleted remotely.
-            continue
-        if not fp.startswith("/"):
-            # Object storage key
-            try:
-                from storage import get_object_storage
-                storage = get_object_storage()
-                if storage is None:
-                    raise RuntimeError("configured object storage is unavailable")
-                storage.delete(fp)
-            except Exception as exc:
-                logger.error("Account erasure could not delete object %s: %s", fp, exc)
-                raise HTTPException(
-                    503,
-                    "Account deletion is temporarily unavailable because stored files "
-                    "could not be removed. Please retry.",
-                )
-        else:
-            try:
-                p = _pathlib.Path(fp)
-                if p.is_file():
-                    _os.remove(p)
-            except OSError as exc:
-                logger.error("Account erasure could not delete local file %s: %s", fp, exc)
-                raise HTTPException(
-                    503,
-                    "Account deletion is temporarily unavailable because stored files "
-                    "could not be removed. Please retry.",
-                )
+    file_paths = [
+        doc.get("file_path") for doc in docs
+        if doc.get("file_path") and not doc.get("file_path", "").startswith(("http://", "https://"))
+    ]
 
     # 2. Delete all related records in one DB transaction. Threads must be
     # removed before matches for both client-owned and advocate-owned matches;
@@ -556,6 +526,32 @@ async def delete_account(
             await conn.execute("DELETE FROM legal_questions WHERE user_id = $1", user_id)
             await conn.execute("DELETE FROM subscriptions WHERE user_id = $1", user_id)
             await conn.execute("DELETE FROM users WHERE id = $1", user_id)
+
+    # Best-effort cleanup after the transaction has committed. Failures are
+    # durable and retried by the maintenance job; erasure has already completed.
+    for fp in file_paths:
+        try:
+            if not fp.startswith("/"):
+                from storage import get_object_storage
+                storage = get_object_storage()
+                if storage is None:
+                    raise RuntimeError("configured object storage is unavailable")
+                storage.delete(fp)
+            else:
+                p = _pathlib.Path(fp)
+                if p.is_file():
+                    _os.remove(p)
+        except Exception as exc:
+            logger.error("Account erasure file cleanup queued for %s: %s", fp, exc)
+            await db_execute(
+                """INSERT INTO account_file_deletion_retries (user_id, file_path, last_error)
+                   VALUES ($1, $2, $3)
+                   ON CONFLICT (user_id, file_path) DO UPDATE SET
+                     attempts = account_file_deletion_retries.attempts + 1,
+                     last_error = EXCLUDED.last_error,
+                     next_attempt_at = CURRENT_TIMESTAMP""",
+                user_id, fp, str(exc)[:500],
+            )
 
     # 4. Clear browser cookies
     clear_auth_cookie(response)
