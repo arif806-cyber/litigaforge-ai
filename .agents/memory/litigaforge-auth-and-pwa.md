@@ -9,6 +9,14 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 **Why:** a browser-held JWT defeats the XSS protection provided by httpOnly cookies. A real-browser registration/reload test confirmed cookie-only session persistence without local/session storage tokens.
 
+# A frozen production database can look like a login outage
+
+- When valid password sign-in returns a generic 500 while a development login test succeeds, check production database status before changing auth code. A frozen production database blocks read-only production SQL with an explicit frozen-state error and may produce database connection errors in deployment logs. Replit's documented recovery is Database tool → production database → Settings → **Unpause database**; if that control is absent, check whether a `DATABASE_URL` secret overrides the managed connection.
+
+**Why:** development and production databases are separate, so a healthy dev auth flow does not prove the published app's database is available.
+
+**How to apply:** use only a read-only production lookup/log inspection to diagnose; don't unfreeze or change production settings without the user.
+
 # The initial `/auth/me` probe must refresh-then-retry on 401 before logging out
 
 - Access tokens are short-lived but refresh cookies last longer. A 401 from `/auth/me` does not necessarily mean "logged out": call `/auth/refresh` and retry `/auth/me` once. Only if refresh fails is the session truly gone. Network errors must not be treated as logout.
