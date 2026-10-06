@@ -11,11 +11,11 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 # Confirm the app's production database before acting on a frozen DB
 
-- A `.neon.tech` host alone does not distinguish user-managed Neon from Replit-managed Postgres. A frozen Replit database may explain login 500s, and a duplicate `DATABASE_URL` secret can override the runtime-managed value and hide **Unpause**. Confirm the active provider before removing the override.
+- A `.neon.tech` host alone does not distinguish user-managed Neon from Replit-managed Postgres. A frozen Replit database may explain login 500s, and a duplicate `DATABASE_URL` secret can override the runtime-managed value and hide **Unpause**. If the Database tool says the account has PostgreSQL restrictions, only Replit Support can clear that account-level block; don't keep changing URLs or code.
 
 **Why:** Replit-managed Postgres can use Neon-hosted endpoints, while this app can also be configured for an external PostgreSQL connection; confusing the two can disconnect production.
 
-**How to apply:** inspect only secret existence/scope and the app's configured provider, never print the URL. If a database credential is disclosed in chat, treat it as compromised and tell the user to regenerate it in the Database tool when Replit-managed, or rotate it with the external provider; never store the replacement in project memory.
+**How to apply:** inspect only secret existence/scope and the app's configured provider, never print the URL. If a database credential is disclosed in chat, treat it as compromised and tell the user to regenerate it in the Database tool when Replit-managed, or rotate it with the external provider; never store the replacement in project memory. For an account-restriction banner, give support the project URL and request review/unpause.
 
 # The initial `/auth/me` probe must refresh-then-retry on 401 before logging out
 
