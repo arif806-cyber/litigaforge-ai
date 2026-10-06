@@ -11,11 +11,11 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 # Confirm the app's production database before acting on a frozen DB
 
-- A frozen status from Replit's managed production database does not prove the app uses that database. If `DATABASE_URL` is configured for an external provider, Replit's SQL tool may be reporting a separate database. Never recommend deleting `DATABASE_URL` until the active app connection and intended provider are confirmed.
+- A `.neon.tech` host alone does not distinguish user-managed Neon from Replit-managed Postgres. A frozen Replit database may explain login 500s, and a duplicate `DATABASE_URL` secret can override the runtime-managed value and hide **Unpause**. Confirm the active provider before removing the override.
 
-**Why:** this app can use an external PostgreSQL connection while Replit's managed database remains a separate service; confusing them can disconnect production.
+**Why:** Replit-managed Postgres can use Neon-hosted endpoints, while this app can also be configured for an external PostgreSQL connection; confusing the two can disconnect production.
 
-**How to apply:** inspect only secret existence/scope and the app's configured provider, never print the URL. If a database credential is disclosed in chat, treat it as compromised and tell the user to rotate it with the provider, then store the replacement through Replit's secret flow.
+**How to apply:** inspect only secret existence/scope and the app's configured provider, never print the URL. If a database credential is disclosed in chat, treat it as compromised and tell the user to regenerate it in the Database tool when Replit-managed, or rotate it with the external provider; never store the replacement in project memory.
 
 # The initial `/auth/me` probe must refresh-then-retry on 401 before logging out
 
