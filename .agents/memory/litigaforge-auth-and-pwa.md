@@ -9,13 +9,13 @@ description: Cookie-only auth refresh contract for the initial /auth/me probe, a
 
 **Why:** a browser-held JWT defeats the XSS protection provided by httpOnly cookies. A real-browser registration/reload test confirmed cookie-only session persistence without local/session storage tokens.
 
-# A frozen production database can look like a login outage
+# Confirm the app's production database before acting on a frozen DB
 
-- When valid password sign-in returns a generic 500 while a development login test succeeds, check production database status before changing auth code. A frozen production database blocks read-only production SQL with an explicit frozen-state error and may produce database connection errors in deployment logs. Replit's documented recovery is Database tool → production database → Settings → **Unpause database**; if that control is absent, check whether a `DATABASE_URL` secret overrides the managed connection.
+- A frozen status from Replit's managed production database does not prove the app uses that database. If `DATABASE_URL` is configured for an external provider, Replit's SQL tool may be reporting a separate database. Never recommend deleting `DATABASE_URL` until the active app connection and intended provider are confirmed.
 
-**Why:** development and production databases are separate, so a healthy dev auth flow does not prove the published app's database is available.
+**Why:** this app can use an external PostgreSQL connection while Replit's managed database remains a separate service; confusing them can disconnect production.
 
-**How to apply:** use only a read-only production lookup/log inspection to diagnose; don't unfreeze or change production settings without the user.
+**How to apply:** inspect only secret existence/scope and the app's configured provider, never print the URL. If a database credential is disclosed in chat, treat it as compromised and tell the user to rotate it with the provider, then store the replacement through Replit's secret flow.
 
 # The initial `/auth/me` probe must refresh-then-retry on 401 before logging out
 
