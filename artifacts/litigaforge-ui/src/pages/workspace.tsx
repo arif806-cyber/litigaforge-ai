@@ -535,7 +535,7 @@ export default function ForgeWorkspace() {
           });
         }
       }
-      // If no sessions, stay on welcome screen so user can choose blank or demo
+      // Without an incoming judgment, keep users without sessions on the welcome screen.
     } catch {
       addToast({ type: "error", message: "Failed to load workspaces", detail: "Check your connection and refresh." });
     } finally {
