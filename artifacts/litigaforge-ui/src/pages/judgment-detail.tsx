@@ -117,6 +117,19 @@ export default function JudgmentDetail() {
 
   const shareUrl = j?.url ?? "";
   const shareText = j ? `${j.case_name} — ${j.outcome || "Judgment summary"} | LitigaForge` : "";
+  const workspacePath = j
+    ? `/workspace?${new URLSearchParams({
+        judgment_court: j.court_slug,
+        judgment_year: String(j.year),
+        judgment_slug: j.slug,
+      }).toString()}`
+    : "/workspace";
+  const workspaceHref = user
+    ? workspacePath
+    : `/register?${new URLSearchParams({
+        role: "advocate",
+        next: workspacePath,
+      }).toString()}`;
 
   const share = (network: "whatsapp" | "twitter" | "linkedin") => {
     if (!shareUrl) return;
@@ -367,7 +380,7 @@ export default function JudgmentDetail() {
           <h2 className="text-base font-bold text-foreground">Build this into your case strategy</h2>
           <p className="text-sm text-muted-foreground mt-1">Open a visual Workspace to connect this precedent with facts and arguments.</p>
         </div>
-        <Link href={user ? "/workspace" : "/register?role=advocate&next=/workspace"}>
+        <Link href={workspaceHref}>
           <Button data-testid="cta-open-workspace" className="flex-shrink-0">
             Open in Workspace <ArrowRight className="w-4 h-4 ml-2" />
           </Button>

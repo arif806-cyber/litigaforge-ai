@@ -129,7 +129,10 @@ function WorkspaceRoute() {
   // An advocate's directory profile is a required onboarding step before they
   // can create a Workspace. Preserve the intended destination for completion.
   if ((user.role === "advocate" || user.role === "lawyer") && !user.lawyer_status) {
-    try { sessionStorage.setItem("lf_return_to", "/workspace"); } catch { /* ignore */ }
+    try {
+      const destination = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      sessionStorage.setItem("lf_return_to", destination);
+    } catch { /* ignore */ }
     return <Redirect to="/lawyers/register" />;
   }
   return <ForgeWorkspace />;

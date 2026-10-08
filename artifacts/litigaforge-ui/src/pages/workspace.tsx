@@ -44,7 +44,51 @@ interface SearchResult {
   total: number;
 }
 
+interface JudgmentOpenRequest {
+  court: string;
+  year: string;
+  slug: string;
+  key: string;
+}
+
+interface WorkspaceJudgment {
+  id: number;
+  case_name: string;
+  court: string;
+  year: number;
+  summary_en?: string;
+  outcome?: string;
+  citation?: string;
+  acts_cited?: string[];
+  source_url?: string;
+  url?: string;
+  path: string;
+}
+
 const BASE = "/litigaforge";
+
+function readJudgmentOpenRequest(): JudgmentOpenRequest | null {
+  const params = new URLSearchParams(window.location.search);
+  const court = params.get("judgment_court") ?? "";
+  const year = params.get("judgment_year") ?? "";
+  const slug = params.get("judgment_slug") ?? "";
+  if (!/^[a-z0-9-]+$/i.test(court) || !/^\d{4}$/.test(year) || !/^[a-z0-9-]+$/i.test(slug)) {
+    return null;
+  }
+  return { court, year, slug, key: `${court}/${year}/${slug}` };
+}
+
+function clearJudgmentOpenRequest() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("judgment_court");
+  url.searchParams.delete("judgment_year");
+  url.searchParams.delete("judgment_slug");
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${url.pathname}${url.search}${url.hash}`,
+  );
+}
 
 async function api(path: string, opts: RequestInit = {}) {
   let res = await fetch(`${BASE}${path}`, {
@@ -304,6 +348,7 @@ export default function ForgeWorkspace() {
   }>>([]);
   const [isFetchingFolderFiles, setIsFetchingFolderFiles] = useState(false);
   const [showNewSessionDialog, setShowNewSessionDialog] = useState(false);
+  const handledJudgmentRequestRef = useRef<string | null>(null);
 
   function focusInput() {
     setLeftCollapsed(false);
@@ -408,11 +453,87 @@ export default function ForgeWorkspace() {
   async function loadSessions() {
     setIsLoadingSessions(true);
     try {
+      const judgmentRequest = readJudgmentOpenRequest();
       const res  = await api("/workspace/sessions");
       const list = await res.json() as WorkspaceSession[];
       setSessions(list);
+      let activeSession: WorkspaceSession | null = null;
       if (list.length > 0) {
-        await openSession(list[0]);
+        activeSession = await openSession(list[0]);
+      }
+      if (judgmentRequest && handledJudgmentRequestRef.current !== judgmentRequest.key) {
+        handledJudgmentRequestRef.current = judgmentRequest.key;
+        try {
+          const judgmentRes = await api(
+            `/judgments/item/${encodeURIComponent(judgmentRequest.court)}/${judgmentRequest.year}/${encodeURIComponent(judgmentRequest.slug)}`,
+          );
+          const judgment = await judgmentRes.json() as WorkspaceJudgment;
+          if (!activeSession) {
+            activeSession = await createSession(`Research — ${judgment.case_name}`);
+          }
+          if (!activeSession) throw new Error("Could not create a workspace for this judgment.");
+
+          const currentNodes = (activeSession.nodes_json ?? []) as Node[];
+          const currentEdges = (activeSession.edges_json ?? []) as Edge[];
+          const duplicate = currentNodes.find(node => {
+            if (node.type !== "judgment") return false;
+            const data = node.data as Record<string, unknown>;
+            return data.judgment_id === judgment.id || data.judgment_path === judgment.path;
+          });
+
+          if (duplicate) {
+            addToast({
+              type: "success",
+              message: "Judgment is already in this workspace",
+              detail: judgment.case_name,
+            });
+          } else {
+            const baseId = `judgment-${judgment.id}`;
+            let nodeId = baseId;
+            let suffix = 2;
+            while (currentNodes.some(node => node.id === nodeId)) {
+              nodeId = `${baseId}-${suffix++}`;
+            }
+            const newNode: Node = {
+              id: nodeId,
+              type: "judgment",
+              position: findOpenPosition(currentNodes),
+              data: {
+                label: judgment.case_name,
+                court: judgment.court,
+                year: judgment.year,
+                summary: judgment.summary_en || judgment.outcome || "",
+                citation: judgment.citation || "",
+                acts_cited: judgment.acts_cited ?? [],
+                impact_score: 75,
+                url: judgment.source_url || judgment.url || "",
+                judgment_id: judgment.id,
+                judgment_path: judgment.path,
+              },
+            };
+            const nextNodes = [...currentNodes, newNode];
+            await api(`/workspace/sessions/${activeSession.id}/canvas`, {
+              method: "PUT",
+              body: JSON.stringify({ nodes: nextNodes, edges: currentEdges }),
+            });
+            setNodes(nextNodes);
+            setEdges(currentEdges);
+            setFitViewTrigger(value => value + 1);
+            addToast({
+              type: "success",
+              message: "Judgment added to your workspace",
+              detail: judgment.case_name,
+            });
+          }
+          clearJudgmentOpenRequest();
+        } catch (error) {
+          handledJudgmentRequestRef.current = null;
+          addToast({
+            type: "error",
+            message: "Could not open this judgment in Workspace",
+            detail: error instanceof Error ? error.message : "Please try again.",
+          });
+        }
       }
       // If no sessions, stay on welcome screen so user can choose blank or demo
     } catch {
@@ -422,7 +543,7 @@ export default function ForgeWorkspace() {
     }
   }
 
-  async function createSession(title = "Untitled Workspace", startFromPattern = false) {
+  async function createSession(title = "Untitled Workspace", startFromPattern = false): Promise<WorkspaceSession | null> {
     try {
       const res = await api("/workspace/sessions", {
         method: "POST",
@@ -464,8 +585,10 @@ export default function ForgeWorkspace() {
         setSuggestions([]);
         addToast({ type: "success", message: "Started from your Legal Twin pattern", detail: `${patternNodes.length} familiar canvas building blocks added.` });
       }
+      return s;
     } catch {
       addToast({ type: "error", message: "Could not create workspace", detail: "Check your connection and try again." });
+      return null;
     }
   }
 
@@ -501,7 +624,7 @@ export default function ForgeWorkspace() {
     }
   }
 
-  async function openSession(s: WorkspaceSession) {
+  async function openSession(s: WorkspaceSession): Promise<WorkspaceSession | null> {
     try {
       setSessionFolder(null);
       const res  = await api(`/workspace/sessions/${s.id}`);
@@ -538,8 +661,10 @@ export default function ForgeWorkspace() {
           }
         }
       } catch { /* feedback load is non-critical */ }
+      return full;
     } catch {
       addToast({ type: "error", message: "Failed to open workspace", detail: "The session may have been deleted." });
+      return null;
     }
   }
 
