@@ -42,6 +42,7 @@ from database import (
     fetchval as db_fetchval,
 )
 from logger import get_logger
+from services import court_data_client
 
 logger = get_logger("litigaforge.court_intelligence")
 router = APIRouter(tags=["court-intelligence"])
@@ -51,17 +52,14 @@ _BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 _LIVETRACK_TIERS = {"professional", "advocate_pro"}
 
 # ── CNR validation ──────────────────────────────────────────────────────────────
-_CNR_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{4}\d{6}\d{4}$", re.IGNORECASE)
-
-
 def _validate_cnr(cnr: str) -> str:
-    cleaned = re.sub(r"[\s\-/]", "", cnr.upper().strip())
-    if not _CNR_RE.match(cleaned):
+    try:
+        return court_data_client.normalize_cnr(cnr)
+    except ValueError as exc:
         raise HTTPException(
             status_code=422,
-            detail="Invalid CNR format. Expected 16-character code like TLHC010012342023.",
-        )
-    return cleaned
+            detail="Invalid CNR format. Expected 4 letters followed by 12 digits.",
+        ) from exc
 
 
 def _assert_owns(row: dict | None, user_id: int) -> dict:
@@ -139,28 +137,18 @@ class OpponentScanRequest(BaseModel):
 async def _trigger_single_refresh(tracked_case_id: str, cnr: str) -> None:
     """
     Fetch fresh data from eCourtsIndia for one tracked case and persist a snapshot.
-    Always stamps last_refreshed (even on failure) so the UI exits "Pending first fetch…".
+    The client writes success timestamps only after the snapshot transaction commits.
     """
     try:
         from services.court_data_client import get_case_by_cnr
-        # Shorter timeout than the nightly worker (30s×3) for on-demand fetches —
-        # 15s per attempt × 2 retries = ≤31s so the UI re-fetches promptly.
+        # The paid refresh POST is made once; only its following detail GET is retried.
         await get_case_by_cnr(tracked_case_id, cnr, timeout=15.0, retries=2)
         logger.info("Immediate refresh done: tracked_case_id=%s cnr=%s", tracked_case_id, cnr)
-    except RuntimeError as exc:
-        logger.warning("API key not set — skipping immediate refresh for %s: %s", cnr, exc)
     except Exception as exc:
-        logger.warning("Immediate refresh failed (will stamp last_refreshed anyway) for %s: %s", tracked_case_id, exc)
-    finally:
-        # Always stamp last_refreshed so the frontend exits "Pending first fetch…"
-        # regardless of whether the upstream API succeeded, timed out, or was absent.
-        try:
-            await db_execute(
-                "UPDATE tracked_cases SET last_refreshed = now() WHERE id = $1::uuid",
-                tracked_case_id,
-            )
-        except Exception as stamp_err:
-            logger.warning("Failed to stamp last_refreshed for %s: %s", tracked_case_id, stamp_err)
+        logger.warning(
+            "Immediate eCourts refresh failed for tracked_case_id=%s (%s)",
+            tracked_case_id, type(exc).__name__,
+        )
 
 
 # ── POST /court-intel/track ────────────────────────────────────────────────────
@@ -183,7 +171,12 @@ async def track_case(
             raise HTTPException(status_code=409, detail="You are already tracking this CNR.")
         tc_id = str(existing["id"])
         await db_execute(
-            "UPDATE tracked_cases SET is_active = true, added_at = now() WHERE id = $1::uuid",
+            """
+            UPDATE tracked_cases
+            SET is_active = true, added_at = now(),
+                refresh_status = 'pending', refresh_error = NULL
+            WHERE id = $1::uuid
+            """,
             tc_id,
         )
         background_tasks.add_task(_trigger_single_refresh, tc_id, cnr)
@@ -211,6 +204,7 @@ async def my_tracked_cases(user: dict = Depends(require_user)):
         """
         SELECT tc.id::text, tc.cnr, tc.case_type, tc.court_name,
                tc.added_at, tc.last_refreshed, tc.is_active,
+               tc.refresh_status, tc.refresh_error,
                cs.case_status, cs.next_hearing_date
         FROM   tracked_cases tc
         LEFT JOIN LATERAL (
@@ -235,7 +229,8 @@ async def my_tracked_cases(user: dict = Depends(require_user)):
 @router.get("/court-intel/{case_id}/timeline")
 async def get_timeline(case_id: str, user: dict = Depends(require_user)):
     row = await db_fetchrow(
-        "SELECT id, user_id, cnr, case_type, court_name, last_refreshed, is_active "
+        "SELECT id, user_id, cnr, case_type, court_name, last_refreshed, is_active, "
+        "refresh_status, refresh_error "
         "FROM tracked_cases WHERE id = $1::uuid",
         case_id,
     )
@@ -259,6 +254,8 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
         "case_type":      row["case_type"],
         "court_name":     row["court_name"],
         "last_refreshed": row["last_refreshed"].isoformat() if row["last_refreshed"] else None,
+        "refresh_status": row.get("refresh_status"),
+        "refresh_error": row.get("refresh_error"),
         "is_active":      row["is_active"],
         "latest_status":  dict(latest_snap) if latest_snap else None,
         "livetrack_tier": is_paid,
@@ -455,7 +452,23 @@ async def opponent_scan(
     opponent_name = body.opponent_name.strip()
 
     from services.court_data_client import search_litigant
-    cases = await search_litigant(opponent_name, court=row.get("court_name"))
+    try:
+        cases = await search_litigant(opponent_name, court=row.get("court_name"))
+    except court_data_client.CourtDataError as exc:
+        status = exc.status_code
+        http_status = (
+            503 if exc.code == "missing_credentials" or status in {401, 402, 403, 429}
+            else 504 if exc.code == "timeout"
+            else 404 if status == 404
+            else 422 if status == 400
+            else 502
+        )
+        headers = {"Retry-After": str(int(exc.retry_after))} if exc.retry_after is not None else None
+        raise HTTPException(
+            status_code=http_status,
+            detail={"code": exc.code, "message": exc.user_message},
+            headers=headers,
+        ) from exc
 
     total = len(cases)
     court_breakdown: dict[str, int] = {}
@@ -608,6 +621,14 @@ async def refresh_case(
     if not row["is_active"]:
         raise HTTPException(status_code=409, detail="Case is no longer being tracked.")
 
+    await db_execute(
+        """
+        UPDATE tracked_cases
+        SET refresh_status = 'pending', refresh_error = NULL
+        WHERE id = $1::uuid
+        """,
+        str(row["id"]),
+    )
     background_tasks.add_task(_trigger_single_refresh, str(row["id"]), row["cnr"])
     return {"status": "refresh_queued", "cnr": row["cnr"]}
 

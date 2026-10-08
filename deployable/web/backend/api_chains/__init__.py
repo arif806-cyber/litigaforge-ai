@@ -13,6 +13,7 @@ CHAIN_MAP = {
     "GSTIN": fetch_gstin,
     "PAN": fetch_pan,
     "DigiLocker": fetch_digilocker,
+    # Compatibility entry only; fetch_ecourts is a disabled legacy stub.
     "eCourts": fetch_ecourts,
     "VAHAN": fetch_vahan,
     "SARATHI": fetch_sarathi,

@@ -76,8 +76,8 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const cleaned = cnr.replace(/[\s\-/]/g, "").toUpperCase();
-    if (cleaned.length !== 16) {
-      setErr("CNR must be exactly 16 characters — e.g. TLHC010012342023");
+    if (!/^[A-Z]{4}\d{12}$/.test(cleaned)) {
+      setErr("CNR must be 4 letters followed by 12 digits — e.g. TLHC010012342023");
       return;
     }
     setErr("");
@@ -294,16 +294,15 @@ function TrackedCaseCard({ tc }: { tc: any }) {
   const retryMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/court-intel/${id}/refresh`, { method: "POST" }),
     onSuccess: () => {
-      // Wait 35s for the background task (15s timeout × 2 attempts + buffer)
-      // then re-fetch so last_refreshed is visible in the card
+      queryClient.invalidateQueries({ queryKey: ["tracked-cases"] });
+      // Recheck after the vendor refresh window and detail fetch have completed.
       setTimeout(() => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }), 35_000);
     },
   });
 
-  // Show banner when there's no case status at all (never fetched OR fetched but API unreachable)
-  const neverFetched  = !tc.last_refreshed && !tc.case_status;
-  const fetchedNoData = !!tc.last_refreshed && !tc.case_status;
-  const noData = neverFetched || fetchedNoData;
+  const refreshPending = tc.refresh_status === "pending";
+  const refreshFailed = tc.refresh_status === "failed";
+  const noSnapshot = !tc.last_refreshed && !tc.case_status;
 
   const lastRefreshed = tc.last_refreshed
     ? new Date(tc.last_refreshed).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })
@@ -315,42 +314,35 @@ function TrackedCaseCard({ tc }: { tc: any }) {
       className="rounded-2xl overflow-hidden"
       style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.07)" }}>
 
-      {/* Demo data banner */}
-      {tc.data_source?.toLowerCase().includes("demo") && (
-        <div className="px-4 pt-3">
-          <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] text-amber-400/80"
-            style={{ background: "rgba(245,183,84,0.08)", border: "1px solid rgba(245,183,84,0.15)" }}>
-            <AlertTriangle className="w-3 h-3 shrink-0 text-amber-400" />
-            <span>Live eCourts data unavailable — illustrative data shown. Visit{" "}
-              <a href="https://ecourts.gov.in" target="_blank" rel="noopener noreferrer"
-                className="underline underline-offset-2 hover:text-amber-300">ecourts.gov.in</a>{" "}
-              for real-time status.
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* No-data offline banner */}
-      {noData && (
+      {(refreshPending || refreshFailed || noSnapshot) && (
         <div className="px-4 pt-3">
           <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2"
-            style={{ background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.15)" }}>
-            <span className="text-[11px] text-blue-300/70 flex items-center gap-1.5">
-              <AlertTriangle className="w-3 h-3 shrink-0 text-blue-400/70" />
-              {fetchedNoData
-                ? "eCourts API unreachable from server — requires an Indian network IP."
-                : "eCourts data not fetched yet — click Retry to try now."}
+            style={{
+              background: refreshFailed ? "rgba(248,113,113,0.08)" : "rgba(96,165,250,0.07)",
+              border: `1px solid ${refreshFailed ? "rgba(248,113,113,0.2)" : "rgba(96,165,250,0.15)"}`,
+            }}>
+            <span className={`text-[11px] flex items-start gap-1.5 ${refreshFailed ? "text-red-300/90" : "text-blue-300/80"}`}>
+              <AlertTriangle className={`w-3 h-3 shrink-0 mt-0.5 ${refreshFailed ? "text-red-400" : "text-blue-400/70"}`} />
+              <span>
+                {refreshFailed
+                  ? `Latest eCourtsIndia refresh failed. Previously saved data is unchanged. ${tc.refresh_error || ""}`
+                  : refreshPending
+                    ? "eCourtsIndia refresh is in progress. Any previous successful data remains available."
+                    : "No successful eCourtsIndia snapshot has been saved yet."}
+              </span>
             </span>
-            <button
-              data-testid={`retry-${tc.cnr}`}
-              onClick={() => retryMutation.mutate(tc.id)}
-              disabled={retryMutation.isPending}
-              className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors
-                flex items-center gap-1 shrink-0 disabled:opacity-50">
-              {retryMutation.isPending
-                ? <><Loader2 className="w-3 h-3 animate-spin" />Fetching…</>
-                : <><RefreshCw className="w-3 h-3" />Retry</>}
-            </button>
+            {(refreshFailed || noSnapshot) && (
+              <button
+                data-testid={`retry-${tc.cnr}`}
+                onClick={() => retryMutation.mutate(tc.id)}
+                disabled={retryMutation.isPending}
+                className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors
+                  flex items-center gap-1 shrink-0 disabled:opacity-50">
+                {retryMutation.isPending
+                  ? <><Loader2 className="w-3 h-3 animate-spin" />Fetching…</>
+                  : <><RefreshCw className="w-3 h-3" />Retry</>}
+              </button>
+            )}
           </div>
         </div>
       )}

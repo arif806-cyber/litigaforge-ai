@@ -1,14 +1,12 @@
 """
 LitigaForge AI — CNR Case Tracking Router
 
-Provides CNR (Case Number Record) lookup for Indian eCourts cases.
-The official eCourts API is CAPTCHA-gated and requires institutional credentials;
-this router returns realistic structured data (live mock) while exposing the
-same response schema so a real API integration can drop in later.
+Live CNR lookups use the server-side eCourtsIndia Partner API client.
+Illustrative fixtures, when explicitly enabled, are available only through the
+labelled /demo/cnr/lookup/{cnr} route and are never a fallback for live routes.
 """
 import logging
 import os
-import re
 from datetime import date, timedelta, datetime
 from typing import Optional
 
@@ -25,28 +23,17 @@ router = APIRouter(tags=["cnr"])
 _BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 # ── CNR validation ────────────────────────────────────────────────────────────
-# Standard eCourts CNR format:  SSCCCCNNNNNNYYYY
-#   SS   = 2-char state code   (TL, AP, MH, DL, KA …)
-#   CCCC = 4-char court code   (HC01, DC02 …)
-#   NNNNNN = 6-digit case seq  (padded)
-#   YYYY = 4-digit year
-CNR_RE = re.compile(
-    r"^[A-Z]{2}[A-Z0-9]{4}\d{6}\d{4}$",  # 16 chars total
-    re.IGNORECASE,
-)
-
-
 def _validate_cnr(cnr: str) -> str:
-    cleaned = re.sub(r"[\s\-/]", "", cnr.upper().strip())
-    if not CNR_RE.match(cleaned):
+    try:
+        return court_data_client.normalize_cnr(cnr)
+    except ValueError as exc:
         raise HTTPException(
             status_code=422,
             detail=(
-                "Invalid CNR format. Expected 16-character code like "
-                "TLHC010012342023 (state + court + seq + year)."
+                "Invalid CNR format. Expected the documented 16-character "
+                "format: 4 letters followed by 12 digits."
             ),
-        )
-    return cleaned
+        ) from exc
 
 
 # ── Response schemas ──────────────────────────────────────────────────────────
@@ -58,6 +45,14 @@ class HearingEntry(BaseModel):
     result: Optional[str] = None       # null = future hearing
     next_date: Optional[str] = None
     order_url: Optional[str] = None
+
+
+class OrderEntry(BaseModel):
+    filename: str
+    order_date: Optional[str] = None
+    description: Optional[str] = None
+    order_type: Optional[str] = None
+    has_text: bool = False
 
 
 class CnrLookupResponse(BaseModel):
@@ -80,13 +75,12 @@ class CnrLookupResponse(BaseModel):
     under_act: Optional[str] = None
     under_section: Optional[str] = None
     hearings: list[HearingEntry]
+    orders: list[OrderEntry] = Field(default_factory=list)
+    order_count: int = 0
     next_hearing: Optional[str] = None
     last_updated: str
-    data_source: str = "eCourts (demo)"
-    disclaimer: str = (
-        "This is illustrative data for demonstration purposes. "
-        "For authoritative case status visit ecourts.gov.in."
-    )
+    data_source: str = "eCourts India Partner API"
+    disclaimer: str = ""
 
 
 # ── Deterministic mock generator ─────────────────────────────────────────────
@@ -233,57 +227,100 @@ def _make_mock(cnr: str) -> CnrLookupResponse:
 
 # ── Live API helper ───────────────────────────────────────────────────────────
 
-async def _fetch_live_cnr(cnr: str) -> Optional[CnrLookupResponse]:
-    """
-    Attempt a live eCourtsIndia lookup via court_data_client.
-    Returns a populated CnrLookupResponse on success, or None when the API key
-    is absent or the upstream call fails — callers fall back to _make_mock().
-    """
-    if not court_data_client._KEY_POOL:
-        return None
-    try:
-        raw = await court_data_client.lookup_cnr(cnr)
-        hearings_raw = raw.get("hearings") or raw.get("case_hearings") or []
-        hearings = [
-            HearingEntry(
-                date=str(h.get("hearing_date") or h.get("date") or ""),
-                purpose=str(h.get("purpose") or h.get("business") or "Hearing"),
-                judge=str(h.get("judge") or h.get("judge_name") or ""),
-                result=h.get("result") or h.get("order_passed"),
-                next_date=h.get("next_date") or h.get("next_hearing_date"),
+def _as_display_text(value) -> str:
+    if isinstance(value, list):
+        return ", ".join(str(item) for item in value if item)
+    return str(value or "")
+
+
+def _live_response(cnr: str, raw: dict) -> CnrLookupResponse:
+    hearings_raw = raw.get("hearings") or []
+    hearings = [
+        HearingEntry(
+            date=str(
+                hearing.get("hearingDate")
+                or hearing.get("businessOnDate")
+                or hearing.get("date")
+                or ""
+            ),
+            purpose=str(
+                hearing.get("purposeOfListing")
+                or hearing.get("nextPurpose")
+                or hearing.get("purpose")
+                or "Hearing"
+            ),
+            judge=str(hearing.get("judge") or hearing.get("courtOf") or ""),
+            result=hearing.get("business") or hearing.get("result"),
+            next_date=hearing.get("nextHearingDate") or hearing.get("next_date"),
+        )
+        for hearing in hearings_raw if isinstance(hearing, dict)
+    ]
+    case_status = str(raw.get("case_status") or "Unknown")
+    return CnrLookupResponse(
+        cnr=cnr,
+        case_number=str(raw.get("case_number") or cnr),
+        case_type=str(raw.get("case_type") or ""),
+        filing_date=str(raw.get("filing_date") or ""),
+        registration_date=str(raw.get("registration_date") or ""),
+        court=str(raw.get("court_name") or ""),
+        district=str(raw.get("district") or ""),
+        state=str(raw.get("state") or ""),
+        judge=str(raw.get("judge_name") or ""),
+        status=case_status,
+        stage=str(raw.get("case_stage") or ""),
+        petitioner=_as_display_text(raw.get("petitioner_name")),
+        respondent=_as_display_text(raw.get("respondent_name")),
+        advocate_petitioner=_as_display_text(raw.get("advocate_petitioner")) or None,
+        advocate_respondent=_as_display_text(raw.get("advocate_respondent")) or None,
+        subject=str(raw.get("caseCategory") or raw.get("caseTypeSub") or ""),
+        under_act=_as_display_text(raw.get("under_act")) or None,
+        under_section=str(raw.get("under_section") or "") or None,
+        hearings=hearings,
+        orders=[
+            OrderEntry(
+                filename=str(order.get("order_id") or ""),
+                order_date=str(order.get("order_date") or "") or None,
+                description=str(order.get("description") or "") or None,
+                order_type=str(order.get("orderType") or "") or None,
+                has_text=bool(order.get("order_text")),
             )
-            for h in hearings_raw if isinstance(h, dict)
-        ]
-        return CnrLookupResponse(
-            cnr=cnr,
-            case_number=raw.get("case_number") or raw.get("caseNumber") or cnr,
-            case_type=raw.get("case_type") or raw.get("caseType") or "Unknown",
-            filing_date=str(raw.get("filing_date") or raw.get("filingDate") or ""),
-            registration_date=str(raw.get("registration_date") or raw.get("registrationDate") or ""),
-            court=raw.get("court_name") or raw.get("courtName") or raw.get("court") or "",
-            district=raw.get("district") or "",
-            state=raw.get("state") or "",
-            judge=raw.get("judge_name") or raw.get("judge") or "",
-            status=raw.get("case_status") or raw.get("status") or "pending",
-            stage=raw.get("case_stage") or raw.get("stage") or "",
-            petitioner=raw.get("petitioner_name") or raw.get("petitioner") or "",
-            respondent=raw.get("respondent_name") or raw.get("respondent") or "",
-            advocate_petitioner=raw.get("advocate_petitioner"),
-            advocate_respondent=raw.get("advocate_respondent"),
-            subject=raw.get("subject") or raw.get("under_act") or "",
-            under_act=raw.get("under_act") or raw.get("act"),
-            under_section=raw.get("under_section") or raw.get("section"),
-            hearings=hearings,
-            next_hearing=raw.get("next_hearing_date") or raw.get("nextHearingDate"),
-            last_updated=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-            data_source="eCourts India (live)",
-            disclaimer="",
-        )
-    except Exception as exc:
-        logger.warning(
-            "Live CNR lookup failed for %s: %s — falling back to demo data", cnr, exc
-        )
-        return None
+            for order in raw.get("orders") or []
+            if isinstance(order, dict) and order.get("order_id")
+        ],
+        order_count=int(raw.get("order_count") or len(raw.get("orders") or [])),
+        next_hearing=str(raw.get("next_hearing_date") or "") or None,
+        last_updated=str(raw.get("last_updated") or ""),
+        data_source="eCourts India Partner API",
+        disclaimer="",
+    )
+
+
+def _raise_upstream_http_error(exc: court_data_client.CourtDataError) -> None:
+    status = exc.status_code
+    if exc.code == "missing_credentials":
+        http_status = 503
+    elif exc.code == "timeout":
+        http_status = 504
+    elif status == 404:
+        http_status = 404
+    elif status == 400:
+        http_status = 422
+    else:
+        # A vendor 401/403 is not this application's user-authentication failure.
+        http_status = 503 if status in {401, 402, 403, 429} else 502
+    headers = {}
+    if exc.retry_after is not None:
+        headers["Retry-After"] = str(int(exc.retry_after))
+    raise HTTPException(
+        status_code=http_status,
+        detail={"code": exc.code, "message": exc.user_message},
+        headers=headers or None,
+    ) from exc
+
+
+async def _fetch_live_cnr(cnr: str) -> CnrLookupResponse:
+    raw = await court_data_client.lookup_cnr(cnr)
+    return _live_response(cnr, raw)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -298,18 +335,37 @@ async def cnr_lookup(request: Request, body: CnrLookupRequest):
     """
     Look up an Indian eCourts CNR (Case Number Record).
 
-    Attempts a live eCourtsIndia API call when ECOURTSINDIA_API_KEY is configured.
-    Falls back to clearly-labelled demo data on upstream failure or absent key.
+    Uses the eCourtsIndia Partner API. Missing configuration and upstream failures
+    are returned explicitly; this route never substitutes illustrative data.
     """
     cleaned = _validate_cnr(sanitize_text(body.cnr))
-    live = await _fetch_live_cnr(cleaned)
-    return live if live is not None else _make_mock(cleaned)
+    try:
+        return await _fetch_live_cnr(cleaned)
+    except court_data_client.CourtDataError as exc:
+        _raise_upstream_http_error(exc)
 
 
 @router.get("/cnr/lookup/{cnr}", response_model=CnrLookupResponse)
 @limiter.limit("30/minute")
 async def cnr_lookup_get(cnr: str, request: Request):
-    """GET variant for shareable links — live data when key present, demo data as fallback."""
+    """GET variant for shareable links; never falls back to demo data."""
     cleaned = _validate_cnr(sanitize_text(cnr))
-    live = await _fetch_live_cnr(cleaned)
-    return live if live is not None else _make_mock(cleaned)
+    try:
+        return await _fetch_live_cnr(cleaned)
+    except court_data_client.CourtDataError as exc:
+        _raise_upstream_http_error(exc)
+
+
+def _demo_routes_enabled() -> bool:
+    return os.getenv("ECOURTS_DEMO_ROUTES_ENABLED", "").strip().lower() in {
+        "1", "true", "yes",
+    }
+
+
+@router.get("/demo/cnr/lookup/{cnr}", response_model=CnrLookupResponse)
+async def demo_cnr_lookup(cnr: str):
+    """Explicitly labelled illustrative fixture route; disabled unless opted in."""
+    if not _demo_routes_enabled():
+        raise HTTPException(status_code=404, detail="Demo CNR route is disabled.")
+    cleaned = _validate_cnr(sanitize_text(cnr))
+    return _make_mock(cleaned)

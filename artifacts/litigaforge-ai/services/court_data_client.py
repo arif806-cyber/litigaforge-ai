@@ -296,25 +296,306 @@ def _provider_error(resp: httpx.Response) -> CourtDataError:
     )
 
 
-async def _persist_snapshot(tracked_case_id: str, raw: dict) -> None:
-    """Write raw payload to case_snapshots BEFORE any parsing."""
-    case_status      = raw.get("case_status") or raw.get("status")
-    next_hearing_raw = raw.get("next_hearing_date") or raw.get("nextHearingDate")
-    order_count      = raw.get("order_count") or raw.get("orderCount") or 0
+def _unwrap_data(payload: dict, endpoint: str) -> dict:
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise CourtDataError(
+            f"eCourtsIndia returned an invalid response envelope for {endpoint}.",
+            status_code=502,
+            code="invalid_response_envelope",
+        )
+    return data
 
-    await db_execute(
-        """
-        INSERT INTO case_snapshots
-            (tracked_case_id, raw_response, case_status, next_hearing_date, order_count)
-        VALUES ($1, $2::jsonb, $3, $4::date, $5)
-        """,
-        tracked_case_id,
-        json.dumps(raw),
-        str(case_status) if case_status else None,
-        next_hearing_raw if next_hearing_raw else None,
-        int(order_count) if order_count else 0,
+
+def _normalize_case_response(payload: dict, expected_cnr: str | None = None) -> dict:
+    """Unwrap the Partner envelope and retain its data in the app's stable model."""
+    data = _unwrap_data(payload, "case detail")
+    case = data.get("courtCaseData")
+    if not isinstance(case, dict):
+        raise CourtDataError(
+            "eCourtsIndia case detail did not contain courtCaseData.",
+            status_code=502,
+            code="invalid_case_data",
+        )
+
+    entity_info = data.get("entityInfo")
+    entity_info = entity_info if isinstance(entity_info, dict) else {}
+    raw_cnr = case.get("cnr") or entity_info.get("cnr")
+    try:
+        cnr = normalize_cnr(raw_cnr)
+    except ValueError as exc:
+        raise CourtDataError(
+            "eCourtsIndia returned case data without a valid CNR.",
+            status_code=502,
+            code="invalid_case_data",
+        ) from exc
+    if expected_cnr and cnr != expected_cnr:
+        raise CourtDataError(
+            "eCourtsIndia returned a different case than the requested CNR.",
+            status_code=502,
+            code="cnr_mismatch",
+        )
+
+    descriptions = data.get("descriptions")
+    descriptions = descriptions if isinstance(descriptions, dict) else {}
+    enum_lookup = descriptions.get("enumLookup")
+    enum_lookup = enum_lookup if isinstance(enum_lookup, dict) else {}
+    court_names = enum_lookup.get("courtCode")
+    court_names = court_names if isinstance(court_names, dict) else {}
+    court_code = case.get("cnrCourtCode") or case.get("courtComplexCode")
+    court_name = case.get("courtName") or court_names.get(str(court_code)) or ""
+
+    raw_files = data.get("files")
+    if isinstance(raw_files, dict):
+        files = raw_files.get("files") or []
+    elif isinstance(raw_files, list):
+        files = raw_files
+    else:
+        files = []
+    files = [item for item in files if isinstance(item, dict)]
+    file_by_name: dict[str, dict] = {}
+    for item in files:
+        for field in ("orderUrl", "filename", "fileName", "pdfFile"):
+            filename = item.get(field)
+            if filename:
+                file_by_name[str(filename).rsplit("/", 1)[-1].lower()] = item
+
+    orders: list[dict] = []
+    seen_order_urls: set[str] = set()
+    for field in ("interimOrders", "judgmentOrders"):
+        raw_orders = case.get(field) or []
+        if not isinstance(raw_orders, list):
+            continue
+        for order in raw_orders:
+            if not isinstance(order, dict):
+                continue
+            order_url = order.get("orderUrl")
+            if not order_url:
+                continue
+            order_url = str(order_url)
+            if order_url in seen_order_urls:
+                continue
+            seen_order_urls.add(order_url)
+            file_data = file_by_name.get(order_url.lower())
+            if file_data is None:
+                # Partner docs specify pdfFile as CNR-prefixed while orderUrl is
+                # the bare filename (for example, order-1.pdf).
+                file_data = next(
+                    (
+                        item for filename, item in file_by_name.items()
+                        if filename.endswith(order_url.lower())
+                    ),
+                    {},
+                )
+            text = (
+                order.get("markdownContent")
+                or order.get("order_text")
+                or file_data.get("markdownContent")
+                or ""
+            )
+            orders.append({
+                **order,
+                "order_id": order_url,
+                "order_url": order_url,
+                "order_date": order.get("orderDate"),
+                "order_text": text,
+            })
+
+    petitioners = case.get("petitioners") or []
+    respondents = case.get("respondents") or []
+    petitioner_advocates = case.get("petitionerAdvocates") or []
+    respondent_advocates = case.get("respondentAdvocates") or []
+    history = case.get("historyOfCaseHearings") or []
+    business_entries = case.get("businessOnDateEntries") or []
+    business_by_date = {
+        str(item.get("date")): item
+        for item in business_entries
+        if isinstance(item, dict) and item.get("date")
+    } if isinstance(business_entries, list) else {}
+    if isinstance(history, list) and history:
+        hearings = []
+        for item in history:
+            if not isinstance(item, dict):
+                continue
+            business = business_by_date.get(str(item.get("hearingDate") or ""))
+            if business is None:
+                business = business_by_date.get(str(item.get("businessOnDate") or ""), {})
+            hearings.append({
+                **item,
+                "business": business.get("business"),
+                "nextPurpose": business.get("nextPurpose"),
+                "nextHearingDate": business.get("nextHearingDate"),
+            })
+    else:
+        hearings = business_entries if isinstance(business_entries, list) else []
+    judges = case.get("judges") or []
+    latest_hearing = next(
+        (entry for entry in reversed(hearings) if isinstance(entry, dict)),
+        {},
+    ) if isinstance(hearings, list) else {}
+    acts_and_sections = case.get("actsAndSections") or []
+
+    normalized = dict(case)
+    normalized.update({
+        "cnr": cnr,
+        "case_number": case.get("registrationNumber") or case.get("caseNumber") or cnr,
+        "case_type": case.get("caseTypeRaw") or case.get("caseType") or "",
+        "case_status": case.get("caseStatus") or "",
+        "case_stage": case.get("purpose") or "",
+        "court_name": court_name,
+        "district": case.get("district") or "",
+        "state": case.get("state") or "",
+        "filing_date": case.get("filingDate") or "",
+        "registration_date": case.get("registrationDate") or "",
+        "next_hearing_date": (
+            case.get("nextHearingDate")
+            or entity_info.get("nextDateOfHearing")
+            or ""
+        ),
+        "last_hearing_date": case.get("lastHearingDate") or "",
+        "judge_name": (
+            (judges[0] if judges else None)
+            or latest_hearing.get("judge")
+            or ""
+        ),
+        "petitioner_name": ", ".join(str(item) for item in petitioners if item),
+        "respondent_name": ", ".join(str(item) for item in respondents if item),
+        "advocate_petitioner": ", ".join(
+            str(item) for item in petitioner_advocates if item
+        ),
+        "advocate_respondent": ", ".join(
+            str(item) for item in respondent_advocates if item
+        ),
+        "under_act": "; ".join(str(item) for item in acts_and_sections if item)
+        if isinstance(acts_and_sections, list)
+        else str(acts_and_sections or ""),
+        "under_section": case.get("judicialSection") or "",
+        "hearings": hearings if isinstance(hearings, list) else [],
+        "order_count": case.get("orderCount") or 0,
+        "orders": orders,
+        "files": files,
+        "entity_info": entity_info,
+        "descriptions": descriptions,
+        "last_updated": entity_info.get("dateModified") or "",
+    })
+    return normalized
+
+
+def _safe_snapshot_date(value: Any) -> str | None:
+    if not value:
+        return None
+    candidate = str(value)[:10]
+    try:
+        return date.fromisoformat(candidate).isoformat()
+    except ValueError:
+        return None
+
+
+async def _persist_snapshots(tracked_case_ids: list[str], raw: dict) -> None:
+    """Persist valid data and mark refresh success in the same database transaction."""
+    if not tracked_case_ids:
+        return
+    case_status = raw.get("case_status") or None
+    next_hearing = _safe_snapshot_date(raw.get("next_hearing_date"))
+    try:
+        order_count = max(0, int(raw.get("order_count") or 0))
+    except (TypeError, ValueError):
+        order_count = 0
+    court_name = str(raw.get("court_name") or "")
+    case_type = str(raw.get("caseTypeRaw") or raw.get("caseType") or "")
+    serialized = json.dumps(raw, ensure_ascii=False, default=str)
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            for tracked_case_id in tracked_case_ids:
+                await conn.execute(
+                    """
+                    INSERT INTO case_snapshots
+                        (tracked_case_id, raw_response, case_status,
+                         next_hearing_date, order_count)
+                    VALUES ($1::uuid, $2::jsonb, $3, $4::date, $5)
+                    """,
+                    tracked_case_id, serialized, case_status, next_hearing, order_count,
+                )
+                await conn.execute(
+                    """
+                    UPDATE tracked_cases
+                    SET last_refreshed = now(),
+                        refresh_status = 'succeeded',
+                        refresh_error = NULL,
+                        court_name = COALESCE(NULLIF($2, ''), court_name),
+                        case_type = COALESCE(case_type, NULLIF($3, ''))
+                    WHERE id = $1::uuid
+                    """,
+                    tracked_case_id, court_name, case_type,
+                )
+    logger.debug(
+        "Persisted eCourts snapshot for %d tracked record(s), cnr=%s",
+        len(tracked_case_ids), raw.get("cnr"),
     )
-    logger.debug("Persisted snapshot for tracked_case_id=%s", tracked_case_id)
+
+
+async def _persist_snapshot(tracked_case_id: str, raw: dict) -> None:
+    await _persist_snapshots([tracked_case_id], raw)
+
+
+async def _mark_refresh_failure(tracked_case_id: str, exc: Exception) -> None:
+    if isinstance(exc, CourtDataError):
+        message = exc.user_message
+    elif isinstance(exc, ValueError):
+        message = str(exc)
+    else:
+        message = f"Refresh failed unexpectedly ({type(exc).__name__})."
+    try:
+        await db_execute(
+            """
+            UPDATE tracked_cases
+            SET refresh_status = 'failed', refresh_error = $2
+            WHERE id = $1::uuid
+            """,
+            tracked_case_id, message[:500],
+        )
+    except Exception as state_exc:
+        logger.warning(
+            "Could not persist eCourts failure state for tracked_case_id=%s (%s)",
+            tracked_case_id, type(state_exc).__name__,
+        )
+
+
+async def _fetch_case_detail(
+    cnr: str,
+    *,
+    timeout: float = _DEFAULT_TIMEOUT,
+    retries: int | None = None,
+) -> dict:
+    payload = await _request(
+        "GET",
+        f"{_PARTNER_PREFIX}/case/{quote(cnr, safe='')}",
+        timeout=timeout,
+        retries=retries,
+    )
+    return _normalize_case_response(payload, expected_cnr=cnr)
+
+
+async def _queue_single_refresh(cnr: str, *, timeout: float = _DEFAULT_TIMEOUT) -> None:
+    """Queue one paid refresh once, then follow the documented detail-fetch workflow."""
+    payload = await _request(
+        "POST",
+        f"{_PARTNER_PREFIX}/case/{quote(cnr, safe='')}/refresh",
+        timeout=timeout,
+        retries=0,
+    )
+    data = _unwrap_data(payload, "single-case refresh")
+    status = str(data.get("status") or "").upper()
+    if status not in {"QUEUED", "REFRESHED", "COMPLETED", "SUCCESS"}:
+        raise CourtDataError(
+            "eCourtsIndia did not confirm the single-case refresh request.",
+            status_code=502,
+            code="refresh_not_accepted",
+        )
+    if status == "QUEUED":
+        await asyncio.sleep(_SINGLE_REFRESH_WAIT_SECONDS)
 
 
 async def get_case_by_cnr(
@@ -325,136 +606,306 @@ async def get_case_by_cnr(
     retries: int = 3,
 ) -> dict:
     """
-    Fetch a single case from eCourtsIndia by CNR.
-    Persists raw JSON to case_snapshots before returning.
-    Returns the parsed response dict.
-    timeout/retries: pass shorter values for on-demand (UI-triggered) refreshes
-    so they fail fast instead of blocking for 90+ seconds.
+    Queue one documented single-case refresh, fetch the detail envelope, and persist.
+    The paid POST is never retried; only the subsequent idempotent GET may retry.
     """
-    raw = await _request("GET", f"/case/cnr/{cnr}", timeout=timeout, retries=retries)
-    await _persist_snapshot(tracked_case_id, raw)
-    return raw
+    try:
+        cleaned = normalize_cnr(cnr)
+        await _queue_single_refresh(cleaned, timeout=timeout)
+        raw = await _fetch_case_detail(cleaned, timeout=timeout, retries=retries)
+        await _persist_snapshot(tracked_case_id, raw)
+        return raw
+    except Exception as exc:
+        await _mark_refresh_failure(tracked_case_id, exc)
+        raise
 
 
 async def get_case_orders(cnr: str) -> list[dict]:
-    """
-    Fetch the list of orders for a case.
-    Returns a list of order dicts (order_id, order_date, order_text / text, etc.).
-    Returns [] on any failure — callers must treat this as a soft error.
-    """
-    try:
-        raw = await _request("GET", f"/case/cnr/{cnr}/orders")
-        orders = raw.get("orders") or raw.get("data") or []
-        if not isinstance(orders, list):
-            return []
-        return orders
-    except Exception as exc:
-        logger.warning("get_case_orders failed for cnr=%s: %s", cnr, exc)
-        return []
+    """Read supported order lists from the documented case-detail response."""
+    raw = await lookup_cnr(cnr)
+    return raw.get("orders") or []
+
+
+def _order_path(cnr: str, filename: str, kind: str) -> str:
+    cleaned_cnr = normalize_cnr(cnr)
+    cleaned_filename = str(filename or "").strip()
+    if not _ORDER_FILENAME_RE.fullmatch(cleaned_filename):
+        raise ValueError("Invalid eCourts order filename.")
+    if kind not in {"order", "order-ai", "order-md"}:
+        raise ValueError("Unsupported eCourts order endpoint.")
+    return (
+        f"{_PARTNER_PREFIX}/case/{quote(cleaned_cnr, safe='')}/"
+        f"{kind}/{quote(cleaned_filename, safe='')}"
+    )
+
+
+async def get_order_metadata(cnr: str, filename: str) -> dict:
+    """Fetch documented order download metadata for a filename from case detail."""
+    payload = await _request("GET", _order_path(cnr, filename, "order"))
+    return _unwrap_data(payload, "order metadata")
+
+
+async def get_order_ai(cnr: str, filename: str) -> dict:
+    """Fetch on-demand order analysis, retrying null analysis as the docs direct."""
+    path = _order_path(cnr, filename, "order-ai")
+    for attempt in range(4):
+        payload = await _request(
+            "GET",
+            path,
+            timeout=90.0,
+            retries=0,
+        )
+        data = _unwrap_data(payload, "order AI")
+        if data.get("aiAnalysis") is not None or attempt == 3:
+            return data
+        await asyncio.sleep(15)
+    raise CourtDataError(
+        "eCourtsIndia did not return order analysis after retries.",
+        status_code=502,
+        code="order_analysis_unavailable",
+    )
+
+
+async def get_order_markdown(cnr: str, filename: str) -> dict:
+    """Fetch the documented markdown/PDF conversion endpoint without retrying it."""
+    payload = await _request(
+        "GET",
+        _order_path(cnr, filename, "order-md"),
+        timeout=300.0,
+        retries=0,
+    )
+    return _unwrap_data(payload, "order markdown")
 
 
 async def get_order_text(cnr: str, order_id: str) -> str | None:
-    """
-    Fetch the full text for a specific order by its eCourts order_id.
-    Returns the text string, or None if unavailable (e.g. OCR not yet done).
-    Failure is soft — callers should log and retry on the next nightly run.
-    """
-    try:
-        raw = await _request("GET", f"/case/cnr/{cnr}/orders/{order_id}")
-        text = (
-            raw.get("order_text")
-            or raw.get("text")
-            or raw.get("content")
-            or raw.get("order_content")
-            or ""
+    """Read the full order markdown already included in supported case detail."""
+    cleaned_cnr = normalize_cnr(cnr)
+    cleaned_filename = str(order_id or "").strip().lower()
+    raw = await lookup_cnr(cleaned_cnr)
+    for order in raw.get("orders") or []:
+        if str(order.get("order_id") or "").lower() == cleaned_filename:
+            text = order.get("order_text")
+            return str(text).strip() if text else None
+    return None
+
+
+def _normalize_search_hit(item: dict) -> dict:
+    petitioners = item.get("petitioners") or []
+    respondents = item.get("respondents") or []
+    title = " vs ".join(
+        part for part in (
+            ", ".join(map(str, petitioners)) if isinstance(petitioners, list) else str(petitioners),
+            ", ".join(map(str, respondents)) if isinstance(respondents, list) else str(respondents),
+        ) if part
+    )
+    return {
+        **item,
+        "cnr": item.get("cnr") or "",
+        "case_type": item.get("caseTypeRaw") or item.get("caseType") or "",
+        "case_status": item.get("caseStatus") or "",
+        "case_number": item.get("registrationNumber") or item.get("cnr") or "",
+        "court_name": item.get("courtName") or item.get("courtCode") or "",
+        "next_hearing_date": item.get("nextHearingDate") or "",
+        "filing_date": item.get("filingDate") or "",
+        "petitioner_name": ", ".join(map(str, petitioners)) if isinstance(petitioners, list) else str(petitioners or ""),
+        "respondent_name": ", ".join(map(str, respondents)) if isinstance(respondents, list) else str(respondents or ""),
+        "title": title,
+    }
+
+
+async def search_cases(
+    *,
+    query: str | None = None,
+    litigants: str | None = None,
+    petitioners: str | None = None,
+    respondents: str | None = None,
+    advocates: str | None = None,
+    judges: str | None = None,
+    court_codes: list[str] | None = None,
+    case_types: list[str] | None = None,
+    case_statuses: list[str] | None = None,
+    filing_date_from: str | None = None,
+    filing_date_to: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    """Search through the documented /api/partner/search contract."""
+    if page < 1 or not 1 <= page_size <= 100:
+        raise ValueError("Search page must be positive and page_size must be 1-100.")
+    params: dict[str, Any] = {"page": page, "pageSize": page_size}
+    for key, value in (
+        ("query", query),
+        ("litigants", litigants),
+        ("petitioners", petitioners),
+        ("respondents", respondents),
+        ("advocates", advocates),
+        ("judges", judges),
+        ("filingDateFrom", filing_date_from),
+        ("filingDateTo", filing_date_to),
+    ):
+        if value and str(value).strip():
+            params[key] = str(value).strip()
+    for key, values in (
+        ("courtCodes", court_codes),
+        ("caseTypes", case_types),
+        ("caseStatuses", case_statuses),
+    ):
+        if values:
+            params[key] = [str(value).strip() for value in values if str(value).strip()]
+    if not any(key in params for key in (
+        "query", "litigants", "petitioners", "respondents",
+        "advocates", "judges",
+    )):
+        raise ValueError("At least one eCourts search term is required.")
+
+    payload = await _request("GET", f"{_PARTNER_PREFIX}/search", params=params)
+    data = _unwrap_data(payload, "case search")
+    results = data.get("results")
+    if not isinstance(results, list) or any(not isinstance(item, dict) for item in results):
+        raise CourtDataError(
+            "eCourtsIndia case search returned an invalid results list.",
+            status_code=502,
+            code="invalid_search_response",
         )
-        return text.strip() or None
-    except Exception as exc:
-        logger.warning(
-            "get_order_text failed for cnr=%s order_id=%s: %s", cnr, order_id, exc
-        )
-        return None
+    return {
+        **data,
+        "results": [_normalize_search_hit(item) for item in results],
+        "total_hits": data.get("totalHits", 0),
+        "page_size": data.get("pageSize", page_size),
+        "total_pages": data.get("totalPages", 0),
+        "has_next_page": data.get("hasNextPage", False),
+    }
 
 
 async def search_litigant(name: str, court: str | None = None) -> list[dict]:
-    """
-    Search eCourtsIndia for cases where the given person appears as a litigant.
-    Returns a list of case dicts (each has at minimum cnr/case_type/court_name).
-    Returns [] on any failure — callers must treat this as a soft error.
-    Follows the same rate-limiting and retry rules as other methods in this class.
-    """
-    try:
-        params: dict = {"name": name.strip()}
-        if court:
-            params["court"] = court.strip()
-        raw = await _request("GET", "/litigant/search", params=params)
-        cases = (
-            raw.get("cases")
-            or raw.get("data")
-            or raw.get("results")
-            or []
-        )
-        return cases if isinstance(cases, list) else []
-    except Exception as exc:
-        logger.warning("search_litigant failed for name=%s: %s", name, exc)
-        return []
+    """Search the supported Partner API using its documented litigants parameter."""
+    params: dict[str, Any] = {
+        "litigants": name.strip(),
+        "page_size": 100,
+    }
+    # Existing callers pass court_name. Only send courtCodes when it is already a
+    # code; court display names are not valid Partner API filters.
+    if court and re.fullmatch(r"(?=.*\d)[A-Z0-9]{4,12}", court.strip().upper()):
+        params["court_codes"] = [court.strip().upper()]
+    result = await search_cases(**params)
+    return result["results"]
 
 
 async def bulk_refresh(cases: list[dict]) -> dict[str, dict]:
     """
-    Submit a batch refresh for up to 50 CNRs at a time.
-    cases: list of {"tracked_case_id": str, "cnr": str}
-    Returns {cnr: raw_payload} for all returned cases.
-    Persists every raw payload before returning.
+    Queue partner refreshes (single endpoint for one CNR, bulk endpoint for 2-50),
+    wait per contract, fetch details, then persist a snapshot for every tracker.
     """
+    by_cnr: dict[str, list[str]] = defaultdict(list)
+    for item in cases:
+        tracked_case_id = str(item["tracked_case_id"])
+        try:
+            cleaned = normalize_cnr(item.get("cnr"))
+            by_cnr[cleaned].append(tracked_case_id)
+        except ValueError as exc:
+            await _mark_refresh_failure(tracked_case_id, exc)
+
     results: dict[str, dict] = {}
-    for i in range(0, len(cases), 50):
-        batch = cases[i : i + 50]
-        cnr_list = [c["cnr"] for c in batch]
-        cnr_map  = {c["cnr"]: c["tracked_case_id"] for c in batch}
+    unique_cnrs = list(by_cnr)
+    for start in range(0, len(unique_cnrs), 50):
+        batch = unique_cnrs[start : start + 50]
+        eligible: list[str] = []
+        queued: set[str] = set()
+        try:
+            if len(batch) == 1:
+                cnr = batch[0]
+                payload = await _request(
+                    "POST",
+                    f"{_PARTNER_PREFIX}/case/{quote(cnr, safe='')}/refresh",
+                    retries=0,
+                )
+                data = _unwrap_data(payload, "single-case refresh")
+                status = str(data.get("status") or "").upper()
+                if status not in {"QUEUED", "REFRESHED", "COMPLETED", "SUCCESS"}:
+                    raise CourtDataError(
+                        "eCourtsIndia did not confirm the single-case refresh request.",
+                        status_code=502,
+                        code="refresh_not_accepted",
+                    )
+                eligible = [cnr]
+                if status == "QUEUED":
+                    queued.add(cnr)
+            else:
+                payload = await _request(
+                    "POST",
+                    f"{_PARTNER_PREFIX}/case/bulk-refresh",
+                    json_body={"cnrs": batch},
+                    retries=0,
+                )
+                data = _unwrap_data(payload, "bulk refresh")
+                status_lists: dict[str, set[str]] = {}
+                for field in ("refreshed", "queued", "invalid"):
+                    values = data.get(field)
+                    if not isinstance(values, list):
+                        raise CourtDataError(
+                            "eCourtsIndia bulk refresh returned an invalid status list.",
+                            status_code=502,
+                            code="invalid_bulk_response",
+                        )
+                    status_lists[field] = set()
+                    for value in values:
+                        try:
+                            status_lists[field].add(normalize_cnr(value))
+                        except ValueError:
+                            raise CourtDataError(
+                                "eCourtsIndia bulk refresh returned an invalid CNR.",
+                                status_code=502,
+                                code="invalid_bulk_response",
+                            )
+                queued = status_lists["queued"]
+                for cnr in batch:
+                    if cnr in status_lists["invalid"]:
+                        error = CourtDataError(
+                            "eCourtsIndia rejected this CNR during bulk refresh.",
+                            status_code=400,
+                            code="invalid_cnr",
+                        )
+                        for tracked_case_id in by_cnr[cnr]:
+                            await _mark_refresh_failure(tracked_case_id, error)
+                    elif cnr in status_lists["refreshed"] or cnr in queued:
+                        eligible.append(cnr)
+                    else:
+                        error = CourtDataError(
+                            "eCourtsIndia did not return a refresh status for this CNR.",
+                            status_code=502,
+                            code="missing_bulk_status",
+                        )
+                        for tracked_case_id in by_cnr[cnr]:
+                            await _mark_refresh_failure(tracked_case_id, error)
 
-        logger.info("Submitting bulk refresh for %d CNRs", len(cnr_list))
-        resp = await _request("POST", "/case/bulk-cnr", json_body={"cnrs": cnr_list})
+            if queued:
+                await asyncio.sleep(_BULK_REFRESH_WAIT_SECONDS if len(batch) > 1 else _SINGLE_REFRESH_WAIT_SECONDS)
+        except Exception as exc:
+            logger.warning(
+                "eCourts refresh request failed for batch_size=%d (%s)",
+                len(batch), type(exc).__name__,
+            )
+            for cnr in batch:
+                for tracked_case_id in by_cnr[cnr]:
+                    await _mark_refresh_failure(tracked_case_id, exc)
+            continue
 
-        # eCourtsIndia bulk is async — poll until complete
-        job_id = resp.get("job_id") or resp.get("requestId")
-        if job_id:
-            raw_results = await _poll_bulk_job(job_id)
-        else:
-            # Some API versions return results immediately
-            raw_results = resp.get("results") or resp.get("data") or []
-
-        for item in raw_results:
-            cnr      = item.get("cnr") or item.get("caseNumber")
-            tc_id    = cnr_map.get(cnr)
-            if cnr and tc_id:
-                await _persist_snapshot(tc_id, item)
-                results[cnr] = item
-
+        for cnr in eligible:
+            try:
+                raw = await _fetch_case_detail(cnr)
+                await _persist_snapshots(by_cnr[cnr], raw)
+                results[cnr] = raw
+            except Exception as exc:
+                logger.warning(
+                    "eCourts detail fetch/persist failed for cnr=%s (%s)",
+                    cnr, type(exc).__name__,
+                )
+                for tracked_case_id in by_cnr[cnr]:
+                    await _mark_refresh_failure(tracked_case_id, exc)
     return results
 
 
-async def _poll_bulk_job(job_id: str, max_polls: int = 20, interval: int = 5) -> list[dict]:
-    """Poll the eCourtsIndia async bulk job until it completes."""
-    for poll in range(max_polls):
-        await asyncio.sleep(interval)
-        resp = await _request("GET", f"/case/bulk-cnr/status/{job_id}")
-        status = resp.get("status", "").lower()
-        if status in ("completed", "done", "success"):
-            return resp.get("results") or resp.get("data") or []
-        if status in ("failed", "error"):
-            logger.error("Bulk job %s failed: %s", job_id, resp)
-            return []
-        logger.debug("Bulk job %s still %s (poll %d/%d)", job_id, status, poll + 1, max_polls)
-    logger.warning("Bulk job %s did not complete after %d polls", job_id, max_polls)
-    return []
-
-
 async def lookup_cnr(cnr: str) -> dict:
-    """
-    Direct CNR lookup — returns raw eCourtsIndia payload without persisting a snapshot.
-    Use this for on-demand queries (e.g. the /cnr/lookup REST endpoint) where there is
-    no associated tracked_case_id.  Raises on any network / auth / upstream error so
-    callers can fall back to demo data.
-    """
-    return await _request("GET", f"/case/cnr/{cnr}")
+    """Fetch and normalize case detail without persisting a tracked-case snapshot."""
+    cleaned = normalize_cnr(cnr)
+    return await _fetch_case_detail(cleaned)

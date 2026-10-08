@@ -1315,11 +1315,30 @@ async def lifespan(app: FastAPI):
                     court_name      TEXT,
                     added_at        TIMESTAMPTZ DEFAULT now(),
                     last_refreshed  TIMESTAMPTZ,
+                    refresh_status  VARCHAR(20) DEFAULT 'pending',
+                    refresh_error   TEXT,
                     is_active       BOOLEAN DEFAULT true,
                     tier_gated      BOOLEAN DEFAULT true,
                     UNIQUE(user_id, cnr)
                 )
             """)
+            await conn.execute(
+                "ALTER TABLE tracked_cases ADD COLUMN IF NOT EXISTS "
+                "refresh_status VARCHAR(20) DEFAULT 'pending'"
+            )
+            await conn.execute(
+                "ALTER TABLE tracked_cases ADD COLUMN IF NOT EXISTS refresh_error TEXT"
+            )
+            await conn.execute(
+                """
+                UPDATE tracked_cases
+                SET refresh_status = CASE
+                    WHEN last_refreshed IS NOT NULL THEN 'succeeded'
+                    ELSE 'pending'
+                END
+                WHERE refresh_status IS NULL
+                """
+            )
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS case_snapshots (
                     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

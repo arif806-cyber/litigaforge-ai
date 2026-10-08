@@ -307,7 +307,7 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
     cnr_filter: if provided, only refresh that single CNR (for on-demand triggers).
     Returns summary dict for logging / API response.
     """
-    from services.court_data_client import bulk_refresh, get_case_by_cnr
+    from services.court_data_client import bulk_refresh
 
     summary = {"cases_checked": 0, "events_created": 0, "errors": 0}
 
@@ -334,7 +334,7 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
     id_map = {str(r["id"]): r for r in rows}
 
     try:
-        _results = await bulk_refresh(batch_input)
+        results = await bulk_refresh(batch_input)
     except RuntimeError as exc:
         logger.error("Court data client error: %s", exc)
         summary["errors"] = len(rows)
@@ -345,14 +345,17 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
         return summary
 
     for tc_id_str, row in id_map.items():
+        if row["cnr"] not in results:
+            summary["errors"] += 1
+            logger.warning(
+                "No valid eCourts snapshot persisted for tracked_case_id=%s cnr=%s; "
+                "leaving the previous snapshot and last_refreshed unchanged",
+                tc_id_str, row["cnr"],
+            )
+            continue
         try:
             events_created = await _diff_and_record(tc_id_str, row)
             summary["events_created"] += events_created
-
-            await db_execute(
-                "UPDATE tracked_cases SET last_refreshed = now() WHERE id = $1::uuid",
-                tc_id_str,
-            )
         except Exception as exc:
             logger.exception("Error processing diffs for tracked_case_id=%s: %s", tc_id_str, exc)
             summary["errors"] += 1
