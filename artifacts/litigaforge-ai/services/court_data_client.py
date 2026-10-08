@@ -1,22 +1,13 @@
-"""
-CourtDataClient — eCourtsIndia API wrapper for LitigaForge.
-
-Single responsibility: talk to eCourtsIndia, nothing else.
-No business logic — only fetch, retry, rate-limit, and persist raw snapshots.
-
-Rate limits (as per eCourtsIndia API agreement):
-  100 req/min · 3 000/hr · 50 000/day
-
-If ECOURTSINDIA_API_KEY is not set the client raises RuntimeError on every
-call; callers should handle this and surface a clear user-facing error.
-"""
+"""Single source of truth for the eCourtsIndia Partner REST API."""
 from __future__ import annotations
 
 import asyncio
 import json
 import os
+import re
 import time
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -25,7 +16,11 @@ from logger import get_logger
 
 logger = get_logger("litigaforge.court_data_client")
 
-_API_BASE = os.getenv("ECOURTSINDIA_API_BASE", "https://api.ecourts.gov.in/api/ords/ecourt")
+PARTNER_API_BASE = "https://webapi.ecourtsindia.com"
+_API_BASE = os.getenv("ECOURTSINDIA_API_BASE", PARTNER_API_BASE).rstrip("/")
+_CNR_RE = re.compile(r"^[A-Z]{4}\d{12}$")
+_DEFAULT_TIMEOUT = 20.0
+_GET_RETRIES = 2
 
 # Support dual-key rotation for extra rate-limit headroom.
 # ECOURTSINDIA_API_KEY is required; ECOURTSINDIA_API_KEY_2 is optional.
@@ -40,6 +35,54 @@ _key_index = 0  # round-robin pointer (protected by _bucket._lock)
 
 # Keep backward-compat name used by _require_key()
 _API_KEY = _KEY_POOL[0] if _KEY_POOL else ""
+
+
+class CourtDataError(RuntimeError):
+    """Safe, user-displayable eCourts failure (never contains request headers)."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        code: str = "upstream_error",
+        retry_after: float | None = None,
+        retryable: bool = False,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.retry_after = retry_after
+        self.retryable = retryable
+
+    @property
+    def user_message(self) -> str:
+        return str(self)
+
+
+class CourtDataConfigurationError(CourtDataError):
+    def __init__(self):
+        super().__init__(
+            "eCourtsIndia is not configured. Add the vendor-issued partner token "
+            "as the ECOURTSINDIA_API_KEY Replit Secret, then restart LitigaForge AI.",
+            code="missing_credentials",
+        )
+
+
+def is_configured() -> bool:
+    return bool(_KEY_POOL)
+
+
+def require_configured() -> None:
+    if not is_configured():
+        raise CourtDataConfigurationError()
+
+
+def normalize_cnr(cnr: str) -> str:
+    cleaned = re.sub(r"[\s\-/]", "", str(cnr or "")).upper()
+    if not _CNR_RE.fullmatch(cleaned):
+        raise ValueError("Invalid CNR format. Expected 4 letters followed by 12 digits.")
+    return cleaned
 
 
 class _TokenBucket:
@@ -83,10 +126,7 @@ _bucket = _TokenBucket()
 
 def _require_key() -> str:
     if not _KEY_POOL:
-        raise RuntimeError(
-            "ECOURTSINDIA_API_KEY is not set. "
-            "Add it in Replit Secrets to enable live case tracking."
-        )
+        raise CourtDataConfigurationError()
     return _KEY_POOL[0]
 
 
@@ -94,10 +134,7 @@ def _next_key() -> str:
     """Round-robin across the key pool. Call inside _bucket._lock for safety."""
     global _key_index
     if not _KEY_POOL:
-        raise RuntimeError(
-            "ECOURTSINDIA_API_KEY is not set. "
-            "Add it in Replit Secrets to enable live case tracking."
-        )
+        raise CourtDataConfigurationError()
     key = _KEY_POOL[_key_index % len(_KEY_POOL)]
     _key_index = (_key_index + 1) % len(_KEY_POOL)
     return key
@@ -109,12 +146,13 @@ async def _request(
     *,
     json_body: dict | None = None,
     params: dict | None = None,
-    retries: int = 3,
-    timeout: float = 30.0,
+    retries: int | None = None,
+    timeout: float = _DEFAULT_TIMEOUT,
 ) -> dict:
-    """Internal: rate-limited, retried HTTP call to eCourtsIndia."""
-    if not _KEY_POOL:
-        _require_key()  # raises with a clear message
+    """Call a Partner API endpoint. Only GETs are retried to avoid duplicate paid POSTs."""
+    require_configured()
+    method = method.upper()
+    retry_count = _GET_RETRIES if retries is None and method == "GET" else (retries or 0)
     headers = {
         "Authorization": f"Bearer {_next_key()}",
         "Accept": "application/json",
@@ -122,7 +160,7 @@ async def _request(
     }
     url = f"{_API_BASE.rstrip('/')}/{path.lstrip('/')}"
 
-    for attempt in range(retries):
+    for attempt in range(retry_count + 1):
         await _bucket.acquire()
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -132,29 +170,94 @@ async def _request(
                     json=json_body,
                     params=params,
                 )
-            if resp.status_code < 400:
-                return resp.json()
-            if resp.status_code >= 500:
-                raise httpx.HTTPStatusError(
-                    f"5xx from eCourts: {resp.status_code}",
-                    request=resp.request,
-                    response=resp,
+            if resp.status_code >= 400:
+                error = _provider_error(resp)
+                if method == "GET" and error.retryable and attempt < retry_count:
+                    delay = error.retry_after or min(2 ** attempt, 8)
+                    logger.warning(
+                        "eCourts Partner GET failed status=%s path=%s attempt=%d/%d; retrying in %.1fs",
+                        error.status_code, path, attempt + 1, retry_count + 1, delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                logger.error(
+                    "eCourts Partner request failed status=%s code=%s path=%s",
+                    error.status_code, error.code, path,
                 )
-            # 4xx — do NOT retry
-            logger.error("eCourtsIndia 4xx for %s %s: %s", method, url, resp.text[:200])
-            resp.raise_for_status()
-        except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.ConnectError) as exc:
-            exc_desc = f"{type(exc).__name__}({exc!s})" if str(exc) else type(exc).__name__
-            wait = 2 ** attempt
-            if attempt < retries - 1:
-                logger.warning("eCourts request failed (attempt %d/%d): %s — retrying in %ds",
-                               attempt + 1, retries, exc_desc, wait)
-                await asyncio.sleep(wait)
-            else:
-                logger.error("eCourts request permanently failed after %d attempts: %s", retries, exc_desc)
-                raise
+                raise error
+            try:
+                payload = resp.json()
+            except (ValueError, json.JSONDecodeError) as exc:
+                raise CourtDataError(
+                    "eCourtsIndia returned an invalid JSON response.",
+                    status_code=502, code="invalid_json",
+                ) from exc
+            if not isinstance(payload, dict):
+                raise CourtDataError(
+                    "eCourtsIndia returned an unexpected response format.",
+                    status_code=502, code="invalid_response",
+                )
+            request_id = (payload.get("meta") or {}).get("request_id") if isinstance(payload.get("meta"), dict) else None
+            logger.debug("eCourts Partner request succeeded path=%s request_id=%s", path, request_id)
+            return payload
+        except CourtDataError:
+            raise
+        except httpx.TransportError as exc:
+            error = CourtDataError(
+                "Could not reach eCourtsIndia. Check network access and retry.",
+                code="network_error",
+                retryable=True,
+            )
+            if method == "GET" and attempt < retry_count:
+                delay = min(2 ** attempt, 8)
+                logger.warning(
+                    "eCourts Partner GET transport failure path=%s attempt=%d/%d; retrying in %ds (%s)",
+                    path, attempt + 1, retry_count + 1, delay, type(exc).__name__,
+                )
+                await asyncio.sleep(delay)
+                continue
+            logger.error("eCourts Partner transport failure path=%s (%s)", path, type(exc).__name__)
+            raise error from exc
+    raise CourtDataError("eCourtsIndia request failed after retries.", code="retry_exhausted", retryable=True)
 
-    raise RuntimeError("Unreachable")
+
+def _provider_error(resp: httpx.Response) -> CourtDataError:
+    status = resp.status_code
+    try:
+        body = resp.json()
+    except Exception:
+        body = {}
+    body_error = body.get("error", {}) if isinstance(body, dict) else {}
+    provider_code = str(body_error.get("code") or "") if isinstance(body_error, dict) else ""
+    retry_after_raw = resp.headers.get("Retry-After")
+    try:
+        retry_after = min(max(float(retry_after_raw), 0.0), 30.0) if retry_after_raw else None
+    except (TypeError, ValueError):
+        retry_after = None
+
+    if status == 401:
+        message = "eCourtsIndia rejected the partner token (HTTP 401). Check the configured Replit Secret."
+    elif status == 403:
+        message = "eCourtsIndia denied this partner account (HTTP 403). Check account status and API access."
+    elif status == 402:
+        message = "eCourtsIndia requires available credits or an active subscription (HTTP 402)."
+    elif status == 429:
+        message = "eCourtsIndia rate-limited this request (HTTP 429). Wait before retrying."
+    elif status >= 500:
+        message = f"eCourtsIndia is temporarily unavailable (HTTP {status}). Retry later."
+    else:
+        provider_message = body_error.get("message") if isinstance(body_error, dict) else None
+        detail = str(provider_message or "").strip()[:240]
+        message = f"eCourtsIndia rejected the request (HTTP {status})."
+        if detail:
+            message += f" {detail}"
+    return CourtDataError(
+        message,
+        status_code=status,
+        code=provider_code or f"http_{status}",
+        retry_after=retry_after,
+        retryable=(status == 429 or status >= 500),
+    )
 
 
 async def _persist_snapshot(tracked_case_id: str, raw: dict) -> None:
