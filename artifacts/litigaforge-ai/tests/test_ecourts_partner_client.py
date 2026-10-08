@@ -125,6 +125,53 @@ async def test_case_detail_uses_partner_host_bearer_and_normalizes_contract(monk
     assert response.status == "DISPOSED"
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected_code"),
+    [
+        ({"meta": {}}, "invalid_response_envelope"),
+        ({"data": []}, "invalid_response_envelope"),
+        ({"data": {"courtCaseData": []}}, "invalid_case_data"),
+    ],
+)
+def test_case_detail_rejects_invalid_partner_envelopes(payload, expected_code):
+    with pytest.raises(client.CourtDataError) as error:
+        client._normalize_case_response(payload)
+    assert error.value.code == expected_code
+
+
+def test_case_detail_tolerates_optional_fields_missing():
+    normalized = client._normalize_case_response(
+        {"data": {"courtCaseData": {"cnr": CNR_A}}, "meta": {}},
+        expected_cnr=CNR_A,
+    )
+    assert normalized["cnr"] == CNR_A
+    assert normalized["hearings"] == []
+    assert normalized["orders"] == []
+    assert normalized["petitioner_name"] == ""
+    assert normalized["respondent_name"] == ""
+    assert normalized["case_status"] == ""
+
+
+@pytest.mark.asyncio
+async def test_missing_token_and_invalid_cnr_never_issue_partner_requests(monkeypatch):
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json=_case_payload(CNR_A))
+
+    _install_transport(monkeypatch, handler)
+    monkeypatch.setattr(client, "_KEY_POOL", [])
+    with pytest.raises(client.CourtDataConfigurationError):
+        await client.lookup_cnr(CNR_A)
+    assert calls == []
+
+    monkeypatch.setattr(client, "_KEY_POOL", ["unit-test-only"])
+    with pytest.raises(ValueError, match="Invalid CNR"):
+        await client.lookup_cnr("not-a-cnr")
+    assert calls == []
+
+
 @pytest.mark.asyncio
 async def test_partner_search_maps_filters_pagination_and_display_title(monkeypatch):
     seen = []
@@ -227,6 +274,98 @@ async def test_paid_refresh_post_is_never_retried_even_if_retries_requested(monk
 
 
 @pytest.mark.asyncio
+async def test_get_retries_transient_statuses_but_returns_success(monkeypatch):
+    for transient_status in (429, 503):
+        calls = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            if len(calls) == 1:
+                return httpx.Response(
+                    transient_status,
+                    headers={"Retry-After": "0"},
+                    json={"error": {"code": "transient", "message": "try later"}},
+                )
+            return httpx.Response(200, json=_case_payload(CNR_A))
+
+        _install_transport(monkeypatch, handler)
+        sleep = AsyncMock()
+        monkeypatch.setattr(client.asyncio, "sleep", sleep)
+
+        result = await client._fetch_case_detail(CNR_A)
+
+        assert result["cnr"] == CNR_A
+        assert len(calls) == 2
+        sleep.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_retries_network_and_timeout_with_a_bounded_attempt_count(monkeypatch):
+    for exception_type, expected_code, expected_status in (
+        (httpx.ConnectError, "network_error", 502),
+        (httpx.ReadTimeout, "timeout", 504),
+    ):
+        calls = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            if len(calls) <= 2:
+                raise exception_type("temporary failure", request=request)
+            return httpx.Response(200, json=_case_payload(CNR_A))
+
+        _install_transport(monkeypatch, handler)
+        sleep = AsyncMock()
+        monkeypatch.setattr(client.asyncio, "sleep", sleep)
+        result = await client._fetch_case_detail(CNR_A)
+        assert result["cnr"] == CNR_A
+        assert len(calls) == 3
+        assert [call.args[0] for call in sleep.await_args_list] == [1, 2]
+
+        def exhausted_handler(request: httpx.Request) -> httpx.Response:
+            raise exception_type("offline", request=request)
+
+        _install_transport(monkeypatch, exhausted_handler)
+        with pytest.raises(client.CourtDataError) as error:
+            await client._fetch_case_detail(CNR_A)
+        assert error.value.code == expected_code
+        assert error.value.status_code == expected_status
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_phrase", "retryable"),
+    [
+        (400, "invalid", False),
+        (401, "partner token", False),
+        (403, "denied", False),
+        (404, "could not find", False),
+        (409, "conflict", False),
+        (429, "rate-limited", True),
+        (500, "temporarily unavailable", True),
+    ],
+)
+@pytest.mark.asyncio
+async def test_partner_http_errors_are_distinct_and_not_exposed_as_raw_bodies(
+    monkeypatch, status, expected_phrase, retryable
+):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status,
+            json={"error": {"code": "partner_error", "message": "safe provider detail"}},
+        )
+
+    _install_transport(monkeypatch, handler)
+    with pytest.raises(client.CourtDataError) as error:
+        await client._request("GET", "/api/partner/test", retries=0)
+
+    assert error.value.status_code == status
+    assert error.value.details["upstream_status"] == status
+    assert error.value.code == "partner_error"
+    assert expected_phrase in error.value.user_message.lower()
+    assert error.value.retryable is retryable
+    assert "safe provider detail" not in error.value.user_message
+
+
+@pytest.mark.asyncio
 async def test_bulk_refresh_uses_documented_status_lists_and_waits_for_queued_cases(monkeypatch):
     calls = []
 
@@ -274,6 +413,32 @@ async def test_bulk_refresh_uses_documented_status_lists_and_waits_for_queued_ca
 
 
 @pytest.mark.asyncio
+async def test_single_refresh_failure_is_not_persisted_or_retried(monkeypatch):
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(
+            503,
+            json={"error": {"code": "service_unavailable", "message": "try later"}},
+        )
+
+    _install_transport(monkeypatch, handler)
+    persist = AsyncMock()
+    mark_failure = AsyncMock()
+    monkeypatch.setattr(client, "_persist_snapshot", persist)
+    monkeypatch.setattr(client, "_mark_refresh_failure", mark_failure)
+
+    with pytest.raises(client.CourtDataError):
+        await client.get_case_by_cnr("tracked-id", CNR_A)
+
+    assert len(calls) == 1
+    assert calls[0].method == "POST"
+    persist.assert_not_awaited()
+    mark_failure.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_bulk_refresh_failure_marks_cases_without_persisting(monkeypatch):
     calls = []
 
@@ -300,6 +465,39 @@ async def test_bulk_refresh_failure_marks_cases_without_persisting(monkeypatch):
     assert calls[0].method == "POST"
     assert mark_failure.await_count == 2
     persist.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_bulk_refresh_missing_status_marks_only_unreported_case_failed(monkeypatch):
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if request.method == "POST":
+            return httpx.Response(
+                200,
+                json={
+                    "data": {"refreshed": [CNR_A], "queued": [], "invalid": []},
+                    "meta": {},
+                },
+            )
+        return httpx.Response(200, json=_case_payload(CNR_A))
+
+    _install_transport(monkeypatch, handler)
+    persist = AsyncMock()
+    mark_failure = AsyncMock()
+    monkeypatch.setattr(client, "_persist_snapshots", persist)
+    monkeypatch.setattr(client, "_mark_refresh_failure", mark_failure)
+
+    result = await client.bulk_refresh([
+        {"tracked_case_id": "tracked-a", "cnr": CNR_A},
+        {"tracked_case_id": "tracked-b", "cnr": CNR_B},
+    ])
+
+    assert set(result) == {CNR_A}
+    assert persist.await_count == 1
+    mark_failure.assert_awaited_once()
+    assert mark_failure.await_args.args[0] == "tracked-b"
 
 
 @pytest.mark.asyncio
@@ -429,6 +627,72 @@ async def test_live_cnr_route_surfaces_missing_token_instead_of_demo_data(monkey
     assert error.value.status_code == 503
     assert error.value.detail["code"] == "missing_credentials"
     assert "demo" not in error.value.detail["message"].lower()
+
+
+@pytest.mark.parametrize(
+    ("upstream_status", "expected_http_status"),
+    [
+        (400, 422),
+        (401, 503),
+        (403, 503),
+        (404, 404),
+        (409, 409),
+        (429, 503),
+        (500, 502),
+    ],
+)
+@pytest.mark.asyncio
+async def test_live_cnr_route_maps_upstream_failures_without_fallback(
+    monkeypatch, upstream_status, expected_http_status
+):
+    import routers.cnr as cnr_router
+
+    monkeypatch.setattr(
+        client,
+        "lookup_cnr",
+        AsyncMock(side_effect=client.CourtDataError(
+            "Partner request failed",
+            status_code=upstream_status,
+            code=f"http_{upstream_status}",
+        )),
+    )
+    request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+
+    with pytest.raises(HTTPException) as error:
+        await cnr_router.cnr_lookup_get(CNR_A, request)
+
+    assert error.value.status_code == expected_http_status
+    assert error.value.detail["code"] == f"http_{upstream_status}"
+
+
+@pytest.mark.asyncio
+async def test_invalid_cnr_is_rejected_before_live_lookup(monkeypatch):
+    import routers.cnr as cnr_router
+
+    lookup = AsyncMock()
+    monkeypatch.setattr(client, "lookup_cnr", lookup)
+    request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+
+    with pytest.raises(HTTPException) as error:
+        await cnr_router.cnr_lookup_get("not-a-cnr", request)
+
+    assert error.value.status_code == 422
+    lookup.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_live_cnr_route_returns_partner_response_on_success(monkeypatch):
+    import routers.cnr as cnr_router
+
+    raw = client._normalize_case_response(_case_payload(CNR_A), expected_cnr=CNR_A)
+    monkeypatch.setattr(client, "lookup_cnr", AsyncMock(return_value=raw))
+    request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+
+    response = await cnr_router.cnr_lookup_get(CNR_A, request)
+
+    assert response.cnr == CNR_A
+    assert response.data_source == "eCourts India Partner API"
+    assert response.orders[0].filename == "order-1.pdf"
 
 
 @pytest.mark.asyncio

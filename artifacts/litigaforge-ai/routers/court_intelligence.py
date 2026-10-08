@@ -461,6 +461,7 @@ async def opponent_scan(
             else 504 if exc.code == "timeout"
             else 404 if status == 404
             else 422 if status == 400
+            else 409 if status == 409
             else 502
         )
         headers = {"Retry-After": str(int(exc.retry_after))} if exc.retry_after is not None else None

@@ -275,6 +275,11 @@ def _provider_error(resp: httpx.Response) -> CourtDataError:
         message = f"eCourtsIndia is temporarily unavailable (HTTP {status}). Retry later."
     elif status == 404:
         message = "eCourtsIndia could not find the requested case or order (HTTP 404)."
+    elif status == 409:
+        message = (
+            "eCourtsIndia reports a conflict for this request (HTTP 409). "
+            "Review the case state before retrying."
+        )
     elif status == 400:
         message = "eCourtsIndia rejected the request as invalid (HTTP 400)."
     else:

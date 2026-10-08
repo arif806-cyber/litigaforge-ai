@@ -301,6 +301,8 @@ def _raise_upstream_http_error(exc: court_data_client.CourtDataError) -> None:
         http_status = 503
     elif exc.code == "timeout":
         http_status = 504
+    elif status == 409:
+        http_status = 409
     elif status == 404:
         http_status = 404
     elif status == 400:
