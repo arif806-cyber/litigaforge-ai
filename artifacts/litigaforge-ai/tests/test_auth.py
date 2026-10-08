@@ -8,16 +8,32 @@ from unittest.mock import AsyncMock, patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 os.environ["SESSION_SECRET"] = "test-secret-123456789012345678901234567890"
-os.environ["DATABASE_URL"] = "postgresql://test:test@localhost/test"
 os.environ["BASE_PATH"] = ""
 
 from main import app
+from routers import auth as auth_router
 
 
 @pytest.fixture
 def client():
     from fastapi.testclient import TestClient
     return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def isolate_auth_side_effects(monkeypatch):
+    monkeypatch.setattr(auth_router, "store_refresh_token", AsyncMock())
+    monkeypatch.setattr(
+        auth_router, "_create_verification_token",
+        AsyncMock(return_value="test-verification-token"),
+    )
+    monkeypatch.setattr(auth_router, "_send_verification_email", AsyncMock(return_value=False))
+
+
+def _assert_http_only_session_cookies(response):
+    cookies = [header.lower() for header in response.headers.get_list("set-cookie")]
+    assert any(cookie.startswith("lf_token=") and "httponly" in cookie for cookie in cookies)
+    assert any(cookie.startswith("lf_refresh=") and "httponly" in cookie for cookie in cookies)
 
 
 # ── Health / Root ──────────────────────────────────────────────────────────
@@ -27,13 +43,12 @@ def test_healthz(client):
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"
-    assert "ai_mode" in data
+    assert data["service"] == "litigaforge-ai"
 
 
-def test_root(client):
+def test_root_is_not_an_api_route(client):
     r = client.get("/")
-    assert r.status_code == 200
-    assert r.json()["name"] == "LitigaForge AI"
+    assert r.status_code == 404
 
 
 # ── Auth ────────────────────────────────────────────────────────────────────
@@ -51,7 +66,8 @@ def test_register_success(mock_create_user, client):
     assert r.status_code == 200
     data = r.json()
     assert data["user"]["email"] == "test@example.com"
-    assert "token" in data
+    assert "token" not in data
+    _assert_http_only_session_cookies(r)
 
 
 def test_register_short_password(client):
@@ -86,7 +102,8 @@ def test_login_success(mock_verify, mock_get_user, client):
     assert r.status_code == 200
     data = r.json()
     assert data["user"]["email"] == "test@example.com"
-    assert "token" in data
+    assert "token" not in data
+    _assert_http_only_session_cookies(r)
 
 
 @patch("routers.auth.get_user_by_email")

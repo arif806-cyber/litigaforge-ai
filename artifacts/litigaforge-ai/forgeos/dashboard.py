@@ -16,10 +16,13 @@ Deployments/PR queue live in forgeos/github.py (separate module — different
 external dependency and its own cache lifecycle).
 """
 from database import fetch
+from logger import get_logger
 
 from forgeos import registry, missions as missions_mod
 from forgeos.audit import list_audit_log
 from forgeos.events import recent_events
+
+logger = get_logger("litigaforge.forgeos")
 
 MISSION_STATUSES = (
     "planned", "waiting", "assigned", "running",

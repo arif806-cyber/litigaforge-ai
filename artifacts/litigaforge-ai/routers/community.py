@@ -753,7 +753,6 @@ class DocumentRequest(BaseModel):
 
 
 @router.post("/document/analyze", status_code=202)
-@limiter.limit("10/minute")
 async def analyze_document(
     req: DocumentRequest,
     request: Request,
@@ -1068,7 +1067,6 @@ Document text to analyze:
 
 
 @router.post("/document/analyze-file", status_code=202)
-@limiter.limit("10/minute")
 async def analyze_document_file(
     request: Request,
     file: UploadFile = File(...),

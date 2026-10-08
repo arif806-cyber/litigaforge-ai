@@ -13,10 +13,6 @@ ForgeOS (`artifacts/litigaforge-ai/forgeos/`) is a self-contained multi-agent or
   **Why:** keeps the fast test suite decoupled from live infra while still proving the real path works end-to-end at least once.
   **How to apply:** when extending forgeos, add a mocked unit test first; only use a temporary live flag-on session for one-off E2E confidence, then always clean up DB rows and unset the flag.
 
-- **Pre-existing unrelated test failures**: `tests/test_auth.py::test_healthz`, `test_root`, `test_register_success`, `test_login_success` fail on this codebase even in complete isolation from forgeos changes (stale `ai_mode` health assertion, dev-mode root 404, and a real `store_refresh_token` DB call that isn't mocked, hitting `ConnectionRefusedError` against a fake DATABASE_URL). Confirmed pre-existing by running `test_auth.py` alone with zero forgeos files collected — same 4 failures.
-  **Why:** avoids mistakenly attributing legacy test drift to new subsystem work.
-  **How to apply:** if these 4 tests resurface as "broken by my change," first check they still fail with forgeos entirely excluded before investigating further.
-
 - **`tests/test_endpoints.py` is a live-server integration suite** (real `httpx` calls to `localhost:5000`, with real `time.sleep(20)` rate-limit retries) — running it (or the full `pytest tests/`) under a short tool timeout silently kills the run with no output. It is unrelated to forgeos and any other unit-tested module.
   **Why:** wasted a `timeout`-guarded `pytest tests/` attempt before realizing the hang was this file, not a regression.
   **How to apply:** for "run the full suite" checks, run unit-test files explicitly (excluding `test_endpoints.py`) instead of a bare `pytest tests/ -q`, or only run it separately against a live workflow with a long timeout.

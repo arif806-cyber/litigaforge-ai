@@ -76,17 +76,21 @@ async def test_authenticated_ai_dependency_reserves_shared_capacity_once(monkeyp
     global_reserve.assert_awaited_once_with()
 
 
-def test_public_ai_routes_have_per_ip_limits():
+def test_anonymous_ai_routes_use_ip_limits_and_analyzers_use_user_quota():
+    from auth import require_ai_user
     from routers import community
 
-    endpoints = {
-        (route.path, tuple(sorted(route.methods or ()) )): route.endpoint
+    routes = {
+        (route.path, tuple(sorted(route.methods or ()) )): route
         for route in community.router.routes
         if route.path in {"/ask", "/document/analyze", "/document/analyze-file", "/judgments/search"}
     }
-    # slowapi wraps each limited endpoint; the unprotected GET /ask remains
-    # intentionally absent from this assertion.
-    assert endpoints[("/ask", ("POST",))].__dict__.get("__wrapped__") is not None
-    assert endpoints[("/document/analyze", ("POST",))].__dict__.get("__wrapped__") is not None
-    assert endpoints[("/document/analyze-file", ("POST",))].__dict__.get("__wrapped__") is not None
-    assert endpoints[("/judgments/search", ("POST",))].__dict__.get("__wrapped__") is not None
+    # Anonymous surfaces use IP limits; authenticated document analysis is
+    # metered by user ID and must not inherit a shared-proxy IP bucket.
+    assert routes[("/ask", ("POST",))].endpoint.__dict__.get("__wrapped__") is not None
+    assert routes[("/judgments/search", ("POST",))].endpoint.__dict__.get("__wrapped__") is not None
+
+    for path in ("/document/analyze", "/document/analyze-file"):
+        route = routes[(path, ("POST",))]
+        assert route.endpoint.__dict__.get("__wrapped__") is None
+        assert any(dep.call is require_ai_user for dep in route.dependant.dependencies)

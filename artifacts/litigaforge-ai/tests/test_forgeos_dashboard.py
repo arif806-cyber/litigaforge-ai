@@ -142,12 +142,16 @@ async def test_get_dashboard_snapshot_combines_all_sections(monkeypatch):
         return [{"kind": "event", "created_at": "now", "action": "x", "target_type": "",
                   "target_id": "", "detail": {}}]
 
+    async def fake_latest_health_check():
+        return {"status": "completed"}
+
     monkeypatch.setattr(registry, "list_agents", fake_list_agents)
     monkeypatch.setattr(missions_mod, "list_missions", fake_list_missions)
     monkeypatch.setattr(dashboard, "_mission_counts", fake_mission_counts)
     monkeypatch.setattr(dashboard, "_revenue_summary", fake_revenue_summary)
     monkeypatch.setattr(dashboard, "_ai_cost_summary", fake_ai_cost_summary)
     monkeypatch.setattr(dashboard, "_activity_feed", fake_activity_feed)
+    monkeypatch.setattr(dashboard, "_latest_health_check", fake_latest_health_check)
 
     snapshot = await dashboard.get_dashboard_snapshot()
     assert snapshot["agent_count"] == 2
@@ -156,3 +160,19 @@ async def test_get_dashboard_snapshot_combines_all_sections(monkeypatch):
     assert snapshot["revenue"]["mrr_rupees"] == 1998.0
     assert snapshot["ai_cost"]["total_cost_usd"] == 4.2
     assert len(snapshot["activity"]) == 1
+    assert snapshot["health_check"] == {"status": "completed"}
+
+
+@pytest.mark.asyncio
+async def test_latest_health_check_failure_is_nonfatal(monkeypatch):
+    from types import SimpleNamespace
+
+    async def fail_to_load():
+        raise RuntimeError("health-check store unavailable")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "health_check",
+        SimpleNamespace(get_latest_run=fail_to_load),
+    )
+    assert await dashboard._latest_health_check() is None

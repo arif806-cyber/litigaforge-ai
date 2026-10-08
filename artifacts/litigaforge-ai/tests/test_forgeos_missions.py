@@ -162,11 +162,23 @@ async def test_execute_mission_completes_on_success(monkeypatch):
     async def fake_still_owns(mission_id, agent_id):
         return True
 
+    async def fake_update_agent_activity(agent_id, **fields):
+        return None
+
+    async def fake_bump_agent_kpi(agent_id, key, delta=1):
+        return None
+
+    async def fake_record_llm_metrics(agent_id, mission_id, outcome):
+        return None
+
     monkeypatch.setattr(missions, "get_mission", fake_get_mission)
     monkeypatch.setattr(missions.registry, "get_agent", fake_get_agent)
+    monkeypatch.setattr(missions.registry, "update_agent_activity", fake_update_agent_activity)
+    monkeypatch.setattr(missions.registry, "bump_agent_kpi", fake_bump_agent_kpi)
     monkeypatch.setattr(missions, "_set_status", fake_set_status)
     monkeypatch.setattr(missions.bus, "publish", fake_publish)
     monkeypatch.setattr(missions, "_still_owns", fake_still_owns)
+    monkeypatch.setattr(missions, "_record_llm_metrics", fake_record_llm_metrics)
 
     from forgeos import orchestrator
     monkeypatch.setattr(orchestrator, "run_agent_task", fake_run_agent_task)
