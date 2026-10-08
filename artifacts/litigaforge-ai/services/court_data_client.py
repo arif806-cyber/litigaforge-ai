@@ -190,8 +190,8 @@ async def _request(
                     await asyncio.sleep(delay)
                     continue
                 logger.error(
-                    "eCourts Partner request failed status=%s code=%s path=%s",
-                    error.status_code, error.code, path,
+                    "eCourts Partner request failed status=%s code=%s provider_code=%s path=%s",
+                    error.status_code, error.code, error.details.get("provider_code"), path,
                 )
                 raise error
             try:
@@ -256,6 +256,7 @@ def _provider_error(resp: httpx.Response) -> CourtDataError:
         body = {}
     body_error = body.get("error", {}) if isinstance(body, dict) else {}
     provider_code = str(body_error.get("code") or "") if isinstance(body_error, dict) else ""
+    provider_code = re.sub(r"[^A-Za-z0-9_.:-]", "_", provider_code.strip())[:80]
     provider_message = body_error.get("message") if isinstance(body_error, dict) else None
     retry_after_raw = resp.headers.get("Retry-After")
     try:
@@ -287,17 +288,16 @@ def _provider_error(resp: httpx.Response) -> CourtDataError:
         message = f"eCourtsIndia rejected the request (HTTP {status})."
         if detail:
             message += f" {detail}"
-    if status in (400, 404) and provider_message:
-        detail = str(provider_message).strip()[:240]
-        if detail:
-            message += f" {detail}"
+    # Keep stable application codes for client responses; provider codes are
+    # retained only as sanitized server-side diagnostics.
+    application_code = {400: "invalid_request", 404: "not_found"}.get(status)
     return CourtDataError(
         message,
         status_code=status,
-        code=provider_code or f"http_{status}",
+        code=application_code or provider_code or f"http_{status}",
         retry_after=retry_after,
         retryable=(status == 429 or status >= 500),
-        details={"upstream_status": status},
+        details={"upstream_status": status, "provider_code": provider_code or None},
     )
 
 

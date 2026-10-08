@@ -347,10 +347,12 @@ async def test_get_retries_network_and_timeout_with_a_bounded_attempt_count(monk
 async def test_partner_http_errors_are_distinct_and_not_exposed_as_raw_bodies(
     monkeypatch, status, expected_phrase, retryable
 ):
+    upstream_detail = "private provider diagnostics: internal-ref-98765"
+
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             status,
-            json={"error": {"code": "partner_error", "message": "safe provider detail"}},
+            json={"error": {"code": "partner_error", "message": upstream_detail}},
         )
 
     _install_transport(monkeypatch, handler)
@@ -359,10 +361,14 @@ async def test_partner_http_errors_are_distinct_and_not_exposed_as_raw_bodies(
 
     assert error.value.status_code == status
     assert error.value.details["upstream_status"] == status
-    assert error.value.code == "partner_error"
+    assert error.value.details["provider_code"] == "partner_error"
+    assert error.value.code == {
+        400: "invalid_request",
+        404: "not_found",
+    }.get(status, "partner_error")
     assert expected_phrase in error.value.user_message.lower()
     assert error.value.retryable is retryable
-    assert "safe provider detail" not in error.value.user_message
+    assert upstream_detail not in error.value.user_message
 
 
 @pytest.mark.asyncio
