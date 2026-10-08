@@ -6,21 +6,28 @@ import json
 import os
 import re
 import time
+from collections import defaultdict
+from datetime import date
 from typing import Any
 from urllib.parse import quote
 
 import httpx
 
-from database import execute as db_execute, fetchval as db_fetchval
+from database import execute as db_execute, get_pool
 from logger import get_logger
 
 logger = get_logger("litigaforge.court_data_client")
 
 PARTNER_API_BASE = "https://webapi.ecourtsindia.com"
-_API_BASE = os.getenv("ECOURTSINDIA_API_BASE", PARTNER_API_BASE).rstrip("/")
+_API_BASE = PARTNER_API_BASE
+_PARTNER_PREFIX = "/api/partner"
 _CNR_RE = re.compile(r"^[A-Z]{4}\d{12}$")
+_ORDER_FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,199}$")
 _DEFAULT_TIMEOUT = 20.0
 _GET_RETRIES = 2
+_SINGLE_REFRESH_WAIT_SECONDS = 7
+_BULK_REFRESH_WAIT_SECONDS = 30
+_HTTP_TRANSPORT: httpx.AsyncBaseTransport | None = None
 
 # Support dual-key rotation for extra rate-limit headroom.
 # ECOURTSINDIA_API_KEY is required; ECOURTSINDIA_API_KEY_2 is optional.
@@ -48,12 +55,14 @@ class CourtDataError(RuntimeError):
         code: str = "upstream_error",
         retry_after: float | None = None,
         retryable: bool = False,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.retry_after = retry_after
         self.retryable = retryable
+        self.details = details or {}
 
     @property
     def user_message(self) -> str:
@@ -145,11 +154,11 @@ async def _request(
     path: str,
     *,
     json_body: dict | None = None,
-    params: dict | None = None,
+    params: dict | list[tuple[str, str]] | None = None,
     retries: int | None = None,
     timeout: float = _DEFAULT_TIMEOUT,
 ) -> dict:
-    """Call a Partner API endpoint. Only GETs are retried to avoid duplicate paid POSTs."""
+    """Call the documented Partner API. Paid POSTs are never retried."""
     require_configured()
     method = method.upper()
     retry_count = _GET_RETRIES if retries is None and method == "GET" else (retries or 0)
@@ -158,12 +167,12 @@ async def _request(
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
-    url = f"{_API_BASE.rstrip('/')}/{path.lstrip('/')}"
+    url = f"{PARTNER_API_BASE.rstrip('/')}/{path.lstrip('/')}"
 
     for attempt in range(retry_count + 1):
         await _bucket.acquire()
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout, transport=_HTTP_TRANSPORT) as client:
                 resp = await client.request(
                     method, url,
                     headers=headers,
@@ -173,7 +182,7 @@ async def _request(
             if resp.status_code >= 400:
                 error = _provider_error(resp)
                 if method == "GET" and error.retryable and attempt < retry_count:
-                    delay = error.retry_after or min(2 ** attempt, 8)
+                    delay = min(error.retry_after or 2 ** attempt, 8)
                     logger.warning(
                         "eCourts Partner GET failed status=%s path=%s attempt=%d/%d; retrying in %.1fs",
                         error.status_code, path, attempt + 1, retry_count + 1, delay,
@@ -202,9 +211,27 @@ async def _request(
             return payload
         except CourtDataError:
             raise
+        except httpx.TimeoutException as exc:
+            error = CourtDataError(
+                "The eCourtsIndia request timed out.",
+                status_code=504,
+                code="timeout",
+                retryable=True,
+            )
+            if method == "GET" and attempt < retry_count:
+                delay = min(2 ** attempt, 8)
+                logger.warning(
+                    "eCourts Partner GET timed out path=%s attempt=%d/%d; retrying in %ds",
+                    path, attempt + 1, retry_count + 1, delay,
+                )
+                await asyncio.sleep(delay)
+                continue
+            logger.error("eCourts Partner timeout path=%s", path)
+            raise error from exc
         except httpx.TransportError as exc:
             error = CourtDataError(
                 "Could not reach eCourtsIndia. Check network access and retry.",
+                status_code=502,
                 code="network_error",
                 retryable=True,
             )
@@ -229,6 +256,7 @@ def _provider_error(resp: httpx.Response) -> CourtDataError:
         body = {}
     body_error = body.get("error", {}) if isinstance(body, dict) else {}
     provider_code = str(body_error.get("code") or "") if isinstance(body_error, dict) else ""
+    provider_message = body_error.get("message") if isinstance(body_error, dict) else None
     retry_after_raw = resp.headers.get("Retry-After")
     try:
         retry_after = min(max(float(retry_after_raw), 0.0), 30.0) if retry_after_raw else None
@@ -245,10 +273,17 @@ def _provider_error(resp: httpx.Response) -> CourtDataError:
         message = "eCourtsIndia rate-limited this request (HTTP 429). Wait before retrying."
     elif status >= 500:
         message = f"eCourtsIndia is temporarily unavailable (HTTP {status}). Retry later."
+    elif status == 404:
+        message = "eCourtsIndia could not find the requested case or order (HTTP 404)."
+    elif status == 400:
+        message = "eCourtsIndia rejected the request as invalid (HTTP 400)."
     else:
-        provider_message = body_error.get("message") if isinstance(body_error, dict) else None
         detail = str(provider_message or "").strip()[:240]
         message = f"eCourtsIndia rejected the request (HTTP {status})."
+        if detail:
+            message += f" {detail}"
+    if status in (400, 404) and provider_message:
+        detail = str(provider_message).strip()[:240]
         if detail:
             message += f" {detail}"
     return CourtDataError(
@@ -257,6 +292,7 @@ def _provider_error(resp: httpx.Response) -> CourtDataError:
         code=provider_code or f"http_{status}",
         retry_after=retry_after,
         retryable=(status == 429 or status >= 500),
+        details={"upstream_status": status},
     )
 
 
