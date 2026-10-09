@@ -7,7 +7,8 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts && node scripts/inject-seo.mjs",
     "serve": "node server.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:cnr": "node --experimental-strip-types --test tests/cnr-refresh-state.test.mjs"
   },
   "devDependencies": {
     "@dagrejs/dagre": "^3.0.0",

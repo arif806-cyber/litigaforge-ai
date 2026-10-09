@@ -21,6 +21,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH;
+const buildVersion = Date.now().toString(36);
 
 if (!basePath) {
   throw new Error(
@@ -30,21 +31,26 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
+  define: {
+    __LITIGAFORGE_BUILD_VERSION__: JSON.stringify(buildVersion),
+  },
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      // Registration is explicit in main.tsx so worker updates can bypass HTTP
+      // caches, use a per-build URL, and reload already-controlled tabs.
+      injectRegister: null,
       devOptions: {
         enabled: false,
       },
       workbox: {
         globPatterns: ["**/*.{js,css,png,svg,woff2,html}"],
         cleanupOutdatedCaches: true,
-        // When a new SW is found, skip the waiting phase and activate immediately,
-        // then claim all open tabs so the updated assets load without a manual refresh.
+        // Activate a new worker immediately; main.tsx reloads controlled tabs
+        // when the updated worker takes control.
         skipWaiting: true,
         clientsClaim: true,
         // Exclude backend/proxied paths from the SPA navigation fallback so the

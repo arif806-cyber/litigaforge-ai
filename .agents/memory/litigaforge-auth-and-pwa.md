@@ -43,7 +43,15 @@ Accounts created before the email-verification launch at 2026-06-06 06:33:35 UTC
 
 - `devOptions.enabled:false` means the Vite dev server registers NO service worker, but a worker from a prior built-app load persists in the browser profile. It updates only when the Node frontend server provides a fresh `sw.js`, so source changes can appear stale while that server is down.
 
-**Why / how to apply:** do not trust the preview to reflect UI source changes until the production bundle is rebuilt and the Node frontend workflow restarted. Returning users self-heal through `autoUpdate`, `skipWaiting`, and `clientsClaim`.
+**Why / how to apply:** do not trust the preview to reflect UI source changes until the production bundle is rebuilt and the Node frontend workflow restarted.
+
+# VitePWA updates must reload already-open clients
+
+- `injectRegister: "auto"` emits a bare `navigator.serviceWorker.register(...)` script; `autoUpdate`, `skipWaiting`, and `clientsClaim` alone do not replace JavaScript already running in an open tab. For reliable version transitions, register the worker explicitly with a per-build query version and `updateViaCache: "none"`, then reload once on `controllerchange` only when a worker already controlled the page. Keep Vite's hashed assets and `cleanupOutdatedCaches`.
+
+**Why:** a new worker can take control while an existing page continues executing an old bundle, so a server-side publish or hard reload is not enough to prove that the page's JavaScript changed.
+
+**How to apply:** after PWA changes, rebuild with the correct base path, verify the generated worker still has `skipWaiting`, `clientsClaim`, `cleanupOutdatedCaches`, and the navigation denylist, and confirm no API runtime cache was added.
 
 # API traffic must never use service-worker runtime caching
 

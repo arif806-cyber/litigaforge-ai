@@ -51,6 +51,24 @@ _BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 _LIVETRACK_TIERS = {"professional", "advocate_pro"}
 
+# Recognize pre-Partner-API refresh failures only so they can be suppressed and
+# replaced. This pattern is never returned to clients or shown in the UI.
+_LEGACY_CNR_REFRESH_PATTERN = (
+    r"(ecourts\s+api.*unreachable.*server|"
+    r"requires.*indian.*network.*ip|indian.*network.*ip)"
+)
+_LEGACY_CNR_REFRESH_RE = re.compile(_LEGACY_CNR_REFRESH_PATTERN, re.IGNORECASE)
+
+
+def _normalize_refresh_state(status: Any, error: Any) -> tuple[Any, Any]:
+    """Hide stale pre-Partner-API failures from every tracked-case response."""
+    status_text = status if isinstance(status, str) else ""
+    error_text = error if isinstance(error, str) else ""
+    if _LEGACY_CNR_REFRESH_RE.search(status_text) or _LEGACY_CNR_REFRESH_RE.search(error_text):
+        return "pending", None
+    return status, error
+
+
 # ── CNR validation ──────────────────────────────────────────────────────────────
 def _validate_cnr(cnr: str) -> str:
     try:
@@ -198,8 +216,38 @@ async def track_case(
 # ── GET /court-intel/my-cases ──────────────────────────────────────────────────
 
 @router.get("/court-intel/my-cases")
-async def my_tracked_cases(user: dict = Depends(require_user)):
+async def my_tracked_cases(
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(require_user),
+):
     user_id: int = int(user["id"])
+
+    # Normalize only the obsolete refresh fields. Case identity and every saved
+    # snapshot stay intact; RETURNING makes this a one-time, race-safe refresh
+    # enqueue for each affected case owned by this user.
+    stale_cases = await db_fetch(
+        """
+        UPDATE tracked_cases
+        SET    refresh_status = 'pending',
+               refresh_error  = NULL
+        WHERE  user_id = $1
+          AND  is_active = true
+          AND  (
+                 COALESCE(refresh_error, '') ~* $2
+                 OR COALESCE(refresh_status, '') ~* $2
+               )
+        RETURNING id::text AS id, cnr
+        """,
+        user_id,
+        _LEGACY_CNR_REFRESH_PATTERN,
+    )
+    for stale_case in stale_cases:
+        background_tasks.add_task(
+            _trigger_single_refresh,
+            stale_case["id"],
+            stale_case["cnr"],
+        )
+
     rows = await db_fetch(
         """
         SELECT tc.id::text, tc.cnr, tc.case_type, tc.court_name,
@@ -218,7 +266,15 @@ async def my_tracked_cases(user: dict = Depends(require_user)):
         """,
         user_id,
     )
-    return {"cases": [dict(r) for r in rows]}
+    cases = []
+    for row in rows:
+        case = dict(row)
+        case["refresh_status"], case["refresh_error"] = _normalize_refresh_state(
+            case.get("refresh_status"),
+            case.get("refresh_error"),
+        )
+        cases.append(case)
+    return {"cases": cases}
 
 
 # ── GET /court-intel/{id}/timeline ────────────────────────────────────────────
@@ -238,6 +294,10 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
 
     # Live subscription check — not from cached users.subscription_tier
     is_paid = await _check_livetrack_live(int(user["id"]))
+    refresh_status, refresh_error = _normalize_refresh_state(
+        row.get("refresh_status"),
+        row.get("refresh_error"),
+    )
 
     latest_snap = await db_fetchrow(
         """
@@ -254,8 +314,8 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
         "case_type":      row["case_type"],
         "court_name":     row["court_name"],
         "last_refreshed": row["last_refreshed"].isoformat() if row["last_refreshed"] else None,
-        "refresh_status": row.get("refresh_status"),
-        "refresh_error": row.get("refresh_error"),
+        "refresh_status": refresh_status,
+        "refresh_error": refresh_error,
         "is_active":      row["is_active"],
         "latest_status":  dict(latest_snap) if latest_snap else None,
         "livetrack_tier": is_paid,

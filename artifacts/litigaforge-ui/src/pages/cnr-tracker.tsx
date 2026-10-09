@@ -12,6 +12,7 @@ import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { currentCnrErrorMessage, normalizeCnrRefreshState } from "@/lib/cnr-refresh-state";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 
@@ -69,7 +70,7 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
       onTracked();
     },
     onError: (e: any) => {
-      setErr(e?.detail ?? e?.message ?? "Failed to add CNR. Check the number and try again.");
+      setErr(currentCnrErrorMessage(e, "Failed to add CNR. Check the number and try again."));
     },
   });
 
@@ -167,17 +168,22 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
     </div>
   );
 
-  /* No snapshot yet — API was offline during initial fetch */
+  const refreshState = normalizeCnrRefreshState(data.refresh_status, data.refresh_error);
+
+  /* No snapshot yet — report the current Partner API refresh state. */
   if (!data.latest_status && data.livetrack_tier !== undefined) return (
     <div className="rounded-xl p-4 text-center space-y-2"
       style={{ background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.12)" }}>
       <AlertTriangle className="w-4 h-4 text-blue-400/60 mx-auto" />
       <p className="text-xs text-white/40">
-        No case data yet — eCourts India API was unreachable during the last fetch.
+        {refreshState.status === "pending"
+          ? "The eCourts India Partner API refresh is in progress."
+          : refreshState.status === "failed"
+            ? `The latest eCourts India Partner API refresh failed. ${refreshState.error || "Use Retry on the case card to try again."}`
+            : "No successful eCourts India Partner API response is available for this case yet."}
       </p>
       <p className="text-[11px] text-white/25">
-        Use the <span className="text-blue-400/70">Retry</span> button on the card to try again,
-        or check back after the nightly refresh at 08:00 IST.
+        Use the <span className="text-blue-400/70">Retry</span> button on the case card to request a fresh Partner API check.
       </p>
     </div>
   );
@@ -300,8 +306,9 @@ function TrackedCaseCard({ tc }: { tc: any }) {
     },
   });
 
-  const refreshPending = tc.refresh_status === "pending";
-  const refreshFailed = tc.refresh_status === "failed";
+  const refreshState = normalizeCnrRefreshState(tc.refresh_status, tc.refresh_error);
+  const refreshPending = refreshState.status === "pending";
+  const refreshFailed = refreshState.status === "failed";
   const noSnapshot = !tc.last_refreshed && !tc.case_status;
 
   const lastRefreshed = tc.last_refreshed
@@ -325,10 +332,10 @@ function TrackedCaseCard({ tc }: { tc: any }) {
               <AlertTriangle className={`w-3 h-3 shrink-0 mt-0.5 ${refreshFailed ? "text-red-400" : "text-blue-400/70"}`} />
               <span>
                 {refreshFailed
-                  ? `Latest eCourtsIndia refresh failed. Previously saved data is unchanged. ${tc.refresh_error || ""}`
+                  ? `Latest eCourts India Partner API refresh failed. Previously saved data is unchanged. ${refreshState.error || ""}`
                   : refreshPending
-                    ? "eCourtsIndia refresh is in progress. Any previous successful data remains available."
-                    : "No successful eCourtsIndia snapshot has been saved yet."}
+                    ? "eCourts India Partner API refresh is in progress. Any previous successful data remains available."
+                    : "No successful eCourts India Partner API response has been saved yet."}
               </span>
             </span>
             {(refreshFailed || noSnapshot) && (
