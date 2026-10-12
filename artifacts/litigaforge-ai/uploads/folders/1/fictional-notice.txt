@@ -1,0 +1,8 @@
+LITIGAFORGE DEMO — FICTIONAL TRAINING DOCUMENT
+Not a real notice, case, person, authority, or court record.
+
+ASTER COMPONENTS LLP (fictional)
+Practice notice dated 12 March [fictional year]
+The hypothetical sender proposes a transfer of an unidentified asset.
+The notice refers to a response deadline but supplies no proof of service.
+Training prompt: identify the missing record and questions to verify.

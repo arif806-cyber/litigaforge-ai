@@ -1,0 +1,8 @@
+LITIGAFORGE DEMO — FICTIONAL TRAINING DOCUMENT
+All entities, people, events, and dates below are invented.
+
+Client: Aster Components LLP (fictional)
+Instruction: seek advice about a hypothetical transfer and interim relief.
+The client says it received a notice on 12 March, but cannot locate the envelope.
+No contract, title document, delivery proof, or authentic legal authority is supplied.
+Training prompt: separate client assertion, established fact, and unknown.
