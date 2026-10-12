@@ -28,6 +28,7 @@
 - [LitigaForge public marketplace safety](litigaforge-public-marketplace-safety.md) — public lawyer data is allowlisted; matching stays fail-closed until verified local supply exists.
 - [LitigaForge Workspace SSE](litigaforge-workspace-sse.md) — first frame precedes DB/provider work; every Workspace SSE path must bypass GZip or small frames remain buffered.
 - [LitigaForge async AI jobs](litigaforge-async-ai-jobs.md) — long browser AI calls use DB-backed jobs + polling; structured model outputs need strict size caps or JSON truncates before closing.
+- [Replit workflow stale listeners](replit-workflow-stale-listeners.md) — failed backend workflows can leave their prior app process group bound; inspect socket ownership and group members before a targeted TERM and restart.
 - [LitigaForge Q&A privacy](litigaforge-question-privacy.md) — legal questions are owner-private by default; public Q&A requires explicit opt-in, separate redacted copies, admin approval, and deduplication.
 - [LitigaForge proxy rate limits](litigaforge-proxy-rate-limits.md) — do not use proxy-IP buckets for authenticated mutations; Replit/Google proxy IPs are shared and rotate between one browser’s requests.
 - [LitigaForge authenticated AI quota](litigaforge-ai-quota.md) — every authenticated plan shares a flat 20-call clock-hour limit; keep it atomic and user-based, never proxy-IP-based.
