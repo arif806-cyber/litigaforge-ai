@@ -151,3 +151,17 @@ mtime_ms = 1788809796145
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/118ba94e-477a-4914-a53e-650b56979a7c/1431fca7-1790-4ae9-8ff4-5a7d097bd025"
 storage_version_token = "1788809819053400"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "ScFFvI31SyDsMc0TZV9VN"
+uri = "file://generated-artifacts/litigaforge-workspace-walkthrough.png"
+type = "image"
+title = "LitigaForge Workspace walkthrough"
+description = "Authenticated development capture of the interactive walkthrough at /in/workspace. No account or case details are shown."
+logical_id = "31495040-4f7d-4e98-acc8-ca3522f36239"
+content_hash = "sha256:6097c29a7a2ce794b824a30aa1ff99903de44ebeac7bceaf52248817af9d803a"
+size = 147435
+mtime_ms = 1791809185489
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/31495040-4f7d-4e98-acc8-ca3522f36239/901ce865-7f42-4cef-8f17-d3a4227d802c"
+storage_version_token = "1791809197770594"
+content_type = "image/png"

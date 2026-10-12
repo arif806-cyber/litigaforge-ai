@@ -5,6 +5,7 @@ dist
 # Ship the pre-built frontend dist so Replit deployment serves it directly
 # instead of relying on a cached cloud build that may serve stale HTML.
 !artifacts/litigaforge-ui/dist/
+/generated-artifacts/
 tmp
 out-tsc
 *.tsbuildinfo
