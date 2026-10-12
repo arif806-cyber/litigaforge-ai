@@ -40,6 +40,13 @@ const clientNav: NavEntry[] = [
 
 const lawyerNav: NavEntry[] = [
   { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star,      tKey: "dashboard" },
+  { href: "/lawyer-dashboard/cases", label: "Cases & Hearings", icon: FileText },
+  { href: "/lawyer-dashboard/clients", label: "Clients", icon: Users },
+  { href: "/judgments",          label: "Judgments",       icon: BookOpen,  tKey: "judgments" },
+  { href: "/cnr-tracker",        label: "CNR Tracker",     icon: CalendarSearch },
+  { href: "/lawyer-dashboard/documents", label: "Documents", icon: FileCheck, tKey: "documents" },
+  { href: "/lawyer-dashboard/earnings", label: "Earnings", icon: Briefcase },
+  { href: "/settings",           label: "Settings",        icon: UserIcon },
   { href: "/matches",          label: "Client Requests",  icon: Users,     tKey: "client_requests" },
   { href: "/messages",         label: "Messages",         icon: Inbox },
   { href: "/review",           label: "Doc Analyzer",     icon: FileSearch, tKey: "doc_analyzer" },
@@ -223,9 +230,19 @@ function SidebarContent({
   const { t } = useLanguage();
   const unreadCount = useUnreadCount();
   const isAdvocate = user?.role === "lawyer" || user?.role === "advocate";
-  const isClient = !!user && !isAdvocate;
+  const viewingClientWorkspace = location.startsWith("/client");
+  const isClient = !!user && (!isAdvocate || viewingClientWorkspace);
   const roleNav = !user ? publicNav : isClient ? clientNav : lawyerNav;
   const roleLabel = !user ? "Public tools" : isClient ? "Client" : "Advocate";
+  const showRoleSwitch = !!user && (isAdvocate || !!user.lawyer_status);
+  const roleSwitch: NavEntry | null = showRoleSwitch
+    ? isClient
+      ? { href: "/lawyer-dashboard", label: "Switch to Advocate", icon: Scale }
+      : { href: "/client-dashboard", label: "Switch to Client", icon: UserIcon }
+    : null;
+  const legalTools = isAdvocate
+    ? commonNav.filter(item => !["/cnr-tracker", "/judgments", "/review"].includes(item.href))
+    : commonNav;
 
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
@@ -262,9 +279,19 @@ function SidebarContent({
             badge={item.href === "/messages" ? unreadCount : undefined}
           />
         ))}
+        {roleSwitch && (
+          <NavItem
+            key={roleSwitch.href}
+            {...roleSwitch}
+            label={roleSwitch.label}
+            testId="nav-role-switch"
+            location={location}
+            onClick={onNav}
+          />
+        )}
 
         {user && <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>}
-        {user && commonNav.map(item => (
+        {user && legalTools.map(item => (
           <NavItem
             key={item.href}
             {...item}

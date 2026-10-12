@@ -59,6 +59,7 @@ export interface User {
   is_demo?: boolean;
   must_change_password?: boolean;
   role: "client" | "lawyer" | "advocate";
+  has_lawyer_profile?: boolean;
   created_at: string;
   is_verified?: boolean;
   lawyer_status?: string | null;
@@ -69,7 +70,7 @@ export interface User {
 interface AuthCtx {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, role?: string) => Promise<void>;
   register: (name: string, email: string, password: string, role?: string, recaptchaToken?: string) => Promise<void>;
   googleLogin: (credential: string, role?: string) => Promise<void>;
   appleLogin: (idToken: string, firstName?: string, lastName?: string, role?: string) => Promise<void>;
@@ -133,12 +134,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { refreshUser(); }, [refreshUser]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, role: string = "client") => {
     const data = await authFetch("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, role }),
     });
     setUser(data.user);
+    if ((role === "advocate" || role === "lawyer") && !data.user?.has_lawyer_profile) {
+      window.location.href = buildCountryUrl(getCountryFromPath() ?? "in", "lawyers/register?setup=advocate");
+      return;
+    }
     navigateAfterAuth(data.user?.role ?? "client", !!data.user?.is_demo);
   };
 

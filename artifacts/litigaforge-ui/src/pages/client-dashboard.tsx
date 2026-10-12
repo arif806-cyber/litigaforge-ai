@@ -201,16 +201,30 @@ export default function ClientDashboard() {
   const filteredMatches = allMatches.filter((m) => m.status === matchTab);
   const activeReqs = requirements.filter((r) => r.status === "open").length;
   const acceptedMatches = allMatches.filter((m) => m.status === "accepted").length;
-  const activeCases = clientCases.filter((c) => c.status === "active").length;
+  const activeCases = clientCases.filter((c) => !["closed", "completed", "dismissed"].includes((c.status ?? "").toLowerCase())).length;
   const upcomingHearings = clientCases.filter((c) => c.hearing_date && new Date(c.hearing_date) >= new Date()).length;
   const connectedLawyers = [...new Set(clientCases.map((c) => c.lawyer_id))].length;
   const pendingMatches = allMatches.filter((m) => m.status === "pending").length;
 
+  const latestRequirement = [...requirements].sort((a, b) =>
+    new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+  )[0];
   const currentStage = (() => {
-    if (activeCases > 0)       return "hired";
-    if (acceptedMatches > 0)   return "proposals";
-    if (pendingMatches > 0)    return "requested";
-    if (allMatches.length > 0) return "matched";
+    if (!latestRequirement) {
+      const latestMatter = [...clientCases].sort((a, b) =>
+        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+      )[0];
+      const matterStatus = (latestMatter?.status ?? "").toLowerCase();
+      if (["closed", "completed", "dismissed"].includes(matterStatus)) return "completed";
+      if (latestMatter) return "hired";
+      return "posted";
+    }
+    const status = (latestRequirement.status ?? "").toLowerCase();
+    if (["closed", "completed", "dismissed"].includes(status)) return "completed";
+    const latestMatches = allMatches.filter((m) => m.case_requirement_id === latestRequirement.id);
+    if (latestMatches.some((m) => m.status === "accepted")) return "hired";
+    if (latestMatches.length > 0) return "proposals";
+    if (["matched", "matching"].includes(status)) return "matched";
     return "posted";
   })();
 

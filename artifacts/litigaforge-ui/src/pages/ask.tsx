@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
+import ReactMarkdown from "react-markdown";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch, LONG_JOB_ERROR, LongJobError, pollLongJob, runLongJob } from "@/lib/api";
 import { MessageSquare, Send, Loader2, ChevronDown, ChevronUp, Clock, FileQuestion, AlertTriangle, Sparkles, Bot, User, Trash2 } from "lucide-react";
@@ -157,8 +158,8 @@ function QACard({ item, country }: { item: QAItem; country?: string }) {
             className="overflow-hidden"
           >
             <div className="px-6 pb-6 pt-2 border-t border-border/50 bg-muted/20">
-              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 whitespace-pre-line leading-relaxed">
-                {item.ai_answer}
+              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90 leading-relaxed">
+                <ReactMarkdown>{item.ai_answer}</ReactMarkdown>
               </div>
             </div>
           </motion.div>
@@ -196,7 +197,9 @@ function ChatBubble({ msg }: { msg: ChatMsg }) {
             {msg.category}
           </span>
         )}
-        <div className="whitespace-pre-line">{msg.content}</div>
+        {isUser
+          ? <div className="whitespace-pre-line">{msg.content}</div>
+          : <div className="prose prose-sm dark:prose-invert max-w-none text-inherit"><ReactMarkdown>{msg.content}</ReactMarkdown></div>}
       </div>
     </motion.div>
   );
@@ -412,6 +415,7 @@ export default function Ask() {
     setClarifyOpen(false);
     const userText = question.trim();
     const finalQuestion = extraDetails ? `${userText}\n\n${extraDetails}` : userText;
+    setQuestion("");
     setMessages(prev => [...prev, { id: Date.now(), role: "user", content: userText, category }]);
     const submission: AskSubmission = {
       question: finalQuestion,

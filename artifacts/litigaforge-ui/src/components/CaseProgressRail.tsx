@@ -4,6 +4,7 @@ const STAGES = [
   { key: "requested", label: "Requested" },
   { key: "proposals", label: "Proposals" },
   { key: "hired",     label: "Hired" },
+  { key: "completed", label: "Completed" },
 ] as const;
 
 type StageKey = (typeof STAGES)[number]["key"];

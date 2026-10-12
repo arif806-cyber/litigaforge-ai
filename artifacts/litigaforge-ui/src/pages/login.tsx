@@ -156,7 +156,7 @@ export default function Login() {
     setLoading(true);
     try {
       if (isSignIn) {
-        await login(email, password);
+        await login(email, password, role === "lawyer" ? "advocate" : "client");
         trackEvent("login_success", { role });
       } else {
         const recaptchaToken = await getRecaptchaToken("register");

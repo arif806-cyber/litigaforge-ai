@@ -170,7 +170,10 @@ async def get_user_by_email(email: str) -> dict | None:
 async def get_user_by_id(user_id: int) -> dict | None:
     row = await fetchrow(
         """SELECT u.id, u.email, u.name, u.subscription_tier,
-                  u.cases_this_month, u.month_reset_date, u.is_superuser, u.role, u.created_at,
+                   u.cases_this_month, u.month_reset_date, u.is_superuser,
+                   CASE WHEN l.user_id IS NOT NULL THEN 'advocate' ELSE u.role END AS role,
+                   (l.id IS NOT NULL) AS has_lawyer_profile,
+                   u.created_at,
                    u.username, COALESCE(u.is_profile_public, FALSE) AS is_profile_public,
                    COALESCE(u.email_verified, FALSE) AS email_verified,
                    COALESCE(u.is_demo, FALSE) AS is_demo,

@@ -282,7 +282,7 @@ export default function LawyersPage() {
   const [practiceArea, setPracticeArea] = useState(allAreas);
   const [searchText, setSearchText] = useState("");
   const [location] = useLocation();
-  const [showRegister, setShowRegister] = useState(location === "/lawyers/register");
+  const [showRegister, setShowRegister] = useState(location.startsWith("/lawyers/register"));
 
   const { data, isLoading } = useQuery({
     queryKey: ["lawyers", cc, district, practiceArea, searchText],
@@ -388,9 +388,9 @@ export default function LawyersPage() {
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                   <Globe2 className="w-8 h-8 text-primary" />
                 </div>
-                 <h3 className="text-xl font-bold text-foreground mb-2">Our directory is expanding to {dir.name}</h3>
+                 <h3 className="text-xl font-bold text-foreground mb-2">No verified advocates available yet</h3>
                 <p className="text-muted-foreground font-medium max-w-md text-center mb-8">
-                  We're onboarding advocates in {dir.name} now. In the meantime, you can still post your case or be the first advocate listed here.
+                  There are no verified advocate profiles listed for {dir.name} yet. You can still post your case and check back later.
                 </p>
                 {user?.role === "lawyer" || user?.role === "advocate" ? (
                   <Button onClick={() => setShowRegister(true)} size="lg">

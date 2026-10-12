@@ -381,7 +381,6 @@ function Router() {
         <Route path="/profile/:username/research" component={ProfileResearch} />
         <Route path="/refund-policy" component={RefundPolicy} />
         <Route path="/us-demand-letter" component={UsDemandLetterRoute} />
-        <Route path="/settings" component={SettingsRoute} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
         <Route path="/signup" component={SignupRedirect} />
@@ -394,6 +393,9 @@ function Router() {
             <Switch>
               <Route path="/client-dashboard" component={ClientDashboardRoute} />
               <Route path="/lawyer-dashboard" component={LawyerDashboardRoute} />
+              <Route path="/lawyer-dashboard/:section" component={LawyerDashboardRoute} />
+              <Route path="/advocate-dashboard"><Redirect to="/lawyer-dashboard" /></Route>
+              <Route path="/settings" component={SettingsRoute} />
               <Route path="/subscription" component={SubscriptionRoute} />
               <Route path="/ask" component={AskRoute} />
               <Route path="/review" component={ReviewRoute} />

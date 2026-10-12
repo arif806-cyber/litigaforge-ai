@@ -203,9 +203,18 @@ export default function LawyerDashboard() {
   const { user, refreshUser, logout } = useAuth();
   const { activeCode, activeConfig } = useCountry();
   const copy = LAWYER_DASHBOARD_COPY[activeCode.toUpperCase()] ?? LAWYER_DASHBOARD_COPY.IN;
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const qc = useQueryClient();
   const [activeSection, setActiveSection] = useState<"overview" | "cases" | "clients" | "documents" | "earnings">("overview");
+  useEffect(() => {
+    const section = location.split("/").at(-1);
+    if (section && ["cases", "clients", "documents", "earnings"].includes(section)) {
+      setActiveSection(section as "cases" | "clients" | "documents" | "earnings");
+    } else if (section === "lawyer-dashboard") {
+      setActiveSection("overview");
+    }
+  }, [location]);
+  const [feeDrafts, setFeeDrafts] = useState<Record<number, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [caseTab, setCaseTab] = useState<"active" | "pending" | "closed">("active");
   const [matchTab, setMatchTab] = useState<"pending" | "accepted" | "declined">("pending");
@@ -330,6 +339,23 @@ export default function LawyerDashboard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lawyer-matches"] }),
   });
 
+  const saveAgreedFeeMut = useMutation({
+    mutationFn: ({ matchId, agreedFee }: { matchId: number; agreedFee: number }) =>
+      apiFetch(`/matches/${matchId}/agreed-fee`, {
+        method: "PATCH",
+        body: JSON.stringify({ agreed_fee: agreedFee }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lawyer-matches"] });
+      toast({ title: "Agreed fee saved" });
+    },
+    onError: (e: any) => toast({
+      title: "Fee not saved",
+      description: e?.detail ?? e?.message ?? "Please try again.",
+      variant: "destructive",
+    }),
+  });
+
   const allLeads: any[] = matchData?.matches ?? (Array.isArray(matchData) ? matchData : []);
   const feedCases: CaseFeedItem[] = allLeads
     .filter((m: any) => m.status === "pending")
@@ -357,7 +383,7 @@ export default function LawyerDashboard() {
   const completedCases = cases.filter((c) => c.status === "closed");
 
   const stats = [
-    { label: "Total Requests", value: allLeads.length, sub: "+12% this week", iconEl: <Users className="w-5 h-5" />, iconBg: "rgba(139,92,246,0.12)", iconColor: "#8B5CF6", borderColor: "rgba(139,92,246,0.25)" },
+    { label: "Total Requests", value: allLeads.length, sub: "All client requests", iconEl: <Users className="w-5 h-5" />, iconBg: "rgba(139,92,246,0.12)", iconColor: "#8B5CF6", borderColor: "rgba(139,92,246,0.25)" },
     { label: "Pending", value: pendingLeads.length, sub: "Needs your response", iconEl: <Clock className="w-5 h-5" />, iconBg: "rgba(245,183,84,0.12)", iconColor: "#F5B754", borderColor: "rgba(245,183,84,0.35)" },
     { label: "Accepted", value: acceptedLeads.length, sub: "Active matters", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "rgba(52,211,153,0.12)", iconColor: "#34D399", borderColor: "rgba(52,211,153,0.25)" },
     { label: "Completed", value: completedCases.length, sub: "This month", iconEl: <FileText className="w-5 h-5" />, iconBg: "rgba(139,92,246,0.12)", iconColor: "#8B5CF6", borderColor: "rgba(139,92,246,0.25)" },
@@ -592,16 +618,16 @@ export default function LawyerDashboard() {
       return aDate - bDate;
     });
 
-  // ── Earnings estimate ──
-  const MONTHLY_RATE_ESTIMATE = 15000;
+  // ── Earnings are based only on fees the advocate has entered ──
   const thisMonth = new Date().getMonth();
   const thisYear = new Date().getFullYear();
-  const acceptedThisMonth = acceptedLeads.filter((m: any) => {
+  const monthlyFeeCases = acceptedLeads.filter((m: any) => {
     const d = new Date(m.created_at);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  }).length;
-  const estimatedMonthlyEarnings = acceptedThisMonth * MONTHLY_RATE_ESTIMATE;
-  const estimatedTotalEarnings = acceptedLeads.length * MONTHLY_RATE_ESTIMATE;
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear && m.agreed_fee != null;
+  });
+  const recordedMonthlyEarnings = monthlyFeeCases.reduce((sum: number, m: any) => sum + Number(m.agreed_fee || 0), 0);
+  const recordedTotalEarnings = acceptedLeads.reduce((sum: number, m: any) => sum + Number(m.agreed_fee || 0), 0);
+  const recordedFeeCount = acceptedLeads.filter((m: any) => m.agreed_fee != null).length;
 
   const SECTION_TABS = [
     { id: "overview",   label: "Overview",   icon: Briefcase },
@@ -790,7 +816,6 @@ export default function LawyerDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { icon: Users,    color: "#4F46E5", bg: "rgba(139,92,246,0.12)", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
-                    { icon: Shield,   color: "#34D399", bg: "rgba(52,211,153,0.12)", label: "Verified Clients",    sub: "All clients are verified for genuine legal needs" },
                     { icon: Sparkles, color: "#38BDF8", bg: "rgba(14,165,233,0.12)", label: "Smart Tools",         sub: "AI chat, document analysis, and legal research" },
                     { icon: Award,    color: "#F472B6", bg: "rgba(236,72,153,0.12)", label: "Grow Your Practice",  sub: "Save time and focus on winning cases" },
                   ].map((item) => {
@@ -1215,7 +1240,7 @@ export default function LawyerDashboard() {
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-foreground">Earnings Overview</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Revenue estimates based on your accepted cases</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Only fees you record for accepted cases are included.</p>
             </div>
 
             {/* Summary cards */}
@@ -1224,17 +1249,17 @@ export default function LawyerDashboard() {
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(52,211,153,0.12)" }}>
                   <Award className="w-5 h-5 text-emerald-400" />
                 </div>
-                <p className="text-3xl font-black text-foreground">₹{estimatedMonthlyEarnings.toLocaleString("en-IN")}</p>
-                <p className="text-sm font-medium text-muted-foreground mt-1">Estimated This Month</p>
-                <p className="text-[11px] text-muted-foreground/60 mt-0.5">{acceptedThisMonth} case{acceptedThisMonth !== 1 ? "s" : ""} accepted this month</p>
+                <p className="text-3xl font-black text-foreground">₹{recordedMonthlyEarnings.toLocaleString("en-IN")}</p>
+                <p className="text-sm font-medium text-muted-foreground mt-1">Recorded This Month</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-0.5">{monthlyFeeCases.length} fee{monthlyFeeCases.length !== 1 ? "s" : ""} recorded this month</p>
               </div>
               <div className="bg-card rounded-2xl p-6 shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(139,92,246,0.12)" }}>
                   <Briefcase className="w-5 h-5 text-primary" />
                 </div>
-                <p className="text-3xl font-black text-foreground">₹{estimatedTotalEarnings.toLocaleString("en-IN")}</p>
-                <p className="text-sm font-medium text-muted-foreground mt-1">All-Time Estimate</p>
-                <p className="text-[11px] text-muted-foreground/60 mt-0.5">{acceptedLeads.length} total accepted case{acceptedLeads.length !== 1 ? "s" : ""}</p>
+                <p className="text-3xl font-black text-foreground">₹{recordedTotalEarnings.toLocaleString("en-IN")}</p>
+                <p className="text-sm font-medium text-muted-foreground mt-1">Recorded Fees</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-0.5">{recordedFeeCount} of {acceptedLeads.length} accepted cases have a fee</p>
               </div>
               <div className="bg-card rounded-2xl p-6 shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(245,183,84,0.12)" }}>
@@ -1246,13 +1271,11 @@ export default function LawyerDashboard() {
               </div>
             </div>
 
-            {/* Estimate note */}
+            {/* Fee entry note */}
             <div className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)" }}>
               <Info className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
               <p className="text-[12px] text-emerald-400 leading-relaxed">
-                <strong>Estimate basis:</strong> ₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")} per accepted case (industry average for Telangana &amp; AP District Courts).
-                Actual earnings depend on your agreed fee with each client.
-                Connect your billing system or record agreed case fees for more precise tracking.
+                These are self-reported agreed fees, not verified payments. Enter or update the fee on each accepted case below.
               </p>
             </div>
 
@@ -1273,15 +1296,42 @@ export default function LawyerDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm font-bold text-emerald-400">₹{MONTHLY_RATE_ESTIMATE.toLocaleString("en-IN")}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="999999999"
+                          step="1"
+                          aria-label={`Agreed fee for ${m.case_title ?? "case"}`}
+                          placeholder="Agreed fee"
+                          value={feeDrafts[m.id] ?? (m.agreed_fee == null ? "" : String(m.agreed_fee))}
+                          onChange={(event) => setFeeDrafts((drafts) => ({ ...drafts, [m.id]: event.target.value }))}
+                          className="w-32 rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-foreground"
+                        />
+                        <button
+                          type="button"
+                          disabled={
+                            saveAgreedFeeMut.isPending ||
+                            (feeDrafts[m.id] ?? (m.agreed_fee == null ? "" : String(m.agreed_fee))).trim() === ""
+                          }
+                          onClick={() => {
+                            const raw = feeDrafts[m.id] ?? (m.agreed_fee == null ? "" : String(m.agreed_fee));
+                            const value = Number(raw);
+                            if (Number.isFinite(value) && value >= 0 && value <= 999999999) {
+                              saveAgreedFeeMut.mutate({ matchId: m.id, agreedFee: value });
+                            }
+                          }}
+                          className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-primary disabled:opacity-50"
+                        >
+                          Save fee
+                        </button>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">Accepted</span>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="px-5 py-4 border-t flex items-center justify-between" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}>
-                  <span className="text-sm font-bold text-muted-foreground">Total Estimate</span>
-                  <span className="text-lg font-black text-foreground">₹{estimatedTotalEarnings.toLocaleString("en-IN")}</span>
+                  <span className="text-sm font-bold text-muted-foreground">Total recorded fees</span>
+                  <span className="text-lg font-black text-foreground">₹{recordedTotalEarnings.toLocaleString("en-IN")}</span>
                 </div>
               </div>
             )}

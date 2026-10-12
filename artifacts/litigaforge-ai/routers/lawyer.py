@@ -11,7 +11,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
 
-from auth import get_current_user, require_ai_user
+from auth import get_current_user, require_ai_user, require_advocate_role
 from database import fetchrow, fetch, execute, fetchval
 from logger import get_logger
 from rate_limit import limiter
@@ -19,7 +19,7 @@ from sanitizer import sanitize_text
 from ai_safety import wrap_user_prompt, validate_ai_response
 
 logger = get_logger("litigaforge.lawyer")
-router = APIRouter(tags=["lawyer"])
+router = APIRouter(tags=["lawyer"], dependencies=[Depends(require_advocate_role)])
 
 # ── Upload security constants ─────────────────────────────────────────────────
 ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".txt", ".odt"}

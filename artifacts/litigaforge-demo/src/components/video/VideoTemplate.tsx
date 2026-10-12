@@ -11,25 +11,25 @@ import { Scene7 } from './video_scenes/Scene7';
 import { Scene8 } from './video_scenes/Scene8';
 
 export const SCENE_DURATIONS: Record<string, number> = {
-  intro: 8000,
-  problem: 10000,
-  case: 8000,
-  matching: 10000,
-  forge: 16000,
-  synthesis: 12000,
-  carousel: 15000,
-  closing: 8000,
+  intro: 6000,
+  matter: 9000,
+  map: 10000,
+  agents: 11000,
+  search: 11000,
+  simulate: 10000,
+  review: 10000,
+  recap: 6000,
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
   intro: Scene1,
-  problem: Scene2,
-  case: Scene3,
-  matching: Scene4,
-  forge: Scene5,
-  synthesis: Scene6,
-  carousel: Scene7,
-  closing: Scene8,
+  matter: Scene2,
+  map: Scene3,
+  agents: Scene4,
+  search: Scene5,
+  simulate: Scene6,
+  review: Scene7,
+  recap: Scene8,
 };
 
 export default function VideoTemplate({

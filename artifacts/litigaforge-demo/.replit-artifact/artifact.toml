@@ -1,4 +1,5 @@
 kind = "video"
+videoAspectRatio = "16:9"
 previewPath = "/litigaforge-demo/"
 title = "LitigaForge AI — Product Demo"
 version = "1.0.0"

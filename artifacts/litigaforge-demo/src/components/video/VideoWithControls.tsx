@@ -6,7 +6,7 @@ import { useSceneControls } from './useSceneControls';
 
 const PROGRESS_TICK_MS = 60;
 const AUDIO_SEEK_EPSILON_SEC = 0.18;
-const AUDIO_VOLUME = 0.55;
+const AUDIO_VOLUME = 0.24;
 
 const SCENE_START_SEC: Record<string, number> = (() => {
   const out: Record<string, number> = {};
@@ -278,7 +278,7 @@ export default function VideoWithControls() {
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
-        src={`${import.meta.env.BASE_URL}audio/composite_audio.mp3`}
+        src={`${import.meta.env.BASE_URL}audio/bg_music.mp3`}
         preload="auto"
         autoPlay
         muted={muted}
@@ -307,7 +307,7 @@ export default function VideoWithControls() {
               transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
             >
               <Volume2 className="w-4 h-4 shrink-0" />
-              Tap <span className="font-bold">🔊</span> below for audio
+              Tap the audio control for music
             </motion.div>
           </motion.div>
         )}

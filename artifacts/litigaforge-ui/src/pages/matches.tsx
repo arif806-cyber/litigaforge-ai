@@ -138,8 +138,12 @@ export default function Matches() {
             <div className="rounded-xl p-8 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
               <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No match proposals yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">You can browse verified advocates while you wait.</p>
               <Button size="sm" className="mt-3" onClick={() => setLocation("/my-cases")}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Go to My Cases
+              </Button>
+              <Button size="sm" variant="outline" className="mt-3 ml-2" onClick={() => setLocation("/lawyers")}>
+                Browse Advocates
               </Button>
             </div>
           )}

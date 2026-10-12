@@ -640,6 +640,7 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE matches ALTER COLUMN payment_status SET DEFAULT 'none'")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_amount INTEGER DEFAULT 0")
         await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS commission_payment_id TEXT")
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS agreed_fee NUMERIC(12,2)")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS match_refund_retries (
                 match_id INTEGER PRIMARY KEY REFERENCES matches(id) ON DELETE CASCADE,

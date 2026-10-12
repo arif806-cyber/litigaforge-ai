@@ -56,7 +56,9 @@ function ThreadRow({
   role: string; onClick: () => void;
 }) {
   const unread = thread.unread_count > 0;
-  const otherParty = role === "lawyer" ? (thread.client_name ?? "Client") : thread.lawyer_name;
+  const otherParty = role === "lawyer" || role === "advocate"
+    ? (thread.client_name ?? "Client")
+    : thread.lawyer_name;
   const initials = otherParty.split(" ").map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2);
 
   return (
@@ -198,7 +200,7 @@ function NoThreads({ role }: { role: string }) {
       </div>
       <h3 className="font-semibold text-foreground mb-1">No conversations yet</h3>
       <p className="text-sm text-muted-foreground max-w-xs mb-4">
-        {role === "lawyer"
+        {role === "lawyer" || role === "advocate"
           ? "Accept a client match to start a direct conversation."
           : "Accept a lawyer match to open a direct chat with them."}
       </p>

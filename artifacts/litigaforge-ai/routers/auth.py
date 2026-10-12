@@ -51,6 +51,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+    role: str = "client"
 
 
 async def _issue_tokens(user_id: int, response: Response) -> None:
@@ -136,7 +137,16 @@ async def login(req: LoginRequest, request: Request, response: Response):
     user = await get_user_by_email(req.email.strip().lower())
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
+    if req.role not in ("client", "advocate", "lawyer"):
+        raise HTTPException(status_code=422, detail="Role must be client or advocate")
+    profile = await db_fetchrow("SELECT id FROM lawyers WHERE user_id=$1", user["id"])
+    # A submitted advocate profile is stronger evidence of advocate access than
+    # the account's legacy single-role field (which may predate the profile).
+    if profile and user.get("role") not in ("lawyer", "advocate"):
+        await db_execute("UPDATE users SET role='advocate' WHERE id=$1", user["id"])
+        user["role"] = "advocate"
     user.pop("password_hash", None)
+    user["has_lawyer_profile"] = bool(profile)
     await _issue_tokens(user["id"], response)
     return {"user": user}
 

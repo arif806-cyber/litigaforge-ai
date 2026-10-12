@@ -1330,7 +1330,7 @@ async def list_lawyers(
     response.headers["Cache-Control"] = "public, max-age=300"
 
     # Version this key so a pre-deployment cache entry containing PII is never reused.
-    ck = cache_key("lawyers-v2-public", country or "", district or "", practice_area or "", language or "", search or "")
+    ck = cache_key("lawyers-v3-public-test-hidden", country or "", district or "", practice_area or "", language or "", search or "")
     cached = await cache_get(ck)
     if cached is not None:
         return cached
@@ -1400,10 +1400,11 @@ async def register_lawyer(
 ):
     if not current_user:
         raise HTTPException(401, "Login required to register as an advocate")
-    if current_user.get("role") not in ("advocate", "lawyer"):
-        raise HTTPException(403, "Register an advocate account before submitting a profile")
     if not current_user.get("email_verified") and os.getenv("ALLOW_UNVERIFIED") != "1":
         raise HTTPException(403, "Verify your email before submitting an advocate profile")
+    existing = await fetchrow("SELECT id FROM lawyers WHERE user_id=$1", current_user["id"])
+    if existing:
+        raise HTTPException(409, "An advocate profile is already registered for this account")
     row = await fetchrow(
         """INSERT INTO lawyers
            (user_id, name, email, phone, bar_number, district, practice_areas, languages, experience_years, bio, hourly_rate, country, verification_status, verified)
@@ -1413,6 +1414,7 @@ async def register_lawyer(
         req.practice_areas, req.languages, req.experience_years, req.bio, req.hourly_rate,
         (req.country or "in").lower(),
     )
+    await execute("UPDATE users SET role='advocate' WHERE id=$1", current_user["id"])
     return {
         "message": "Advocate profile submitted. It will appear once verified by our team.",
         "lawyer": row,

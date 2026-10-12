@@ -89,3 +89,11 @@ Accounts created before the email-verification launch at 2026-06-06 06:33:35 UTC
 - With `ADMIN_RESET_PASSWORD` still set (agent tooling cannot delete/rotate secrets — only the user can via the env-var request dialog), any backend restart re-applies the break-glass hash and silently reverts a password you just set for e2e testing. If a session needs both (a) a restart for an unrelated env var change and (b) a stable, known password on a superuser test account, do the restart(s) first, confirm the app is in its final state, and only THEN write the known-good password hash directly to that user's row — and do not restart the backend again afterward, or it reverts.
 
 **Why:** discovered while e2e-testing a superuser-only feature — set a test password, restarted the backend for an unrelated `FORGEOS_ENABLED` toggle, and the password silently reverted with no error, wasting a debugging cycle before recalling the break-glass secret was still active.
+
+# Advocate access is distinct from subscription entitlements
+
+- Do not infer advocate authority from a paid tier. Advocate-only access requires an advocate role/profile; a client who chooses Advocate without a profile must explicitly submit one first. Accounts with both client and advocate access should have a visible way to switch workspace views.
+
+**Why:** A plan purchase grants product entitlements, not a professional identity or a verified advocate profile.
+
+**How to apply:** Gate advocate APIs on role/profile state and keep role selection separate from billing. Do not silently convert a client account merely because it upgrades.

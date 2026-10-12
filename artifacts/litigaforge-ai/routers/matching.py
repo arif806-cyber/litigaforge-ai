@@ -3,6 +3,7 @@ LitigaForge AI — Matching Router
 Case requirements, AI lawyer matching, and match management.
 """
 import logging
+import math
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -603,8 +604,9 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
                   CASE WHEN m.payment_status = 'paid' THEN l.email ELSE NULL END as lawyer_email
            FROM matches m
            JOIN case_requirements c ON m.case_requirement_id = c.id
-           JOIN lawyers l ON m.lawyer_id = l.id
-           WHERE m.client_id = $1
+            JOIN lawyers l ON m.lawyer_id = l.id
+            WHERE m.client_id = $1
+              AND COALESCE(l.is_test, FALSE) = FALSE
            ORDER BY m.created_at DESC""",
         current_user["id"],
     )
@@ -617,6 +619,14 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
 async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user)):
     if not current_user:
         raise HTTPException(401, "Login required")
+    if (
+        current_user.get("role") not in ("advocate", "lawyer")
+        or not current_user.get("has_lawyer_profile")
+    ):
+        raise HTTPException(
+            403,
+            "Advocate access required. Complete your advocate profile to receive matches.",
+        )
     # Only verified, active advocate profiles may receive case data.  Keeping
     # this gate in the profile lookup also prevents suspended/revoked lawyers
     # from seeing anonymous details through previously-created matches.
@@ -631,7 +641,7 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
     lawyer_id = lawyer_row["id"]
 
     rows = await fetch(
-        """SELECT m.id, m.status, m.ai_explanation,
+        """SELECT m.id, m.status, m.ai_explanation, m.agreed_fee,
                   m.client_message, m.created_at, m.case_requirement_id,
                   c.title as case_title, c.case_type,
                   CASE WHEN NOT c.is_anonymous
@@ -651,6 +661,37 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
     for r in rows:
         r["created_at"] = str(r["created_at"])
     return {"total": len(rows), "matches": rows}
+
+
+class AgreedFeeRequest(BaseModel):
+    agreed_fee: float
+
+
+@router.patch("/matches/{match_id}/agreed-fee")
+async def update_agreed_fee(
+    match_id: int,
+    req: AgreedFeeRequest,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    if not math.isfinite(req.agreed_fee) or req.agreed_fee < 0 or req.agreed_fee > 999_999_999:
+        raise HTTPException(422, "Enter an agreed fee between 0 and 999,999,999")
+    lawyer = await fetchrow(
+        "SELECT id FROM lawyers WHERE user_id=$1 AND verified=TRUE AND verification_status='verified'",
+        current_user["id"],
+    )
+    if not lawyer:
+        raise HTTPException(403, "Only verified advocates can record agreed fees")
+    row = await fetchrow(
+        """UPDATE matches SET agreed_fee=$1, updated_at=NOW()
+           WHERE id=$2 AND lawyer_id=$3 AND status='accepted'
+           RETURNING id, agreed_fee""",
+        req.agreed_fee, match_id, lawyer["id"],
+    )
+    if not row:
+        raise HTTPException(404, "Accepted case not found")
+    return {"match_id": row["id"], "agreed_fee": float(row["agreed_fee"])}
 
 
 # ── Transaction fee endpoints ─────────────────────────────────────────────────

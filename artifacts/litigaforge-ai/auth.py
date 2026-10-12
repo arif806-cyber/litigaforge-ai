@@ -171,6 +171,25 @@ async def require_user(token: str | None = Depends(_token_dependency)) -> dict:
     return user
 
 
+async def require_advocate_role(
+    request: Request,
+    user: dict = Depends(require_user),
+) -> dict:
+    """Consistent role gate for advocate-only practice-management endpoints."""
+    # This module's router also hosts explicitly client-scoped case endpoints.
+    if request and "/client/" in request.url.path:
+        return user
+    if (
+        user.get("role") not in ("advocate", "lawyer")
+        or not user.get("has_lawyer_profile")
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Advocate access required. Choose Advocate and complete your advocate profile.",
+        )
+    return user
+
+
 async def require_non_demo_user(user: dict = Depends(require_user)) -> dict:
     """Prevent a shared demonstration identity from creating financial records."""
     if user.get("is_demo"):
