@@ -721,3 +721,15 @@ async def test_demo_cnr_fixture_route_is_opt_in_and_separate(monkeypatch):
     monkeypatch.setenv("ECOURTS_DEMO_ROUTES_ENABLED", "true")
     demo = await cnr_router.demo_cnr_lookup(CNR_A)
     assert "demo" in demo.data_source.lower()
+
+
+@pytest.mark.asyncio
+async def test_court_structure_accepts_documented_top_level_array(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/partner/causelist/court-structure/states"
+        return httpx.Response(200, json=[{"state": "AN", "stateName": "Andaman and Nicobar"}])
+
+    _install_transport(monkeypatch, handler)
+    monkeypatch.setattr(client, "_KEY_POOL", ["unit-test-only"])
+    data = await client.get_court_structure("states")
+    assert data["items"] == [{"state": "AN", "stateName": "Andaman and Nicobar"}]

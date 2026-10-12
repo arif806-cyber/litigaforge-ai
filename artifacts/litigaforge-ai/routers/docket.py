@@ -1,5 +1,6 @@
 """Advocate DocketView profile and honest cause-list source status."""
 import asyncio
+import json
 import time
 from contextvars import ContextVar
 from datetime import datetime, timedelta
@@ -17,6 +18,19 @@ _SCHEDULE_CACHE: dict[tuple[int, str], tuple[float, dict]] = {}
 _SCHEDULE_TTL_SECONDS = 15 * 60
 _SCHEDULE_REFRESHING: ContextVar[bool] = ContextVar("docket_schedule_refreshing", default=False)
 _SCHEDULE_REFRESH_LOCK = asyncio.Lock()
+
+
+def _court_config(value: str) -> dict[str, str]:
+    try:
+        parsed = json.loads(value)
+    except (TypeError, ValueError):
+        parsed = {}
+    if not isinstance(parsed, dict):
+        parsed = {}
+    return {
+        key: str(parsed.get(key) or "")
+        for key in ("state", "district_code", "complex_code", "court", "court_no")
+    }
 
 
 async def _ensure_table(conn):
@@ -107,11 +121,14 @@ async def onboarding_suggestions(payload: DocketOnboardingSearch, user=Depends(r
     names = list(dict.fromkeys(" ".join(name.split()) for name in payload.name_variants if name.strip()))
     if not names:
         raise HTTPException(status_code=422, detail="At least one advocate name is required.")
+    court_configs = [_court_config(value) for value in payload.court_codes]
+    court_codes = list(dict.fromkeys(item["court"] for item in court_configs if item["court"]))
+    states = list(dict.fromkeys(item["state"] for item in court_configs if item["state"]))
     try:
         result = await court_data_client.search_cases(
             advocates=names,
-            states=payload.states or None,
-            court_codes=payload.court_codes or None,
+            states=payload.states or states or None,
+            court_codes=court_codes or None,
             name_match_mode=payload.name_match_mode,
             page=1,
             page_size=100,
@@ -193,14 +210,24 @@ async def get_schedule(user=Depends(require_user)):
             "source_url": SOURCE_URL, "fetched_at": None, "configured_courts": [],
             "source_status": "profile_required", "message": "Complete your advocate profile to check cause lists.",
         }
-    courts = [str(value) for value in (profile["court_ids"] or [])]
+    courts = [
+        config for config in
+        (_court_config(str(value)) for value in (profile["court_ids"] or []))
+        if any(config.values())
+    ]
     tracked_cnrs = list(dict.fromkeys(str(row["cnr"]) for row in tracked_rows))
 
     async def day_results(day):
         matters: list[dict] = []
         published = False
-        for court_code in courts:
-            dates = await court_data_client.available_cause_list_dates(court=court_code)
+        for court in courts:
+            dates = await court_data_client.available_cause_list_dates(
+                state=court["state"] or None,
+                district_code=court["district_code"] or None,
+                court_complex_code=court["complex_code"] or None,
+                court=court["court"] or None,
+                court_no=court["court_no"] or None,
+            )
             available = dates.get("dates") or dates.get("availableDates") or []
             available_values = {
                 str(item.get("date") if isinstance(item, dict) else item)[:10]
@@ -213,7 +240,12 @@ async def get_schedule(user=Depends(require_user)):
             while True:
                 page = await court_data_client.search_cause_list(
                     advocate=profile["cause_list_name"], date_value=day.isoformat(),
-                    court=court_code, limit=200, offset=offset,
+                    state=court["state"] or None,
+                    district_code=court["district_code"] or None,
+                    court_complex_code=court["complex_code"] or None,
+                    court=court["court"] or None,
+                    court_no=court["court_no"] or None,
+                    limit=200, offset=offset,
                 )
                 rows = page.get("results") or page.get("entries") or page.get("matters") or []
                 matters.extend(row for row in rows if isinstance(row, dict))
@@ -238,7 +270,7 @@ async def get_schedule(user=Depends(require_user)):
         result = {
             "today": today_data, "tomorrow": tomorrow_data, "source_url": SOURCE_URL,
             "fetched_at": datetime.now(ZoneInfo("Asia/Kolkata")).isoformat(),
-            "configured_courts": courts, "source_status": "connected",
+            "configured_courts": profile["court_ids"], "source_status": "connected",
             "message": "Cause lists are fetched from eCourtsIndia Partner API.",
         }
         _SCHEDULE_CACHE[cache_key] = (time.monotonic() + _SCHEDULE_TTL_SECONDS, result)

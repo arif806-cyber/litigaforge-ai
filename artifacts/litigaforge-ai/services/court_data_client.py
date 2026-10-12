@@ -274,6 +274,8 @@ async def _request(
                     "eCourtsIndia returned an invalid JSON response.",
                     status_code=502, code="invalid_json",
                 ) from exc
+            if isinstance(payload, list) and "/court-structure/" in path:
+                payload = {"data": {"items": payload}}
             if not isinstance(payload, dict):
                 raise CourtDataError(
                     "eCourtsIndia returned an unexpected response format.",
@@ -1248,13 +1250,12 @@ async def available_cause_list_dates(
 async def get_court_structure(path: str = "states") -> Any:
     """Fetch public court hierarchy data; restrict paths to documented hierarchy segments."""
     parts = [part for part in str(path or "").strip("/").split("/") if part]
-    if not parts or parts[0] != "states" or len(parts) > 5:
+    if not parts or parts[0] != "states" or len(parts) > 7:
         raise ValueError("Invalid court-structure path.")
     if any(not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", part) for part in parts):
         raise ValueError("Invalid court-structure path.")
     payload = await _request(
         "GET", f"{_PARTNER_PREFIX}/causelist/court-structure/" + "/".join(parts),
-        auth_required=False,
     )
     return _unwrap_data(payload, "court structure")
 

@@ -5,12 +5,15 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 
-const COURTS = [
-  ["telangana_high_court", "Telangana High Court"],
-  ["hyderabad_district", "Hyderabad District Courts"],
-  ["rangareddy_district", "Ranga Reddy District Courts"],
-] as const;
 type Profile = { cause_list_name: string; enrolment_number: string; court_ids: string[] };
+type HierarchyItem = Record<string, string>;
+const hierarchyItems = (value: unknown): HierarchyItem[] => {
+  if (!value || typeof value !== "object") return [];
+  const wrapper = value as { data?: unknown; items?: unknown; states?: unknown; districts?: unknown; complexes?: unknown; courts?: unknown; results?: unknown };
+  const nested = wrapper.data && typeof wrapper.data === "object" ? wrapper.data as typeof wrapper : wrapper;
+  const rows = nested.items ?? nested.states ?? nested.districts ?? nested.complexes ?? nested.courts ?? nested.results;
+  return Array.isArray(rows) ? rows.filter((item): item is HierarchyItem => !!item && typeof item === "object") : [];
+};
 type Schedule = {
   today: { date: string; matters: Record<string, unknown>[]; published?: boolean };
   tomorrow: { date: string; matters: Record<string, unknown>[]; published?: boolean };
@@ -23,7 +26,10 @@ type Schedule = {
 export default function DocketView() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [profile, setProfile] = useState<Profile>({ cause_list_name: "", enrolment_number: "", court_ids: ["telangana_high_court"] });
+  const [profile, setProfile] = useState<Profile>({ cause_list_name: "", enrolment_number: "", court_ids: [] });
+  const [stateCode, setStateCode] = useState("");
+  const [districtCode, setDistrictCode] = useState("");
+  const [complexCode, setComplexCode] = useState("");
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [nameMatchMode, setNameMatchMode] = useState<"phrase" | "fuzzy">("phrase");
   const [suggestionError, setSuggestionError] = useState("");
@@ -39,8 +45,28 @@ export default function DocketView() {
     enabled: !!isAdvocate,
     refetchInterval: 60_000,
   });
+  const courtStructure = (path: string, enabled = true) => ({
+    queryKey: ["docket-court-structure", path],
+    queryFn: () => apiFetch(`/docket/courts?path=${encodeURIComponent(path)}`).then(hierarchyItems),
+    enabled: !!isAdvocate && enabled,
+    staleTime: 60 * 60 * 1000,
+  });
+  const statesQuery = useQuery(courtStructure("states"));
+  const districtsQuery = useQuery(courtStructure(`states/${stateCode}/districts`, !!stateCode));
+  const complexesQuery = useQuery(courtStructure(`states/${stateCode}/districts/${districtCode}/complexes`, !!stateCode && !!districtCode));
+  const courtsQuery = useQuery(courtStructure(`states/${stateCode}/districts/${districtCode}/complexes/${complexCode}/courts`, !!stateCode && !!districtCode && !!complexCode));
   useEffect(() => {
-    if (profileQuery.data?.profile) setProfile(profileQuery.data.profile);
+    if (profileQuery.data?.profile) {
+      setProfile(profileQuery.data.profile);
+      const saved = profileQuery.data.profile.court_ids.map((value) => {
+        try { return JSON.parse(value) as Record<string, string>; } catch { return null; }
+      }).find((value) => value);
+      if (saved) {
+        setStateCode(saved.state ?? "");
+        setDistrictCode(saved.district_code ?? "");
+        setComplexCode(saved.complex_code ?? "");
+      }
+    }
   }, [profileQuery.data]);
   const save = useMutation({
     mutationFn: () => apiFetch("/docket/profile", { method: "PUT", body: JSON.stringify(profile) }),
@@ -71,9 +97,16 @@ export default function DocketView() {
       void suggestions.reset();
     },
   });
-  const toggleCourt = (id: string) => setProfile((p) => ({
-    ...p, court_ids: p.court_ids.includes(id) ? p.court_ids.filter((x) => x !== id) : [...p.court_ids, id],
-  }));
+  const toggleCourt = (court: HierarchyItem) => {
+    const value = JSON.stringify({
+      state: stateCode, district_code: districtCode, complex_code: complexCode,
+      court: court.court ?? "", court_no: court.courtNo ?? "",
+    });
+    setProfile((p) => ({
+      ...p, court_ids: p.court_ids.includes(value) ? p.court_ids.filter((x) => x !== value) : [...p.court_ids, value],
+    }));
+  };
+  const resetCourts = () => setProfile((p) => ({ ...p, court_ids: [] }));
   const submit = (event: FormEvent) => { event.preventDefault(); save.mutate(); };
   const matterTitle = (matter: Record<string, unknown>) => {
     const title = matter.title;
@@ -97,7 +130,20 @@ export default function DocketView() {
         <form onSubmit={submit} className="space-y-4">
           <label className="block text-sm">Name as it appears in cause lists<input required minLength={2} maxLength={160} className="mt-1 w-full rounded-md border border-input bg-background p-2" value={profile.cause_list_name} onChange={(e) => setProfile({ ...profile, cause_list_name: e.target.value })} /></label>
           <label className="block text-sm">Enrolment number<input required minLength={2} maxLength={80} className="mt-1 w-full rounded-md border border-input bg-background p-2" value={profile.enrolment_number} onChange={(e) => setProfile({ ...profile, enrolment_number: e.target.value })} /></label>
-          <fieldset><legend className="mb-2 text-sm">Courts</legend><div className="grid gap-2 sm:grid-cols-3">{COURTS.map(([id, label]) => <label key={id} className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm"><input type="checkbox" checked={profile.court_ids.includes(id)} onChange={() => toggleCourt(id)} />{label}</label>)}</div></fieldset>
+          <fieldset className="space-y-3">
+            <legend className="mb-2 text-sm">Court locations</legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="text-sm">State<select className="mt-1 w-full rounded border border-input bg-background p-2" value={stateCode} onChange={(e) => { setStateCode(e.target.value); setDistrictCode(""); setComplexCode(""); resetCourts(); }}><option value="">Select state</option>{statesQuery.data?.map((item) => <option key={item.state} value={item.state}>{item.stateName}</option>)}</select></label>
+              <label className="text-sm">District<select className="mt-1 w-full rounded border border-input bg-background p-2" value={districtCode} disabled={!stateCode} onChange={(e) => { setDistrictCode(e.target.value); setComplexCode(""); resetCourts(); }}><option value="">Select district</option>{districtsQuery.data?.map((item) => <option key={item.districtCode} value={item.districtCode}>{item.districtName}</option>)}</select></label>
+              <label className="text-sm">Court complex<select className="mt-1 w-full rounded border border-input bg-background p-2" value={complexCode} disabled={!districtCode} onChange={(e) => { setComplexCode(e.target.value); resetCourts(); }}><option value="">Select complex</option>{complexesQuery.data?.map((item) => <option key={item.courtComplexCode} value={item.courtComplexCode}>{item.courtComplexName}</option>)}</select></label>
+            </div>
+            {courtsQuery.data?.length ? <div className="grid gap-2 sm:grid-cols-2">{courtsQuery.data.map((court, index) => {
+              const id = JSON.stringify({ state: stateCode, district_code: districtCode, complex_code: complexCode, court: court.court ?? "", court_no: court.courtNo ?? "" });
+              return <label key={`${court.court}-${court.courtNo}-${index}`} className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm"><input type="checkbox" checked={profile.court_ids.includes(id)} onChange={() => toggleCourt(court)} />{court.courtName}</label>;
+            })}</div> : null}
+            {statesQuery.isError || districtsQuery.isError || complexesQuery.isError || courtsQuery.isError ? <p role="alert" className="text-sm text-destructive">Could not load court locations from eCourtsIndia.</p> : null}
+            {profile.court_ids.length > 0 && <p className="text-xs text-muted-foreground">{profile.court_ids.length} court(s) selected.</p>}
+          </fieldset>
           <Button type="submit" disabled={save.isPending || profile.court_ids.length === 0}><Save className="mr-2 h-4 w-4" />{save.isPending ? "Saving…" : "Save profile"}</Button>
           {save.isError && <p role="alert" className="text-sm text-destructive">{save.error.message}</p>}
         </form>
