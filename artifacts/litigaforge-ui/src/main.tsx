@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { useEffect, useState } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./index.css";
@@ -16,12 +17,9 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
   const hadController = Boolean(serviceWorkers.controller);
 
   if (hadController) {
-    let reloadedForUpdate = false;
     serviceWorkers.addEventListener("controllerchange", () => {
-      if (reloadedForUpdate) return;
-      reloadedForUpdate = true;
-      window.location.reload();
-    }, { once: true });
+      window.dispatchEvent(new Event("litigaforge:pwa-update"));
+    });
   }
 
   void serviceWorkers.register(serviceWorkerUrl, {
@@ -32,10 +30,31 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
   });
 }
 
+function PwaUpdatePrompt() {
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    const show = () => setAvailable(true);
+    window.addEventListener("litigaforge:pwa-update", show);
+    return () => window.removeEventListener("litigaforge:pwa-update", show);
+  }, []);
+  if (!available) return null;
+  return (
+    <div role="status" className="fixed bottom-4 left-1/2 z-[200] flex -translate-x-1/2 items-center gap-4 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-xl">
+      <span>New version available</span>
+      <button className="rounded-md bg-white px-3 py-1.5 font-semibold text-slate-900" onClick={() => window.location.reload()}>
+        Reload
+      </button>
+    </div>
+  );
+}
+
 const helmetContext: Record<string, any> = {};
 
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider context={helmetContext}>
-    <App />
+    <>
+      <App />
+      <PwaUpdatePrompt />
+    </>
   </HelmetProvider>
 );

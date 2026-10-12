@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from auth import require_non_demo_user
 from database import get_pool, SUBSCRIPTION_PLANS
+from plan_prices import ADVOCATE_PLAN_PRICES
 from payments import (
     create_order,
     verify_payment,
@@ -468,7 +469,10 @@ async def download_invoice(subscription_id: int, current_user: dict = Depends(re
         raise HTTPException(404, "Invoice not found")
 
     tier_name = row["tier"].replace("_", " ").title()
-    price_map = {"professional": "₹999", "advocate_pro": "₹2,499"}
+    price_map = {
+        "professional": f"₹{ADVOCATE_PLAN_PRICES['professional']['monthly']:,}",
+        "advocate_pro": f"₹{ADVOCATE_PLAN_PRICES['advocate_pro']['monthly']:,}",
+    }
     price = price_map.get(row["tier"], "₹0")
     invoice_date = str(row["started_at"]).split(".")[0]
     invoice_number = f"LF-{current_user['id']}-{row['id']}-{invoice_date[:10].replace('-', '')}"

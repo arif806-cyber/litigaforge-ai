@@ -27,6 +27,7 @@ load_dotenv()
 from logger import get_logger
 from rate_limit import limiter, rate_limit_handler, RateLimitExceeded
 from database import get_pool, close_pool, fetchrow as db_fetchrow
+from plan_prices import ADVOCATE_PLAN_PRICES
 from auth import require_user as _require_user
 from asyncpg.exceptions import UniqueViolationError as _UniqueViolation
 
@@ -1845,7 +1846,7 @@ _BOT_PRERENDER_ROUTES: dict = {
             "offers": [
                 {"name": "Free", "description": "Basic legal AI features", "price": 0, "currency": "INR"},
                 {"name": "Professional", "description": "Unlimited legal Q&A + document review", "price": 999, "currency": "INR"},
-                {"name": "Advocate Pro", "description": "Full platform + priority matching", "price": 2499, "currency": "INR"},
+                {"name": "Advocate Pro", "description": "Full platform + priority matching", "price": ADVOCATE_PLAN_PRICES["advocate_pro"]["monthly"], "currency": "INR"},
             ],
         },
         "Pricing & Plans | LitigaForge AI",
@@ -2049,6 +2050,7 @@ if _FORGEOS_ROUTER_ENABLED:
     from forgeos.router import router as forgeos_router
 
 @app.get(f"{BASE_PATH}/healthz", tags=["health"])
+@app.get(f"{BASE_PATH}/health", tags=["health"])
 async def healthz():
     return {"status": "ok", "service": "litigaforge-ai"}
 

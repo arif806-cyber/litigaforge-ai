@@ -1296,6 +1296,32 @@ if (true) { // serve frontend in both dev and production when dist exists
     if (_indexHtml) {
       const _sendIndex = (req: express.Request, res: express.Response): void => {
         const path = req.path.toLowerCase();
+        const barePath = _stripCountry(path).replace(/\/+$/, "") || "/";
+        const knownPaths = new Set([
+          "/", "/landing", "/demo", "/privacy", "/privacy-policy", "/terms",
+          "/about", "/contact", "/pricing", "/digest", "/refund-policy",
+          "/us-demand-letter", "/login", "/register", "/signup",
+          "/forgot-password", "/verify-email", "/reset-password",
+          "/client-dashboard", "/lawyer-dashboard", "/advocate-dashboard",
+          "/settings", "/subscription", "/ask", "/review", "/judgments",
+          "/for-lawyers", "/lawyers/register", "/lawyers", "/legal-aid",
+          "/post-case", "/my-cases", "/matches", "/documents", "/legal-chat",
+          "/free-documents", "/blog", "/admin", "/forgeos", "/workspace",
+          "/messages", "/cnr-tracker", "/docket", "/cnr",
+        ]);
+        const knownDynamicPaths = [
+          /^\/profile\/[^/]+\/research$/,
+          /^\/lawyer-dashboard\/[^/]+$/,
+          /^\/judgments\/[^/]+\/[^/]+\/[^/]+$/,
+          /^\/lawyers\/[^/]+$/,
+          /^\/my-cases\/[^/]+$/,
+          /^\/free-documents\/[^/]+$/,
+          /^\/document-template\/[^/]+$/,
+          /^\/blog\/[^/]+$/,
+        ];
+        if (!knownPaths.has(barePath) && !knownDynamicPaths.some((route) => route.test(barePath))) {
+          res.status(404);
+        }
         const nonIndiaBlog = /^\/(?:us|gb|ae|au|ca|sg|de)\/blog\/[^/]+/.test(path) ||
           (/^\/blog\/[^/]+/.test(path) &&
             !/(?:india|indian|telangana|andhra|hyderabad|nalsa|tslsa)/i.test(path));

@@ -6,6 +6,7 @@ import os
 from typing import Any
 
 import asyncpg
+from plan_prices import ADVOCATE_PLAN_PRICES
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 _pool: asyncpg.Pool | None = None
@@ -76,9 +77,9 @@ SUBSCRIPTION_PLANS = [
     {
         "id": "free",
         "name": "Free",
-        "price_inr": 0,
-        "monthly_price_inr": 0,
-        "annual_price_inr": 0,
+        "price_inr": ADVOCATE_PLAN_PRICES["free"]["monthly"],
+        "monthly_price_inr": ADVOCATE_PLAN_PRICES["free"]["monthly"],
+        "annual_price_inr": ADVOCATE_PLAN_PRICES["free"]["annual"],
         "gst_percent": 18,
         "gst_label": "+ 18% GST",
         "cases_per_month": 5,
@@ -94,9 +95,9 @@ SUBSCRIPTION_PLANS = [
     {
         "id": "professional",
         "name": "Advocate Pro",
-        "price_inr": 999,
-        "monthly_price_inr": 999,
-        "annual_price_inr": 9999,
+        "price_inr": ADVOCATE_PLAN_PRICES["professional"]["monthly"],
+        "monthly_price_inr": ADVOCATE_PLAN_PRICES["professional"]["monthly"],
+        "annual_price_inr": ADVOCATE_PLAN_PRICES["professional"]["annual"],
         "gst_percent": 18,
         "gst_label": "+ 18% GST",
         "annual_savings_label": "2 months free",
@@ -115,9 +116,9 @@ SUBSCRIPTION_PLANS = [
     {
         "id": "advocate_pro",
         "name": "Chamber",
-        "price_inr": 2499,
-        "monthly_price_inr": 2499,
-        "annual_price_inr": 24999,
+        "price_inr": ADVOCATE_PLAN_PRICES["advocate_pro"]["monthly"],
+        "monthly_price_inr": ADVOCATE_PLAN_PRICES["advocate_pro"]["monthly"],
+        "annual_price_inr": ADVOCATE_PLAN_PRICES["advocate_pro"]["annual"],
         "gst_percent": 18,
         "gst_label": "+ 18% GST",
         "annual_savings_label": "2 months free",

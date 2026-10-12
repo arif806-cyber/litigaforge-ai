@@ -1,0 +1,17 @@
+{
+  "public": {
+    "IN": { "free": 0, "basic": 499, "pro": 2499, "per_doc": 299 },
+    "US": { "free": 0, "basic": 9, "pro": 29, "per_doc": 19 },
+    "GB": { "free": 0, "basic": 7, "pro": 19, "per_doc": 12 },
+    "AE": { "free": 0, "basic": 35, "pro": 99, "per_doc": 49 },
+    "DE": { "free": 0, "basic": 8, "pro": 24, "per_doc": 15 },
+    "AU": { "free": 0, "basic": 12, "pro": 35, "per_doc": 15 },
+    "CA": { "free": 0, "basic": 12, "pro": 35, "per_doc": 15 },
+    "SG": { "free": 0, "basic": 12, "pro": 35, "per_doc": 15 }
+  },
+  "advocate": {
+    "free": { "monthly": 0, "annual": 0 },
+    "professional": { "monthly": 999, "annual": 9999 },
+    "advocate_pro": { "monthly": 2499, "annual": 24999 }
+  }
+}

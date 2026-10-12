@@ -47,12 +47,15 @@ export default defineConfig({
         enabled: false,
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,png,svg,woff2,html}"],
+        globPatterns: ["**/*.{js,css,png,svg,woff2}"],
         cleanupOutdatedCaches: true,
-        // Activate a new worker immediately; main.tsx reloads controlled tabs
-        // when the updated worker takes control.
+        // Install/claim immediately; main.tsx asks the user before reloading.
         skipWaiting: true,
         clientsClaim: true,
+        // Always request HTML from the network first so a fresh deployment is
+        // not hidden behind a precached index document. Keep a cache fallback
+        // for offline navigations.
+        navigateFallback: null,
         // Exclude backend/proxied paths from the SPA navigation fallback so the
         // service worker never serves the React shell for non-app URLs:
         //  - /blog + /_astro: reverse-proxied to the Cloudflare Worker (serving
@@ -68,6 +71,16 @@ export default defineConfig({
           /^\/litigaforge/,
         ],
         runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "litigaforge-html",
+              networkTimeoutSeconds: 4,
+              cacheableResponse: { statuses: [200] },
+              expiration: { maxEntries: 12, maxAgeSeconds: 24 * 60 * 60 },
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
             handler: "StaleWhileRevalidate",

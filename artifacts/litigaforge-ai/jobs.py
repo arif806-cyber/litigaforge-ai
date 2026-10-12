@@ -4,6 +4,7 @@ import inspect
 import json
 import logging
 import uuid
+from contextvars import ContextVar
 from collections.abc import Callable
 from typing import Any
 
@@ -15,6 +16,8 @@ from database import execute, fetchrow
 logger = logging.getLogger("litigaforge.jobs")
 router = APIRouter(tags=["jobs"])
 _tasks: set[asyncio.Task] = set()
+_current_job_id: ContextVar[uuid.UUID | None] = ContextVar("current_ai_job_id", default=None)
+AI_JOB_TIMEOUT_SECONDS = 9 * 60
 
 
 async def enqueue_job(user_id: int | None, worker: Callable[[], Any]) -> dict:
@@ -31,19 +34,27 @@ async def enqueue_job(user_id: int | None, worker: Callable[[], Any]) -> dict:
 
 
 async def _run_job(job_id: uuid.UUID, worker: Callable[[], Any]) -> None:
+    token = _current_job_id.set(job_id)
     try:
+        async with asyncio.timeout(AI_JOB_TIMEOUT_SECONDS):
+            await execute(
+                "UPDATE ai_jobs SET status='running', started_at=NOW(), updated_at=NOW() WHERE id=$1",
+                job_id,
+            )
+            value = await asyncio.to_thread(worker)
+            result = await value if inspect.isawaitable(value) else value
+            await execute(
+                """UPDATE ai_jobs SET status='completed', result=$2::jsonb,
+                   completed_at=NOW(), updated_at=NOW() WHERE id=$1""",
+                job_id, json.dumps(result, default=str),
+            )
+    except TimeoutError:
+        message = f"AI job exceeded its {AI_JOB_TIMEOUT_SECONDS // 60}-minute limit. Retry the analysis."
+        logger.error("AI job %s timed out after %s seconds", job_id, AI_JOB_TIMEOUT_SECONDS)
         await execute(
-            "UPDATE ai_jobs SET status='running', started_at=NOW(), updated_at=NOW() WHERE id=$1",
-            job_id,
-        )
-        # Calling even an ordinary lambda happens in a worker thread.  This
-        # guarantees synchronous SDK/provider setup cannot stall FastAPI's loop.
-        value = await asyncio.to_thread(worker)
-        result = await value if inspect.isawaitable(value) else value
-        await execute(
-            """UPDATE ai_jobs SET status='completed', result=$2::jsonb,
+            """UPDATE ai_jobs SET status='failed', error=$2,
                completed_at=NOW(), updated_at=NOW() WHERE id=$1""",
-            job_id, json.dumps(result, default=str),
+            job_id, message,
         )
     except Exception as exc:
         logger.exception("AI job %s failed", job_id)
@@ -52,6 +63,8 @@ async def _run_job(job_id: uuid.UUID, worker: Callable[[], Any]) -> None:
                completed_at=NOW(), updated_at=NOW() WHERE id=$1""",
             job_id, str(exc)[:2000],
         )
+    finally:
+        _current_job_id.reset(token)
 
 
 async def collect_sse(generator) -> dict:
@@ -64,6 +77,13 @@ async def collect_sse(generator) -> dict:
             events.append(json.loads(chunk[5:].strip()))
         except (TypeError, json.JSONDecodeError):
             continue
+        job_id = _current_job_id.get()
+        if job_id:
+            await execute(
+                """UPDATE ai_jobs SET result=$2::jsonb, updated_at=NOW()
+                   WHERE id=$1 AND status='running'""",
+                job_id, json.dumps({"events": events}, default=str),
+            )
     final = events[-1] if events else {}
     return {"events": events, "final": final}
 
@@ -86,6 +106,15 @@ async def job_status(
     ):
         raise HTTPException(404, "Job not found")
     result = {"job_id": str(row["id"]), "status": row["status"]}
+    if row["status"] == "running" and row["result"]:
+        progress = row["result"]
+        if isinstance(progress, str):
+            try:
+                progress = json.loads(progress)
+            except json.JSONDecodeError:
+                progress = None
+        if isinstance(progress, dict):
+            result["progress"] = progress
     if row["status"] == "completed":
         stored = row["result"]
         if isinstance(stored, str):

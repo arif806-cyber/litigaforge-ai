@@ -91,6 +91,7 @@ export type LongJobStatus<TResult> = {
   job_id: string;
   status: "queued" | "running" | "completed" | "failed";
   result?: TResult;
+  progress?: TResult;
   error?: string;
 };
 
@@ -123,11 +124,12 @@ export class LongJobError extends Error {
   }
 }
 
-type LongJobOptions = {
+type LongJobOptions<TResult = unknown> = {
   pollIntervalMs?: number;
   timeoutMs?: number;
   maxConsecutivePollErrors?: number;
   onQueued?: (jobId: string) => void;
+  onProgress?: (progress: TResult) => void;
 };
 
 function jobFailure(reason: LongJobFailureReason, jobId: string, cause?: unknown): LongJobError {
@@ -138,7 +140,7 @@ function jobFailure(reason: LongJobFailureReason, jobId: string, cause?: unknown
 export async function pollLongJob<TResult>(
   jobId: string,
   path: string,
-  options: LongJobOptions = {},
+  options: LongJobOptions<TResult> = {},
 ): Promise<TResult> {
   const pollIntervalMs = options.pollIntervalMs ?? 2500;
   const deadline = Date.now() + (options.timeoutMs ?? 3 * 60 * 1000);
@@ -181,6 +183,9 @@ export async function pollLongJob<TResult>(
       window.dispatchEvent(new CustomEvent("litigaforge:job-completed", { detail }));
       return job.result;
     }
+    if ((job?.status === "queued" || job?.status === "running") && job.progress !== undefined) {
+      options.onProgress?.(job.progress);
+    }
     if (job?.status === "failed") {
       throw jobFailure("failed", jobId, job.error);
     }
@@ -200,7 +205,7 @@ export async function pollLongJob<TResult>(
 export async function runLongJob<TResult>(
   path: string,
   init: ApiFetchInit,
-  options: LongJobOptions = {},
+  options: LongJobOptions<TResult> = {},
 ): Promise<TResult> {
   const queued = await apiFetch(path, init) as LongJobStatus<TResult>;
   if (!queued?.job_id) throw jobFailure("malformed", "");

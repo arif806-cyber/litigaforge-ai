@@ -43,6 +43,7 @@ logger = logging.getLogger("litigaforge.workspace")
 router = APIRouter(tags=["workspace"])
 _FIRST_PROVIDER_WAIT_SECONDS = max(60.0, LLM_TIMEOUT)
 _SSE_HEARTBEAT_SECONDS = 5
+_AGENT_TIMEOUT_SECONDS = 90
 
 IK_TOKEN = os.getenv("INDIANKANOON_API_TOKEN", "")
 IK_BASE  = "https://api.indiankanoon.org"
@@ -1104,35 +1105,44 @@ async def _stream_analysis(
 
         try:
             response = ""
-            async for event, value in _await_provider_with_heartbeats(
-                legal_llm.aask_legal_question(prompt)
-            ):
-                if event == "heartbeat":
-                    yield ": heartbeat\n\n"
-                else:
-                    response = (value or "").strip()
-        except Exception as _primary_exc:
-            logger.warning(
-                "Agent %s — portable LiteLLM error (%s: %s)",
-                agent["id"], type(_primary_exc).__name__, _primary_exc,
+            async with asyncio.timeout(_AGENT_TIMEOUT_SECONDS):
+                try:
+                    async for event, value in _await_provider_with_heartbeats(
+                        legal_llm.aask_legal_question(prompt)
+                    ):
+                        if event == "heartbeat":
+                            yield ": heartbeat\n\n"
+                        else:
+                            response = (value or "").strip()
+                except Exception as _primary_exc:
+                    logger.warning(
+                        "Agent %s — portable LiteLLM error (%s: %s)",
+                        agent["id"], type(_primary_exc).__name__, _primary_exc,
+                    )
+                    from ai_brain import call_llm_async
+                    response = (await call_llm_async(
+                        LEGAL_SYSTEM_PROMPT, prompt, max_tokens=1500,
+                    ) or "").strip()
+        except TimeoutError:
+            logger.error(
+                "Agent %s timed out after %s seconds",
+                agent["id"], _AGENT_TIMEOUT_SECONDS,
             )
-            # Match Legal Q&A's provider cascade instead of turning a slow
-            # primary provider into a synthetic successful-looking result.
-            try:
-                from ai_brain import call_llm_async
-                response = (await call_llm_async(
-                    LEGAL_SYSTEM_PROMPT, prompt, max_tokens=1500,
-                ) or "").strip()
-            except Exception as _fallback_exc:
-                logger.warning(
-                    "Agent %s — provider fallback failed (%s: %s)",
-                    agent["id"], type(_fallback_exc).__name__, _fallback_exc,
-                )
+            yield sse({
+                "type": "provider_error",
+                "agent": agent["id"],
+                "error": f"{agent['name']} timed out after 90 seconds. Retry this analysis.",
+                "retryable": True,
+            })
+            continue
+        except Exception as _agent_exc:
+            logger.warning("Agent %s provider cascade failed: %s", agent["id"], _agent_exc)
         if not response:
             yield sse({
                 "type": "provider_error",
                 "agent": agent["id"],
                 "error": "AI analysis failed. Retry when the provider is available.",
+                "retryable": True,
             })
             continue
 

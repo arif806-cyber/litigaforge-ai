@@ -127,20 +127,35 @@ async function api(path: string, opts: RequestInit = {}) {
   return res;
 }
 
-// Keep the existing event rendering pipeline while long AI operations run as
-// queued jobs. Workers return the former SSE events as an array (or an SSE
-// string); convert that completed result into a local response stream.
+// Bridge persisted job progress back into the existing SSE event renderer.
 async function workspaceStream(path: string, payload: object): Promise<Response> {
-  const result = await runLongJob<unknown>(path, { method: "POST", body: payload });
-  let body: string;
-  if (typeof result === "string") {
-    body = result.includes("data: ") ? result : `data: ${result}\n\n`;
-  } else {
-    const root = result as { events?: unknown[] } | null;
-    const events = Array.isArray(result) ? result : Array.isArray(root?.events) ? root.events : [result];
-    body = events.map(event => `data: ${JSON.stringify(event)}\n\n`).join("");
-  }
-  return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const encoder = new TextEncoder();
+      let emitted = 0;
+      const emitNew = (value: unknown) => {
+        const root = value as { events?: unknown[] } | null;
+        const events = Array.isArray(root?.events) ? root.events : [];
+        for (; emitted < events.length; emitted++) {
+          if (!cancelled) controller.enqueue(encoder.encode(`data: ${JSON.stringify(events[emitted])}\n\n`));
+        }
+      };
+      void runLongJob<unknown>(path, { method: "POST", body: payload }, {
+        timeoutMs: 10 * 60 * 1000,
+        onProgress: emitNew,
+      }).then((result) => {
+        emitNew(result);
+        if (!cancelled) controller.close();
+      }).catch((error) => {
+        if (!cancelled) controller.error(error);
+      });
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  return new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } });
 }
 
 // ─── Smart node placement — avoids stacking on existing nodes ─────────────────

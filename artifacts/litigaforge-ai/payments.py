@@ -4,12 +4,14 @@ import hashlib
 import hmac
 
 import razorpay
+from plan_prices import ADVOCATE_PLAN_PRICES
 
 GST_RATE_PERCENT = 18
 BILLING_PERIOD_DAYS = {"monthly": 30, "annual": 365}
 PLAN_BASE_PRICES = {
-    "professional": {"monthly": 99900, "annual": 999900},
-    "advocate_pro": {"monthly": 249900, "annual": 2499900},
+    tier: {period: price * 100 for period, price in prices.items()}
+    for tier, prices in ADVOCATE_PLAN_PRICES.items()
+    if tier in {"professional", "advocate_pro"}
 }
 # Backward-compatible monthly totals used by reporting and legacy callers.
 PLAN_PRICES = {
