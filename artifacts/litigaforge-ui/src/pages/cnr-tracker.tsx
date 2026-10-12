@@ -321,6 +321,10 @@ function TrackedCaseCard({ tc }: { tc: any }) {
       className="rounded-2xl overflow-hidden"
       style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.07)" }}>
 
+      <div className="px-4 pt-3 text-[11px] text-muted-foreground">
+        Last successful fetch: <span className="text-foreground/80">{lastRefreshed}</span>
+      </div>
+
       {(refreshPending || refreshFailed || noSnapshot) && (
         <div className="px-4 pt-3">
           <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2"

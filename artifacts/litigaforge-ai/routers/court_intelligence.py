@@ -160,12 +160,13 @@ async def _trigger_single_refresh(tracked_case_id: str, cnr: str) -> None:
     try:
         from services.court_data_client import get_case_by_cnr
         # The paid refresh POST is made once; only its following detail GET is retried.
-        await get_case_by_cnr(tracked_case_id, cnr, timeout=15.0, retries=2)
+        await get_case_by_cnr(tracked_case_id, cnr, timeout=30.0, retries=3)
         logger.info("Immediate refresh done: tracked_case_id=%s cnr=%s", tracked_case_id, cnr)
     except Exception as exc:
-        logger.warning(
-            "Immediate eCourts refresh failed for tracked_case_id=%s (%s)",
-            tracked_case_id, type(exc).__name__,
+        logger.exception(
+            "Immediate eCourts refresh failed for tracked_case_id=%s cnr=%s "
+            "error_type=%s message=%s",
+            tracked_case_id, cnr, type(exc).__name__, str(exc)[:500],
         )
 
 

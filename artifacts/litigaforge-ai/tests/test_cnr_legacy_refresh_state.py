@@ -116,6 +116,6 @@ async def test_background_refresh_calls_the_current_partner_api_client(monkeypat
     partner_lookup.assert_awaited_once_with(
         TEST_CASE_ID,
         TEST_CNR,
-        timeout=15.0,
-        retries=2,
+        timeout=30.0,
+        retries=3,
     )

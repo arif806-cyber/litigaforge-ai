@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { SEOHelmet } from "@/components/SEOHelmet";
@@ -22,11 +23,82 @@ export default function AccountSettings() {
       </div>
 
       <ProfileSection user={user} />
+      {user?.lawyer_status && <AdvocateProfileSection />}
       <PasswordSection />
       <PrivacySection />
       <DangerZone onDeleted={logout} />
     </div>
   );
+}
+
+function AdvocateProfileSection() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["advocate-profile-settings"],
+    queryFn: () => apiFetch("/lawyers/me/profile"),
+    staleTime: 5 * 60 * 1000,
+  });
+  const [form, setForm] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (data) setForm({
+      ...data,
+      courts_text: (data.courts_practised || []).join(", "),
+      practice_text: (data.practice_areas || []).join(", "),
+      languages_text: (data.languages || []).join(", "),
+    });
+  }, [data]);
+  const set = (key: string, value: any) => setForm((old: any) => ({ ...old, [key]: value }));
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    const entries = (value: string) => value.split(",").map((v: string) => v.trim()).filter(Boolean);
+    try {
+      const result = await apiFetch("/lawyers/me/profile", {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: form.name, email: form.email, phone: form.phone,
+          bar_number: form.bar_number, bar_council: form.bar_council, district: form.district,
+          courts_practised: entries(form.courts_text || ""),
+          practice_areas: entries(form.practice_text || ""),
+          languages: entries(form.languages_text || ""),
+          experience_years: Number(form.experience_years || 0),
+          hourly_rate: form.hourly_rate === "" ? null : Number(form.hourly_rate),
+          bio: form.bio || "",
+        }),
+      });
+      setForm((old: any) => ({ ...old, ...result }));
+      setMessage(result.verification_status === "pending"
+        ? "Saved. Changes to your enrolment details require verification again."
+        : "Advocate profile saved.");
+    } catch (e: any) {
+      setMessage(e.message || "Could not save your advocate profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  if (isLoading) return <Card icon={<Shield className="w-4 h-4" />} title="Advocate Profile"><p className="text-sm text-muted-foreground">Loading profile…</p></Card>;
+  if (error || !data) return null;
+  const fields = [
+    ["name", "Full name"], ["email", "Email"], ["phone", "Phone"],
+    ["bar_number", "Bar enrolment number"], ["bar_council", "State Bar Council"],
+    ["district", "City / district"], ["courts_text", "Courts practised in (comma-separated)"],
+    ["practice_text", "Practice areas (comma-separated)"], ["languages_text", "Languages (comma-separated)"],
+    ["experience_years", "Experience (years)"], ["hourly_rate", "Fee (₹)"],
+  ];
+  return <Card icon={<Shield className="w-4 h-4" />} title="Advocate Profile"
+    badge={<span className="text-xs text-muted-foreground">Verification: {form.verification_status || data.verification_status}</span>}>
+    <form onSubmit={save} className="space-y-4">
+      {form.verification_status === "rejected" && form.rejection_reason && <p className="rounded-lg bg-red-50 text-red-700 p-3 text-sm">Rejected: {form.rejection_reason}</p>}
+      <div className="grid sm:grid-cols-2 gap-4">
+        {fields.map(([key, label]) => <Field key={key} label={label}><input value={form[key] ?? ""} onChange={e => set(key, e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" /></Field>)}
+      </div>
+      <Field label="Short bio"><textarea value={form.bio || ""} onChange={e => set("bio", e.target.value)} maxLength={1000} rows={4} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" /></Field>
+      {message && <p className="text-sm text-muted-foreground">{message}</p>}
+      <button disabled={saving} className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold disabled:opacity-50">{saving ? "Saving…" : "Save advocate profile"}</button>
+    </form>
+  </Card>;
 }
 
 /* ── Profile Section ──────────────────────────────────────────────────────── */

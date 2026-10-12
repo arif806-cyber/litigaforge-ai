@@ -370,17 +370,16 @@ export default function Ask() {
 
   // Visible, rotating progress while the AI works on an answer.
   const progressSteps = [
-    "Reading your question…",
-    `Checking ${countryName} statutes & procedure…`,
-    "Reviewing relevant case law…",
-    "Drafting your answer…",
+    "Understanding your question…",
+    `Finding relevant ${countryName} law and procedure…`,
+    "Drafting and checking your answer…",
   ];
   useEffect(() => {
     if (!isAskPending) {
       setProgressStep(0);
       return;
     }
-    const id = setInterval(() => setProgressStep(s => (s + 1) % progressSteps.length), 1800);
+    const id = setInterval(() => setProgressStep(s => Math.min(s + 1, progressSteps.length - 1)), 15000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAskPending]);

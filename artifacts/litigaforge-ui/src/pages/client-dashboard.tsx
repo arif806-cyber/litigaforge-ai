@@ -182,7 +182,7 @@ export default function ClientDashboard() {
   const allMatches: MatchProposal[] = matchesData?.matches || [];
 
   const { data: threadsData } = useQuery({
-    queryKey: ["chat-threads"],
+    queryKey: ["chat-threads", user?.id],
     queryFn: () => apiFetch("/chat/threads"),
     enabled: !!user,
   });
@@ -195,7 +195,7 @@ export default function ClientDashboard() {
   const sendMsgMut = useMutation({
     mutationFn: ({ threadId, content }: { threadId: number; content: string }) =>
       apiFetch("/chat/messages", { method: "POST", body: JSON.stringify({ thread_id: threadId, content }) }),
-    onSuccess: () => { setMessageText(""); setShowMessageModal(null); qc.invalidateQueries({ queryKey: ["chat-threads"] }); },
+    onSuccess: () => { setMessageText(""); setShowMessageModal(null); qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }); },
   });
 
   const filteredMatches = allMatches.filter((m) => m.status === matchTab);

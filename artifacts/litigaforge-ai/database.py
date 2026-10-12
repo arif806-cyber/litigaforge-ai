@@ -178,8 +178,9 @@ async def get_user_by_id(user_id: int) -> dict | None:
                    COALESCE(u.email_verified, FALSE) AS email_verified,
                    COALESCE(u.is_demo, FALSE) AS is_demo,
                    COALESCE(u.must_change_password, FALSE) AS must_change_password,
-                  COALESCE(l.verified, FALSE) AS is_verified,
-                  l.verification_status AS lawyer_status
+                   COALESCE(l.verified, FALSE) AS is_verified,
+                   l.verification_status AS lawyer_status,
+                   l.rejection_reason AS lawyer_rejection_reason
            FROM users u
            LEFT JOIN lawyers l ON l.user_id = u.id
            WHERE u.id = $1""",

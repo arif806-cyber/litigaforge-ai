@@ -33,3 +33,4 @@
 - [LitigaForge proxy rate limits](litigaforge-proxy-rate-limits.md) — do not use proxy-IP buckets for authenticated mutations; Replit/Google proxy IPs are shared and rotate between one browser’s requests.
 - [LitigaForge authenticated AI quota](litigaforge-ai-quota.md) — every authenticated plan shares a flat 20-call clock-hour limit; keep it atomic and user-based, never proxy-IP-based.
 - [LitigaForge demo account boundary](litigaforge-demo-account.md) — demo fixtures stay explicitly fictional and isolated; resets may touch only tagged demo workspace data.
+- [LitigaForge advocate earnings](litigaforge-advocate-earnings.md) — earnings use advocate-entered fees for accepted cases and must be labeled self-reported, not payment-verified.

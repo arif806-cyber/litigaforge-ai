@@ -229,6 +229,43 @@ async def expire_subscription_for_user(user_id: int) -> bool:
             return True
 
 
+async def reconcile_active_subscriptions(user_id: int) -> None:
+    """Keep the newest paid plan active and retain every older billing record."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.fetchrow("SELECT id FROM users WHERE id=$1 FOR UPDATE", user_id)
+            await conn.execute(
+                """UPDATE subscriptions SET status='expired'
+                   WHERE user_id=$1 AND status='active'
+                     AND expires_at IS NOT NULL AND expires_at<=NOW()""",
+                user_id,
+            )
+            current = await conn.fetchrow(
+                """SELECT id, tier FROM subscriptions
+                   WHERE user_id=$1 AND status='active'
+                     AND (expires_at IS NULL OR expires_at > NOW())
+                   ORDER BY (payment_ref IS NOT NULL) DESC, started_at DESC, id DESC
+                   LIMIT 1""",
+                user_id,
+            )
+            if not current:
+                await conn.execute(
+                    "UPDATE users SET subscription_tier='free' WHERE id=$1",
+                    user_id,
+                )
+                return
+            await conn.execute(
+                """UPDATE subscriptions SET status='superseded'
+                   WHERE user_id=$1 AND status='active' AND id<>$2""",
+                user_id, current["id"],
+            )
+            await conn.execute(
+                "UPDATE users SET subscription_tier=$1 WHERE id=$2",
+                current["tier"], user_id,
+            )
+
+
 @router.get("/subscription/plans")
 async def subscription_plans():
     return SUBSCRIPTION_PLANS
@@ -237,6 +274,7 @@ async def subscription_plans():
 @router.get("/subscription/status")
 async def subscription_status(current_user: dict = Depends(require_non_demo_user)):
     """Return the current plan and its server-controlled expiry."""
+    await reconcile_active_subscriptions(current_user["id"])
     await expire_subscription_for_user(current_user["id"])
     from database import fetchrow
     row = await fetchrow(
@@ -402,6 +440,7 @@ async def subscription_upgrade_deprecated():
 @router.get("/subscription/invoices")
 async def subscription_invoices(current_user: dict = Depends(require_non_demo_user)):
     """Return invoice history for the current user."""
+    await reconcile_active_subscriptions(current_user["id"])
     from database import fetch
     rows = await fetch(
         """SELECT id, user_id, tier, started_at, expires_at, status, payment_ref,

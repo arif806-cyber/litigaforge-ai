@@ -86,10 +86,10 @@ function navLabel(item: NavEntry, t: Translation): string {
 function useUnreadCount() {
   const { user } = useAuth();
   const { data } = useQuery({
-    queryKey: ["chat-threads"],
+    queryKey: ["chat-threads", user?.id],
     queryFn: () => apiFetch("/chat/threads"),
     enabled: !!user,
-    staleTime: 15_000,
+    staleTime: 5 * 60 * 1000,
   });
   const threads: Array<{ unread_count?: number }> = data?.threads ?? [];
   return threads.reduce((sum, t) => sum + (t.unread_count ?? 0), 0);

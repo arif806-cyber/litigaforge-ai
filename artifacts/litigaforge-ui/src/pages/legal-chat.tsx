@@ -14,6 +14,7 @@ import { useCountry } from "@/hooks/useCountry";
 import { cn } from "@/lib/utils";
 import { LEGAL_CHAT_COPY } from "@/lib/country-copy";
 import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
+import ReactMarkdown from "react-markdown";
 
 const DETAIL_FIELDS = [
   { id: "location", label: "Location / jurisdiction", placeholder: "e.g. city, state or region" },
@@ -52,11 +53,23 @@ export default function LegalChat() {
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [typingStage, setTypingStage] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    if (!isTyping) {
+      setTypingStage(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setTypingStage((stage) => Math.min(stage + 1, 2));
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [isTyping]);
 
   const composeDetails = (): string => {
     const parts: string[] = [];
@@ -68,6 +81,7 @@ export default function LegalChat() {
   };
 
   const callAI = async (message: string, context: string): Promise<boolean> => {
+    setTypingStage(0);
     setIsTyping(true);
     try {
       const data = await runLongJob<{ reply?: string }>("/ai-legal-chat", {
@@ -240,7 +254,9 @@ export default function LegalChat() {
                   ? "bg-primary text-primary-foreground"
                   : "bg-card border border-card-border text-foreground"
               )}>
-                {msg.content}
+                {msg.role === "ai"
+                  ? <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+                  : msg.content}
               </div>
             </motion.div>
           ))}
@@ -251,11 +267,11 @@ export default function LegalChat() {
                 <Bot className="w-4 h-4 text-muted-foreground" />
               </div>
               <div className="bg-card border border-card-border rounded-xl px-4 py-3">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
+                <p className="text-xs text-muted-foreground">{[
+                  "Understanding your question…",
+                  `Finding relevant ${activeConfig?.name ?? "local"} law and procedure…`,
+                  "Drafting and checking your answer…",
+                ][typingStage]}</p>
               </div>
             </div>
           )}

@@ -176,6 +176,12 @@ You help advocates and clients with legal drafting, procedural guidance, and cas
 IMPORTANT: Always include this disclaimer at the end of your response:
 "This is AI-generated guidance only. Please verify with a qualified lawyer before acting. This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
 
+Before recommending any court, tribunal, consumer forum, or authority, check the
+claim amount and stated territorial jurisdiction. Do not quote pecuniary limits
+unless confident they are current and applicable. If venue depends on missing
+facts or the limit is uncertain, say so and ask for the missing detail rather
+than directing the user to a specific forum.
+
 Be concise and accurate, and cite the real statutes, sections, and procedures of {country_name(code)} where applicable."""
 
     user_prompt = safe_message

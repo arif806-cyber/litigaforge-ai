@@ -327,7 +327,7 @@ export default function LawyerDashboard() {
     mutationFn: (matchId: number) => apiFetch(`/matches/${matchId}/accept`, { method: "POST" }),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["lawyer-matches"] });
-      qc.invalidateQueries({ queryKey: ["chat-threads"] });
+      qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
       if (data?.thread_id) {
         setLocation(`/messages?thread=${data.thread_id}`);
       }
@@ -373,6 +373,7 @@ export default function LawyerDashboard() {
     }));
 
   const isAdvocatePro = user?.subscription_tier === "advocate_pro";
+  const hasPaidPlan = ["advocate_pro", "professional"].includes(user?.subscription_tier || "");
   const lawyerFirstName = user?.name?.split(" ")[0] ?? "Advocate";
 
   const filteredCases = cases.filter((c) => c.status === caseTab);
@@ -423,10 +424,13 @@ export default function LawyerDashboard() {
                 <Hourglass className="w-7 h-7 text-primary" />
               </motion.div>
 
-                <h1 className="text-2xl font-bold text-foreground mb-2">Under review</h1>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  {user?.lawyer_status === "rejected" ? "Verification rejected" : user?.lawyer_status === "verified" ? "Verified" : "Under review"}
+                </h1>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                Your profile has been submitted. Our team will review your credentials and
-                verify your account — usually within 24 hours.
+                {user?.lawyer_status === "rejected"
+                  ? (user?.lawyer_rejection_reason || "Please update your verification details and contact support.")
+                  : "Your profile has been submitted. Our team will review your credentials."}
               </p>
 
               <div className="space-y-3 text-left mb-6">
@@ -650,6 +654,11 @@ export default function LawyerDashboard() {
               Welcome back, {lawyerFirstName}! 👋
             </h1>
             <p className="text-sm text-muted-foreground mt-1">{copy.pageSubtitle}</p>
+            {user?.lawyer_status === "verified" && (
+              <span className="inline-flex mt-2 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600">
+                Advocate verification: verified
+              </span>
+            )}
           </div>
           {/* Section quick actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -895,7 +904,11 @@ export default function LawyerDashboard() {
                   </div>
                 </div>
 
-                {!isAdvocatePro && (
+                {hasPaidPlan ? (
+                  <button onClick={() => setLocation("/subscription")} className="w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted">
+                    Manage plan
+                  </button>
+                ) : (
                   <div className="rounded-2xl p-5 flex flex-col items-center text-center"
                     style={{ background: "linear-gradient(135deg, #14151F 0%, #1a1b2e 100%)", border: "1px solid rgba(245,183,84,0.2)" }}>
                     <Scale className="w-10 h-10 text-amber-400 mb-3" />
@@ -1240,7 +1253,7 @@ export default function LawyerDashboard() {
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-foreground">Earnings Overview</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Only fees you record for accepted cases are included.</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Self-reported fees you record for accepted cases; these are not verified payments.</p>
             </div>
 
             {/* Summary cards */}
@@ -1337,7 +1350,11 @@ export default function LawyerDashboard() {
             )}
 
             {/* Upgrade CTA */}
-            {!isAdvocatePro && (
+            {hasPaidPlan ? (
+              <button onClick={() => setLocation("/subscription")} className="rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted">
+                Manage plan
+              </button>
+            ) : (
               <div className="rounded-2xl p-6 flex items-center gap-5" style={{ background: "linear-gradient(135deg, #14151F, #1a1b2e)", border: "1px solid rgba(245,183,84,0.2)" }}>
                 <Scale className="w-12 h-12 text-amber-400 flex-shrink-0" />
                 <div className="flex-1">

@@ -477,6 +477,12 @@ async def ask_legal_question(req: QuestionRequest,
 
 QUESTION: {safe_question}
 
+FORUM AND JURISDICTION SAFETY:
+- Before naming any court, tribunal, consumer forum, authority, or other filing venue, verify that it has territorial and subject-matter jurisdiction over the facts and location stated in the question.
+- If the claim amount affects the proper forum, do not state a pecuniary limit or route the user to a forum unless you are confident the current applicable threshold is correct. If uncertain, say so and explain how to verify the correct venue.
+- Never infer a forum solely from a monetary amount. Ask for missing jurisdiction facts when they change the answer.
+- Do not present a specific court or authority as suitable unless the stated claim amount and jurisdiction support that recommendation.
+
 Provide a thorough, practical answer in this format:
 
 **SUMMARY**
@@ -1308,6 +1314,8 @@ class LawyerRegisterRequest(BaseModel):
     experience_years: int = 0
     bio: str = ""
     bar_number: Optional[str] = None
+    bar_council: Optional[str] = None
+    courts_practised: List[str] = []
     hourly_rate: Optional[int] = None
     country: str = "in"
 
@@ -1407,11 +1415,14 @@ async def register_lawyer(
         raise HTTPException(409, "An advocate profile is already registered for this account")
     row = await fetchrow(
         """INSERT INTO lawyers
-           (user_id, name, email, phone, bar_number, district, practice_areas, languages, experience_years, bio, hourly_rate, country, verification_status, verified)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending',FALSE)
+           (user_id, name, email, phone, bar_number, bar_council, courts_practised, district,
+            practice_areas, languages, experience_years, bio, hourly_rate, country,
+            verification_status, verified)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'pending',FALSE)
            RETURNING id, name, district, verification_status, verified""",
-        current_user["id"], req.name, req.email, req.phone, req.bar_number, req.district,
-        req.practice_areas, req.languages, req.experience_years, req.bio, req.hourly_rate,
+        current_user["id"], req.name, req.email, req.phone, req.bar_number,
+        req.bar_council, req.courts_practised, req.district, req.practice_areas,
+        req.languages, req.experience_years, req.bio, req.hourly_rate,
         (req.country or "in").lower(),
     )
     await execute("UPDATE users SET role='advocate' WHERE id=$1", current_user["id"])
@@ -1419,6 +1430,74 @@ async def register_lawyer(
         "message": "Advocate profile submitted. It will appear once verified by our team.",
         "lawyer": row,
     }
+
+
+class AdvocateProfileUpdate(BaseModel):
+    name: str
+    phone: str
+    email: Optional[str] = None
+    bar_number: Optional[str] = None
+    bar_council: Optional[str] = None
+    district: str
+    courts_practised: List[str] = []
+    practice_areas: List[str] = []
+    languages: List[str] = []
+    experience_years: int = 0
+    hourly_rate: Optional[int] = None
+    bio: str = ""
+
+
+@router.get("/lawyers/me/profile")
+async def get_my_advocate_profile(current_user: Optional[dict] = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    row = await fetchrow(
+        """SELECT id, name, email, phone, bar_number, bar_council, district,
+                  courts_practised, practice_areas, languages, experience_years,
+                  hourly_rate, bio, verification_status, rejection_reason
+           FROM lawyers WHERE user_id=$1""",
+        current_user["id"],
+    )
+    if not row:
+        raise HTTPException(404, "Advocate profile not found")
+    return dict(row)
+
+
+@router.patch("/lawyers/me/profile")
+async def update_my_advocate_profile(
+    req: AdvocateProfileUpdate,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Login required")
+    if len(req.practice_areas) > 30 or len(req.languages) > 20 or len(req.courts_practised) > 30:
+        raise HTTPException(422, "Too many profile entries")
+    if not 0 <= req.experience_years <= 80:
+        raise HTTPException(422, "Experience must be between 0 and 80 years")
+    row = await fetchrow(
+        """UPDATE lawyers SET
+             name=$2, email=$3, phone=$4, bar_number=$5, bar_council=$6,
+             district=$7, courts_practised=$8, practice_areas=$9, languages=$10,
+             experience_years=$11, hourly_rate=$12, bio=$13,
+             verification_status=CASE
+               WHEN bar_number IS DISTINCT FROM $5 OR bar_council IS DISTINCT FROM $6
+                 THEN 'pending' ELSE verification_status END,
+             verified=CASE
+               WHEN bar_number IS DISTINCT FROM $5 OR bar_council IS DISTINCT FROM $6
+                 THEN FALSE ELSE verified END,
+             rejection_reason=CASE
+               WHEN bar_number IS DISTINCT FROM $5 OR bar_council IS DISTINCT FROM $6
+                 THEN NULL ELSE rejection_reason END
+           WHERE user_id=$1
+           RETURNING id, verification_status, rejection_reason""",
+        current_user["id"], req.name.strip(), req.email, req.phone.strip(),
+        req.bar_number, req.bar_council, req.district.strip(),
+        req.courts_practised, req.practice_areas, req.languages,
+        req.experience_years, req.hourly_rate, req.bio[:1000],
+    )
+    if not row:
+        raise HTTPException(404, "Advocate profile not found")
+    return dict(row)
 
 
 # ── Legal Aid contacts (static + eligibility) ─────────────────────────────────────────────

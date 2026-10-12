@@ -245,10 +245,10 @@ export default function Messages() {
 
   /* ── Threads query (no polling — WS events trigger invalidation) ── */
   const { data: threadsData, isLoading: threadsLoading } = useQuery({
-    queryKey: ["chat-threads"],
+    queryKey: ["chat-threads", user?.id],
     queryFn: () => apiFetch("/chat/threads"),
     enabled: !!user,
-    staleTime: 15_000,
+    staleTime: 5 * 60 * 1000,
   });
   const threads: ChatThread[] = threadsData?.threads ?? [];
 
@@ -296,7 +296,7 @@ export default function Messages() {
   useEffect(() => {
     if (!activeThreadId) return;
     apiFetch(`/chat/threads/${activeThreadId}/mark-read`, { method: "POST" })
-      .then(() => qc.invalidateQueries({ queryKey: ["chat-threads"] }))
+      .then(() => qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }))
       .catch(() => {});
   }, [activeThreadId, qc]);
 
@@ -332,7 +332,7 @@ export default function Messages() {
             });
             // Mark read since thread is open, refresh thread list for badge update
             apiFetch(`/chat/threads/${activeThreadId}/mark-read`, { method: "POST" }).catch(() => {});
-            qc.invalidateQueries({ queryKey: ["chat-threads"] });
+            qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
             qc.invalidateQueries({ queryKey: ["chat-messages", activeThreadId] });
           }
         } catch { /* ignore parse errors */ }
@@ -417,7 +417,7 @@ export default function Messages() {
         body: JSON.stringify({ thread_id: activeThreadId, content }),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["chat-threads"] });
+      qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
       setDraft("");
     },
   });
@@ -466,7 +466,7 @@ export default function Messages() {
       });
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      qc.invalidateQueries({ queryKey: ["chat-threads"] });
+      qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "File upload failed.");
     } finally {

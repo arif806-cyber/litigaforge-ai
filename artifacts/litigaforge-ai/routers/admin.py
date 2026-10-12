@@ -110,9 +110,10 @@ def _notify_rejected(name: str, email: str, phone: str, reason: str) -> None:
 @router.get("/admin/lawyers/pending")
 async def admin_pending_lawyers(current_user: dict = Depends(get_superuser)):
     rows = await fetch(
-        """SELECT id, name, email, phone, bar_number, district, practice_areas,
-                  experience_years, created_at
-           FROM lawyers WHERE verified = FALSE
+            """SELECT id, name, email, phone, bar_number, bar_council, courts_practised,
+                      district, practice_areas, experience_years, created_at
+               FROM lawyers
+               WHERE verified = FALSE AND verification_status = 'pending'
            ORDER BY created_at DESC""",
     )
     for r in rows:
@@ -127,7 +128,7 @@ async def admin_approve_lawyer(
     current_user: dict = Depends(get_superuser),
 ):
     row = await fetchrow(
-        "UPDATE lawyers SET verified = TRUE, verification_status = 'verified' WHERE id = $1 RETURNING id",
+        "UPDATE lawyers SET verified = TRUE, verification_status = 'verified', rejection_reason=NULL WHERE id = $1 RETURNING id",
         lawyer_id,
     )
     if not row:
@@ -155,14 +156,16 @@ async def admin_reject_lawyer(
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_superuser),
 ):
+    if not req.reason.strip():
+        raise HTTPException(status_code=422, detail="A rejection reason is required")
     try:
         safe_reason = sanitize_text(req.reason, max_length=500, field_name="reason") if req.reason else ""
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     row = await fetchrow(
-        "UPDATE lawyers SET verification_status = 'rejected' WHERE id = $1 RETURNING id",
-        lawyer_id,
+        "UPDATE lawyers SET verified=FALSE, verification_status='rejected', rejection_reason=$2 WHERE id=$1 RETURNING id",
+        lawyer_id, safe_reason or "Please update your verification details and contact support.",
     )
     if not row:
         raise HTTPException(status_code=404, detail="Lawyer not found")

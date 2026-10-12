@@ -445,7 +445,11 @@ def _normalize_case_response(payload: dict, expected_cnr: str | None = None) -> 
         "cnr": cnr,
         "case_number": case.get("registrationNumber") or case.get("caseNumber") or cnr,
         "case_type": case.get("caseTypeRaw") or case.get("caseType") or "",
-        "case_status": case.get("caseStatus") or "",
+        # PostgreSQL's case_status column is text. Some upstream records return
+        # a structured status value instead of the usual string; normalize it
+        # here rather than allowing asyncpg to raise DataError during snapshot
+        # persistence.
+        "case_status": str(case.get("caseStatus") or ""),
         "case_stage": case.get("purpose") or "",
         "court_name": court_name,
         "district": case.get("district") or "",
@@ -551,7 +555,25 @@ async def _mark_refresh_failure(tracked_case_id: str, exc: Exception) -> None:
     elif isinstance(exc, ValueError):
         message = str(exc)
     else:
-        message = f"Refresh failed unexpectedly ({type(exc).__name__})."
+        message = (
+            "eCourts could not refresh this case right now. Previously saved data "
+            "is unchanged. Please retry shortly."
+        )
+    if isinstance(exc, CourtDataError):
+        logger.error(
+            "eCourts refresh failed: tracked_case_id=%s error_type=%s "
+            "code=%s status=%s message=%s",
+            tracked_case_id, type(exc).__name__, exc.code, exc.status_code,
+            str(exc)[:500],
+        )
+    else:
+        # Keep the actual parser/database exception in server logs to diagnose
+        # failures such as asyncpg DataError; never return driver details to users.
+        logger.exception(
+            "eCourts refresh failed unexpectedly: tracked_case_id=%s "
+            "error_type=%s message=%s",
+            tracked_case_id, type(exc).__name__, str(exc)[:500],
+        )
     try:
         await db_execute(
             """

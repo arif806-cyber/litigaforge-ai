@@ -18,6 +18,8 @@ interface PendingLawyer {
   email: string;
   phone: string;
   bar_number: string;
+  bar_council?: string | null;
+  courts_practised?: string[] | null;
   district: string;
   practice_areas: string[];
   experience_years: number;
@@ -249,12 +251,16 @@ function PendingLawyersTab({
               <p className="text-sm text-muted-foreground">{lawyer.email} • {lawyer.phone}</p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Badge label={`Bar #${lawyer.bar_number}`} />
+                {lawyer.bar_council && <Badge label={lawyer.bar_council} />}
                 <Badge label={lawyer.district} />
                 <Badge label={`${lawyer.experience_years} yrs`} />
                 {lawyer.practice_areas?.map((area) => (
                   <Badge key={area} label={area} />
                 ))}
               </div>
+              {!!lawyer.courts_practised?.length && (
+                <p className="text-xs text-muted-foreground">Courts: {lawyer.courts_practised.join(", ")}</p>
+              )}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />

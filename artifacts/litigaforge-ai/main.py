@@ -540,6 +540,9 @@ async def lifespan(app: FastAPI):
                 email TEXT,
                 phone TEXT,
                 bar_number TEXT,
+                bar_council TEXT,
+                courts_practised TEXT[],
+                rejection_reason TEXT,
                 district TEXT,
                 practice_areas TEXT[],
                 languages TEXT[],
@@ -554,6 +557,9 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS bar_council TEXT")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS courts_practised TEXT[]")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS rejection_reason TEXT")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT FALSE")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE")

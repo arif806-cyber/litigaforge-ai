@@ -6,6 +6,7 @@ import {
 } from "../lib/country";
 
 const COUNTRY_API_BASE = "/litigaforge";
+const countryConfigRequests = new Map<string, Promise<CountryConfig>>();
 
 export interface CountryConfig {
   name: string;
@@ -45,12 +46,23 @@ export function useCountry() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`${COUNTRY_API_BASE}/api/country/${activeCode}`)
-      .then((r) => r.json())
+    let request = countryConfigRequests.get(activeCode);
+    if (!request) {
+      request = fetch(`${COUNTRY_API_BASE}/api/country/${activeCode}`)
+        .then((r) => {
+          if (!r.ok) throw new Error(`Country config request failed (${r.status})`);
+          return r.json();
+        })
+        .then((d) => d.config as CountryConfig);
+      countryConfigRequests.set(activeCode, request);
+    }
+    request
       .then((d) => {
-        if (!cancelled) setActiveConfig(d.config as CountryConfig);
+        if (!cancelled) setActiveConfig(d);
       })
-      .catch(() => {})
+      .catch(() => {
+        countryConfigRequests.delete(activeCode);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
