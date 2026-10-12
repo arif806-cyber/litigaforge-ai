@@ -501,6 +501,74 @@ def _safe_snapshot_date(value: Any) -> date | None:
         return None
 
 
+def normalize_snapshot_hearing_dates(
+    case_status: Any,
+    next_hearing_date: Any,
+    raw_response: Any,
+    *,
+    today: date | None = None,
+) -> tuple[str | None, str | None, str | None]:
+    """Return (next hearing, last listed, disposal) dates without stale next dates."""
+    if isinstance(raw_response, str):
+        try:
+            raw_response = json.loads(raw_response)
+        except (TypeError, ValueError):
+            raw_response = {}
+    raw = raw_response if isinstance(raw_response, dict) else {}
+    sources = [raw]
+    for key in ("entity_info", "entityInfo", "caseInfo"):
+        nested = raw.get(key)
+        if isinstance(nested, dict):
+            sources.append(nested)
+    today = today or date.today()
+
+    def as_iso(value: Any) -> tuple[str | None, date | None]:
+        parsed = _safe_snapshot_date(value)
+        return (parsed.isoformat(), parsed) if parsed else (None, None)
+
+    next_iso, next_date = as_iso(next_hearing_date)
+    disposal_keys = (
+        "disposal_date", "dateOfDisposal", "date_of_disposal",
+        "dateOfDecision", "decisionDate", "dateOfJudgment", "judgmentDate",
+    )
+    disposal_iso = next(
+        (
+            as_iso(source.get(key))[0]
+            for source in sources
+            for key in disposal_keys
+            if as_iso(source.get(key))[0]
+        ),
+        None,
+    )
+    listed_candidates = [
+        as_iso(source.get(key))
+        for source in sources
+        for key in (
+            "last_hearing_date", "lastHearingDate", "last_listed_date",
+            "lastListedDate", "lastDateOfHearing",
+        )
+    ]
+    listed_candidates = [
+        (iso, parsed) for iso, parsed in listed_candidates
+        if iso and parsed and parsed <= today
+    ]
+    if next_iso and next_date and next_date < today:
+        listed_candidates.append((next_iso, next_date))
+        next_iso = None
+
+    last_listed_iso = (
+        max(listed_candidates, key=lambda item: item[1])[0]
+        if listed_candidates else None
+    )
+    closed = any(
+        marker in str(case_status or "").lower()
+        for marker in ("dispos", "closed", "completed")
+    )
+    if closed:
+        next_iso = None
+    return next_iso, last_listed_iso, disposal_iso
+
+
 async def _persist_snapshots(tracked_case_ids: list[str], raw: dict) -> None:
     """Persist valid data and mark refresh success in the same database transaction."""
     if not tracked_case_ids:

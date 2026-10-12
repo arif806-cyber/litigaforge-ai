@@ -54,6 +54,24 @@ function StatusBadge({ status }: { status?: string }) {
   );
 }
 
+function caseDateDisplay(status?: string, next?: string | null, last?: string | null, disposed?: string | null) {
+  const closed = ["disposed", "closed", "completed"].some((s) => String(status ?? "").toLowerCase().includes(s));
+  const nextText = next ? String(next).slice(0, 10) : null;
+  const nextDate = nextText ? new Date(`${nextText}T00:00:00`) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nextIsPast = !!nextDate && !Number.isNaN(nextDate.getTime()) && nextDate < today;
+
+  if (closed) {
+    if (disposed) return { label: "Disposed on", value: disposed };
+    if (last || nextIsPast) return { label: "Last listed", value: last || nextText };
+    return null;
+  }
+  if (nextIsPast) return { label: "Last listed", value: last || nextText };
+  if (nextText) return { label: "Next hearing", value: nextText };
+  return last ? { label: "Last listed", value: last } : null;
+}
+
 /* ── Add-CNR form ──────────────────────────────────────────────────────────── */
 function CnrInput({ onTracked }: { onTracked: () => void }) {
   const [cnr,      setCnr]      = useState("");
@@ -169,6 +187,14 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
   );
 
   const refreshState = normalizeCnrRefreshState(data.refresh_status, data.refresh_error);
+  const latestDate = data.latest_status
+    ? caseDateDisplay(
+        data.latest_status.case_status,
+        data.latest_status.next_hearing_date,
+        data.latest_status.last_listed_date,
+        data.latest_status.disposal_date,
+      )
+    : null;
 
   /* No snapshot yet — report the current Partner API refresh state. */
   if (!data.latest_status && data.livetrack_tier !== undefined) return (
@@ -197,10 +223,10 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
           <p className="text-[11px] font-bold text-amber-400/60 uppercase tracking-wider">Latest Snapshot</p>
           <div className="flex items-center gap-3 flex-wrap">
             {data.latest_status.case_status && <StatusBadge status={data.latest_status.case_status} />}
-            {data.latest_status.next_hearing_date && (
+            {latestDate && (
               <span className="text-xs text-white/60 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-amber-400/60" />
-                Next: <span className="text-amber-400 font-semibold ml-0.5">{data.latest_status.next_hearing_date}</span>
+                {latestDate.label}: <span className="text-amber-400 font-semibold ml-0.5">{latestDate.value}</span>
               </span>
             )}
           </div>
@@ -231,10 +257,10 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
           <p className="text-[11px] font-bold text-amber-400/60 uppercase tracking-wider">Current Status</p>
           <div className="flex items-center gap-3 flex-wrap">
             {data.latest_status.case_status && <StatusBadge status={data.latest_status.case_status} />}
-            {data.latest_status.next_hearing_date && (
+            {latestDate && (
               <span className="text-xs text-white/60 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-amber-400/60" />
-                Next hearing: <span className="text-amber-400 font-semibold ml-0.5">{data.latest_status.next_hearing_date}</span>
+                {latestDate.label}: <span className="text-amber-400 font-semibold ml-0.5">{latestDate.value}</span>
               </span>
             )}
             {data.latest_status.order_count > 0 && (
@@ -299,11 +325,7 @@ function TrackedCaseCard({ tc }: { tc: any }) {
 
   const retryMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/court-intel/${id}/refresh`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tracked-cases"] });
-      // Recheck after the vendor refresh window and detail fetch have completed.
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }), 35_000);
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }),
   });
 
   const refreshState = normalizeCnrRefreshState(tc.refresh_status, tc.refresh_error);
@@ -314,6 +336,12 @@ function TrackedCaseCard({ tc }: { tc: any }) {
   const lastRefreshed = tc.last_refreshed
     ? new Date(tc.last_refreshed).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })
     : "Not fetched yet";
+  const caseDate = caseDateDisplay(
+    tc.case_status,
+    tc.next_hearing_date,
+    tc.last_listed_date,
+    tc.disposal_date,
+  );
 
   return (
     <motion.div layout
@@ -380,9 +408,9 @@ function TrackedCaseCard({ tc }: { tc: any }) {
               {tc.court_name && (
                 <span className="text-[11px] text-white/35 truncate max-w-[160px]">{tc.court_name}</span>
               )}
-              {tc.next_hearing_date && (
+              {caseDate && (
                 <span className="text-[11px] text-amber-400/80 font-medium flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />{tc.next_hearing_date}
+                  <Calendar className="w-3 h-3" />{caseDate.label}: {caseDate.value}
                 </span>
               )}
             </div>
@@ -445,6 +473,11 @@ export default function CnrTracker() {
     queryFn: () => apiFetch("/court-intel/my-cases"),
     enabled: !!user,
     staleTime: 60_000,
+    refetchInterval: (query) => {
+      const rows = (query.state.data as { cases?: any[] } | undefined)?.cases ?? [];
+      return rows.some((item) => item.refresh_status === "pending") ? 3_000 : false;
+    },
+    refetchIntervalInBackground: true,
   });
 
   const cases: any[] = data?.cases ?? [];

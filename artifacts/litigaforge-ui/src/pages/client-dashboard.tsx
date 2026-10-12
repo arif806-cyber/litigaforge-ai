@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 interface MyRequirement {
   id: number; title: string; case_type: string; description: string;
   location: string; budget_range: string; is_anonymous: boolean; status: string; created_at: string;
+  hearing_date?: string | null;
 }
 interface MatchProposal {
   id: number; case_requirement_id: number; lawyer_id: number; lawyer_name: string;
@@ -172,7 +173,7 @@ export default function ClientDashboard() {
     queryFn: () => apiFetch("/cases/requirements/mine"),
     enabled: !!user,
   });
-  const requirements: MyRequirement[] = requirementsData?.requirements || [];
+  const requirements: MyRequirement[] = requirementsData?.cases || [];
 
   const { data: matchesData, isLoading: matchLoading } = useQuery({
     queryKey: ["client-matches"],
@@ -204,7 +205,14 @@ export default function ClientDashboard() {
   // My Cases is backed by the client's case requirements endpoint. Keep the
   // dashboard KPI on that same source and count "open" as active.
   const activeCases = requirements.filter((r) => (r.status ?? "").toLowerCase() === "open").length;
-  const upcomingHearings = clientCases.filter((c) => c.hearing_date && new Date(c.hearing_date) >= new Date()).length;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingHearings = requirements.filter((c) => {
+    if (!c.hearing_date) return false;
+    const hearing = new Date(c.hearing_date);
+    hearing.setHours(0, 0, 0, 0);
+    return !Number.isNaN(hearing.getTime()) && hearing >= today;
+  }).length;
   const connectedLawyers = [...new Set(clientCases.map((c) => c.lawyer_id))].length;
   const pendingMatches = allMatches.filter((m) => m.status === "pending").length;
 
@@ -213,12 +221,6 @@ export default function ClientDashboard() {
   )[0];
   const currentStage = (() => {
     if (!latestRequirement) {
-      const latestMatter = [...clientCases].sort((a, b) =>
-        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
-      )[0];
-      const matterStatus = (latestMatter?.status ?? "").toLowerCase();
-      if (["closed", "completed", "dismissed"].includes(matterStatus)) return "completed";
-      if (latestMatter) return "hired";
       return "posted";
     }
     const status = (latestRequirement.status ?? "").toLowerCase();

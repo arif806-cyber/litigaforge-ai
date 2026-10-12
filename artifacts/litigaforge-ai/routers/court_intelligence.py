@@ -254,10 +254,10 @@ async def my_tracked_cases(
         SELECT tc.id::text, tc.cnr, tc.case_type, tc.court_name,
                tc.added_at, tc.last_refreshed, tc.is_active,
                tc.refresh_status, tc.refresh_error,
-               cs.case_status, cs.next_hearing_date
+               cs.case_status, cs.next_hearing_date, cs.raw_response
         FROM   tracked_cases tc
         LEFT JOIN LATERAL (
-            SELECT case_status, next_hearing_date
+            SELECT case_status, next_hearing_date, raw_response
             FROM   case_snapshots
             WHERE  tracked_case_id = tc.id
             ORDER  BY fetched_at DESC LIMIT 1
@@ -267,9 +267,20 @@ async def my_tracked_cases(
         """,
         user_id,
     )
+    from services.court_data_client import normalize_snapshot_hearing_dates
     cases = []
     for row in rows:
         case = dict(row)
+        (
+            case["next_hearing_date"],
+            case["last_listed_date"],
+            case["disposal_date"],
+        ) = normalize_snapshot_hearing_dates(
+            case.get("case_status"),
+            case.get("next_hearing_date"),
+            case.get("raw_response"),
+        )
+        case.pop("raw_response", None)
         case["refresh_status"], case["refresh_error"] = _normalize_refresh_state(
             case.get("refresh_status"),
             case.get("refresh_error"),
@@ -302,13 +313,27 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
 
     latest_snap = await db_fetchrow(
         """
-        SELECT case_status, next_hearing_date, order_count, fetched_at
+        SELECT case_status, next_hearing_date, order_count, fetched_at, raw_response
         FROM   case_snapshots
         WHERE  tracked_case_id = $1::uuid
         ORDER  BY fetched_at DESC LIMIT 1
         """,
         case_id,
     )
+
+    latest_status = dict(latest_snap) if latest_snap else None
+    if latest_status:
+        from services.court_data_client import normalize_snapshot_hearing_dates
+        (
+            latest_status["next_hearing_date"],
+            latest_status["last_listed_date"],
+            latest_status["disposal_date"],
+        ) = normalize_snapshot_hearing_dates(
+            latest_status.get("case_status"),
+            latest_status.get("next_hearing_date"),
+            latest_status.get("raw_response"),
+        )
+        latest_status.pop("raw_response", None)
 
     result: dict[str, Any] = {
         "cnr":            row["cnr"],
@@ -318,7 +343,7 @@ async def get_timeline(case_id: str, user: dict = Depends(require_user)):
         "refresh_status": refresh_status,
         "refresh_error": refresh_error,
         "is_active":      row["is_active"],
-        "latest_status":  dict(latest_snap) if latest_snap else None,
+        "latest_status":  latest_status,
         "livetrack_tier": is_paid,
     }
 
