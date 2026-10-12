@@ -1,9 +1,9 @@
 import { Building2, Target, Globe, Sparkles, BookOpen, Mail, MapPin } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
+import { BUSINESS_CONFIG } from "@/lib/business-config";
 
-const CONTACT_EMAIL = "info@arivex.ai";
-const MARKETS = ["Telangana", "Andhra Pradesh"];
+const MARKETS = ["Advocates", "Clients"];
 
 const FEATURES = [
   "AI Legal Chat",
@@ -24,7 +24,7 @@ export default function About() {
       >
         <SEOHelmet
           title="About LitigaForge"
-          description="LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates."
+          description="LitigaForge provides case tracking and legal tools for advocates and clients."
           canonical="/about"
         />
 
@@ -41,8 +41,11 @@ export default function About() {
         <Section icon={<Building2 className="w-4 h-4" />} title="Who We Are">
           <p>
             LitigaForge is operated by Arivex AI Private Limited and provides case tracking and legal
-            tools for advocates in Telangana and Andhra Pradesh.
+            tools for advocates and clients.
           </p>
+          <p className="mt-2"><strong>Company:</strong> {BUSINESS_CONFIG.companyName}</p>
+          <p className="mt-2"><strong>CIN:</strong> {BUSINESS_CONFIG.cin}</p>
+          <p className="mt-2"><strong>Registered office:</strong> {BUSINESS_CONFIG.registeredOffice}</p>
         </Section>
 
         <Section icon={<Target className="w-4 h-4" />} title="Our Mission">
@@ -81,9 +84,8 @@ export default function About() {
 
         <Section icon={<BookOpen className="w-4 h-4" />} title="Our Story">
           <p>
-            Founded by <strong>Mohammed Anjum Arif</strong>, an AWS and DevOps engineer based in
-            Hyderabad, India. LitigaForge AI is associated with <strong>T-Hub Hyderabad</strong>,
-            India's leading startup incubator.
+            Founded by <strong>Mohammed Anjum Arif</strong>, LitigaForge AI is part of the
+            <strong> T-Hub ecosystem in Hyderabad</strong>.
           </p>
         </Section>
 
@@ -91,11 +93,11 @@ export default function About() {
           <div className="bg-muted/40 rounded-xl p-4 text-sm space-y-2 border border-border">
             <p className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-primary" />
-              <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a>
+              <a href={`mailto:${BUSINESS_CONFIG.contactEmail}`} className="text-primary underline">{BUSINESS_CONFIG.contactEmail}</a>
             </p>
             <p className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="w-4 h-4 text-primary" />
-              Hyderabad, Telangana, India
+              Registered office: {BUSINESS_CONFIG.registeredOffice}
             </p>
           </div>
         </Section>

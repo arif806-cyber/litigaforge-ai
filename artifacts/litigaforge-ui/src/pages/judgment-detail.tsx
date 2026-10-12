@@ -42,6 +42,7 @@ interface JudgmentDetail {
   full_text: string;
   summary_en: string;
   summary_hi: string;
+  summary_te?: string;
   acts_cited: string[];
   outcome: string;
   citation: string;
@@ -269,13 +270,17 @@ export default function JudgmentDetail() {
           data-testid="judgment-text-status"
           className={cn(
             "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border",
-            j.text_complete === false
-              ? "text-amber-800 bg-amber-50 border-amber-200"
-              : "text-emerald-800 bg-emerald-50 border-emerald-200",
+            j.text_complete === true
+              ? "text-emerald-800 bg-emerald-50 border-emerald-200"
+              : "text-amber-800 bg-amber-50 border-amber-200",
           )}
         >
           <FileText className="w-3.5 h-3.5" />
-          {j.text_complete === false ? "Text incomplete — verify with source" : "Text complete"}
+          {j.text_complete === true
+            ? "Text complete"
+            : j.text_complete === false
+              ? "Text incomplete — verify with source"
+              : "Text completeness unverified — verify with source"}
         </span>
       </header>
 
@@ -310,6 +315,14 @@ export default function JudgmentDetail() {
             <span className="text-primary">हिंदी सारांश</span>
           </h2>
           <p className="text-base leading-relaxed text-foreground/85" lang="hi">{j.summary_hi}</p>
+        </section>
+      )}
+      {j.summary_te && (
+        <section className="space-y-3 bg-muted/30 border border-border/60 rounded-2xl p-5">
+          <h2 className="text-sm font-bold text-foreground tracking-wider flex items-center gap-2">
+            <span className="text-primary">తెలుగు సారాంశం</span>
+          </h2>
+          <p className="text-base leading-relaxed text-foreground/85" lang="te">{j.summary_te}</p>
         </section>
       )}
 

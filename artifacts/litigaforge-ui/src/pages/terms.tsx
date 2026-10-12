@@ -4,12 +4,13 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import { useCountry } from "@/hooks/useCountry";
 import { TERMS_COPY } from "@/lib/country-copy";
+import { BUSINESS_CONFIG } from "@/lib/business-config";
 
-const EFFECTIVE_DATE = "1 June 2026";
-const CONTACT_EMAIL = "info@arivex.ai";
-const ENTITY_NAME = "Arivex AI Private Limited";
-const ENTITY_CIN = "U62011TS2026PTC221286";
-const REGISTERED_OFFICE = import.meta.env.VITE_REGISTERED_OFFICE?.trim();
+const EFFECTIVE_DATE = "15 October 2026";
+const CONTACT_EMAIL = BUSINESS_CONFIG.contactEmail;
+const ENTITY_NAME = BUSINESS_CONFIG.companyName;
+const ENTITY_CIN = BUSINESS_CONFIG.cin;
+const REGISTERED_OFFICE = BUSINESS_CONFIG.registeredOffice;
 const GRIEVANCE_OFFICER = import.meta.env.VITE_GRIEVANCE_OFFICER?.trim();
 
 export default function TermsOfService() {

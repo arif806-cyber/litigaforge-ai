@@ -123,7 +123,7 @@ _REJECTED_HTML = """\
 """
 
 
-def _send(to_email: str, subject: str, html: str, text: str) -> dict:
+def _send(to_email: str, subject: str, html: str, text: str, reply_to: str = "") -> dict:
     if not SMTP_HOST:
         logger.info("[Email MOCK] To %s | %s | %s", to_email, subject, text[:80])
         return {"success": True, "mode": "mock",
@@ -136,6 +136,8 @@ def _send(to_email: str, subject: str, html: str, text: str) -> dict:
         msg["Subject"] = Header(subject, "utf-8")
         msg["From"] = SMTP_FROM
         msg["To"] = to_email
+        if reply_to:
+            msg["Reply-To"] = reply_to
         msg.attach(MIMEText(text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
 
@@ -532,3 +534,29 @@ def send_founder_alert(subject: str, message: str) -> list[dict]:
         "</body></html>"
     )
     return [_send(addr, full_subject, body_html, text) for addr in admin_emails]
+
+
+def send_contact_form_email(name: str, reply_email: str, subject: str, message: str) -> dict:
+    """Deliver a public contact-form message to the published support address."""
+    safe_name = _html.escape(name)
+    safe_email = _html.escape(reply_email)
+    safe_subject = _html.escape(subject)
+    safe_message = _html.escape(message)
+    text = (
+        f"From: {name} <{reply_email}>\n"
+        f"Topic: {subject}\n\n{message}"
+    )
+    body_html = (
+        "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;\">"
+        f"<h2>Website contact: {safe_subject}</h2>"
+        f"<p><strong>From:</strong> {safe_name} &lt;{safe_email}&gt;</p>"
+        f"<p style=\"white-space:pre-wrap\">{safe_message}</p>"
+        "</body></html>"
+    )
+    return _send(
+        "info@litigaforge.com",
+        f"LitigaForge contact: {subject}",
+        body_html,
+        text,
+        reply_to=reply_email,
+    )

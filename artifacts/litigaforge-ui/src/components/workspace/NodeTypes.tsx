@@ -1,4 +1,4 @@
-import { memo, useRef } from "react";
+import { memo, useRef, useState } from "react";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
 
@@ -29,8 +29,13 @@ function ScoreBar({ nodeId, score, color }: { nodeId: string; score: number; col
       onMouseDown={e => e.stopPropagation()}
       onPointerDown={e => {
         e.stopPropagation();
+        if (e.detail > 1) {
+          e.preventDefault();
+          return;
+        }
         dragStartScore.current = pct;
       }}
+      onDoubleClick={e => { e.preventDefault(); e.stopPropagation(); }}
     >
       <input
         type="range"
@@ -191,10 +196,12 @@ function NodeShell({
 }
 
 function NodeHeader({
-  icon, label, typeLabel, color, badge,
+  nodeId, icon, label, typeLabel, color, badge,
 }: {
-  icon: string; label: string; typeLabel: string; color: string; badge?: React.ReactNode;
+  nodeId: string; icon: string; label: string; typeLabel: string; color: string; badge?: React.ReactNode;
 }) {
+  const { updateNodeData } = useReactFlow();
+  const [editing, setEditing] = useState(false);
   return (
     <div style={{ marginBottom: 6, paddingRight: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
@@ -205,9 +212,22 @@ function NodeHeader({
         }}>{typeLabel}</span>
         {badge && <span style={{ marginLeft: "auto" }}>{badge}</span>}
       </div>
-      <div style={{
+      <div
+        contentEditable={editing}
+        suppressContentEditableWarning
+        onDoubleClick={e => { e.stopPropagation(); setEditing(true); }}
+        onBlur={e => {
+          if (editing) updateNodeData(nodeId, { label: e.currentTarget.textContent?.trim() || label });
+          setEditing(false);
+        }}
+        onKeyDown={e => {
+          if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+          if (e.key === "Escape") { e.preventDefault(); e.currentTarget.textContent = label; e.currentTarget.blur(); }
+        }}
+        style={{
         fontWeight: 700, fontSize: 12, color: "#e2e8f0", lineHeight: 1.35,
-        wordBreak: "break-word",
+        wordBreak: "break-word", outline: editing ? "1px solid #14b8a6" : "none",
+        cursor: editing ? "text" : "default",
       }}>
         {label}
       </div>
@@ -253,7 +273,7 @@ export const JudgmentNode = memo(({ id, data, selected, isConnectable }: NodePro
       simHighlight={Boolean(d.simHighlight)}
       impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
-      <NodeHeader icon="⚖️" label={String(d.label || "Judgment")} typeLabel="Precedent" color="#14b8a6"
+      <NodeHeader nodeId={id} icon="⚖️" label={String(d.label || "Judgment")} typeLabel="Precedent" color="#14b8a6"
         badge={d.url ? (
           <a href={String(d.url)} target="_blank" rel="noreferrer"
             onClick={e => e.stopPropagation()}
@@ -297,7 +317,7 @@ export const FactNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
       simHighlight={Boolean(d.simHighlight)}
       impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
-      <NodeHeader icon="📋" label={String(d.label || "Fact")} typeLabel="Key Fact" color="#60a5fa" />
+      <NodeHeader nodeId={id} icon="📋" label={String(d.label || "Fact")} typeLabel="Key Fact" color="#60a5fa" />
       {!collapsed && (
         <>
           {d.relevance && (
@@ -328,7 +348,7 @@ export const IssueNode = memo(({ id, data, selected, isConnectable }: NodeProps)
       simHighlight={Boolean(d.simHighlight)}
       impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
-      <NodeHeader icon="🏛️" label={String(d.label || "Legal Issue")} typeLabel="Legal Issue" color="#c084fc" />
+      <NodeHeader nodeId={id} icon="🏛️" label={String(d.label || "Legal Issue")} typeLabel="Legal Issue" color="#c084fc" />
       {!collapsed && (
         <>
           <NodeBody text={String(d.description || "")} />
@@ -355,7 +375,7 @@ export const ArgumentNode = memo(({ id, data, selected, isConnectable }: NodePro
       simHighlight={Boolean(d.simHighlight)}
       impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
-      <NodeHeader icon="🗣️" label={String(d.label || "Argument")} typeLabel="Argument" color="#2dd4bf"
+      <NodeHeader nodeId={id} icon="🗣️" label={String(d.label || "Argument")} typeLabel="Argument" color="#2dd4bf"
         badge={
           <span style={{ fontSize: 8, fontWeight: 800, color: "#14b8a6", background: "rgba(20,184,166,0.15)", padding: "1px 5px", borderRadius: 6 }}>
             {strength}% strength
@@ -389,7 +409,7 @@ export const RiskNode = memo(({ id, data, selected, isConnectable }: NodeProps) 
       simHighlight={Boolean(d.simHighlight)}
       impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
-      <NodeHeader icon="⚠️" label={String(d.label || "Risk")} typeLabel="Risk Factor" color={sevColor}
+      <NodeHeader nodeId={id} icon="⚠️" label={String(d.label || "Risk")} typeLabel="Risk Factor" color={sevColor}
         badge={
           <span style={{
             fontSize: 8, fontWeight: 800, color: sevColor,
@@ -431,7 +451,7 @@ export const StrategyNode = memo(({ id, data, selected, isConnectable }: NodePro
       simHighlight={Boolean(d.simHighlight)}
       impactFlash={(d.impactFlash as "positive" | "negative" | undefined)}
       collapsed={collapsed} onToggleCollapse={e => { e.stopPropagation(); updateNodeData(id, { collapsed: !collapsed }); }}>
-      <NodeHeader icon="💡" label={String(d.label || "Strategy")} typeLabel="Strategy" color="#fbbf24"
+      <NodeHeader nodeId={id} icon="💡" label={String(d.label || "Strategy")} typeLabel="Strategy" color="#fbbf24"
         badge={
           <span style={{ fontSize: 8, fontWeight: 800, color: "#f59e0b", background: "rgba(245,158,11,0.15)", padding: "1px 5px", borderRadius: 6 }}>
             {confidence}% conf.

@@ -35,13 +35,14 @@ export interface SimulationResult {
 }
 
 export interface SimState {
-  phase:      "idle" | "running" | "complete";
+  phase:      "idle" | "running" | "complete" | "failed";
   scenario:   string;
   before:     SimBefore  | null;
   after:      SimAfter   | null;
   deltas:     NodeDelta[];
   analysis:   string;
   agents:     string[];
+  error?:     string;
 }
 
 interface SimulationPanelProps {
@@ -228,6 +229,16 @@ export default function SimulationPanel({
         <div style={{ fontSize: 8.5, color: "#334155", marginTop: 4 }}>Ctrl+Enter to run</div>
       </div>
 
+      {simState.phase === "failed" && (
+        <div role="alert" style={{
+          padding: "9px 11px", borderRadius: 8, color: "#fca5a5",
+          background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.25)",
+          fontSize: 10, lineHeight: 1.5,
+        }}>
+          {simState.error || "Simulation failed. Retry when the provider is available."}
+        </div>
+      )}
+
       {/* Agent activity */}
       <AnimatePresence>
         {simState.agents.length > 0 && (
@@ -255,7 +266,7 @@ export default function SimulationPanel({
                 >
                   <span style={{ fontSize: 13 }}>{def?.emoji ?? "🤖"}</span>
                   <span style={{ fontSize: 9.5, color: "#94a3b8" }}>
-                    {def?.name ?? agentId} — analyzing…
+                     {def?.name ?? agentId} — {simState.phase === "complete" ? "complete" : simState.phase === "failed" ? "failed" : "analyzing…"}
                   </span>
                   {isRunning && (
                     <motion.span

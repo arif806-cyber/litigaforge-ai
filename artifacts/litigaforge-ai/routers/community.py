@@ -11,6 +11,8 @@ import re
 import secrets
 from typing import List, Literal, Optional
 
+import httpx
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -21,7 +23,7 @@ from rate_limit import limiter
 from database import fetchrow, fetch, execute, fetchval
 from cache import cache_get, cache_set, cache_key
 from sanitizer import sanitize_text
-from alerts.email import smtp_configured, send_confirmation_email
+from alerts.email import smtp_configured, send_confirmation_email, send_contact_form_email
 from ai_safety import wrap_user_prompt, add_disclaimer, validate_ai_response
 from jurisdiction import (
     get_config, advisor_descriptor, jurisdiction_block,
@@ -191,6 +193,13 @@ async def submit_contact(req: ContactRequest, request: Request):
            VALUES ($1, $2, $3, $4)""",
         name.strip(), email, subject, message.strip(),
     )
+    if not smtp_configured():
+        raise HTTPException(status_code=503, detail="Contact email is temporarily unavailable. Please email info@litigaforge.com directly.")
+    result = await asyncio.to_thread(
+        send_contact_form_email, name.strip(), email, subject, message.strip()
+    )
+    if not result.get("success"):
+        raise HTTPException(status_code=502, detail="We could not deliver your message. Please try again or email info@litigaforge.com.")
     return {"ok": True, "message": "Thank you! We will get back to you within 24 hours."}
 
 
@@ -1338,7 +1347,7 @@ async def list_lawyers(
     response.headers["Cache-Control"] = "public, max-age=300"
 
     # Version this key so a pre-deployment cache entry containing PII is never reused.
-    ck = cache_key("lawyers-v3-public-test-hidden", country or "", district or "", practice_area or "", language or "", search or "")
+    ck = cache_key("lawyers-v4-public-hidden", country or "", district or "", practice_area or "", language or "", search or "")
     cached = await cache_get(ck)
     if cached is not None:
         return cached
@@ -1346,6 +1355,7 @@ async def list_lawyers(
     conds, params = [
         "l.verified = TRUE",
         "COALESCE(l.is_test, FALSE) = FALSE",
+        "COALESCE(l.admin_hidden, FALSE) = FALSE",
         "l.verification_status = 'verified'",
     ], []
     if country:
@@ -1393,6 +1403,7 @@ async def get_public_lawyer(lawyer_id: int):
                   availability
            FROM lawyers
            WHERE id = $1 AND verified = TRUE AND COALESCE(is_test, FALSE) = FALSE
+             AND COALESCE(admin_hidden, FALSE) = FALSE
              AND verification_status = 'verified'""",
         lawyer_id,
     )
@@ -1749,16 +1760,41 @@ async def get_public_stats() -> dict:
     verified_lawyers = await _count(
         """SELECT COUNT(*) FROM lawyers
            WHERE verified = TRUE AND verification_status = 'verified'
-             AND COALESCE(is_test, FALSE) = FALSE"""
+             AND COALESCE(is_test, FALSE) = FALSE
+             AND COALESCE(admin_hidden, FALSE) = FALSE"""
     )
     documents_generated = await _count(
         "SELECT COUNT(*) FROM paid_documents WHERE status = 'paid'"
     )
+    judgments_in_digest = await _count(
+        "SELECT COUNT(*) FROM judgments WHERE status = 'published'"
+    )
+
+    # Guides are published by the separate static blog. Its live index renders
+    # every published guide; count those actual links rather than hard-coding.
+    guides = None
+    try:
+        async with httpx.AsyncClient(timeout=4.0, follow_redirects=True) as client:
+            index = await client.get("https://litigaforge-blog.arif-806.workers.dev/blog/")
+            index.raise_for_status()
+            article_urls = set()
+            for href in re.findall(r'''href=["']([^"']+)["']''', index.text):
+                path = href.split("?", 1)[0].split("#", 1)[0]
+                match = re.fullmatch(r"/blog/([a-z0-9][a-z0-9-]*)/?", path, re.I)
+                if match and match.group(1).lower() not in {
+                    "page", "tag", "tags", "category", "categories", "author", "authors"
+                }:
+                    article_urls.add("/blog/" + match.group(1).lower())
+            guides = len(article_urls) if article_urls else None
+    except Exception as e:
+        logger.info("public_stats blog sitemap unavailable: %s", e)
 
     return {
         "answered_questions": answered_questions,
         "verified_lawyers": verified_lawyers,
         "documents_generated": documents_generated,
+        "judgments_in_digest": judgments_in_digest,
+        "guides": guides,
     }
 
 

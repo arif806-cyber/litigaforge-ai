@@ -40,6 +40,7 @@ const clientNav: NavEntry[] = [
 
 const lawyerNav: NavEntry[] = [
   { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star,      tKey: "dashboard" },
+  { href: "/docket", label: "DocketView", icon: CalendarSearch },
   { href: "/lawyer-dashboard/cases", label: "Cases & Hearings", icon: FileText },
   { href: "/lawyer-dashboard/clients", label: "Clients", icon: Users },
   { href: "/judgments",          label: "Judgments",       icon: BookOpen,  tKey: "judgments" },
@@ -54,12 +55,12 @@ const lawyerNav: NavEntry[] = [
 ];
 
 const commonNav: NavEntry[] = [
-  { href: "/legal-chat",     label: "AI Legal Chat",   icon: MessageSquareText, tKey: "legal_chat" },
-  { href: "/ask",            label: "Legal Q&A",       icon: MessageSquare,     tKey: "legal_qa" },
+  { href: "/legal-chat",     label: "AI Legal Drafting", icon: MessageSquareText },
+  { href: "/ask",            label: "Legal Information Q&A", icon: MessageSquare },
   { href: "/review",         label: "Doc Analyzer",    icon: FileSearch,        tKey: "doc_analyzer" },
   { href: "/cnr-tracker",    label: "CNR Tracker",     icon: CalendarSearch },
   { href: "/judgments",      label: "Judgments",       icon: BookOpen,          tKey: "judgments" },
-  { href: "/workspace",      label: "Forge Workspace", icon: Zap,               highlight: true },
+  { href: "/workspace",     label: "Forge Workspace", icon: Zap,               highlight: true },
   { href: "/free-documents", label: "Free Documents",  icon: FileCheck,         tKey: "free_documents" },
   { href: "/legal-aid",      label: "Free Legal Aid",  icon: Heart,             tKey: "free_aid" },
   { href: "/blog",           label: "Legal Guides",    icon: Newspaper,         tKey: "legal_guides" },
@@ -143,45 +144,16 @@ function NavItem({
   );
 }
 
-/* ─── Admin nav item ─── */
-function AdminNavItem({ location, onNav }: { location: string; onNav?: () => void }) {
+/* ─── Admin section ─── */
+function AdminSection({ location, onNav }: { location: string; onNav?: () => void }) {
   const { user } = useAuth();
   if (!user?.is_superuser) return null;
-  const href = "/admin";
-  const active = location.startsWith(href);
   return (
-    <Link href={href} data-testid="nav-admin" onClick={onNav}
-      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-      className={cn(
-        "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
-        active
-          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm active:opacity-80"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
-      )}>
-      <Shield className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "group-hover:text-sidebar-foreground")} />
-      <span className="tracking-wide relative z-10">Admin</span>
-    </Link>
-  );
-}
-
-/* ─── ForgeOS nav item ─── */
-function ForgeOsNavItem({ location, onNav }: { location: string; onNav?: () => void }) {
-  const { user } = useAuth();
-  if (!user?.is_superuser) return null;
-  const href = "/forgeos";
-  const active = location.startsWith(href);
-  return (
-    <Link href={href} data-testid="nav-forgeos" onClick={onNav}
-      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-      className={cn(
-        "flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer relative group",
-        active
-          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm active:opacity-80"
-          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
-      )}>
-      <Cpu className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary-foreground" : "text-violet-400 group-hover:text-sidebar-foreground")} />
-      <span className="tracking-wide relative z-10">ForgeOS</span>
-    </Link>
+    <div className="mt-4 border-t border-sidebar-border/60 pt-3">
+      <div className="px-3.5 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Admin</div>
+      <NavItem href="/admin" label="Admin Panel" icon={Shield} location={location} onClick={onNav} testId="nav-admin" />
+      <NavItem href="/forgeos" label="ForgeOS Command Center" icon={Cpu} location={location} onClick={onNav} testId="nav-forgeos" />
+    </div>
   );
 }
 
@@ -301,8 +273,7 @@ function SidebarContent({
             onClick={onNav}
           />
         ))}
-        <AdminNavItem location={location} onNav={onNav} />
-        <ForgeOsNavItem location={location} onNav={onNav} />
+        <AdminSection location={location} onNav={onNav} />
       </nav>
 
       <UserPanel onNav={onNav} />
@@ -497,6 +468,7 @@ function DesktopLogoutButton() {
 /* ─── Main Layout ─── */
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const isWorkspace = location.startsWith("/workspace");
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   useMessageNotifications();
@@ -538,7 +510,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background">
+        <main className={cn(
+          "flex-1 overflow-y-auto overflow-x-hidden relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background",
+          isWorkspace && "min-h-0 overflow-hidden pb-0",
+        )}>
           {/* Desktop sticky header */}
           <header className="hidden md:flex flex-shrink-0 h-14 border-b border-border bg-card px-6 items-center justify-between sticky top-0 z-20">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -557,7 +532,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {user && (
                 <Link href="/subscription" className="flex items-center gap-2 text-xs font-semibold text-foreground bg-accent/80 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors border border-accent-border">
                   <Crown className="w-3.5 h-3.5 text-amber-600" />
-                  {TIER_LABELS[user.subscription_tier] ?? "Free"}
+                  {user.role === "client"
+                    ? (user.subscription_tier === "free" ? "Client Free" : "Client Pro")
+                    : (TIER_LABELS[user.subscription_tier] ?? "Free")}
                 </Link>
               )}
               {user && (
@@ -568,16 +545,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           <div className="flex-1 relative">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
-            <div className="relative z-10 min-h-full flex flex-col">
-              <div className="flex-1">{children}</div>
-              <LegalDisclaimerFooter />
+            <div className={cn("relative z-10 flex flex-col", isWorkspace ? "h-full min-h-0 overflow-hidden" : "min-h-full")}>
+              <div className={cn("flex-1", isWorkspace && "min-h-0 overflow-hidden")}>{children}</div>
+              {!isWorkspace && <LegalDisclaimerFooter />}
             </div>
           </div>
         </main>
       </div>
 
       {/* Mobile bottom tab bar */}
-      {user && <BottomTabBar location={location} user={user} />}
+      {user && !isWorkspace && <BottomTabBar location={location} user={user} />}
     </div>
   );
 }

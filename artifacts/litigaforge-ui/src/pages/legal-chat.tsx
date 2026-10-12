@@ -164,7 +164,7 @@ export default function LegalChat() {
 
   if (!user) {
     return (<>
-      <SEOHelmet title="AI Legal Chat" description="Interactive legal drafting assistant with AI templates." canonical="/legal-chat" />
+      <SEOHelmet title="AI Legal Drafting" description="Draft legal notices, petitions, replies, and other documents with guided AI assistance." canonical="/legal-chat" />
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
           <Bot className="w-12 h-12 text-muted-foreground mx-auto" />

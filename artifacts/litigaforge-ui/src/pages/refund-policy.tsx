@@ -2,6 +2,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { motion } from "framer-motion";
 import { RotateCcw, Shield, Clock, CreditCard, HelpCircle } from "lucide-react";
+import { BUSINESS_CONFIG } from "@/lib/business-config";
 
 export default function RefundPolicy() {
   return (
@@ -32,6 +33,20 @@ export default function RefundPolicy() {
           </p>
         </motion.div>
 
+        <PolicySection title="Trials, billing periods and cancellation">
+          Any trial duration and eligibility are shown before checkout. Monthly plans renew
+          monthly; annual plans are prepaid for the displayed annual term. You may cancel renewal
+          at any time from your account. Access generally continues until the end of the paid
+          period, and cancellation prevents the next renewal.
+        </PolicySection>
+
+        <PolicySection title="Partial refunds and GST">
+          Outside the 7-day request window, unused time is not refunded on a pro-rata basis, except
+          where required by law or where we confirm a duplicate or erroneous charge. GST is
+          accounted for on invoices and any refund or credit note is adjusted as required by
+          applicable tax rules.
+        </PolicySection>
+
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -45,7 +60,7 @@ export default function RefundPolicy() {
           <ul className="space-y-3 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <span className="text-green-500 font-bold">1.</span>
-              <span>Refund requests are processed within <strong>48 hours</strong> of receipt.</span>
+              <span>We review requests and initiate approved refunds within <strong>10 business days</strong>.</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-green-500 font-bold">2.</span>
@@ -53,7 +68,7 @@ export default function RefundPolicy() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-green-500 font-bold">3.</span>
-              <span>Depending on your bank, the refund may take <strong>5-10 business days</strong> to reflect in your account.</span>
+              <span>Your bank or payment provider may take additional time to post the refund.</span>
             </li>
           </ul>
         </motion.div>
@@ -90,15 +105,28 @@ export default function RefundPolicy() {
             (optional). We will process it promptly.
           </p>
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-            <p className="text-sm font-medium text-foreground">support@litigaforge.com</p>
+            <p className="text-sm font-medium text-foreground">info@litigaforge.com</p>
             <p className="text-xs text-muted-foreground mt-1">Subject: Refund Request</p>
           </div>
         </motion.div>
 
         <p className="text-xs text-muted-foreground text-center pt-4">
-          Last updated: June 2026
+          Effective: 15 October 2026
         </p>
+        <div className="border-t border-border pt-5 text-sm text-muted-foreground">
+          <p>{BUSINESS_CONFIG.companyName} · CIN {BUSINESS_CONFIG.cin}</p>
+          <p>Registered office: {BUSINESS_CONFIG.registeredOffice}</p>
+        </div>
       </div>
     </PageShell>
+  );
+}
+
+function PolicySection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-card border border-border rounded-2xl p-8">
+      <h2 className="text-lg font-semibold mb-3">{title}</h2>
+      <p className="text-sm text-muted-foreground leading-relaxed">{children}</p>
+    </section>
   );
 }

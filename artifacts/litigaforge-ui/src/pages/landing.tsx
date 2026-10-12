@@ -1,1344 +1,333 @@
-import { useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
+import { ArrowDown, ArrowRight, ArrowUpRight, BookOpen, BriefcaseBusiness, Check, ChevronDown, FileSearch, LockKeyhole, Menu, Scale, Search, ShieldCheck, Users, X } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { Link } from "wouter";
-import { motion, useInView, AnimatePresence } from "framer-motion";
-import {
-  Scale, Sparkles, Users, FileSearch, MessageSquare, BookOpen,
-  Shield, ArrowRight, Zap, Globe, Menu, X, Gavel, Heart,
-  FileText, Brain, Check, Star, Clock, ChevronRight, AlertCircle,
-  Building2, Search, MessageCircle, BadgeCheck
-} from "lucide-react";
+import { BUSINESS_CONFIG } from "@/lib/business-config";
+import { useAuth } from "@/lib/auth-context";
+import { apiFetch } from "@/lib/api";
+import "./landing.css";
 
-/* ── animation helpers ── */
-const fadeUp = { hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } } };
-const fadeIn  = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.5 } } };
-const stagger = { visible: { transition: { staggerChildren: 0.09 } } };
+type PublicStats = {
+  judgments_in_digest?: unknown;
+  guides?: unknown;
+  verified_lawyers?: unknown;
+};
 
-function useSection() {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-  return { ref, inView };
+const faqItems = [
+  {
+    q: "What is LitigaForge AI?",
+    a: "LitigaForge brings practical legal research and case-management tools into one place. Advocates can organize their work and explore legal resources; clients can understand a question, prepare information, and find the right next step.",
+  },
+  {
+    q: "Does LitigaForge replace advice from an advocate?",
+    a: "No. AI-generated information is a starting point, not legal advice. Verify important information with a qualified legal professional who can consider the facts of your matter.",
+  },
+  {
+    q: "Can clients and advocates use the same tools?",
+    a: "The platform supports both workflows. Client-facing tools help people prepare and explore options, while advocate tools focus on research, organization, and day-to-day legal work.",
+  },
+  {
+    q: "How is my information handled?",
+    a: "LitigaForge is designed with privacy in mind. Avoid submitting sensitive personal information unless it is necessary for the feature you are using, and review the Privacy Policy for details about platform data practices.",
+  },
+];
+
+function formatCount(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? new Intl.NumberFormat().format(value)
+    : null;
 }
 
-/* ── Glow orb ── */
-function GlowOrb({ className, style }: { className: string; style?: React.CSSProperties }) {
-  return <div className={`absolute rounded-full blur-3xl pointer-events-none ${className}`} style={style} />;
-}
-
-/* ══════════════════════════════════════════════════════════
-   NAVBAR
-══════════════════════════════════════════════════════════ */
 function Navbar() {
-  const [open, setOpen] = useState(false);
-
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useAuth();
   const links = [
-    { label: "Features", href: "#features" },
-    { label: "How It Works", href: "#how" },
-    { label: "Lawyers", href: "#why" },
+    { label: "For advocates", href: "#advocates" },
+    { label: "For clients", href: "#clients" },
+    { label: "Tools", href: "#tools" },
+    { label: "FAQ", href: "#faq" },
   ];
 
   return (
-    <header
-      style={{ backgroundColor: "rgba(6, 13, 26, 0.85)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl"
-    >
-      <nav className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/landing" className="flex items-center gap-2.5 select-none">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #2563eb, #7c3aed)" }}>
-            <Scale className="w-4.5 h-4.5 text-white" />
-          </div>
-          <span className="font-bold text-white text-[15px] tracking-tight">LitigaForge <span style={{ color: "#3b82f6" }}>AI</span></span>
+    <header className="lf-nav">
+      <nav className="lf-nav-inner" aria-label="Main navigation">
+        <Link href="/" className="lf-brand" aria-label="LitigaForge AI home">
+          <span className="lf-brand-mark"><Scale size={19} strokeWidth={1.8} /></span>
+          <span>LitigaForge <i>AI</i></span>
         </Link>
-
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-8">
-          {links.map(l => (
-            <a key={l.label} href={l.href} style={{ color: "#94a3b8" }} className="text-sm hover:text-white transition-colors duration-200 font-medium">
-              {l.label}
-            </a>
-          ))}
-          <Link href="/workspace"
-            style={{ color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.3)", background: "rgba(20,184,166,0.08)" }}
-            className="text-sm font-bold px-3.5 py-1.5 rounded-lg hover:bg-teal-500/15 transition-all flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5" />
-            Forge Workspace
-          </Link>
+        <div className="lf-nav-links">
+          {links.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
         </div>
-
-        {/* CTA buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="lf-nav-actions">
           <LanguageSwitcher />
           <CountrySwitcher />
-          <Link href="/login" style={{ color: "#94a3b8" }} className="text-sm font-medium hover:text-white transition-colors px-4 py-2">Login</Link>
-          <Link href="/login"
-            style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 0 20px rgba(59,130,246,0.3)" }}
-            className="text-sm font-semibold text-white px-5 py-2 rounded-lg hover:opacity-90 transition-opacity">
-            Get Started Free
-          </Link>
+          {user && <Link href="/workspace" className="lf-nav-workspace">Workspace <ArrowUpRight size={14} /></Link>}
+          <Link href="/login" className="lf-button lf-button-small">Get started <ArrowRight size={15} /></Link>
         </div>
-
-        {/* Mobile hamburger */}
-        <button onClick={() => setOpen(!open)} className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg" style={{ color: "#94a3b8" }}>
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        <button
+          type="button"
+          className="lf-menu-toggle"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </nav>
-
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-            style={{ borderTop: "1px solid rgba(255,255,255,0.06)", backgroundColor: "rgba(6,13,26,0.98)" }}
-            className="md:hidden overflow-hidden"
-          >
-            <div className="px-5 py-4 flex flex-col gap-4">
-              {links.map(l => (
-                <a key={l.label} href={l.href} onClick={() => setOpen(false)} style={{ color: "#94a3b8" }} className="text-sm font-medium py-1">
-                  {l.label}
-                </a>
-              ))}
-              <Link href="/workspace" onClick={() => setOpen(false)}
-                style={{ color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)", background: "rgba(20,184,166,0.08)" }}
-                className="text-sm font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5">
-                <Zap className="w-4 h-4" />
-                Forge Workspace
-              </Link>
-              <div className="flex flex-col gap-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <Link href="/login" style={{ color: "#94a3b8" }} className="text-sm font-medium py-2 text-center">Login</Link>
-                <Link href="/login"
-                  style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)" }}
-                  className="text-sm font-semibold text-white px-5 py-2.5 rounded-lg text-center">
-                  Get Started Free
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {menuOpen && (
+        <div className="lf-mobile-menu">
+          {links.map((link) => <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>{link.label}</a>)}
+          <div className="lf-mobile-switchers"><LanguageSwitcher /><CountrySwitcher /></div>
+          {user && <Link href="/workspace" onClick={() => setMenuOpen(false)}>Open workspace <ArrowUpRight size={15} /></Link>}
+          <Link href="/login" className="lf-button" onClick={() => setMenuOpen(false)}>Get started <ArrowRight size={16} /></Link>
+        </div>
+      )}
     </header>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   HERO — split layout: editorial left · AI match card right
-══════════════════════════════════════════════════════════ */
-
-/** Animated score arc (SVG ring) */
-function ScoreRing({ score }: { score: number }) {
-  const r = 32, circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
+function ProductPreview() {
   return (
-    <svg width="84" height="84" viewBox="0 0 84 84" className="rotate-[-90deg]">
-      <circle cx="42" cy="42" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
-      <motion.circle
-        cx="42" cy="42" r={r} fill="none"
-        stroke="url(#scoreGrad)" strokeWidth="6"
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        initial={{ strokeDashoffset: circ }}
-        animate={{ strokeDashoffset: circ - dash }}
-        transition={{ duration: 1.4, delay: 0.9, ease: "easeOut" }}
-      />
-      <defs>
-        <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#a78bfa" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
-/** Floating AI match result card */
-function MatchCard() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 32, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.7, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      style={{
-        background: "rgba(15,23,42,0.85)",
-        border: "1px solid rgba(59,130,246,0.22)",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)",
-        backdropFilter: "blur(20px)",
-      }}
-      className="w-full max-w-sm rounded-2xl overflow-hidden"
-    >
-      {/* Card header */}
-      <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-semibold" style={{ color: "#94a3b8" }}>AI Match Result</span>
+    <div className="lf-preview-stage" aria-label="LitigaForge product previews">
+      <figure className="lf-finder-preview">
+        <figcaption><span className="lf-live-dot" /> Judgment Finder <span className="lf-caption-muted">Product preview</span></figcaption>
+        <img src="/judgment-finder-preview.jpg" alt="LitigaForge Judgment Finder interface showing a searchable collection of judgment summaries" />
+      </figure>
+      <figure className="lf-dashboard-placeholder">
+        <div className="lf-placeholder-head">
+          <span className="lf-placeholder-icon"><BriefcaseBusiness size={16} /></span>
+          <span>Advocate workspace</span>
+          <span className="lf-pending-pill">Preview pending</span>
         </div>
-        <div style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.25)" }}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full">
-          <Sparkles className="w-3 h-3" style={{ color: "#60a5fa" }} />
-          <span className="text-[10px] font-bold" style={{ color: "#93c5fd" }}>Claude + Gemini</span>
+        <div className="lf-placeholder-body">
+          <div className="lf-placeholder-stamp"><Scale size={24} /></div>
+          <p>Dashboard screenshot pending</p>
+          <span>A genuine product capture will appear here.</span>
         </div>
-      </div>
-
-      {/* Score + lawyer */}
-      <div className="px-5 py-5">
-        <div className="flex items-center gap-4 mb-5">
-          {/* Score ring */}
-          <div className="relative flex-shrink-0">
-            <ScoreRing score={96} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center rotate-90" style={{ top: 0 }}>
-              <span className="text-xl font-extrabold text-white leading-none">Fit</span>
-              <span className="text-[9px] font-semibold" style={{ color: "#64748b" }}>review</span>
-            </div>
-          </div>
-          {/* Lawyer info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="font-bold text-white text-[15px]">Adv. Priya Sharma</span>
-              <BadgeCheck className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#34d399" }} />
-            </div>
-            <p className="text-xs mb-2" style={{ color: "#64748b" }}>Criminal Defense · 12 yrs exp</p>
-            <div className="flex flex-wrap gap-1.5">
-              {["Criminal Defense", "Litigation", "English", "Bar enrolment checked by LitigaForge"].map(t => (
-                <span key={t} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* AI explanation */}
-        <div className="rounded-xl p-3.5 mb-4" style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(59,130,246,0.14)" }}>
-          <p className="text-xs leading-relaxed" style={{ color: "#93c5fd" }}>
-            <span className="font-semibold">Why matched:</span> Specialises in fraud and white-collar cases with a 94% success rate. Consistently high client satisfaction and a strong courtroom record. Available this week.
-          </p>
-        </div>
-
-        {/* Status row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs font-medium" style={{ color: "#34d399" }}>Available Now</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {[1,2,3,4,5].map(s => (
-                <Star key={s} className="w-3 h-3" style={{ fill: s <= 5 ? "#f59e0b" : "none", color: "#f59e0b" }} />
-              ))}
-            </div>
-          </div>
-          <span className="text-xs font-semibold" style={{ color: "#60a5fa" }}>$180/hr</span>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="px-5 pb-5 flex gap-2.5">
-        <button className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-opacity hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 0 16px rgba(37,99,235,0.35)" }}>
-          Accept Match
-        </button>
-        <button className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors"
-          style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
-          View Profile
-        </button>
-      </div>
-
-      {/* Footer label */}
-      <div className="px-5 pb-4 text-center">
-        <p className="text-[10px]" style={{ color: "#334155" }}>9 more matches ranked by AI · Updated just now</p>
-      </div>
-    </motion.div>
+      </figure>
+      <div className="lf-preview-note"><span>01</span> Research, organized for the work ahead</div>
+    </div>
   );
 }
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden px-5 pt-20 pb-12">
-      {/* ── Background ── */}
-      {/* Deep radial glow — blue left, purple right, gold bottom-right */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-120px] left-[-100px] w-[700px] h-[700px] rounded-full opacity-[0.18]"
-          style={{ background: "radial-gradient(circle, #1d4ed8, transparent 65%)" }} />
-        <div className="absolute top-[-80px] right-[-120px] w-[500px] h-[500px] rounded-full opacity-[0.1]"
-          style={{ background: "radial-gradient(circle, #7c3aed, transparent 65%)" }} />
-        <div className="absolute bottom-0 right-[5%] w-[350px] h-[350px] rounded-full opacity-[0.09]"
-          style={{ background: "radial-gradient(circle, #f59e0b, transparent 65%)" }} />
-        {/* Dot grid */}
-        <div className="absolute inset-0 opacity-[0.025]"
-          style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
-        {/* Horizontal separator glow at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.25), rgba(167,139,250,0.2), transparent)" }} />
-      </div>
-
-      {/* ── Content ── */}
-      <div className="relative z-10 max-w-6xl mx-auto w-full flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
-
-        {/* ──────────── LEFT: Editorial copy ──────────── */}
-        <div className="flex-1 flex flex-col items-start text-left max-w-xl">
-
-          {/* Overline badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }}
-            style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(59,130,246,0.28)" }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: "#93c5fd" }}>
-              Telangana & Andhra Pradesh advocate tools
-            </span>
-          </motion.div>
-
-          {/* Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.13, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl sm:text-5xl lg:text-[3.6rem] xl:text-[4rem] font-extrabold leading-[1.06] tracking-tight mb-5">
-            <span className="text-white">LitigaForge — case tracking and legal tools for</span>
-            <br />
-            <span style={{
-              background: "linear-gradient(120deg, #60a5fa 0%, #818cf8 45%, #c084fc 75%, #f59e0b 100%)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-            }}>
-              Telangana &amp; Andhra Pradesh advocates
-            </span>
-          </motion.h1>
-
-          {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.22 }}
-            className="text-[17px] leading-relaxed mb-8 font-medium" style={{ color: "#94a3b8", maxWidth: "44ch" }}>
-            Track cases, research Indian judgments, and use practical legal tools for Telangana and Andhra Pradesh practice.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mb-9">
-            <Link href="/login"
-              style={{ background: "linear-gradient(135deg, #1e40af, #2563eb)", boxShadow: "0 0 36px rgba(37,99,235,0.5), 0 6px 20px rgba(0,0,0,0.45)" }}
-              className="group flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-white font-bold text-[15px] hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.99]">
-              Get Started Free
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <Link href="/demo"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
-              className="group flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-white font-semibold text-[15px] hover:bg-white/[0.09] transition-all">
-              {/* Play circle */}
-              <span className="flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0 transition-transform group-hover:scale-110"
-                style={{ background: "rgba(59,130,246,0.2)", border: "1px solid rgba(59,130,246,0.35)" }}>
-                <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
-                  <path d="M1 1.5L9 6L1 10.5V1.5Z" fill="#60a5fa" />
-                </svg>
-              </span>
-              Watch 60-sec Demo
-            </Link>
-          </motion.div>
-
-          {/* Trust signals */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.38 }}
-            className="flex flex-col gap-4">
-            {/* Avatar stack + review count */}
-            <div className="flex items-center gap-4">
-              <div className="flex -space-x-2.5">
-                {["#3b82f6","#8b5cf6","#f59e0b","#10b981","#f472b6"].map((c, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white ring-2 flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${c}cc, ${c})`, outline: "2px solid #060d1a" }}>
-                    {["R","S","P","A","K"][i]}
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5" style={{ fill: "#f59e0b", color: "#f59e0b" }} />)}
-                  <span className="text-sm font-bold text-white">4.9</span>
-                </div>
-                <p className="text-xs" style={{ color: "#475569" }}>Built for Telangana and Andhra Pradesh legal work</p>
-              </div>
-            </div>
-
-            {/* Inline chips */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: "✓  Bar enrolment checked by LitigaForge", color: "#34d399" },
-                { label: "⚡  Free to start, no credit card", color: "#60a5fa" },
-                { label: "🔒  Anonymous case posting",         color: "#c084fc" },
-              ].map(({ label, color }) => (
-                <span key={label} className="text-[11px] font-semibold px-3 py-1 rounded-full"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color }}>
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            {/* "Built for real legal workflows" trust line */}
-            <p className="text-xs font-medium flex items-center gap-2" style={{ color: "#334155" }}>
-              <span className="w-5 h-px bg-slate-700 flex-shrink-0" />
-              Built for real legal workflows in Telangana and Andhra Pradesh
-            </p>
-          </motion.div>
-        </div>
-
-        {/* ──────────── RIGHT: Floating AI match card ──────────── */}
-        <div className="w-full lg:w-auto lg:flex-shrink-0 flex justify-center lg:justify-end">
-          {/* Outer glow wrapper */}
-          <div className="relative">
-            {/* Card glow */}
-            <div className="absolute -inset-6 rounded-3xl opacity-30 blur-2xl pointer-events-none"
-              style={{ background: "radial-gradient(ellipse, #2563eb 0%, #7c3aed 50%, transparent 80%)" }} />
-            <MatchCard />
-
-            {/* Floating mini-badge above the card */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1.1, duration: 0.5 }}
-              style={{ background: "rgba(15,23,42,0.9)", border: "1px solid rgba(16,185,129,0.3)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
-              className="absolute -top-4 -right-4 flex items-center gap-2 px-3 py-2 rounded-xl">
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)" }}>
-                <Zap className="w-3.5 h-3.5" style={{ color: "#34d399" }} />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-white leading-none">Matched in</p>
-                <p className="text-[10px] font-extrabold leading-none" style={{ color: "#34d399" }}>47 seconds</p>
-              </div>
-            </motion.div>
-
-            {/* Floating mini-badge below the card */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1.3, duration: 0.5 }}
-              style={{ background: "rgba(15,23,42,0.9)", border: "1px solid rgba(245,158,11,0.3)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
-              className="absolute -bottom-4 -left-4 flex items-center gap-2.5 px-3 py-2 rounded-xl">
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)" }}>
-                <Shield className="w-3.5 h-3.5" style={{ color: "#fbbf24" }} />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-white leading-none">Bar Verified</p>
-                <p className="text-[10px]" style={{ color: "#64748b" }}>Licensed Attorney</p>
-              </div>
-            </motion.div>
+    <section className="lf-hero" aria-labelledby="hero-title">
+      <div className="lf-hero-grid">
+        <div className="lf-hero-copy">
+          <div className="lf-kicker"><span className="lf-kicker-line" /> Practical legal work, better supported</div>
+          <h1 id="hero-title">Clarity for the work.<br /><em>Confidence in the next step.</em></h1>
+          <p className="lf-hero-lede">Research, organize cases, and move legal work forward with tools built for advocates and the people they represent.</p>
+          <div className="lf-hero-actions">
+            <Link href="/login" className="lf-button">Get started <ArrowRight size={17} /></Link>
+            <a className="lf-text-link" href="#tools">Explore the tools <ArrowDown size={15} /></a>
           </div>
+          <div className="lf-hero-footnote"><ShieldCheck size={16} /> Useful tools, with people and professional judgment at the centre.</div>
         </div>
+        <ProductPreview />
       </div>
-
-      {/* Scroll hint */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5">
-        <div className="w-px h-7 bg-gradient-to-b from-transparent via-slate-600 to-transparent" />
-        <span className="text-[11px]" style={{ color: "#334155" }}>Scroll to explore</span>
-      </motion.div>
+      <div className="lf-hero-index" aria-hidden="true">LEGAL WORK / MADE CLEAR</div>
     </section>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   PROBLEM SECTION
-══════════════════════════════════════════════════════════ */
-const problems = [
-  {
-    icon: AlertCircle,
-    color: "#ef4444",
-    title: "No Transparency",
-    desc: "Finding a lawyer anywhere is completely opaque. No ratings, no verification, no way to compare — just word-of-mouth and luck.",
-  },
-  {
-    icon: Shield,
-    color: "#f59e0b",
-    title: "Unverified Credentials",
-    desc: "Anyone can claim to be an advocate. Clients have no reliable way to verify bar registration, experience, or practice areas before paying.",
-  },
-  {
-    icon: Clock,
-    color: "#a78bfa",
-    title: "No AI Intelligence",
-    desc: "Legal consultations are costly and slow. There's no smart system to help you understand your case, find precedents, or draft documents — before you even meet a lawyer.",
-  },
-];
+function PublicStats() {
+  const [stats, setStats] = useState<PublicStats | null>(null);
 
-function ProblemSection() {
-  const { ref, inView } = useSection();
+  useEffect(() => {
+    let active = true;
+    apiFetch("/stats")
+      .then((result) => {
+        if (active && result && typeof result === "object") setStats(result as PublicStats);
+      })
+      .catch(() => {
+        // An unavailable public endpoint is not evidence of zero activity.
+        if (active) setStats(null);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const items = [
+    { key: "judgments_in_digest" as const, label: "Judgments in the digest", value: formatCount(stats?.judgments_in_digest) },
+    { key: "guides" as const, label: "Practical legal guides", value: formatCount(stats?.guides) },
+    { key: "verified_lawyers" as const, label: "Verified advocates", value: formatCount(stats?.verified_lawyers) },
+  ].filter((item) => item.value !== null && (item.key !== "verified_lawyers" || Number(stats?.verified_lawyers) >= 10));
+
+  if (!items.length) return null;
   return (
-    <motion.section ref={ref} id="problem" initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="relative py-24 px-5 overflow-hidden">
-      <GlowOrb className="w-[400px] h-[400px] top-0 right-0 opacity-[0.07]" style={{ background: "radial-gradient(circle, #ef4444, transparent)" } as React.CSSProperties} />
-      <div className="max-w-5xl mx-auto">
-        <motion.div variants={fadeUp} className="text-center mb-14">
-          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#ef4444" }}>The Problem</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Legal work in Telangana &amp; Andhra Pradesh<br className="hidden md:block" /> needs better tools</h2>
-          <p className="mt-4 text-base max-w-xl mx-auto leading-relaxed" style={{ color: "#64748b" }}>Millions face legal challenges every year with no efficient, transparent, or affordable path to justice.</p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-3 gap-5">
-          {problems.map(({ icon: Icon, color, title, desc }) => (
-            <motion.div key={title} variants={fadeUp}
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-              className="rounded-2xl p-6 hover:bg-white/[0.05] transition-colors duration-300 group">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${color}20` }}>
-                <Icon className="w-5 h-5" style={{ color }} />
-              </div>
-              <h3 className="font-bold text-white text-[17px] mb-2">{title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "#64748b" }}>{desc}</p>
-            </motion.div>
+    <section className="lf-stats" aria-label="LitigaForge public resources">
+      <div className="lf-stats-inner">
+        <span className="lf-stats-label">A growing legal resource</span>
+        <div className="lf-stats-list">
+          {items.map((item) => (
+            <div className="lf-stat" key={item.key}>
+              <strong>{item.value}</strong>
+              <span>{item.label}</span>
+            </div>
           ))}
         </div>
       </div>
-    </motion.section>
+    </section>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   HOW IT WORKS
-══════════════════════════════════════════════════════════ */
-const howSteps = [
-  {
-    num: "01",
-    icon: MessageSquare,
-    color: "#3b82f6",
-    glow: "rgba(59,130,246,0.18)",
-    label: "Ask or Upload",
-    title: "Ask in Plain Language\nor Upload a Document",
-    desc: "Type your legal question in plain language, paste case facts, or upload a contract, notice, or agreement — no jargon needed.",
-    chips: ["Text question", "Upload PDF", "Case facts"],
-  },
-  {
-    num: "02",
-    icon: Brain,
-    color: "#8b5cf6",
-    glow: "rgba(139,92,246,0.18)",
-    label: "AI Understands",
-    title: "AI Maps Your Case\nto Indian Law",
-    desc: "Three AI models analyse your input against local statutes, court procedures, stamp duty tables, and regional legal workflows.",
-    chips: ["Regional context", "Statute mapping", "Court-aware"],
-  },
-  {
-    num: "03",
-    icon: Sparkles,
-    color: "#f59e0b",
-    glow: "rgba(245,158,11,0.18)",
-    label: "Get Answers + Strategy",
-    title: "Clear Answer with\na Legal Roadmap",
-    desc: "Get a plain-language answer, High Court precedents, risk flags, and a step-by-step legal strategy — in seconds.",
-    chips: ["Risk score", "Precedents", "Next steps"],
-  },
-  {
-    num: "04",
-    icon: Zap,
-    color: "#10b981",
-    glow: "rgba(16,185,129,0.18)",
-    label: "Take Action",
-    title: "Download, Save or\nConnect with a Lawyer",
-    desc: "One-click to download a legal notice, save your case, or get AI-matched with a verified advocate in your district.",
-    chips: ["Download notice", "Find a lawyer", "Save & share"],
-  },
-];
-
-function HowItWorks() {
-  const { ref, inView } = useSection();
+function WorkflowSections() {
   return (
-    <motion.section ref={ref} id="how" initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="relative py-24 px-5 overflow-hidden">
-
-      {/* Faint horizontal rule at section top */}
-      <div className="absolute top-0 inset-x-0 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
-
-      <div className="max-w-5xl mx-auto">
-
-        {/* ── Header ── */}
-        <motion.div variants={fadeUp} className="text-center mb-16">
-          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#60a5fa" }}>How It Works</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">
-            From Question to Action<br className="hidden md:block" />
-            <span style={{ color: "#334155" }}> in 4 Simple Steps.</span>
-          </h2>
-          <p className="mt-4 text-base max-w-md mx-auto" style={{ color: "#64748b" }}>
-            No phone calls, no directories — just ask and get results in seconds.
-          </p>
-        </motion.div>
-
-        {/* ── Steps ── */}
-        <div className="relative">
-
-          {/* Connecting gradient line (desktop only, passes through icon circles) */}
-          <div className="hidden lg:block absolute top-[27px] left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] h-px"
-            style={{ background: "linear-gradient(90deg, #3b82f6, #8b5cf6, #f59e0b, #10b981)", opacity: 0.22 }} />
-          <div className="hidden lg:block absolute top-[27px] left-[calc(12.5%+28px)] right-[calc(12.5%+28px)] h-px"
-            style={{ background: "repeating-linear-gradient(90deg, rgba(255,255,255,0.10) 0px, rgba(255,255,255,0.10) 5px, transparent 5px, transparent 12px)" }} />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-4">
-            {howSteps.map(({ num, icon: Icon, color, glow, label, title, desc, chips }, i) => (
-              <motion.div key={num} variants={fadeUp}
-                className="group flex flex-col items-center text-center">
-
-                {/* ── Icon circle (sits on connecting line) ── */}
-                <div className="relative z-10 mb-4 flex-shrink-0">
-                  {/* Soft halo */}
-                  <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ background: glow, filter: "blur(10px)", transform: "scale(1.8)" }} />
-                  {/* Circle */}
-                  <div className="relative w-14 h-14 rounded-full flex items-center justify-center"
-                    style={{
-                      background: `linear-gradient(135deg, ${color}25, ${color}10)`,
-                      border: `1.5px solid ${color}45`,
-                      boxShadow: `0 0 0 4px #080e1c, 0 0 0 5px ${color}22`,
-                    }}>
-                    <Icon className="w-6 h-6" style={{ color }} />
-                  </div>
-                  {/* Number badge */}
-                  <div className="absolute -top-1 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
-                    style={{ background: color, boxShadow: "0 0 0 2px #080e1c" }}>
-                    {i + 1}
-                  </div>
-                </div>
-
-                {/* Step label */}
-                <p className="text-[10px] font-bold uppercase tracking-widest mb-3"
-                  style={{ color: `${color}99` }}>
-                  Step {num} · {label}
-                </p>
-
-                {/* Card */}
-                <div className="relative w-full rounded-2xl p-4 flex flex-col items-center flex-1 transition-all duration-300 group-hover:-translate-y-1"
-                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
-
-                  {/* Hover glow overlay */}
-                  <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
-                    style={{ background: `radial-gradient(ellipse at 50% 0%, ${glow} 0%, transparent 70%)` }} />
-                  {/* Hover top accent */}
-                  <div className="absolute top-0 left-[20%] right-[20%] h-px rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-400"
-                    style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
-
-                  <h3 className="relative z-10 font-bold text-white text-[14px] leading-snug mb-2"
-                    style={{ whiteSpace: "pre-line" }}>
-                    {title}
-                  </h3>
-                  <p className="relative z-10 text-[12px] leading-relaxed" style={{ color: "#64748b" }}>
-                    {desc}
-                  </p>
-
-                  {/* "What you get" chips */}
-                  <div className="relative z-10 flex flex-wrap gap-1.5 justify-center mt-4 pt-3 w-full"
-                    style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                    {chips.map(chip => (
-                      <span key={chip} className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full"
-                        style={{ background: `${color}12`, color: `${color}cc`, border: `1px solid ${color}22` }}>
-                        {chip}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Bottom note ── */}
-        <motion.div variants={fadeUp} className="mt-12 text-center">
-          <p className="text-sm" style={{ color: "#334155" }}>
-            Takes under 2 minutes · Free to start · No account required for Legal Q&amp;A
-          </p>
-        </motion.div>
-
+    <section className="lf-workflows" aria-label="Ways to use LitigaForge">
+      <div className="lf-section-intro">
+        <div className="lf-kicker"><span className="lf-kicker-line" /> Two perspectives, one clearer process</div>
+        <h2>Tools that meet you<br /><em>where the work begins.</em></h2>
       </div>
-    </motion.section>
+      <div className="lf-workflow-grid">
+        <article id="advocates" className="lf-workflow lf-workflow-advocate">
+          <div className="lf-workflow-number">01 / ADVOCATES</div>
+          <div className="lf-workflow-icon"><BriefcaseBusiness size={22} /></div>
+          <h3>Make more room<br />for legal thinking.</h3>
+          <p>Bring research, case organization, drafting support, and repeatable workflows into a focused working space.</p>
+          <ul>
+            <li><Check size={15} /> Find and review relevant judgments</li>
+            <li><Check size={15} /> Keep case work in one place</li>
+            <li><Check size={15} /> Use drafting and analysis tools as support</li>
+          </ul>
+          <Link href="/workspace" className="lf-workflow-link">Explore advocate tools <ArrowUpRight size={16} /></Link>
+        </article>
+        <article id="clients" className="lf-workflow lf-workflow-client">
+          <div className="lf-workflow-number">02 / CLIENTS</div>
+          <div className="lf-workflow-icon"><Users size={22} /></div>
+          <h3>Understand your options.<br />Prepare with purpose.</h3>
+          <p>Start with a question, organize the facts that matter, and find a more informed path to professional help.</p>
+          <ul>
+            <li><Check size={15} /> Explore legal questions in plain language</li>
+            <li><Check size={15} /> Prepare documents and case details</li>
+            <li><Check size={15} /> Discover ways to connect with an advocate</li>
+          </ul>
+          <Link href="/legal-aid" className="lf-workflow-link">Explore client resources <ArrowUpRight size={16} /></Link>
+        </article>
+      </div>
+      <p className="lf-advice-note"><Scale size={15} /> AI-generated information is not a substitute for advice from a qualified legal professional.</p>
+    </section>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   FEATURES — 5 premium cards, each with a live mini-preview
-══════════════════════════════════════════════════════════ */
-
-/* ── Card 1 preview: Document risk scan ── */
-function DocIntelPreview() {
-  const flags = [
-    { dot: "#ef4444", label: "Termination clause missing" },
-    { dot: "#f59e0b", label: "Liability clause — ambiguous language" },
-    { dot: "#34d399", label: "Signatures & dates verified ✓" },
-  ];
+function ToolsSection() {
   return (
-    <div className="rounded-xl p-4 space-y-2.5" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(59,130,246,0.12)" }}>
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="w-8 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.2)" }}>
-          <FileSearch className="w-4 h-4" style={{ color: "#60a5fa" }} />
-        </div>
-        <div>
-          <p className="text-[12px] font-semibold text-white leading-none">Property_Sale_Agreement.pdf</p>
-          <p className="text-[10px] mt-0.5" style={{ color: "#475569" }}>14 clauses · AI analysing…</p>
-        </div>
-        <div className="ml-auto w-2 h-2 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
+    <section id="tools" className="lf-tools">
+      <div className="lf-tools-heading">
+        <div className="lf-kicker"><span className="lf-kicker-line" /> One considered toolkit</div>
+        <h2>Less searching<br /><em>for the right starting point.</em></h2>
+        <p>Focused utilities for research, preparation, and the everyday details of legal work.</p>
       </div>
-      {flags.map(({ dot, label }) => (
-        <div key={label} className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
-          <span className="text-[11px]" style={{ color: "#94a3b8" }}>{label}</span>
-        </div>
-      ))}
-      <div className="pt-2.5 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <div className="flex justify-between text-[10px] mb-1.5">
-          <span style={{ color: "#475569" }}>Risk Score</span>
-          <span style={{ color: "#f59e0b" }}>67 / 100 · Medium Risk</span>
-        </div>
-        <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-          <div className="h-full rounded-full" style={{ width: "67%", background: "linear-gradient(90deg, #34d399 0%, #f59e0b 70%, #ef4444 100%)" }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Card 2 preview: Judgment search results ── */
-function JudgmentPreview() {
-  const results = [
-    { case: "Smith v. Harmon", year: "2023", section: "Fraud Act", court: "High Court" },
-    { case: "Doe v. Rivera", year: "2021", section: "Contract §17", court: "Court of Appeal" },
-    { case: "Chen v. CityCorp", year: "2019", section: "Property §24", court: "Supreme Court" },
-  ];
-  return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(139,92,246,0.15)" }}>
-      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(139,92,246,0.08)", borderBottom: "1px solid rgba(139,92,246,0.12)" }}>
-        <Search className="w-3 h-3 flex-shrink-0" style={{ color: "#a78bfa" }} />
-        <span className="text-[11px] font-medium" style={{ color: "#c4b5fd" }}>contract fraud · property · 2021–2024</span>
-        <div className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>India</div>
-      </div>
-      <div className="divide-y divide-white/[0.04]">
-        {results.map(({ case: c, year, section, court }) => (
-          <div key={c} className="px-3.5 py-2.5 flex items-start gap-2.5 group/row hover:bg-white/[0.02] transition-colors">
-            <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(139,92,246,0.12)" }}>
-              <Gavel className="w-3 h-3" style={{ color: "#a78bfa" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-white leading-tight truncate">{c}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: "#475569" }}>{court} · {section} · {year}</p>
-            </div>
-            <ChevronRight className="w-3 h-3 flex-shrink-0 mt-1 opacity-0 group-hover/row:opacity-100 transition-opacity" style={{ color: "#a78bfa" }} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── Card 3 preview: AI strategy steps ── */
-function StrategyPreview() {
-  const steps = [
-    { n: "01", text: "File police complaint for fraud", done: true },
-    { n: "02", text: "Request injunction / protective order", done: true },
-    { n: "03", text: "File civil suit for $25K recovery", done: false },
-    { n: "04", text: "Attach assets pending judgment", done: false },
-  ];
-  return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(245,158,11,0.15)" }}>
-      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(245,158,11,0.06)", borderBottom: "1px solid rgba(245,158,11,0.1)" }}>
-        <Zap className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#fbbf24" }} />
-        <span className="text-[11px] font-bold" style={{ color: "#fbbf24" }}>AI Strategy · Fraud Recovery Case</span>
-        <div className="ml-auto flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[10px]" style={{ color: "#34d399" }}>Live</span>
-        </div>
-      </div>
-      <div className="p-3.5 space-y-2.5">
-        {steps.map(({ n, text, done }) => (
-          <div key={n} className="flex items-center gap-2.5">
-            <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-extrabold"
-              style={{ background: done ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.05)", color: done ? "#34d399" : "#475569", border: `1px solid ${done ? "rgba(52,211,153,0.3)" : "rgba(255,255,255,0.07)"}` }}>
-              {done ? <Check className="w-2.5 h-2.5" style={{ color: "#34d399" }} /> : n}
-            </div>
-            <span className="text-[11px]" style={{ color: done ? "#94a3b8" : "#cbd5e1", textDecoration: done ? "line-through" : "none", opacity: done ? 0.7 : 1 }}>{text}</span>
-          </div>
-        ))}
-      </div>
-      <div className="px-3.5 pb-3 flex items-center justify-between">
-        <span className="text-[10px]" style={{ color: "#475569" }}>2 of 4 steps complete</span>
-        <div className="flex-1 mx-3 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
-          <div className="h-full rounded-full w-1/2" style={{ background: "linear-gradient(90deg, #f59e0b, #fbbf24)" }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Card 4 preview: Notice draft snippet ── */
-function NoticePreview() {
-  return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(52,211,153,0.15)" }}>
-      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(52,211,153,0.06)", borderBottom: "1px solid rgba(52,211,153,0.1)" }}>
-        <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#34d399" }} />
-        <span className="text-[11px] font-bold" style={{ color: "#34d399" }}>Legal Notice — Demand of Money</span>
-        <div className="ml-auto text-[10px]" style={{ color: "#475569" }}>60 sec</div>
-      </div>
-      <div className="p-3.5 space-y-2" style={{ fontFamily: "Georgia, serif" }}>
-        {[
-          { label: "TO", value: "Mr. Daniel Reed" },
-          { label: "DATE", value: "29th May 2025" },
-          { label: "RE", value: "Recovery of $25,000" },
-        ].map(({ label, value }) => (
-          <div key={label} className="flex gap-2">
-            <span className="text-[10px] font-bold w-10 flex-shrink-0" style={{ color: "#475569" }}>{label}</span>
-            <span className="text-[11px] text-white">{value}</span>
-          </div>
-        ))}
-        <div className="mt-2 text-[10px] leading-relaxed" style={{ color: "#64748b" }}>
-          Take notice that my client hereby demands repayment of the aforesaid sum within <span style={{ color: "#34d399" }}>15 days</span> from receipt hereof, failing which we will initiate legal proceedings to recover the amount with costs…
-        </div>
-      </div>
-      <div className="px-3.5 pb-3 flex gap-2">
-        <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg" style={{ background: "rgba(52,211,153,0.15)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}>
-          Translate ↓
-        </div>
-        <div className="text-[10px] font-semibold px-2.5 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.05)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)" }}>
-          Download PDF
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Card 5 preview: Local knowledge base Q&A ── */
-function KnowledgePreview() {
-  const rows = [
-    { topic: "Tenant Rights", value: "Notice & deposit rules", color: "#f472b6" },
-    { topic: "Contract Law", value: "Breach & remedies", color: "#f472b6" },
-    { topic: "Consumer Disputes", value: "Refunds & warranties", color: "#f472b6" },
-    { topic: "Employment", value: "Wrongful dismissal", color: "#f472b6" },
-  ];
-  return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "rgba(6,13,26,0.7)", border: "1px solid rgba(244,114,182,0.15)" }}>
-      <div className="px-3.5 py-2.5 flex items-center gap-2" style={{ background: "rgba(244,114,182,0.06)", borderBottom: "1px solid rgba(244,114,182,0.1)" }}>
-        <Globe className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#f472b6" }} />
-        <span className="text-[11px] font-bold" style={{ color: "#f472b6" }}>Indian Legal Knowledge Base</span>
-        <div className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: "rgba(244,114,182,0.15)", color: "#f472b6" }}>Live</div>
-      </div>
-      <div className="divide-y divide-white/[0.04]">
-        {rows.map(({ topic, value }) => (
-          <div key={topic} className="px-3.5 py-2 flex items-center justify-between gap-2 hover:bg-white/[0.02] transition-colors">
-            <span className="text-[11px] font-medium" style={{ color: "#94a3b8" }}>{topic}</span>
-            <span className="text-[11px] font-semibold text-white text-right">{value}</span>
-          </div>
-        ))}
-      </div>
-      <div className="px-3.5 py-2.5 flex items-center gap-1.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <MessageCircle className="w-3 h-3 flex-shrink-0" style={{ color: "#f472b6" }} />
-        <span className="text-[10px] italic" style={{ color: "#475569" }}>Ask anything about law in English, Hindi or Telugu…</span>
-      </div>
-    </div>
-  );
-}
-
-/* ── Feature card renderer ── */
-type FeatureDef = {
-  id: string;
-  color: string;
-  glowColor: string;
-  icon: React.ElementType;
-  tag: string;
-  title: string;
-  desc: string;
-  href: string;
-  preview: React.ReactNode;
-  badge?: string;
-};
-
-const featureDefs: FeatureDef[] = [
-  {
-    id: "doc",
-    color: "#3b82f6",
-    glowColor: "rgba(59,130,246,0.12)",
-    icon: FileSearch,
-    tag: "Document AI",
-    title: "AI Document Intelligence",
-    desc: "Upload any sale deed, EC, or agreement. AI flags risks, missing clauses, and compliance gaps — with a risk score in seconds.",
-    href: "/review",
-    preview: <DocIntelPreview />,
-    badge: "New",
-  },
-  {
-    id: "judgment",
-    color: "#a78bfa",
-    glowColor: "rgba(139,92,246,0.12)",
-    icon: Gavel,
-    tag: "Case Law",
-    title: "Regional Judgment Search",
-    desc: "Search Indian High Court rulings and find relevant precedents for your Telangana or Andhra Pradesh matter.",
-    href: "/judgments",
-    preview: <JudgmentPreview />,
-  },
-  {
-    id: "strategy",
-    color: "#f59e0b",
-    glowColor: "rgba(245,158,11,0.1)",
-    icon: Brain,
-    tag: "AI Strategy",
-    title: "Smart Legal Strategy",
-    desc: "Describe your case. AI synthesises a step-by-step legal roadmap — sections, arguments, and court procedures — tailored to your jurisdiction.",
-    href: "/ask",
-    preview: <StrategyPreview />,
-    badge: "Flagship",
-  },
-  {
-    id: "notice",
-    color: "#34d399",
-    glowColor: "rgba(52,211,153,0.1)",
-    icon: FileText,
-    tag: "Drafting",
-    title: "Instant Legal Notice Drafting",
-    desc: "Generate court-ready notices in 60 seconds. Demand letters, legal notices, affidavits — available in multiple languages.",
-    href: "/free-documents",
-    preview: <NoticePreview />,
-  },
-  {
-    id: "kb",
-    color: "#f472b6",
-    glowColor: "rgba(244,114,182,0.1)",
-    icon: Globe,
-    tag: "Local Knowledge",
-    title: "Indian Legal Information",
-    desc: "Instant legal information on tenancy, contracts, consumer rights, employment and more for Indian practice.",
-    href: "/ask",
-    preview: <KnowledgePreview />,
-  },
-];
-
-function FeatureCard({ def, index }: { def: FeatureDef; index: number }) {
-  const { color, glowColor, icon: Icon, tag, title, desc, href, preview, badge } = def;
-  return (
-    <motion.div
-      variants={fadeUp}
-      style={{
-        background: "rgba(255,255,255,0.025)",
-        border: "1px solid rgba(255,255,255,0.07)",
-      }}
-      className="group relative rounded-2xl overflow-hidden flex flex-col cursor-default transition-all duration-300 hover:-translate-y-1"
-    >
-      {/* Hover glow layer */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none rounded-2xl"
-        style={{ background: `radial-gradient(ellipse at 50% 0%, ${glowColor} 0%, transparent 70%)`, border: `1px solid ${color}22` }} />
-
-      {/* Top accent bar */}
-      <div className="h-[2px] w-full flex-shrink-0"
-        style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)`, opacity: 0.5 }} />
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col p-5">
-        {/* Tag + badge row */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
-              <Icon className="w-4 h-4" style={{ color }} />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: `${color}bb` }}>{tag}</span>
-          </div>
-          {badge && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: `${color}18`, color, border: `1px solid ${color}35` }}>
-              {badge}
-            </span>
-          )}
-        </div>
-
-        {/* Mini preview mockup */}
-        <div className="mb-4 transition-transform duration-300 group-hover:scale-[1.01]">
-          {preview}
-        </div>
-
-        {/* Title + desc */}
-        <h3 className="font-bold text-white text-[16px] mb-2 leading-snug">{title}</h3>
-        <p className="text-[13px] leading-relaxed flex-1" style={{ color: "#64748b" }}>{desc}</p>
-
-        {/* Footer CTA */}
-        <Link href={href}
-          className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold transition-all duration-200 group-hover:gap-2.5"
-          style={{ color }}>
-          Try it now
-          <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+      <div className="lf-tool-list">
+        <Link href="/judgments" className="lf-tool-row">
+          <span className="lf-tool-icon"><FileSearch size={20} /></span>
+          <span className="lf-tool-copy"><strong>Judgment Finder</strong><small>Browse concise summaries and discover relevant decisions.</small></span>
+          <span className="lf-tool-number">01</span><ArrowUpRight size={18} />
+        </Link>
+        <Link href="/ask" className="lf-tool-row">
+          <span className="lf-tool-icon"><Search size={20} /></span>
+          <span className="lf-tool-copy"><strong>Legal Q&amp;A</strong><small>Explore a legal question and get oriented around possible next steps.</small></span>
+          <span className="lf-tool-number">02</span><ArrowUpRight size={18} />
+        </Link>
+        <Link href="/free-documents" className="lf-tool-row">
+          <span className="lf-tool-icon"><BookOpen size={20} /></span>
+          <span className="lf-tool-copy"><strong>Documents &amp; guides</strong><small>Start from practical resources, templates, and clear explanations.</small></span>
+          <span className="lf-tool-number">03</span><ArrowUpRight size={18} />
         </Link>
       </div>
-    </motion.div>
+    </section>
   );
 }
 
-function Features() {
-  const { ref, inView } = useSection();
+function PrivacySection() {
   return (
-    <motion.section ref={ref} id="features" initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="relative py-24 px-5 overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-[0.05]"
-          style={{ background: "radial-gradient(circle, #3b82f6, transparent)" }} />
-        <div className="absolute top-0 left-0 right-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent, rgba(167,139,250,0.2), transparent)" }} />
+    <section className="lf-privacy">
+      <div className="lf-privacy-mark"><LockKeyhole size={23} /></div>
+      <div className="lf-privacy-copy">
+        <div className="lf-kicker">Trust is part of the product</div>
+        <h2>Handle sensitive work<br /><em>with care.</em></h2>
+        <p>Legal matters deserve thoughtful handling. LitigaForge is designed to support private, purposeful workflows—while keeping professional judgment and clear expectations in view.</p>
       </div>
-
-      <div className="max-w-6xl mx-auto">
-        {/* Section header */}
-        <motion.div variants={fadeUp} className="text-center mb-14">
-          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#f59e0b" }}>5 Powerful Features</span>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">
-            Built for Real Legal Work.<br className="hidden md:block" />
-            <span style={{ background: "linear-gradient(120deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-              Not Generic AI.
-            </span>
-          </h2>
-          <p className="mt-4 text-base max-w-lg mx-auto" style={{ color: "#64748b" }}>
-            Five purpose-built tools for Indian legal workflows, court procedures, and Telangana and Andhra Pradesh practice.
-          </p>
-        </motion.div>
-
-        {/* Row 1 — 3 cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-          {featureDefs.slice(0, 3).map((def, i) => (
-            <FeatureCard key={def.id} def={def} index={i} />
-          ))}
-        </div>
-
-        {/* Row 2 — 2 wider cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {featureDefs.slice(3).map((def, i) => (
-            <FeatureCard key={def.id} def={def} index={i + 3} />
-          ))}
-        </div>
+      <div className="lf-privacy-points">
+        <div><ShieldCheck size={19} /><span><strong>Privacy-minded</strong><small>Use information intentionally and review platform policies.</small></span></div>
+        <div><Scale size={19} /><span><strong>Human judgment matters</strong><small>AI outputs are assistance, not a final legal opinion.</small></span></div>
+        <Link href="/privacy" className="lf-privacy-link">Read our Privacy Policy <ArrowUpRight size={15} /></Link>
       </div>
-    </motion.section>
+    </section>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   WHY LITIGAFORGE
-══════════════════════════════════════════════════════════ */
-const trustPoints = [
-  { icon: BadgeCheck, color: "#34d399", title: "Enrolment status", desc: "Only advocates whose bar enrolment has been checked by LitigaForge display the badge “Bar enrolment checked by LitigaForge”." },
-  { icon: Brain,      color: "#60a5fa", title: "Triple AI Intelligence",   desc: "Claude Sonnet + Gemini 2.5 Flash + GPT-5 work in parallel and cascade to guarantee the best legal insights." },
-  { icon: Building2,  color: "#fbbf24", title: "Telangana + AP workflows", desc: "Built for Indian court procedures, contract law, property and tenancy rules, consumer protection, and advocate workflows." },
-  { icon: Globe,      color: "#a78bfa", title: "Transparent & Explainable", desc: "Recommendations include a written explanation so you can review the relevant practice area and location before contacting an advocate." },
-];
-
-function WhyLitigaForge() {
-  const { ref, inView } = useSection();
+function FAQSection() {
   return (
-    <motion.section ref={ref} id="why" initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="relative py-24 px-5 overflow-hidden">
-      {/* Divider glow */}
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent)" }} />
-      <GlowOrb className="w-[350px] h-[350px] bottom-0 left-0 opacity-[0.08]" style={{ background: "radial-gradient(circle, #7c3aed, transparent)" } as React.CSSProperties} />
-
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col lg:flex-row gap-14 items-start">
-          {/* Left */}
-          <motion.div variants={fadeUp} className="lg:w-[38%] flex-shrink-0">
-            <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#a78bfa" }}>Why LitigaForge</span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Built Different. <span style={{ color: "#3b82f6" }}>For Everyone.</span></h2>
-            <p className="mt-4 text-base leading-relaxed" style={{ color: "#64748b" }}>
-              We didn't just build another directory. We built a full legal intelligence platform — with multi-AI strategy synthesis, regional legal knowledge, and genuine lawyer verification.
-            </p>
-            <Link href="/login"
-              style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 0 24px rgba(37,99,235,0.35)" }}
-              className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-opacity">
-              Start for Free <ArrowRight className="w-4 h-4" />
-            </Link>
-          </motion.div>
-
-          {/* Right grid */}
-          <div className="flex-1 grid sm:grid-cols-2 gap-4">
-            {trustPoints.map(({ icon: Icon, color, title, desc }) => (
-              <motion.div key={title} variants={fadeUp}
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-                className="rounded-xl p-5 hover:bg-white/[0.05] transition-colors duration-300">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
-                    <Icon className="w-4 h-4" style={{ color }} />
-                  </div>
-                  <h3 className="font-bold text-white text-[15px]">{title}</h3>
-                </div>
-                <p className="text-sm leading-relaxed pl-12" style={{ color: "#64748b" }}>{desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+    <section id="faq" className="lf-faq">
+      <div className="lf-faq-heading">
+        <div className="lf-kicker"><span className="lf-kicker-line" /> Good to know</div>
+        <h2>Questions,<br /><em>answered plainly.</em></h2>
+        <p>Understand what LitigaForge can—and cannot—do.</p>
       </div>
-    </motion.section>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════
-   SOCIAL PROOF TICKER
-══════════════════════════════════════════════════════════ */
-const stats = [
-  { value: "200+", label: "Advocate profiles" },
-  { value: "3",    label: "AI Models" },
-  { value: "9",    label: "Case Types" },
-  { value: "10+",  label: "Free Doc Templates" },
-  { value: "8",    label: "DLSA Districts" },
-  { value: "24/7", label: "AI Availability" },
-];
-
-function StatsBanner() {
-  const { ref, inView } = useSection();
-  return (
-    <motion.section ref={ref} initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="py-16 px-5" style={{ background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-      <div className="max-w-5xl mx-auto grid grid-cols-3 md:grid-cols-6 gap-6 text-center">
-        {stats.map(({ value, label }) => (
-          <motion.div key={label} variants={fadeUp} className="flex flex-col items-center gap-1">
-            <span className="text-2xl md:text-3xl font-extrabold text-white">{value}</span>
-            <span className="text-xs font-medium" style={{ color: "#475569" }}>{label}</span>
-          </motion.div>
+      <div className="lf-faq-list">
+        {faqItems.map((item, index) => (
+          <details className="lf-faq-item" key={item.q} open={index === 0}>
+            <summary>{item.q}<ChevronDown size={17} /></summary>
+            <p>{item.a}</p>
+          </details>
         ))}
       </div>
-    </motion.section>
+    </section>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   FORGE WORKSPACE PROMO
-══════════════════════════════════════════════════════════ */
-function ForgeWorkspacePromo() {
-  const { ref, inView } = useSection();
-  const features = [
-    { emoji: "🔍", label: "Live IndianKanoon Lookup" },
-    { emoji: "🤖", label: "5-Agent AI Panel" },
-    { emoji: "📄", label: "PDF Export" },
-    { emoji: "🧾", label: "Fee Invoice" },
-    { emoji: "⚖️", label: "6-Section Lawyer Package" },
-  ];
-  return (
-    <motion.section ref={ref} initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="relative py-24 px-5 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 opacity-[0.04]" style={{ background: "radial-gradient(ellipse at 60% 50%, #14b8a6, transparent 65%)" }} />
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.35), transparent)" }} />
-        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.15), transparent)" }} />
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto">
-        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-14">
-          {/* Left: copy */}
-          <div className="lg:w-[38%] flex-shrink-0 text-center lg:text-left">
-            <motion.div variants={fadeUp}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-5"
-              style={{ background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.3)" }}>
-              <Zap className="w-3.5 h-3.5" style={{ color: "#2dd4bf" }} />
-              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: "#2dd4bf" }}>Live Product Demo</span>
-            </motion.div>
-
-            <motion.h2 variants={fadeUp} className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
-              See Forge Workspace<br />
-              <span style={{ background: "linear-gradient(135deg, #14b8a6, #0891b2)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                in Action
-              </span>
-            </motion.h2>
-
-            <motion.p variants={fadeUp} className="mt-5 text-base leading-relaxed" style={{ color: "#94a3b8" }}>
-              Watch 5 AI agents — Research, Strategy, Risk, Drafting, and Predictive — collaborate on a real case. Live IndianKanoon judgments fetched. Full 6-section Lawyer Package generated. PDF and invoice in seconds.
-            </motion.p>
-
-            {/* Feature pills */}
-            <motion.div variants={fadeUp} className="mt-6 flex flex-wrap gap-2.5 justify-center lg:justify-start">
-              {features.map(f => (
-                <div key={f.label}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                  style={{ background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)", color: "#94a3b8" }}>
-                  <span>{f.emoji}</span>
-                  {f.label}
-                </div>
-              ))}
-            </motion.div>
-
-            <motion.div variants={fadeUp} className="mt-8 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-              <Link href="/workspace"
-                className="group flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-bold text-[14px] text-white hover:opacity-90 transition-all hover:scale-[1.02] w-full sm:w-auto justify-center"
-                style={{ background: "linear-gradient(135deg, #0f766e, #14b8a6)", boxShadow: "0 0 32px rgba(20,184,166,0.35), 0 8px 24px rgba(0,0,0,0.35)" }}>
-                <Zap className="w-4 h-4" />
-                Open Forge Workspace
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-              <span className="text-xs font-medium" style={{ color: "#475569" }}>Free · No setup needed</span>
-            </motion.div>
-          </div>
-
-          {/* Right: embedded demo video */}
-          <motion.div variants={fadeUp} className="flex-1 w-full min-w-0">
-            {/* Browser chrome wrapper */}
-            <div className="rounded-2xl overflow-hidden"
-              style={{ background: "rgba(7,13,28,0.97)", border: "1px solid rgba(20,184,166,0.25)", boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(20,184,166,0.06)" }}>
-              {/* Title bar */}
-              <div className="flex items-center gap-2.5 px-4 py-2.5"
-                style={{ borderBottom: "1px solid rgba(20,184,166,0.12)", background: "rgba(8,16,36,0.98)" }}>
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-                </div>
-                <div className="flex-1 text-center text-[10px] font-bold tracking-widest uppercase" style={{ color: "#14b8a6" }}>
-                  ⚡ Forge Workspace · Live Demo
-                </div>
-                <div className="text-[10px] font-mono" style={{ color: "rgba(20,184,166,0.45)" }}>
-                  litigaforge.com/workspace
-                </div>
-              </div>
-              {/* iframe */}
-              <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                <iframe
-                  src="/litigaforge-demo"
-                  title="Forge Workspace Live Demo"
-                  className="absolute inset-0 w-full h-full"
-                  style={{ border: "none" }}
-                  allow="autoplay"
-                />
-              </div>
-            </div>
-            {/* Caption */}
-            <p className="mt-3 text-center text-xs" style={{ color: "#334155" }}>
-              Auto-playing demo · Real agents · Live IndianKanoon API · PDF &amp; Invoice export
-            </p>
-          </motion.div>
-        </div>
-      </div>
-    </motion.section>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════
-   FINAL CTA
-══════════════════════════════════════════════════════════ */
-function CTASection() {
-  const { ref, inView } = useSection();
-  return (
-    <motion.section ref={ref} initial="hidden" animate={inView ? "visible" : "hidden"} variants={stagger}
-      className="relative py-28 px-5 text-center overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at center, #1e3a8a 0%, transparent 65%)" }} />
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent)" }} />
-
-      <div className="relative z-10 max-w-3xl mx-auto">
-        <motion.div variants={fadeUp}
-          style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(59,130,246,0.25)" }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6">
-          <Sparkles className="w-3.5 h-3.5" style={{ color: "#60a5fa" }} />
-          <span className="text-xs font-semibold tracking-wide" style={{ color: "#93c5fd" }}>FREE TO START · NO CREDIT CARD</span>
-        </motion.div>
-
-        <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-extrabold text-white leading-tight">
-          Ready to Solve Your<br />
-          <span style={{ background: "linear-gradient(135deg, #3b82f6, #f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-            Legal Problem Today?
-          </span>
-        </motion.h2>
-
-        <motion.p variants={fadeUp} className="mt-5 text-base md:text-lg leading-relaxed" style={{ color: "#94a3b8" }}>
-          Use practical legal tools for Telangana and Andhra Pradesh advocates and clients. Post your case anonymously and review relevant options.
-        </motion.p>
-
-        <motion.div variants={fadeUp} className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/login"
-            style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 0 40px rgba(37,99,235,0.5), 0 8px 24px rgba(0,0,0,0.4)" }}
-            className="group flex items-center gap-2.5 px-8 py-4 rounded-xl text-white font-bold text-[15px] hover:opacity-90 transition-all hover:scale-[1.02] w-full sm:w-auto justify-center">
-            <Gavel className="w-4 h-4" />
-            Post Your Case Free
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-          <Link href="/lawyers"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-            className="flex items-center gap-2 px-8 py-4 rounded-xl text-white font-semibold text-[15px] hover:bg-white/10 transition-all w-full sm:w-auto justify-center">
-            <Search className="w-4 h-4" style={{ color: "#60a5fa" }} />
-            Find a Lawyer
-          </Link>
-        </motion.div>
-
-        {/* Checkpoints */}
-        <motion.div variants={fadeUp} className="mt-10 flex flex-wrap items-center justify-center gap-6">
-          {["No setup fee", "Anonymous case posting", "AI explanations included", "Cancel anytime"].map(item => (
-            <div key={item} className="flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#34d399" }} />
-              <span className="text-sm" style={{ color: "#64748b" }}>{item}</span>
-            </div>
-          ))}
-        </motion.div>
-      </div>
-    </motion.section>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════
-   FOOTER
-══════════════════════════════════════════════════════════ */
 function Footer() {
   return (
-    <footer style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.3)" }} className="py-10 px-5">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #2563eb, #7c3aed)" }}>
-              <Scale className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-bold text-white text-sm">LitigaForge AI</span>
-          </div>
-
-          {/* Links */}
-          <div className="flex flex-wrap gap-5">
-            {[
-              { label: "Legal Q&A",       href: "/ask" },
-              { label: "Lawyer Directory", href: "/lawyers" },
-              { label: "Free Documents",  href: "/free-documents" },
-              { label: "Free Legal Aid",  href: "/legal-aid" },
-              { label: "AI Legal Chat",   href: "/legal-chat" },
-            ].map(l => (
-              <Link key={l.label} href={l.href} style={{ color: "#64748b" }} className="text-xs hover:text-white transition-colors">
-                {l.label}
-              </Link>
-            ))}
-          </div>
+    <footer className="lf-footer">
+      <div className="lf-footer-main">
+        <div className="lf-footer-brand">
+          <Link href="/" className="lf-brand"><span className="lf-brand-mark"><Scale size={19} /></span><span>LitigaForge <i>AI</i></span></Link>
+          <p>Practical legal tools for advocates and clients.</p>
         </div>
-
-        <div className="mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <p className="text-xs" style={{ color: "#334155" }}>© 2026 Arivex AI Private Limited · LitigaForge</p>
-          <p className="text-xs text-center md:text-right" style={{ color: "#334155" }}>
-            Not legal advice. AI outputs must be verified by a qualified advocate. Platform connects clients to lawyers only.
-          </p>
+        <div className="lf-footer-links">
+          <div><strong>Explore</strong><Link href="/judgments">Judgments</Link><Link href="/ask">Legal Q&amp;A</Link><Link href="/lawyers">Find an advocate</Link></div>
+          <div><strong>Information</strong><Link href="/about">About</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><a href={BUSINESS_CONFIG.whatsappUrl} target="_blank" rel="noreferrer">WhatsApp support · {BUSINESS_CONFIG.whatsappPhone}</a></div>
         </div>
+        <Link href="/login" className="lf-button">Get started <ArrowRight size={16} /></Link>
+      </div>
+      <div className="lf-footer-bottom">
+        <span>© {new Date().getFullYear()} LitigaForge AI</span>
+        <span>AI-generated information is not legal advice. Consult a qualified legal professional.</span>
       </div>
     </footer>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   PAGE ROOT
-══════════════════════════════════════════════════════════ */
 export default function LandingPage() {
   return (
-    <div className="dark" style={{ minHeight: "100vh", background: "#060d1a", color: "#e2e8f0", fontFamily: "Inter, sans-serif" }}>
+    <main className="lf-page">
       <SEOHelmet
-        title="LitigaForge — case tracking and legal tools for Telangana & Andhra Pradesh advocates"
-        description="LitigaForge — case tracking and legal tools for Telangana & Andhra Pradesh advocates."
+        title="LitigaForge — AI legal tools for advocates and clients"
+        description="Research, organize cases, and move legal work forward with practical tools for advocates and clients."
         canonical="/"
-        keywords="legal AI, find a lawyer, AI lawyer matching, legal document analyzer, free legal aid, case law search, LitigaForge"
+        keywords="legal research, advocate tools, case tracking, legal tools, LitigaForge"
         structuredData={{
           "@context": "https://schema.org",
           "@type": "WebSite",
-          "name": "LitigaForge AI",
-          "url": "https://litigaforge.com",
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://litigaforge.com/ask?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
+          name: "LitigaForge AI",
+          url: "https://litigaforge.com",
         }}
       />
       <Navbar />
       <Hero />
-      <ProblemSection />
-      <HowItWorks />
-      <Features />
-      <WhyLitigaForge />
-      <StatsBanner />
-      <ForgeWorkspacePromo />
-      <CTASection />
+      <PublicStats />
+      <WorkflowSections />
+      <ToolsSection />
+      <PrivacySection />
+      <FAQSection />
+      <section className="lf-final-cta">
+        <span className="lf-final-overline">A more considered place to begin</span>
+        <h2>Bring clarity to<br /><em>your next legal step.</em></h2>
+        <Link href="/login" className="lf-button lf-button-light">Get started <ArrowRight size={17} /></Link>
+      </section>
       <Footer />
-    </div>
+    </main>
   );
 }

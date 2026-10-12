@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import os
 import re
 import time
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -28,6 +30,74 @@ _GET_RETRIES = 2
 _SINGLE_REFRESH_WAIT_SECONDS = 7
 _BULK_REFRESH_WAIT_SECONDS = 30
 _HTTP_TRANSPORT: httpx.AsyncBaseTransport | None = None
+_API_USAGE: dict[str, dict[str, Any]] = {}
+_API_STARTED_AT = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+_CASE_CACHE: dict[str, tuple[float, dict]] = {}
+_CASE_CACHE_TTL_SECONDS = 5 * 60
+_CAUSE_LIST_CACHE: dict[tuple, tuple[float, dict]] = {}
+_AVAILABLE_DATE_CACHE: dict[tuple, tuple[float, dict]] = {}
+_CNR_LISTING_CACHE: dict[str, tuple[float, list[dict]]] = {}
+_CAUSE_CACHE_TTL_SECONDS = 4 * 60 * 60
+_AVAILABLE_DATE_TTL_SECONDS = 60 * 60
+_CNR_LISTING_TTL_SECONDS = 4 * 60 * 60
+
+
+def _record_api_usage(method: str, path: str, json_body: dict | None) -> None:
+    """Keep a secret-free, process-local daily estimate for the admin cost panel."""
+    lowered = path.lower()
+    label, credits = "Other", 0.0
+    if "/causelist/search" in lowered:
+        label, credits = "Cause-list search", 1.0
+    elif "/causelist/cnr/batch" in lowered:
+        label = "CNR cause-list batch"
+        credits = 0.10 * len((json_body or {}).get("cnrs") or [])
+    elif lowered.endswith("/case/bulk-refresh"):
+        label = "Bulk case refresh"
+        credits = 0.05 * len((json_body or {}).get("cnrs") or [])
+    elif "/bulk-refresh-status" in lowered or "/available-dates" in lowered or "/court-structure/" in lowered:
+        label, credits = "Free court data", 0.0
+    elif "/case/" in lowered and "/refresh" in lowered:
+        label, credits = "Case refresh", 0.05
+    elif "/case/" in lowered and "/order-ai/" in lowered:
+        label, credits = "Order AI", 2.50
+    elif "/case/" in lowered and "/order-md/" in lowered:
+        label, credits = "Order markdown", 1.75
+    elif "/case/" in lowered and "/order/" in lowered:
+        label, credits = "Order PDF", 1.25
+    elif lowered.endswith("/search"):
+        label, credits = "Case search", 0.20
+    elif "/case/" in lowered:
+        label, credits = "Case detail", 0.50
+
+    day = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+    record = _API_USAGE.setdefault(day, {"calls": 0, "estimated_credits": 0.0, "endpoints": {}})
+    record["calls"] += 1
+    record["estimated_credits"] = round(record["estimated_credits"] + credits, 4)
+    endpoint = record["endpoints"].setdefault(label, {"calls": 0, "estimated_credits": 0.0})
+    endpoint["calls"] += 1
+    endpoint["estimated_credits"] = round(endpoint["estimated_credits"] + credits, 4)
+
+
+def get_api_usage_summary() -> dict[str, Any]:
+    return {
+        "days": [
+            {"date": day, **record}
+            for day, record in sorted(_API_USAGE.items(), reverse=True)[:30]
+        ],
+        "started_at": _API_STARTED_AT,
+        "persistence": "process_memory",
+        "currency": "credits (vendor estimates)",
+    }
+
+
+def _cache_case(cnr: str, raw: dict) -> None:
+    if len(_CASE_CACHE) > 2_000:
+        expired = [key for key, (until, _) in _CASE_CACHE.items() if until <= time.monotonic()]
+        for key in expired:
+            _CASE_CACHE.pop(key, None)
+        if len(_CASE_CACHE) > 2_000:
+            _CASE_CACHE.pop(next(iter(_CASE_CACHE)))
+    _CASE_CACHE[cnr] = (time.monotonic() + _CASE_CACHE_TTL_SECONDS, copy.deepcopy(raw))
 
 # Support dual-key rotation for extra rate-limit headroom.
 # ECOURTSINDIA_API_KEY is required; ECOURTSINDIA_API_KEY_2 is optional.
@@ -157,16 +227,19 @@ async def _request(
     params: dict | list[tuple[str, str]] | None = None,
     retries: int | None = None,
     timeout: float = _DEFAULT_TIMEOUT,
+    auth_required: bool = True,
 ) -> dict:
     """Call the documented Partner API. Paid POSTs are never retried."""
-    require_configured()
+    if auth_required:
+        require_configured()
     method = method.upper()
     retry_count = _GET_RETRIES if retries is None and method == "GET" else (retries or 0)
     headers = {
-        "Authorization": f"Bearer {_next_key()}",
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
+    if auth_required:
+        headers["Authorization"] = f"Bearer {_next_key()}"
     url = f"{PARTNER_API_BASE.rstrip('/')}/{path.lstrip('/')}"
 
     for attempt in range(retry_count + 1):
@@ -208,6 +281,7 @@ async def _request(
                 )
             request_id = (payload.get("meta") or {}).get("request_id") if isinstance(payload.get("meta"), dict) else None
             logger.debug("eCourts Partner request succeeded path=%s request_id=%s", path, request_id)
+            _record_api_usage(method, path, json_body)
             return payload
         except CourtDataError:
             raise
@@ -714,6 +788,7 @@ async def get_case_by_cnr(
         await _queue_single_refresh(cleaned, timeout=timeout)
         raw = await _fetch_case_detail(cleaned, timeout=timeout, retries=retries)
         await _persist_snapshot(tracked_case_id, raw)
+        _cache_case(cleaned, raw)
         return raw
     except Exception as exc:
         await _mark_refresh_failure(tracked_case_id, exc)
@@ -819,13 +894,15 @@ async def search_cases(
     litigants: str | None = None,
     petitioners: str | None = None,
     respondents: str | None = None,
-    advocates: str | None = None,
+    advocates: str | list[str] | None = None,
     judges: str | None = None,
     court_codes: list[str] | None = None,
+    states: list[str] | None = None,
     case_types: list[str] | None = None,
     case_statuses: list[str] | None = None,
     filing_date_from: str | None = None,
     filing_date_to: str | None = None,
+    name_match_mode: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
@@ -838,15 +915,22 @@ async def search_cases(
         ("litigants", litigants),
         ("petitioners", petitioners),
         ("respondents", respondents),
-        ("advocates", advocates),
         ("judges", judges),
         ("filingDateFrom", filing_date_from),
         ("filingDateTo", filing_date_to),
+        ("nameMatchMode", name_match_mode),
     ):
         if value and str(value).strip():
             params[key] = str(value).strip()
+    if isinstance(advocates, list):
+        clean_advocates = [str(value).strip() for value in advocates if str(value).strip()]
+        if clean_advocates:
+            params["advocates"] = clean_advocates
+    elif advocates and advocates.strip():
+        params["advocates"] = advocates.strip()
     for key, values in (
         ("courtCodes", court_codes),
+        ("states", states),
         ("caseTypes", case_types),
         ("caseStatuses", case_statuses),
     ):
@@ -889,6 +973,74 @@ async def search_litigant(name: str, court: str | None = None) -> list[dict]:
         params["court_codes"] = [court.strip().upper()]
     result = await search_cases(**params)
     return result["results"]
+
+
+async def _wait_for_refresh_status(cnrs: list[str], timeout_seconds: float = 300.0) -> None:
+    """Poll the free bulk status endpoint rather than paying for duplicate refreshes."""
+    deadline = time.monotonic() + timeout_seconds
+    pending = set(cnrs)
+    while pending and time.monotonic() < deadline:
+        try:
+            payload = await _request(
+                "POST",
+                f"{_PARTNER_PREFIX}/case/bulk-refresh-status",
+                json_body={"cnrs": sorted(pending)},
+                retries=0,
+            )
+        except CourtDataError as exc:
+            if exc.status_code == 429 and exc.retry_after is not None:
+                await asyncio.sleep(min(exc.retry_after, max(0.1, deadline - time.monotonic())))
+                continue
+            raise
+        data = _unwrap_data(payload, "bulk refresh status")
+        queued = data.get("queued")
+        if isinstance(queued, list):
+            failures = data.get("failed") or data.get("invalid") or []
+            if failures:
+                raise CourtDataError(
+                    "eCourtsIndia could not refresh one or more requested cases.",
+                    status_code=502, code="refresh_failed",
+                )
+            pending = {normalize_cnr(value) for value in queued}
+        else:
+            entries = data.get("results") or data.get("cases") or data.get("statuses")
+            if not isinstance(entries, list):
+                raise CourtDataError(
+                    "eCourtsIndia returned an invalid bulk refresh status.",
+                    status_code=502, code="invalid_refresh_status",
+                )
+            pending = set()
+            seen: set[str] = set()
+            for item in entries:
+                if not isinstance(item, dict):
+                    continue
+                cnr = normalize_cnr(item.get("cnr") or "")
+                seen.add(cnr)
+                status = str(item.get("status") or item.get("refreshStatus") or "").lower()
+                if status in {"queued", "pending", "running", "processing", "in_progress"}:
+                    pending.add(cnr)
+                elif status in {"failed", "error", "invalid"}:
+                    raise CourtDataError(
+                        "eCourtsIndia could not refresh one or more requested cases.",
+                        status_code=502, code="refresh_failed",
+                    )
+                elif status not in {"refreshed", "completed", "complete", "success", "succeeded"}:
+                    raise CourtDataError(
+                        "eCourtsIndia returned an unknown case refresh status.",
+                        status_code=502, code="invalid_refresh_status",
+                    )
+            if not pending and not set(cnrs).issubset(seen):
+                raise CourtDataError(
+                    "eCourtsIndia omitted one or more CNRs from refresh status.",
+                    status_code=502, code="missing_refresh_status",
+                )
+        if pending:
+            await asyncio.sleep(min(10.0, max(0.1, deadline - time.monotonic())))
+    if pending:
+        raise CourtDataError(
+            "eCourtsIndia case refresh is still processing; retry the scheduled refresh later.",
+            status_code=504, code="refresh_status_timeout", retryable=True,
+        )
 
 
 async def bulk_refresh(cases: list[dict]) -> dict[str, dict]:
@@ -979,7 +1131,7 @@ async def bulk_refresh(cases: list[dict]) -> dict[str, dict]:
                             await _mark_refresh_failure(tracked_case_id, error)
 
             if queued:
-                await asyncio.sleep(_BULK_REFRESH_WAIT_SECONDS if len(batch) > 1 else _SINGLE_REFRESH_WAIT_SECONDS)
+                await _wait_for_refresh_status(batch)
         except Exception as exc:
             logger.warning(
                 "eCourts refresh request failed for batch_size=%d (%s)",
@@ -994,6 +1146,7 @@ async def bulk_refresh(cases: list[dict]) -> dict[str, dict]:
             try:
                 raw = await _fetch_case_detail(cnr)
                 await _persist_snapshots(by_cnr[cnr], raw)
+                _cache_case(cnr, raw)
                 results[cnr] = raw
             except Exception as exc:
                 logger.warning(
@@ -1008,4 +1161,140 @@ async def bulk_refresh(cases: list[dict]) -> dict[str, dict]:
 async def lookup_cnr(cnr: str) -> dict:
     """Fetch and normalize case detail without persisting a tracked-case snapshot."""
     cleaned = normalize_cnr(cnr)
-    return await _fetch_case_detail(cleaned)
+    require_configured()
+    cached = _CASE_CACHE.get(cleaned)
+    if cached and cached[0] > time.monotonic():
+        return copy.deepcopy(cached[1])
+    raw = await _fetch_case_detail(cleaned)
+    _cache_case(cleaned, raw)
+    return copy.deepcopy(raw)
+
+
+async def search_cause_list(
+    *,
+    advocate: str | None = None,
+    date_value: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    state: str | None = None,
+    district_code: str | None = None,
+    court_complex_code: str | None = None,
+    court: str | None = None,
+    court_no: str | None = None,
+    list_type: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict:
+    """Fetch a metered cause-list page through the official partner endpoint."""
+    if not 1 <= limit <= 200 or offset < 0:
+        raise ValueError("Cause-list limit must be 1-200 and offset must be non-negative.")
+    params: dict[str, Any] = {"limit": limit, "offset": offset}
+    for key, value in (
+        ("advocate", advocate), ("date", date_value),
+        ("startDate", start_date), ("endDate", end_date),
+        ("state", state), ("districtCode", district_code),
+        ("courtComplexCode", court_complex_code), ("court", court),
+        ("courtNo", court_no), ("listType", list_type),
+    ):
+        if value and str(value).strip():
+            params[key] = str(value).strip()
+    if not any(key in params for key in (
+        "advocate", "date", "startDate", "endDate", "state",
+        "districtCode", "courtComplexCode", "court", "courtNo",
+    )):
+        raise ValueError("At least one cause-list filter is required.")
+    cache_key = tuple(sorted((key, str(value)) for key, value in params.items()))
+    cached = _CAUSE_LIST_CACHE.get(cache_key)
+    if cached and cached[0] > time.monotonic():
+        return copy.deepcopy(cached[1])
+    payload = await _request(
+        "GET", f"{_PARTNER_PREFIX}/causelist/search", params=params,
+    )
+    data = _unwrap_data(payload, "cause-list search")
+    _CAUSE_LIST_CACHE[cache_key] = (time.monotonic() + _CAUSE_CACHE_TTL_SECONDS, copy.deepcopy(data))
+    return data
+
+
+async def available_cause_list_dates(
+    *,
+    state: str | None = None,
+    district_code: str | None = None,
+    court_complex_code: str | None = None,
+    court: str | None = None,
+    court_no: str | None = None,
+) -> dict:
+    """Read free-but-authenticated dates with a published cause list."""
+    params = {
+        key: value for key, value in (
+            ("state", state), ("districtCode", district_code),
+            ("courtComplexCode", court_complex_code), ("court", court),
+            ("courtNo", court_no),
+        ) if value and str(value).strip()
+    }
+    if not params:
+        raise ValueError("A court location is required to check available dates.")
+    cache_key = tuple(sorted((key, str(value)) for key, value in params.items()))
+    cached = _AVAILABLE_DATE_CACHE.get(cache_key)
+    if cached and cached[0] > time.monotonic():
+        return copy.deepcopy(cached[1])
+    payload = await _request(
+        "GET", f"{_PARTNER_PREFIX}/causelist/available-dates", params=params,
+    )
+    data = _unwrap_data(payload, "cause-list available dates")
+    _AVAILABLE_DATE_CACHE[cache_key] = (time.monotonic() + _AVAILABLE_DATE_TTL_SECONDS, copy.deepcopy(data))
+    return data
+
+
+async def get_court_structure(path: str = "states") -> Any:
+    """Fetch public court hierarchy data; restrict paths to documented hierarchy segments."""
+    parts = [part for part in str(path or "").strip("/").split("/") if part]
+    if not parts or parts[0] != "states" or len(parts) > 5:
+        raise ValueError("Invalid court-structure path.")
+    if any(not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", part) for part in parts):
+        raise ValueError("Invalid court-structure path.")
+    payload = await _request(
+        "GET", f"{_PARTNER_PREFIX}/causelist/court-structure/" + "/".join(parts),
+        auth_required=False,
+    )
+    return _unwrap_data(payload, "court structure")
+
+
+async def cause_list_cnrs_batch(cnrs: list[str]) -> dict:
+    """Check up to 100 CNRs for upcoming listings in one non-retried partner call."""
+    cleaned = list(dict.fromkeys(normalize_cnr(cnr) for cnr in cnrs))
+    if not cleaned or len(cleaned) > 100:
+        raise ValueError("CNR batch must contain 1-100 unique valid CNRs.")
+    payload = await _request(
+        "POST",
+        f"{_PARTNER_PREFIX}/causelist/cnr/batch",
+        json_body={"cnrs": cleaned},
+        retries=0,
+    )
+    return _unwrap_data(payload, "cause-list CNR batch")
+
+
+async def cause_list_cnrs_cached(cnrs: list[str]) -> dict:
+    """Share per-CNR listing checks across advocates and bill only for cache misses."""
+    cleaned = list(dict.fromkeys(normalize_cnr(cnr) for cnr in cnrs))
+    now = time.monotonic()
+    missing = [
+        cnr for cnr in cleaned
+        if cnr not in _CNR_LISTING_CACHE or _CNR_LISTING_CACHE[cnr][0] <= now
+    ]
+    for start in range(0, len(missing), 100):
+        batch = missing[start:start + 100]
+        data = await cause_list_cnrs_batch(batch)
+        entries = data.get("results") or data.get("cases") or []
+        by_cnr: dict[str, list[dict]] = defaultdict(list)
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get("cnr"):
+                by_cnr[normalize_cnr(entry["cnr"])].append(entry)
+        expires = time.monotonic() + _CNR_LISTING_TTL_SECONDS
+        for cnr in batch:
+            _CNR_LISTING_CACHE[cnr] = (expires, by_cnr.get(cnr, []))
+    merged = [
+        entry
+        for cnr in cleaned
+        for entry in _CNR_LISTING_CACHE.get(cnr, (0, []))[1]
+    ]
+    return {"results": copy.deepcopy(merged)}

@@ -312,7 +312,7 @@ export default function Demo() {
 
       {/* ── Scene 1: Hero ── */}
       <section className={`d-scene${scene === 0 ? " d-active" : ""}`}>
-        <div className="d-s1-item"><div className="d-badge"><span className="d-badge-dot" />Telangana &amp; Andhra Pradesh legal tools</div></div>
+        <div className="d-s1-item"><div className="d-badge"><span className="d-badge-dot" />AI legal tools for advocates and clients</div></div>
         <h1 className="d-h1 d-s1-item"><span className="l1">Legal Intelligence</span><span className="l2">Built for Your Courts</span></h1>
         <p className="d-sub d-s1-item">Post your case. Get <strong>AI-matched</strong> with a verified advocate.<br />Local expertise. Legal help built for your courts.</p>
         <div className="d-btns d-s1-item">

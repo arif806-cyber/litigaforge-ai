@@ -1,5 +1,5 @@
 - [LitigaForge country localization](litigaforge-country-localization.md) — per-country pages key off URL path prefix; live UI is built dist served by Node api-server (rebuild+restart to see changes); i18n covers nav/landing only by design.
-- [LitigaForge blog + apex /blog](litigaforge-blog-deploy.md) — static Astro→CF Worker; in-process VM timer triggers every 2h; api-server reverse-proxies /blog + dynamic sitemap; FAIL-CLOSED gate (repo var GENERATION_ENABLED) + daily quota (0-publish runs are normal).
+- [LitigaForge blog + apex /blog](litigaforge-blog-deploy.md) — static Astro→CF Worker; prod 2h trigger; no XML sitemap upstream, so enumerate all guide paths and dates from `/blog/`.
 - [LitigaForge per-route bot SEO + AEO](litigaforge-seo-per-route.md) — api-server rewrites template per route for bots (title/h1/JSON-LD); _ROUTE_JSONLD injects structured data before </head>; Mediapartners-Google + AdsBot-Google now in _botPattern.
 - [LitigaForge judgment slugs & redirects](litigaforge-judgment-redirects.md) — existing slugs NEVER renamed; stale links 301 to canonical (unique-match only, loop-safe); curated cases always-upsert on startup — per-row catch UniqueViolation (source_url partial index) or startup aborts.
 - [Judgment-to-workspace handoff](litigaforge-judgment-workspace-handoff.md) — add the selected precedent to the newest workspace without replacing its canvas; create one if none exists.
@@ -11,6 +11,7 @@
 - [Screenshot litigaforge-ui dev routes](litigaforge-proxy-screenshot.md) — shared proxy routes `/` to api-server's built dist (not Vite), so screenshot tool needs a fresh build; always build with `BASE_PATH=/` (not the shared `/litigaforge` env var) — wrong base doubles the prefix via Python proxy.
 - [mockup-sandbox canvas previews](mockup-sandbox-canvas.md) — app_preview screenshots capture ~0.6s after mount (replays intro from t=0), so keep mockup intro animations settling by ~0.6s; reusable SVG gradient/filter ids need useId().
 - [LitigaForge IndianKanoon ingestion](litigaforge-judgment-ingest.md) — official paid API only (token-gated, fail-closed); daily 06:00 IST scheduler is PROD-ONLY; manual run_ingestion works in dev (dev DB only — prod has a separate DB → republish/admin-trigger).
+- [eCourtsIndia cause-list access](litigaforge-ecourtsindia-causelist.md) — don't guess billable search routes; require the vendor's authorized endpoint contract and partner token before enabling automated lists.
 - [LitigaForge daily judgment digest](litigaforge-digest.md) — complete subsystem, DON'T rebuild; SMTP now LIVE (Gmail app-password) → double opt-in is the active path; country column (validated, defaults 'in'); prod-only 07:00 IST scheduler; SMTP env read at import → restart on change; prod needs republish.
 - [LitigaForge portable LiteLLM layer](litigaforge-litellm-layer.md) — env-switchable (LLM_MODEL); litellm hits the FREE Replit Claude proxy directly (no /v1); LLM_TIMEOUT≥60s; lazy import; live-LLM health probe must be gated; uv packager broken → pip+pin.
 - [Iframe aspect-ratio in Vite+Tailwind](iframe-aspect-ratio.md) — inline style aspectRatio causes zero-height wrapper; use Tailwind aspect-video; loading="lazy" on iframes prevents initial render in screenshots.
@@ -26,6 +27,7 @@
 - [ForgeOS Growth & Competitive Intelligence Program](forgeos-growth-program.md) — generic builder-registry pattern for recurring missions (no new schema); snapshot TTL decoupled from mission cadence; memory-cursor rotation; honesty boundary is load-bearing.
 - [LitigaForge public MCP](litigaforge-public-mcp.md) — `/mcp` is stateless, read-only, and DB-backed by design; keep AI calls and writes out unless access control and billing limits are added.
 - [LitigaForge public marketplace safety](litigaforge-public-marketplace-safety.md) — public lawyer data is allowlisted; matching stays fail-closed until verified local supply exists.
+- [Advocate restore behavior](litigaforge-advocate-restore.md) — restoring a hidden advocate clears visibility only; verification remains a separate explicit admin decision.
 - [LitigaForge Workspace SSE](litigaforge-workspace-sse.md) — first frame precedes DB/provider work; every Workspace SSE path must bypass GZip or small frames remain buffered.
 - [LitigaForge async AI jobs](litigaforge-async-ai-jobs.md) — long browser AI calls use DB-backed jobs + polling; structured model outputs need strict size caps or JSON truncates before closing.
 - [Replit workflow stale listeners](replit-workflow-stale-listeners.md) — failed backend workflows can leave their prior app process group bound; inspect socket ownership and group members before a targeted TERM and restart.
@@ -34,3 +36,4 @@
 - [LitigaForge authenticated AI quota](litigaforge-ai-quota.md) — every authenticated plan shares a flat 20-call clock-hour limit; keep it atomic and user-based, never proxy-IP-based.
 - [LitigaForge demo account boundary](litigaforge-demo-account.md) — demo fixtures stay explicitly fictional and isolated; resets may touch only tagged demo workspace data.
 - [LitigaForge advocate earnings](litigaforge-advocate-earnings.md) — earnings use advocate-entered fees for accepted cases and must be labeled self-reported, not payment-verified.
+- [Forge Workspace access](litigaforge-workspace-access.md) — Forge Workspace is an advocate feature; retain prior client access, while ForgeOS stays admin-only.

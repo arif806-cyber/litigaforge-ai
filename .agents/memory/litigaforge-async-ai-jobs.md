@@ -14,3 +14,9 @@ Any model response that must parse as JSON needs an explicit total-word budget, 
 **Why:** The analyzer once returned 11,347 characters at a 2,500-token output cap and was truncated before its closing brace. A more permissive parser could not repair an incomplete object; bounding the model output produced a substantive completed result.
 
 **How to apply:** Bound arrays and prose fields in the prompt, require the model to close JSON before the output limit, tolerate Markdown/trailing disclaimers when decoding, and fail the job rather than displaying a fabricated “50/100” fallback when parsing truly fails.
+
+Provider streaming deadlines must be at least the configured `LLM_TIMEOUT` (and at least 60 seconds for legal responses). On primary-provider failure, use the same provider cascade as Legal Q&A; failed agents must not emit completion events, score/synthesis, consultation success, or canvas nodes.
+
+**Why:** Production traces showed a hard-coded 8-second first-response deadline canceling every Forge Workspace agent call, while Legal Q&A succeeded with a longer timeout and provider fallback.
+
+**How to apply:** When adding an SSE heartbeat wrapper, keep heartbeats separate from its overall provider deadline and compare the final timeout against the provider client's timeout. Treat empty/error responses as failed states, never as analysis text.

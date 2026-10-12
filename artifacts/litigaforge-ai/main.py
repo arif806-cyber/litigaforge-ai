@@ -554,6 +554,7 @@ async def lifespan(app: FastAPI):
                 verification_status TEXT DEFAULT 'pending',
                 verified BOOLEAN DEFAULT FALSE,
                 is_test BOOLEAN DEFAULT FALSE,
+                admin_hidden BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -581,6 +582,7 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending'")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT FALSE")
+        await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT FALSE")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'in'")
         await conn.execute("UPDATE lawyers SET country = 'in' WHERE country IS NULL")
         # Never expose known seed/dummy profiles through the public directory or matching.
@@ -975,6 +977,7 @@ async def lifespan(app: FastAPI):
                     text_complete BOOLEAN NOT NULL DEFAULT FALSE,
                     summary_en TEXT,
                     summary_hi TEXT,
+                    summary_te TEXT,
                     acts_cited TEXT[] DEFAULT '{}',
                     outcome TEXT,
                     source_url TEXT,
@@ -1031,6 +1034,9 @@ async def lifespan(app: FastAPI):
             )
             await conn.execute(
                 "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS text_complete BOOLEAN NOT NULL DEFAULT FALSE"
+            )
+            await conn.execute(
+                "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS summary_te TEXT"
             )
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS digest_subscribers (
@@ -1614,6 +1620,39 @@ async def lifespan(app: FastAPI):
     _notif_retry_sched = asyncio.ensure_future(_notification_retry_loop())
     app.state.notif_retry_scheduler = _notif_retry_sched
 
+    # DocketView listings are prefetched twice daily so page views never trigger
+    # billable cause-list queries. Case snapshots continue on the 08:00 IST job.
+    async def _docket_schedule_loop():
+        import asyncio as _aio
+        from datetime import datetime as _dt, time as _time, timedelta as _td
+        from zoneinfo import ZoneInfo as _ZoneInfo
+        while True:
+            try:
+                tz = _ZoneInfo("Asia/Kolkata")
+                now = _dt.now(tz)
+                slots = [_time(6, 0), _time(12, 0)]
+                next_run = min(
+                    [now.replace(hour=slot.hour, minute=slot.minute, second=0, microsecond=0)
+                     for slot in slots if now.replace(hour=slot.hour, minute=slot.minute, second=0, microsecond=0) > now]
+                    or [now.replace(hour=6, minute=0, second=0, microsecond=0) + _td(days=1)]
+                )
+                await _aio.sleep(max(1, (next_run - now).total_seconds()))
+                from services.court_data_client import is_configured
+                if not is_configured():
+                    logger.warning("docket: scheduled refresh skipped; partner token is not configured")
+                    continue
+                from routers.docket import refresh_docket_schedules
+                summary = await refresh_docket_schedules()
+                logger.info("docket: scheduled cause-list refresh done: %s", summary)
+            except _aio.CancelledError:
+                break
+            except Exception as _e:
+                logger.exception("docket: scheduled cause-list refresh error: %s", _e)
+                await _aio.sleep(1800)
+
+    _docket_sched = asyncio.ensure_future(_docket_schedule_loop())
+    app.state.docket_schedule_scheduler = _docket_sched
+
     yield
 
     _sched = getattr(app.state, "judgment_scheduler", None)
@@ -1643,6 +1682,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("court-intel: notif-retry scheduler shutdown error: %s", e)
+    _docket_sched2 = getattr(app.state, "docket_schedule_scheduler", None)
+    if _docket_sched2 is not None:
+        _docket_sched2.cancel()
+        try:
+            await _docket_sched2
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("docket: schedule shutdown error: %s", e)
     _hcsched = getattr(app.state, "health_check_scheduler", None)
     if _hcsched is not None:
         _hcsched.cancel()
@@ -1684,7 +1732,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="LitigaForge AI",
-    description="AI-powered client-lawyer matching platform for Telangana & AP",
+    description="AI-powered client-lawyer matching platform for advocates and clients",
     version="3.0.0",
     lifespan=lifespan,
     root_path=BASE_PATH,
@@ -1773,15 +1821,15 @@ _BOT_PRERENDER_ROUTES: dict = {
         {
             "name": "Find Verified Lawyers — LitigaForge AI",
             "description": (
-                "Browse AI-verified advocates in Telangana and Andhra Pradesh. "
+                "Browse AI-verified advocate profiles and practice areas. "
                 "Filter by practice area, language, and district."
             ),
             "service_type": "Lawyer Matching & Legal Services",
-            "area_served": ["Telangana", "Andhra Pradesh", "IN"],
+            "area_served": ["IN"],
         },
         "Find Verified Lawyers | LitigaForge AI",
         (
-            "Browse AI-verified advocates in Telangana & AP. "
+            "Browse AI-verified advocate profiles and practice areas. "
             "Filter by practice area, language, and district."
         ),
     ),
@@ -1822,7 +1870,7 @@ _BOT_PRERENDER_ROUTES: dict = {
                 {"q": "How do I find a lawyer in Telangana?",
                  "a": "Use LitigaForge AI to post your case and get AI-matched with verified advocates in Telangana based on practice area, language, and district."},
                 {"q": "What is LitigaForge AI?",
-                 "a": "LitigaForge AI is an AI-powered legal platform for Telangana & AP that matches clients with verified lawyers and provides instant legal analysis."},
+                 "a": "LitigaForge AI is an AI-powered legal platform that matches clients with verified lawyers and provides legal information."},
             ]
         },
         "Free Legal Q&A | LitigaForge AI",
@@ -1844,7 +1892,7 @@ def _build_prerender_html(page_title: str, meta_desc: str, schema_html: str, pag
         f'<meta property="og:description" content="{meta_desc}">'
         f'{schema_html}</head><body>'
         f'<h1>{page_title}</h1><p>{meta_desc}</p>'
-        f'<a href="{_su}">LitigaForge — case tracking and legal tools for Telangana and Andhra Pradesh advocates</a>'
+        f'<a href="{_su}">LitigaForge — AI legal tools for advocates and clients</a>'
         f'</body></html>'
     )
 
@@ -1987,6 +2035,7 @@ from routers import (
 )
 from country_router import router as country_router
 from jobs import router as jobs_router
+from routers.docket import router as docket_router
 
 # ForgeOS router is imported ONLY when FORGEOS_ENABLED is set — keeps the
 # subsystem fully inert (no import, no routes) when disabled/unset.
@@ -2006,6 +2055,7 @@ app.include_router(chat_router,        prefix=BASE_PATH)
 app.include_router(community_router,   prefix=BASE_PATH)
 app.include_router(watch_router,       prefix=BASE_PATH)
 app.include_router(alerts_router,      prefix=BASE_PATH)
+app.include_router(docket_router,      prefix=BASE_PATH)
 app.include_router(admin_router,       prefix=BASE_PATH)
 app.include_router(lawyer_router,      prefix=BASE_PATH)
 app.include_router(documents_free_router, prefix=BASE_PATH)

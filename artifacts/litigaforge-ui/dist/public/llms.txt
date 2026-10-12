@@ -1,6 +1,6 @@
 # LitigaForge AI
 
-> LitigaForge AI is a legal-technology platform for Telangana and Andhra Pradesh. It provides AI-assisted legal information, document analysis, judgment research, free legal-aid information, and tools for advocates.
+> LitigaForge AI is a legal-technology platform for advocates and clients. It provides AI-assisted legal information, document analysis, judgment research, free legal-aid information, and practical case tools.
 
 ## Platform Overview
 
@@ -14,18 +14,18 @@ LitigaForge AI helps people understand legal information and helps advocates org
 - [Judgment Finder](/judgments): Search Indian court judgments and case law by keyword, court name, or case number.
 - [AI Legal Chat](/legal-chat): AI-assisted legal-information and drafting workspace.
 - [Free Legal Documents](/free-documents): Document templates and drafting tools.
-- [Free Legal Aid Finder](/legal-aid): Telangana and Andhra Pradesh legal-aid information and public contacts.
+- [Free Legal Aid Finder](/legal-aid): Find relevant legal-aid information and public contacts.
 - [Subscription Plans](/subscription): Free tier, Professional ₹999/month, and Advocate Pro ₹2,499/month.
 
 ## Target Users
 
-- Litigants and small businesses with Telangana or Andhra Pradesh matters
-- Advocates handling Telangana or Andhra Pradesh matters
+- Litigants and small businesses
+- Advocates and legal-aid organizations
 - Legal-aid organizations
 
 ## Geographic Coverage
 
-The product is built for Telangana and Andhra Pradesh, India.
+The product provides practical legal tools for advocates and clients.
 
 ## Languages
 
@@ -38,4 +38,5 @@ This is not legal advice and not a substitute for an advocate. AI can be wrong. 
 ## Contact
 
 Website: https://litigaforge.com  
+Contact: info@litigaforge.com
 Platform type: AI-powered legal technology

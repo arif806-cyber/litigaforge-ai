@@ -13,10 +13,17 @@ from logger import get_logger
 from sanitizer import sanitize_text
 from alerts.whatsapp import send_whatsapp_alert
 from alerts.email import send_verification_email, send_rejection_email
+from services import court_data_client
 
 logger = get_logger("litigaforge.admin")
 
 router = APIRouter(tags=["admin"])
+
+
+@router.get("/admin/ecourts/usage")
+async def admin_ecourts_usage(current_user: dict = Depends(get_superuser)):
+    """Show estimated eCourts credits; request records remain server-side and secret-free."""
+    return court_data_client.get_api_usage_summary()
 
 # Background judgment-ingestion tasks. Kept referenced so the event loop does not
 # garbage-collect an in-flight task (asyncio holds only a weak reference to it).
@@ -119,6 +126,57 @@ async def admin_pending_lawyers(current_user: dict = Depends(get_superuser)):
     for r in rows:
         r["created_at"] = str(r["created_at"])
     return {"total": len(rows), "lawyers": rows}
+
+
+@router.get("/admin/lawyers")
+async def admin_all_lawyers(current_user: dict = Depends(get_superuser)):
+    rows = await fetch(
+        """SELECT id, name, email, phone, bar_number, bar_council,
+                  district, practice_areas, experience_years, verified,
+                  verification_status, COALESCE(is_test, FALSE) AS is_test,
+                  COALESCE(admin_hidden, FALSE) AS admin_hidden,
+                  created_at
+           FROM lawyers ORDER BY created_at DESC"""
+    )
+    for row in rows:
+        row["created_at"] = str(row["created_at"])
+    return {"total": len(rows), "lawyers": rows}
+
+
+@router.post("/admin/lawyers/{lawyer_id}/hide")
+async def admin_hide_lawyer(lawyer_id: int, current_user: dict = Depends(get_superuser)):
+    row = await fetchrow(
+        "UPDATE lawyers SET admin_hidden=TRUE WHERE id=$1 RETURNING id", lawyer_id
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Advocate not found")
+    return {"success": True, "lawyer_id": lawyer_id, "admin_hidden": True}
+
+
+@router.post("/admin/lawyers/{lawyer_id}/revoke-verification")
+async def admin_revoke_lawyer_verification(
+    lawyer_id: int, current_user: dict = Depends(get_superuser)
+):
+    row = await fetchrow(
+        """UPDATE lawyers
+           SET verified=FALSE, verification_status='rejected',
+               rejection_reason='Verification revoked by admin.'
+           WHERE id=$1 RETURNING id""",
+        lawyer_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Advocate not found")
+    return {"success": True, "lawyer_id": lawyer_id, "verified": False}
+
+
+@router.post("/admin/lawyers/{lawyer_id}/restore")
+async def admin_restore_lawyer(lawyer_id: int, current_user: dict = Depends(get_superuser)):
+    row = await fetchrow(
+        "UPDATE lawyers SET admin_hidden=FALSE WHERE id=$1 RETURNING id", lawyer_id
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Advocate not found")
+    return {"success": True, "lawyer_id": lawyer_id, "admin_hidden": False}
 
 
 @router.post("/admin/lawyers/{lawyer_id}/approve")

@@ -15,7 +15,7 @@ const CLIENT_STEPS = [
   {
     title: "Welcome to LitigaForge",
     subtitle: "Your AI-powered legal companion",
-    description: "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
+    description: "LitigaForge provides case tracking and legal tools for advocates and clients.",
     icon: Sparkles,
     color: "bg-amber-100 text-amber-700",
     iconBg: "bg-amber-50",

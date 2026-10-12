@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Mail, MapPin, Clock, Send, CheckCircle2, Loader2, MessageSquare } from "lucide-react";
+import { Mail, Clock, Send, CheckCircle2, Loader2, MessageSquare } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
-
-const CONTACT_EMAIL = "legal@litigaforge.com";
+import { BUSINESS_CONFIG } from "@/lib/business-config";
 
 const SUBJECTS = [
   "General Inquiry",
@@ -196,12 +195,18 @@ export default function Contact() {
           <h2 className="text-sm font-bold uppercase tracking-wider text-foreground/80">Reach us directly</h2>
           <p className="flex items-center gap-2 text-sm">
             <Mail className="w-4 h-4 text-primary flex-shrink-0" />
-            <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a>
+            <a href={`mailto:${BUSINESS_CONFIG.contactEmail}`} className="text-primary underline">{BUSINESS_CONFIG.contactEmail}</a>
           </p>
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-            Hyderabad, Telangana, India
+          <p className="flex items-center gap-2 text-sm">
+            <MessageSquare className="w-4 h-4 text-primary flex-shrink-0" />
+            <a href={BUSINESS_CONFIG.whatsappUrl} className="text-primary underline" target="_blank" rel="noreferrer">
+              Business WhatsApp · {BUSINESS_CONFIG.whatsappPhone}
+            </a>
           </p>
+          <div className="border-t border-border pt-3 text-sm text-muted-foreground">
+            <p>{BUSINESS_CONFIG.companyName} · CIN {BUSINESS_CONFIG.cin}</p>
+            <p>Registered office: {BUSINESS_CONFIG.registeredOffice}</p>
+          </div>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4 text-primary flex-shrink-0" />
             Monday to Saturday, 9AM to 6PM IST

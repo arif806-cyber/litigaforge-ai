@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, CheckCircle, XCircle, RotateCcw, Users, Briefcase,
-  Search, Loader2, AlertTriangle, Clock, MessageSquare
+  Search, Loader2, AlertTriangle, Clock, MessageSquare, Activity
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ interface AdminUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<"pending" | "questions" | "users">("pending");
+  const [tab, setTab] = useState<"pending" | "advocates" | "questions" | "users" | "ecourts">("pending");
   const [rejectReason, setRejectReason] = useState<Record<number, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<number | null>(null);
   const queryClient = useQueryClient();
@@ -74,8 +74,10 @@ export default function AdminPage() {
 
       <div className="flex gap-2 border-b border-border">
         <TabButton active={tab === "pending"} onClick={() => setTab("pending")} icon={Briefcase} label="Pending Lawyers" />
+        <TabButton active={tab === "advocates"} onClick={() => setTab("advocates")} icon={Users} label="All Advocates" />
         <TabButton active={tab === "questions"} onClick={() => setTab("questions")} icon={MessageSquare} label="Question Moderation" />
         <TabButton active={tab === "users"} onClick={() => setTab("users")} icon={Users} label="All Users" />
+        <TabButton active={tab === "ecourts"} onClick={() => setTab("ecourts")} icon={Activity} label="eCourts Usage" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -88,14 +90,88 @@ export default function AdminPage() {
             setShowRejectInput={setShowRejectInput}
             queryClient={queryClient}
           />
+        ) : tab === "advocates" ? (
+          <AllAdvocatesTab key="advocates" queryClient={queryClient} />
         ) : tab === "questions" ? (
           <QuestionModerationTab key="questions" queryClient={queryClient} />
-        ) : (
+        ) : tab === "users" ? (
           <UsersTab key="users" queryClient={queryClient} />
+        ) : (
+          <EcourtsUsageTab key="ecourts" />
         )}
       </AnimatePresence>
     </div>
   );
+}
+
+function EcourtsUsageTab() {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["admin-ecourts-usage"],
+    queryFn: () => apiFetch("/admin/ecourts/usage").then((value) => value as {
+      started_at: string;
+      persistence: string;
+      days: Array<{ date: string; calls: number; estimated_credits: number; endpoints: Record<string, { calls: number; estimated_credits: number }> }>;
+    }),
+    refetchInterval: 60_000,
+  });
+  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading API usage…</div>;
+  if (isError || !data) return <div className="space-y-3 p-6"><p className="text-sm text-destructive">Could not load eCourts usage.</p><Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>;
+  return (
+    <section className="space-y-4">
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+        Credit figures are estimates from successful partner requests. Usage is held in server memory since <strong>{new Date(data.started_at).toLocaleString()}</strong> and resets when the API process restarts.
+      </div>
+      {data.days.length === 0 ? <p className="rounded-lg border border-border p-5 text-sm text-muted-foreground">No successful partner requests have been recorded in this process.</p> :
+        data.days.map((day) => (
+          <article key={day.date} className="rounded-lg border border-border p-4">
+            <div className="flex justify-between gap-3"><h2 className="font-semibold">{day.date}</h2><span>{day.calls} calls · {day.estimated_credits.toFixed(2)} estimated credits</span></div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {Object.entries(day.endpoints).map(([name, stats]) => <div key={name} className="flex justify-between rounded bg-muted/50 px-3 py-2 text-sm"><span>{name}</span><span>{stats.calls} · {stats.estimated_credits.toFixed(2)} cr</span></div>)}
+            </div>
+          </article>
+        ))
+      }
+    </section>
+  );
+}
+
+function AllAdvocatesTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["admin-all-advocates"],
+    queryFn: () => apiFetch("/admin/lawyers"),
+  });
+  const action = useMutation({
+    mutationFn: ({ id, kind }: { id: number; kind: "hide" | "restore" | "revoke-verification" }) =>
+      apiFetch(`/admin/lawyers/${id}/${kind}`, { method: "POST" }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-all-advocates"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-pending-lawyers"] }),
+      ]);
+    },
+  });
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (isError) return <div className="flex flex-col items-center gap-3 py-12"><AlertTriangle className="w-8 h-8 text-destructive" /><p>{(error as Error)?.message || "Could not load advocates."}</p><Button variant="outline" onClick={() => refetch()}>Retry</Button></div>;
+  const advocates = data?.lawyers ?? [];
+  return <div className="space-y-3">
+    <p className="text-sm text-muted-foreground">{data?.total ?? advocates.length} advocate profiles, including hidden and verified profiles.</p>
+    {advocates.map((advocate: any) => <div key={advocate.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="font-semibold">{advocate.name || "Unnamed advocate"} {advocate.admin_hidden && <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">Hidden</span>}</p>
+        <p className="text-sm text-muted-foreground">{advocate.email} · {advocate.district || "No district"}</p>
+        <p className="text-xs text-muted-foreground">{advocate.verified ? "Verified" : `Not verified (${advocate.verification_status || "unknown"})`}</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {advocate.admin_hidden
+          ? <Button size="sm" variant="outline" disabled={action.isPending} onClick={() => action.mutate({ id: advocate.id, kind: "restore" })}><RotateCcw className="mr-1 h-4 w-4" />Restore</Button>
+          : <Button size="sm" variant="outline" disabled={action.isPending} onClick={() => action.mutate({ id: advocate.id, kind: "hide" })}>Hide from directory</Button>}
+        {advocate.verified && <Button size="sm" variant="destructive" disabled={action.isPending} onClick={() => {
+          if (window.confirm(`Revoke verification for ${advocate.name || "this advocate"}?`)) action.mutate({ id: advocate.id, kind: "revoke-verification" });
+        }}>Revoke verification</Button>}
+      </div>
+    </div>)}
+    {action.isError && <p role="alert" className="text-sm text-destructive">The advocate update failed. Please retry.</p>}
+  </div>;
 }
 
 function QuestionModerationTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {

@@ -52,32 +52,32 @@ const MIME = {
 // title / description / canonical / ogTitle / ogDesc / noIndex / jsonld
 const ROUTE_META = {
   "/": {
-    title: "LitigaForge — case tracking and legal tools for Telangana & Andhra Pradesh advocates",
+    title: "LitigaForge — AI legal tools for advocates and clients",
     description:
-      "Case tracking and legal tools for advocates in Telangana and Andhra Pradesh.",
+      "Case tracking, legal research, document analysis, and practical tools for advocates and clients.",
     canonical: "/",
   },
 
   "/lawyers": {
     title: "Advocate directory | LitigaForge",
     description:
-      "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
+      "Browse advocate profiles and practical legal tools for advocates and clients.",
     canonical: "/lawyers",
     jsonld: {
       "@context": "https://schema.org",
       "@type": "Service",
       name: "AI Lawyer Matching — LitigaForge AI",
-       description: "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
+       description: "Browse advocate profiles and practical legal tools for advocates and clients.",
       provider: { "@type": "Organization", name: "LitigaForge AI", url: "https://litigaforge.com" },
       serviceType: "Lawyer Matching Platform",
-       areaServed: ["Telangana", "Andhra Pradesh"],
+       areaServed: "IN",
     },
   },
 
   "/ask": {
     title: "Legal information tools | LitigaForge",
     description:
-      "Legal information tools for Telangana and Andhra Pradesh advocates and clients.",
+      "Legal information tools for advocates and clients.",
     canonical: "/ask",
     jsonld: {
       "@context": "https://schema.org",
@@ -148,9 +148,9 @@ const ROUTE_META = {
   },
 
   "/contact": {
-    title: "Contact LitigaForge AI | legal@litigaforge.com",
+    title: "Contact LitigaForge AI | info@litigaforge.com",
     description:
-      "Contact the LitigaForge AI team for partnership, press, or support enquiries. Email us at legal@litigaforge.com.",
+      "Contact the LitigaForge AI team for partnership, press, or support enquiries. Email info@litigaforge.com.",
     canonical: "/contact",
   },
 
@@ -181,7 +181,7 @@ const ROUTE_META = {
   "/blog": {
     title: "Legal News & Insights | LitigaForge AI Blog",
     description:
-      "Read India-focused legal news, case law analysis, and practical guides for Telangana and Andhra Pradesh.",
+      "Read legal news, case-law analysis, and practical guides for advocates and clients.",
     canonical: "/blog",
   },
 
@@ -249,7 +249,7 @@ const PREFIX_META = [
     meta: {
        title: "Advocates in your city | LitigaForge",
       description:
-         "Browse advocate profiles by practice area and location in Telangana and Andhra Pradesh.",
+         "Browse advocate profiles by practice area and location.",
     },
   },
   {

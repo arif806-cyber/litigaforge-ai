@@ -30,6 +30,7 @@ const ForgotPassword      = lazy(() => import("@/pages/forgot-password"));
 const VerifyEmail          = lazy(() => import("@/pages/verify-email"));
 const ResetPassword        = lazy(() => import("@/pages/reset-password"));
 const Subscription        = lazy(() => import("@/pages/subscription"));
+const PricingPage         = lazy(() => import("@/pages/pricing"));
 const Ask                 = lazy(() => import("@/pages/ask"));
 const Review              = lazy(() => import("@/pages/review"));
 const Judgments           = lazy(() => import("@/pages/judgments"));
@@ -67,8 +68,10 @@ const WorkspaceDemoPreview = lazy(() =>
 );
 const MessagesPage        = lazy(() => import("@/pages/messages"));
 const CnrTracker          = lazy(() => import("@/pages/cnr-tracker"));
+const DocketView          = lazy(() => import("@/pages/docket-view"));
 const ForgeOsPage         = lazy(() => import("@/pages/forgeos"));
 const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
+const LandingPage         = lazy(() => import("@/pages/landing"));
 // DEV-only Case File OS gallery. import.meta.env.DEV is statically replaced by
 // Vite, so this whole branch (and its chunk) is tree-shaken out of prod builds.
 const DesignSystem        = import.meta.env.DEV ? lazy(() => import("@/pages/design-system")) : null;
@@ -175,6 +178,7 @@ const ClientDashboardRoute = protectedRoute(ClientDashboard);
 const LawyerDashboardRoute = protectedRoute(LawyerDashboard);
 const AdvocateDashboardRoute = protectedErrorRoute("advocate-dashboard", AdvocateDashboardGate);
 const SubscriptionRoute = errorRoute("subscription", Subscription);
+const PricingRoute = errorRoute("pricing", PricingPage);
 const AskRoute = errorRoute("ask", Ask);
 const ReviewRoute = errorRoute("review", Review);
 const JudgmentDetailRoute = errorRoute("judgment-detail", JudgmentDetail);
@@ -198,13 +202,14 @@ const ForgeOsRoute = protectedErrorRoute("forgeos", ForgeOsPage);
 const StableWorkspaceRoute = errorRoute("workspace", WorkspaceRoute);
 const MessagesRoute = protectedErrorRoute("messages", MessagesPage);
 const CnrTrackerRoute = errorRoute("cnr-tracker", CnrTracker);
+const DocketRoute = protectedRoute(DocketView);
 
 function ForLawyersRoute() {
   return <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
 }
 
-// Country root (e.g. /in, /us): logged-in users go straight to their dashboard;
-// everyone else sees the country-specific public dashboard.
+// The public root is location-neutral. Signed-in users continue to their
+// role-specific dashboard.
 function CountryRoot() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -222,7 +227,7 @@ function CountryRoot() {
       </div>
     );
   }
-  return <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
+  return <LandingPage />;
 }
 
 // IP geolocation is slow (~4s). We cache the detected country so we only pay
@@ -387,6 +392,7 @@ function Router() {
         <Route path="/terms" component={TermsOfService} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
+        <Route path="/pricing" component={PricingRoute} />
         <Route path="/digest" component={Digest} />
         <Route path="/profile/:username/research" component={ProfileResearch} />
         <Route path="/refund-policy" component={RefundPolicy} />
@@ -432,6 +438,7 @@ function Router() {
               <Route path="/workspace" component={StableWorkspaceRoute} />
               <Route path="/messages" component={MessagesRoute} />
               <Route path="/cnr-tracker" component={CnrTrackerRoute} />
+              <Route path="/docket" component={DocketRoute} />
               <Route path="/cnr"><Redirect to="/cnr-tracker" /></Route>
               <Route component={NotFound} />
             </Switch>

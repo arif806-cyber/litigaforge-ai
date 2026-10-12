@@ -15,6 +15,7 @@ Endpoints (all prefixed with BASE_PATH from main.py):
   POST   /workspace/sessions/{id}/refresh-ik           — refresh Research Agent IK cache
 """
 import asyncio
+import html as _html
 import hashlib
 import json
 import logging
@@ -32,6 +33,7 @@ from pydantic import BaseModel, Field
 from auth import require_user, require_ai_user
 from database import get_pool
 from llm import legal_llm
+from llm.config import LEGAL_SYSTEM_PROMPT, LLM_TIMEOUT
 from llm.nim_embed import aembed_canvas, vec_to_str
 from case_law_search import search_case_law
 from jobs import collect_sse, enqueue_job
@@ -39,7 +41,7 @@ from demo_workspace import reset_demo_fixture
 
 logger = logging.getLogger("litigaforge.workspace")
 router = APIRouter(tags=["workspace"])
-_FIRST_PROVIDER_WAIT_SECONDS = 8
+_FIRST_PROVIDER_WAIT_SECONDS = max(60.0, LLM_TIMEOUT)
 _SSE_HEARTBEAT_SECONDS = 5
 
 IK_TOKEN = os.getenv("INDIANKANOON_API_TOKEN", "")
@@ -381,6 +383,11 @@ def _compute_impact_score(doc: dict) -> int:
     return max(30, min(98, score))
 
 
+def _plain_text(value: object) -> str:
+    text = _html.unescape(_re.sub(r"<[^>]*>", " ", str(value or "")))
+    return " ".join(text.split())
+
+
 async def _cached_ik_search(
     conn, query: str, max_results: int = 8, force_refresh: bool = False,
 ) -> list[dict]:
@@ -510,13 +517,13 @@ def _doc_to_node(doc: dict, idx: int = 0, query: str = "") -> dict:
     score    = _compute_impact_score(doc)
     date_str = (doc.get("publishdate") or doc.get("date") or "")
     year     = date_str[:4] if date_str else ""
-    headline = _re.sub(r"<[^>]+>", "", doc.get("headline") or "")[:300]
+    headline = _plain_text(doc.get("headline"))[:300]
     return {
         "id":       f"ik-{tid}",
         "type":     "judgment",
         "position": {"x": 200 + idx * 60, "y": 180 + idx * 50},
         "data": {
-            "label":        (doc.get("title") or "Unknown Case")[:90],
+            "label":        (_plain_text(doc.get("title")) or "Unknown Case")[:90],
             "court":        doc.get("docsource") or "Court",
             "citation":     doc.get("citation") or "",
             "summary":      headline,
@@ -553,13 +560,13 @@ async def search_judgments(
             "type":     "judgment",
             "position": {"x": 200 + i * 60, "y": 180 + i * 50},
             "data": {
-                "label":        row["case_name"],
+                "label":        _plain_text(row["case_name"])[:90] or "Unknown Case",
                 "court":        row["court"],
                 "citation":     row["citation"] or "",
-                "summary":      (row["summary_en"] or "")[:300],
+                "summary":      _plain_text(row["summary_en"])[:300],
                 "year":         str(row["year"] or ""),
                 "url":          row["url"],
-                "impact_score": 70,
+                "impact_score": _compute_impact_score(row),
                 "num_citing":   row.get("num_citing", 0),
                 "source":       row["source"],
             },
@@ -1008,8 +1015,9 @@ async def _stream_analysis(
 
     for agent in _AGENTS:
         # ── Inter-agent consultation event ──────────────────────────────────
-        if agent["id"] in _CONSULTS:
-            yield sse({"type": "agent_consult", **_CONSULTS[agent["id"]]})
+        consult = _CONSULTS.get(agent["id"])
+        if consult and consult["from"] in agent_outputs:
+            yield sse({"type": "agent_consult", **consult})
             await asyncio.sleep(0.4)
 
         yield sse({
@@ -1108,10 +1116,25 @@ async def _stream_analysis(
                 "Agent %s — portable LiteLLM error (%s: %s)",
                 agent["id"], type(_primary_exc).__name__, _primary_exc,
             )
-            yield sse({"type": "provider_error", "agent": agent["id"],
-                       "error": "The AI analysis is temporarily unavailable. Please try again shortly."})
+            # Match Legal Q&A's provider cascade instead of turning a slow
+            # primary provider into a synthetic successful-looking result.
+            try:
+                from ai_brain import call_llm_async
+                response = (await call_llm_async(
+                    LEGAL_SYSTEM_PROMPT, prompt, max_tokens=1500,
+                ) or "").strip()
+            except Exception as _fallback_exc:
+                logger.warning(
+                    "Agent %s — provider fallback failed (%s: %s)",
+                    agent["id"], type(_fallback_exc).__name__, _fallback_exc,
+                )
         if not response:
-            response = "AI analysis temporarily unavailable. Please try again shortly."
+            yield sse({
+                "type": "provider_error",
+                "agent": agent["id"],
+                "error": "AI analysis failed. Retry when the provider is available.",
+            })
+            continue
 
         # ── Parse reasoning + analysis ──────────────────────────────────────
         reasoning = ""
@@ -1196,16 +1219,25 @@ async def _stream_analysis(
     if research_cases & drafting_cases:
         yield sse({"type": "agent_agree", "a": "research", "b": "drafting", "label": "Shared precedent basis"})
 
-    # ── Final synthesis — dynamic consensus score ────────────────────────────
-    total_chars = sum(len(txt) for txt in agent_outputs.values())
-    completeness = min(1.0, total_chars / (180 * max(1, len(_AGENTS))))
-    case_bonus   = min(10, len(case_description) // 25) if case_description else 0
-    consensus_score = min(97, max(62, round(72 + completeness * 20 + case_bonus)))
-    yield sse({
-        "type":            "agent_synthesis",
-        "message":         "All five agents have completed their analysis. The Agent Society has reached consensus.",
-        "consensus_score": consensus_score,
-    })
+    # Never synthesize a consensus score from partial or failed analyses.
+    if len(agent_outputs) == len(_AGENTS):
+        total_chars = sum(len(txt) for txt in agent_outputs.values())
+        completeness = min(1.0, total_chars / (180 * len(_AGENTS)))
+        case_bonus = min(10, len(case_description) // 25) if case_description else 0
+        consensus_score = min(97, max(62, round(72 + completeness * 20 + case_bonus)))
+        yield sse({
+            "type": "agent_synthesis",
+            "message": "All five agents completed their analysis.",
+            "consensus_score": consensus_score,
+        })
+    elif agent_outputs:
+        yield sse({
+            "type": "analysis_partial",
+            "completed_agents": len(agent_outputs),
+            "total_agents": len(_AGENTS),
+        })
+    else:
+        yield sse({"type": "analysis_failed"})
 
 
 @router.post("/workspace/sessions/{session_id}/analyze", status_code=202)
@@ -1279,16 +1311,17 @@ async def analyze_session(
                             agent_outputs_all[payload.get("agent", "")] = payload["full_text"]
                     except Exception:
                         pass
-            try:
-                folder_info = await _auto_create_case_folder(
-                    user_id=user["id"], session_id=session_id, case_desc=case_desc,
-                    drafting_text=agent_outputs_all.get("drafting", ""), agent_outputs=agent_outputs_all,
-                )
-                if folder_info:
-                    yield _sse({"type": "folder_created", "folder_id": folder_info["id"],
-                                "folder_name": folder_info["name"], "file_count": folder_info["file_count"]})
-            except Exception as _fe:
-                logger.warning("Auto-folder creation failed: %s", _fe)
+            if agent_outputs_all:
+                try:
+                    folder_info = await _auto_create_case_folder(
+                        user_id=user["id"], session_id=session_id, case_desc=case_desc,
+                        drafting_text=agent_outputs_all.get("drafting", ""), agent_outputs=agent_outputs_all,
+                    )
+                    if folder_info:
+                        yield _sse({"type": "folder_created", "folder_id": folder_info["id"],
+                                    "folder_name": folder_info["name"], "file_count": folder_info["file_count"]})
+                except Exception as _fe:
+                    logger.warning("Auto-folder creation failed: %s", _fe)
         except Exception as exc:
             logger.exception("Workspace analysis stream failed: %s", exc)
             yield _sse({"type": "error", "error": "Analysis ended unexpectedly."})
@@ -1365,17 +1398,17 @@ class InsightsBody(BaseModel):
 
 _INSIGHT_FALLBACKS = [
     {"id": "f1", "type": "step",      "emoji": "⚡",
-     "text": "Add case facts as Fact nodes, then click ⚡ Analyze for specific AI guidance.",
-     "detail": "Describe: FIR status, parties, date of incident, injuries, court, and relief sought. More facts = more specific output."},
+     "text": "Add the matter facts and requested relief to the canvas.",
+     "detail": "Separate verified facts from assumptions and identify their source."},
     {"id": "f2", "type": "framework", "emoji": "🏛️",
-     "text": "Break your matter into legal tracks: Criminal + Civil + Regulatory.",
-     "detail": "Most Indian cases have parallel proceedings (e.g., criminal FIR + MACT compensation + insurance claim). Identify each track before building your argument map."},
+     "text": "Map only the legal issues supported by the matter facts.",
+     "detail": "Do not assume a proceeding or claim that is not described."},
     {"id": "f3", "type": "precedent", "emoji": "⚖️",
      "text": "Search Indian Kanoon for judgments matching your case facts.",
-     "detail": "Open the Search tab and type key terms (e.g., 'MACT compensation unknown vehicle' or 'property partition Hindu law'). Drop matching judgments onto the canvas."},
+     "detail": "Search using the actual court, parties, statute, and issues in this matter."},
     {"id": "f4", "type": "warning",   "emoji": "⚠️",
-     "text": "Add your case description so AI can give case-specific guidance.",
-     "detail": "Type the case description above (FIR details, parties, date, court, and what relief is sought). Without this, agents give only generic output."},
+     "text": "Add relevant facts that are still missing from the canvas.",
+     "detail": "Do not treat hypothetical scenario changes as established facts."},
 ]
 
 
@@ -1394,7 +1427,7 @@ async def _get_proactive_insights_work(
 
     nodes = body.nodes[:12]
     if not nodes and not body.case_description:
-        return {"suggestions": _INSIGHT_FALLBACKS}
+        return {"suggestions": [], "error": "Add case details or canvas nodes to generate grounded insights."}
 
     # Step 4: Compute suppressed suggestion types via compute_profile() so suggestion_reactivate
     # events are properly honoured (dismiss count reset to 0 on undo).
@@ -1471,6 +1504,17 @@ async def _get_proactive_insights_work(
         "warning|⚠️|Limitation: MACT claim must be filed within 3 years of accident date|"
         "Under s.166(3) MVA, no time limit for filing — but courts have upheld 3-year guideline. File immediately to preserve all reliefs."
     )
+    # Do not feed hypothetical what-if output into a matter-fact recommender.
+    prompt = (
+        f"Case description:\n{body.case_description or 'Not provided'}\n\n"
+        f"Current canvas facts, issues, authorities, and strategies:\n{node_summaries}\n\n"
+        "Generate up to four concise, actionable legal-workspace insights. Ground every claim "
+        "only in the case description and supplied canvas. Do not infer a crime, accident, FIR, "
+        "injury, vehicle, claim, or proceeding unless explicitly supported. Do not invent statutes "
+        "or authorities to fill a quota. Do not treat hypothetical scenario output as fact. "
+        "If there is insufficient matter-specific context, return no suggestions. "
+        "Return only lines in TYPE|EMOJI|SHORT_TEXT|DETAIL_TEXT format."
+    )
 
     try:
         raw = (await legal_llm.aask_legal_question(prompt) or "").strip()
@@ -1498,10 +1542,10 @@ async def _get_proactive_insights_work(
             # Allow at most 1 demoted suggestion only when there is room (fewer than 3 normal)
             cap = 1 if len(normal) < 3 else 0
             suggestions = normal + demoted[:cap]
-        return {"suggestions": suggestions or _INSIGHT_FALLBACKS}
+        return {"suggestions": suggestions}
     except Exception as exc:
         logger.warning("Insights error: %s", exc)
-        return {"suggestions": _INSIGHT_FALLBACKS}
+        return {"suggestions": [], "error": "Proactive insights are unavailable. Retry when the AI provider is available."}
 
 
 @router.post("/workspace/sessions/{session_id}/insights", status_code=202)
@@ -1602,18 +1646,8 @@ async def simulate_what_if(
         except Exception as exc:
             logger.warning("Simulate LLM error: %s", exc)
             yield sse({"type": "provider_error", "error": "Simulation provider was unavailable."})
-            raw = (
-                "SUMMARY: This scenario introduces significant uncertainty into the current strategy.\n"
-                "RISK: high\nSCORE_CHANGE: -10\n"
-                "RECOMMENDATION: Consult the Risk Agent to identify mitigation strategies.\n"
-                "NODE_CHANGES:"
-            )
-
-        # ── Stream analysis tokens ───────────────────────────────────────────
-        words = raw.split()
-        for i in range(0, len(words), 5):
-            yield sse({"type": "sim_token", "token": " ".join(words[i:i+5]) + " "})
-            await asyncio.sleep(0.014)
+            yield sse({"type": "sim_failed", "error": "Simulation failed because the AI provider did not return an analysis."})
+            return
 
         # ── Parse structured fields ──────────────────────────────────────────
         summary        = ""
@@ -1634,7 +1668,7 @@ async def simulate_what_if(
                 try:
                     score_change = int(line[13:].strip().lstrip("+"))
                 except ValueError:
-                    score_change = -8
+                    continue
             elif line.startswith("RECOMMENDATION:"):
                 recommendation = line[15:].strip()
             elif line.startswith("-") and "→" in line and "|" in line:
@@ -1655,6 +1689,19 @@ async def simulate_what_if(
                 except Exception:
                     continue
 
+        if not summary or not recommendation:
+            yield sse({"type": "sim_failed", "error": "The AI response did not contain a complete structured simulation."})
+            return
+
+        actual_labels = {
+            _plain_text(n.get("data", {}).get("label")).casefold()
+            for n in nodes if isinstance(n.get("data"), dict)
+        }
+        node_changes = [
+            change for change in node_changes
+            if _plain_text(change["nodeLabel"]).casefold() in actual_labels
+        ][:4]
+        score_change = max(-30, min(20, score_change))
         avg_after = max(10, min(100, avg_before + score_change))
 
         yield sse({"type": "sim_delta", "deltas": node_changes})

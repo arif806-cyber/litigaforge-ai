@@ -180,7 +180,9 @@ function CanvasInternals({
   // ── Fit-view when triggered from workspace (auto-layout etc.) ─────────────
   useEffect(() => {
     if (!fitViewTrigger) return;
-    const tid = setTimeout(() => fitView({ duration: 650, padding: 0.25 }), 60);
+    const tid = setTimeout(() => fitView({
+      duration: 650, padding: 0.25, minZoom: 0.3, maxZoom: 1.2,
+    }), 120);
     return () => clearTimeout(tid);
   }, [fitViewTrigger, fitView]);
 
@@ -446,7 +448,7 @@ export default function ForgeCanvas({
         edgeTypes={edgeTypes}
         colorMode="dark"
         fitView
-        fitViewOptions={{ padding: 0.25, maxZoom: 1.2 }}
+        fitViewOptions={{ padding: 0.25, minZoom: 0.3, maxZoom: 1.2 }}
         minZoom={0.08}
         maxZoom={3}
         style={{ background: DARK }}

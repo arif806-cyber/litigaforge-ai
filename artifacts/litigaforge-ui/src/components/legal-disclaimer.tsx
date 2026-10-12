@@ -1,6 +1,7 @@
 import { ShieldAlert, Scale } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { BUSINESS_CONFIG } from "@/lib/business-config";
 
 export function LegalDisclaimerBanner({ className }: { className?: string }) {
   return (
@@ -37,7 +38,7 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
       { label: "Find a Lawyer", href: "/lawyers" },
       { label: "Post a Case", href: "/post-case" },
       { label: "Free Legal Aid", href: "/legal-aid" },
-      { label: "Pricing", href: "/subscription" },
+      { label: "Pricing", href: "/pricing" },
     ],
   },
   {
@@ -71,7 +72,7 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
               <span>LitigaForge AI</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed mt-3 max-w-xs">
-              Case tracking and legal tools for Telangana and Andhra Pradesh advocates.
+              Case tracking and legal tools for advocates.
             </p>
           </div>
 
@@ -94,6 +95,12 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
               </ul>
             </div>
           ))}
+        </div>
+        <div className="mt-8 border-t border-border pt-5 text-sm text-muted-foreground">
+          <p>{BUSINESS_CONFIG.companyName} · CIN {BUSINESS_CONFIG.cin} · {BUSINESS_CONFIG.registeredOffice}</p>
+          <a className="mt-2 inline-flex text-primary underline" href={BUSINESS_CONFIG.whatsappUrl} target="_blank" rel="noreferrer">
+            WhatsApp support · {BUSINESS_CONFIG.whatsappPhone}
+          </a>
         </div>
 
         {/* Disclaimer + copyright */}

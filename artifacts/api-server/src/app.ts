@@ -297,12 +297,11 @@ if (true) { // serve frontend in both dev and production when dist exists
       }
     };
 
-    // Crawl the blog index (and its pagination, whatever URL scheme it uses)
-    // to collect every published article path. Scheme-agnostic: it follows any
-    // /blog/<n> or /blog/page/<n> link it finds, so it stays complete as the
-    // blog grows past a single index page. Bounded to 50 pages for safety.
-    const _fetchBlogArticlePaths = async (): Promise<string[]> => {
-      const found = new Set<string>();
+    // The blog index currently renders all 533 published guides as cards.
+    // Collect every public article and its displayed publication date; do not
+    // filter by country because the guides intentionally cover multiple regions.
+    const _fetchBlogArticlePaths = async (): Promise<Array<{ path: string; lastmod?: string }>> => {
+      const found = new Map<string, string>();
       const visited = new Set<string>();
       const queue: string[] = ["/blog/"];
       const skipSeg = new Set([
@@ -314,10 +313,8 @@ if (true) { // serve frontend in both dev and production when dist exists
         "author",
         "authors",
       ]);
-      const indiaPath = (slug: string): boolean =>
-        /(?:^|-)(?:india|indian|telangana|andhra|hyderabad|nalsa|tslsa)(?:-|$)|(?:supreme|telangana|andhra-pradesh)-high-court/i.test(slug);
       let pages = 0;
-      while (queue.length > 0 && pages < 50) {
+      while (queue.length > 0 && pages < 100) {
         const path = queue.shift()!;
         if (visited.has(path)) continue;
         visited.add(path);
@@ -333,9 +330,11 @@ if (true) { // serve frontend in both dev and production when dist exists
         } catch {
           continue;
         }
-        const hrefs = html.match(/href="([^"]+)"/g) ?? [];
-        for (const raw of hrefs) {
-          let p = raw.slice(6, -1);
+        const anchors = html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi);
+        for (const anchor of anchors) {
+          const raw = anchor[1]!;
+          const body = anchor[2] ?? "";
+          let p = raw;
           if (p.startsWith(BLOG_ORIGIN)) p = p.slice(BLOG_ORIGIN.length);
           if (p.startsWith("https://litigaforge.com"))
             p = p.slice("https://litigaforge.com".length);
@@ -347,8 +346,13 @@ if (true) { // serve frontend in both dev and production when dist exists
             if (/^\d+$/.test(seg)) {
               const norm = `/blog/${seg}/`;
               if (!visited.has(norm)) queue.push(norm);
-            } else if (!skipSeg.has(seg) && indiaPath(seg)) {
-              found.add(`/blog/${seg}`);
+            } else if (!skipSeg.has(seg)) {
+              const dateText = body.match(/class="date"[^>]*>\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})/i)?.[1];
+              const parsedDate = dateText ? new Date(dateText) : null;
+              const lastmod = parsedDate && !Number.isNaN(parsedDate.getTime())
+                ? parsedDate.toISOString().slice(0, 10)
+                : "";
+              found.set(`/blog/${seg}`, lastmod);
             }
             continue;
           }
@@ -359,7 +363,9 @@ if (true) { // serve frontend in both dev and production when dist exists
           }
         }
       }
-      return [...found].sort();
+      return [...found.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([path, lastmod]) => ({ path, ...(lastmod ? { lastmod } : {}) }));
     };
 
     // Pull the published judgment URLs (path + lastmod) from the Python service.
@@ -381,16 +387,16 @@ if (true) { // serve frontend in both dev and production when dist exists
     const _buildSitemap = async (): Promise<string> => {
       const base = _readStaticSitemap();
       if (!base.includes("</urlset>")) return base;
-      let blogPaths: string[] = [];
+      let blogPaths: Array<{ path: string; lastmod?: string }> = [];
       let judgmentItems: JudgmentSitemapItem[] = [];
       try { blogPaths = await _fetchBlogArticlePaths(); } catch { blogPaths = []; }
       try { judgmentItems = await _fetchJudgmentSitemap(); } catch { judgmentItems = []; }
 
       const blogUrls = blogPaths
-        .map(
-          (p) =>
-            `  <url>\n    <loc>https://litigaforge.com${p}</loc>\n` +
-            "    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>",
+        .map((item) =>
+          `  <url>\n    <loc>https://litigaforge.com${item.path}</loc>\n` +
+          (item.lastmod ? `    <lastmod>${item.lastmod}</lastmod>\n` : "") +
+          "    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>",
         )
         .join("\n");
       const judgmentUrls = judgmentItems
@@ -434,11 +440,11 @@ if (true) { // serve frontend in both dev and production when dist exists
       _indexHtml = _raw
         .replace(
           /<title>.*?<\/title>/,
-          "<title>LitigaForge \u2014 case tracking and legal tools for Telangana &amp; Andhra Pradesh advocates</title>",
+          "<title>LitigaForge \u2014 AI legal tools for advocates and clients</title>",
         )
         .replace(
           /<meta name="description"[^>]*>/,
-          '<meta name="description" content="Case tracking and legal tools for advocates in Telangana and Andhra Pradesh." />',
+          '<meta name="description" content="Case tracking, legal research, document analysis, and practical tools for advocates and clients." />',
         )
         .replace(
           /<meta property="og:image"[^>]*>/,
@@ -496,7 +502,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         title: "Legal information tools | LitigaForge",
         ogTitle: "Free Legal Q&amp;A — Instant AI Answers",
         description:
-          "Legal information tools for Telangana and Andhra Pradesh advocates and clients.",
+          "Legal information tools for advocates and clients.",
         h1: "Ask a Legal Question — Get an Instant AI Answer",
         intro:
           "Type any legal question and LitigaForge AI gives you a clear, plain-language answer grounded in your jurisdiction's laws — free and instant. Browse a growing knowledge base of answered questions across property, family, criminal, consumer and employment law.",
@@ -514,7 +520,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         title: "Advocate directory | LitigaForge",
         ogTitle: "Advocate directory | LitigaForge",
         description:
-          "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
+          "Browse advocate profiles and practical legal tools for advocates and clients.",
         h1: "Browse advocate profiles",
         intro:
           "Browse advocate profiles or post a case for relevant practice-area and location suggestions.",
@@ -562,14 +568,23 @@ if (true) { // serve frontend in both dev and production when dist exists
         intro:
           "Start free with legal Q&amp;A, document analysis and judgment search. Upgrade to Professional for unlimited AI and priority lawyer matching, or Advocate Pro for full practice and case management.",
       },
+      "/pricing": {
+        title: "Pricing | LitigaForge AI",
+        ogTitle: "LitigaForge AI Pricing",
+        description:
+          "Compare LitigaForge plans and features for legal research, case tools, and document workflows.",
+        h1: "Choose the tools you need",
+        intro:
+          "Compare the current plans and included features. Applicable GST is shown before checkout.",
+      },
       "/about": {
-        title: "About LitigaForge — Telangana &amp; Andhra Pradesh",
+        title: "About LitigaForge",
         ogTitle: "About LitigaForge",
         description:
-          "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
+          "LitigaForge provides case tracking and legal tools for advocates and clients.",
         h1: "About LitigaForge",
         intro:
-          "LitigaForge provides case tracking, document tools, judgment research and advocate workflows for Telangana and Andhra Pradesh.",
+          "LitigaForge provides case tracking, document tools, judgment research and advocate workflows.",
       },
       "/contact": {
         title: "Contact LitigaForge — Support &amp; Inquiries",
@@ -674,7 +689,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         "<p>It works on rental and lease agreements, employment contracts and offer letters, non-disclosure agreements, sale deeds, loan and service agreements, FIRs and court notices — analyzed instantly and free.</p>",
       "/lawyers":
         "<h2>How lawyer matching works</h2>" +
-        "<p>Review advocate profiles and practice areas for Telangana and Andhra Pradesh, then choose who to contact.</p>" +
+        "<p>Review advocate profiles and practice areas, then choose who to contact.</p>" +
         "<p>Only advocates whose bar enrolment has been checked may display the badge “Bar enrolment checked by LitigaForge”.</p>",
       "/judgments":
         "<h2>Research case law faster</h2>" +
@@ -701,7 +716,7 @@ if (true) { // serve frontend in both dev and production when dist exists
         "<p>Use it for unpaid invoices and debts, broken contracts, withheld security deposits, or property and service damages. A clear, well-structured demand shows the other side you are serious.</p>",
       "/about":
         "<h2>Why we built LitigaForge AI</h2>" +
-        "<p>LitigaForge provides case tracking, document tools, judgment research and advocate workflows for Telangana and Andhra Pradesh.</p>" +
+        "<p>LitigaForge provides case tracking, document tools, judgment research and advocate workflows.</p>" +
         "<p>Our tools provide legal information and workflow support; they are not a substitute for advice from a qualified advocate.</p>",
       "/contact":
         "<h2>We&apos;re here to help</h2>" +
@@ -756,9 +771,9 @@ if (true) { // serve frontend in both dev and production when dist exists
               "@type": "LegalService",
               name: "LitigaForge — Advocate Directory",
               url: `${_SITE_URL}/lawyers`,
-              description: "Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.",
+              description: "Browse advocate profiles and practical legal tools for advocates and clients.",
               serviceType: ["Lawyer Matching", "Legal Consultation", "Advocate Directory"],
-              areaServed: ["Telangana", "Andhra Pradesh"],
+              areaServed: "IN",
               provider: { "@type": "Organization", name: "Arivex AI Private Limited", url: _SITE_URL },
               availableChannel: { "@type": "ServiceChannel", serviceUrl: `${_SITE_URL}/lawyers`, serviceType: "Online", availableLanguage: ["English","Hindi","Telugu"] },
             },
@@ -899,7 +914,7 @@ if (true) { // serve frontend in both dev and production when dist exists
             { "@type": "Question", name: "What is included in the free plan on LitigaForge?", acceptedAnswer: { "@type": "Answer", text: "The free plan includes legal information tools, document analysis, judgment search, the free legal aid finder, advocate profiles, and free legal document templates. No credit card required." } },
             { "@type": "Question", name: "What does the Professional plan include?", acceptedAnswer: { "@type": "Answer", text: "Professional includes expanded AI legal information, document analysis, document upload and management, and all free plan features. Pricing is shown in INR at checkout." } },
             { "@type": "Question", name: "What is the Advocate Pro plan and who needs it?", acceptedAnswer: { "@type": "Answer", text: "Advocate Pro is designed for practicing advocates and includes case management, client document workspace, billing tools and hearing date reminders." } },
-            { "@type": "Question", name: "Can I get a refund if I cancel my LitigaForge AI subscription?", acceptedAnswer: { "@type": "Answer", text: "LitigaForge AI offers a prorated refund for unused days if you cancel within the first 7 days of a billing period. After 7 days, the subscription continues until the end of the cycle and is not refunded. To cancel or request a refund, email support@litigaforge.com." } },
+            { "@type": "Question", name: "Can I get a refund if I cancel my LitigaForge AI subscription?", acceptedAnswer: { "@type": "Answer", text: "LitigaForge AI offers a prorated refund for unused days if you cancel within the first 7 days of a billing period. After 7 days, the subscription continues until the end of the cycle and is not refunded. To cancel or request a refund, email info@litigaforge.com." } },
           ],
         }),
         _bc2("/subscription", "Pricing & Plans"),
@@ -911,14 +926,14 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@type": "AboutPage",
           url: `${_SITE_URL}/about`,
           name: "About LitigaForge AI",
-              description: "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
+              description: "LitigaForge provides case tracking and legal tools for advocates and clients.",
           mainEntity: {
             "@type": "Organization",
             name: "Arivex AI Private Limited",
             url: _SITE_URL,
             foundingDate: "2024",
-            description: "LitigaForge provides case tracking and legal tools for Telangana and Andhra Pradesh advocates.",
-            areaServed: ["Telangana", "Andhra Pradesh"],
+            description: "LitigaForge provides case tracking and legal tools for advocates and clients.",
+            areaServed: "IN",
           },
         }),
         _bc2("/about", "About LitigaForge AI"),

@@ -18,14 +18,14 @@ const OG_IMAGE = `${SITE}/opengraph.jpg`;
 // canonical (optional) → override canonical href (e.g. /privacy-policy → /privacy)
 const ROUTES = {
   '/': {
-    title: 'LitigaForge \u2014 case tracking and legal tools for Telangana & Andhra Pradesh advocates',
-    ogTitle: 'LitigaForge \u2014 Telangana & Andhra Pradesh advocate tools',
-    desc: 'Case tracking and legal tools for advocates in Telangana and Andhra Pradesh.',
+    title: 'LitigaForge \u2014 AI legal tools for advocates and clients',
+    ogTitle: 'LitigaForge \u2014 AI legal tools for advocates and clients',
+    desc: 'Case tracking, legal research, document analysis, and practical tools for advocates and clients.',
   },
   '/ask': {
     title: 'Free Legal Information Q&amp;A | LitigaForge AI',
     ogTitle: 'Free Legal Information Q&amp;A',
-    desc: 'AI-assisted legal information for questions about Telangana and Andhra Pradesh law. AI can be wrong; consult an advocate for representation.',
+    desc: 'AI-assisted legal information for common legal questions. AI can be wrong; consult an advocate for representation.',
   },
   '/review': {
     title: 'AI Document Analyzer \u2014 Risk Score | LitigaForge AI',
@@ -35,7 +35,7 @@ const ROUTES = {
   '/lawyers': {
     title: 'Advocate directory | LitigaForge',
     ogTitle: 'Advocate Directory',
-    desc: 'Browse advocate profiles and legal tools for Telangana and Andhra Pradesh.',
+    desc: 'Browse advocate profiles and practical legal tools for advocates and clients.',
   },
   '/judgments': {
     title: 'Judgment Finder \u2014 Search Case Law | LitigaForge',
@@ -57,10 +57,15 @@ const ROUTES = {
     ogTitle: 'LitigaForge AI Pricing &amp; Plans',
     desc: 'Compare Free, Professional ₹999, and Advocate Pro ₹2,499 plans for legal-information and advocate productivity tools.',
   },
+  '/pricing': {
+    title: 'Pricing | LitigaForge AI',
+    ogTitle: 'LitigaForge AI Pricing',
+    desc: 'Compare current LitigaForge plans and features for legal research, case tools, and document workflows.',
+  },
   '/about': {
-    title: 'About LitigaForge \u2014 Telangana &amp; Andhra Pradesh',
+    title: 'About LitigaForge',
     ogTitle: 'About LitigaForge AI',
-    desc: 'LitigaForge AI supports clearer legal information, document analysis, judgment research and advocate tools in Telangana and Andhra Pradesh.',
+    desc: 'LitigaForge AI supports clearer legal information, document analysis, judgment research, and advocate tools.',
   },
   '/contact': {
     title: 'Contact LitigaForge \u2014 Support &amp; Inquiries',

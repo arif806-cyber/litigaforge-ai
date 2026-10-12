@@ -41,7 +41,7 @@ export function defaultTitle(code: string): string {
 export function defaultDescription(code: string): string {
   const name = getCountryName(code);
   if (code.toUpperCase() === "IN") {
-    return "Case tracking and legal tools for Telangana and Andhra Pradesh advocates, including legal information, document analysis, and case matching.";
+    return "Case tracking and legal tools for advocates, including legal information, document analysis, and case matching.";
   }
   if (code.toUpperCase() === "DE") {
     return "KI-gest\u00fctzte Rechtsplattform. Verbinden Sie sich mit verifizierten Anw\u00e4lten, analysieren Sie Dokumente und erhalten Sie sofortige Rechtsberatung.";
@@ -110,7 +110,7 @@ export const BLOG_COPY: Record<string, { title: string; description: string; sub
 
 export const TERMS_COPY: Record<string, { description: string; about: string; jurisdiction: string }> = {
   IN: {
-    description: "LitigaForge AI Terms of Service \u2014 the rules and conditions for using our legal tools and advocate directory in Telangana and Andhra Pradesh.",
+    description: "LitigaForge AI Terms of Service \u2014 the rules and conditions for using our legal tools and advocate directory.",
     about: "LitigaForge AI is a legal-technology marketplace operated by Arivex AI Private Limited. We provide case tracking, an advocate directory, and AI-assisted legal information tools.",
     jurisdiction: "Any disputes shall be subject to the exclusive jurisdiction of the courts at Hyderabad, Telangana.",
   },
@@ -231,7 +231,7 @@ export const LEGAL_AID_COPY: Record<string, { pageTitle: string; pageSubtitle: s
 };
 
 export const LAWYERS_COPY: Record<string, { pageTitle: string; pageSubtitle: string }> = {
-  IN: { pageTitle: "Advocate Directory", pageSubtitle: "Browse advocate profiles for Telangana and Andhra Pradesh. Filter by city, practice area, and language." },
+  IN: { pageTitle: "Advocate Directory", pageSubtitle: "Browse advocate profiles. Filter by city, practice area, and language." },
   US: { pageTitle: "Attorney Directory", pageSubtitle: "Browse attorney profiles across the United States. Filter by state and practice area." },
   GB: { pageTitle: "Solicitor Directory", pageSubtitle: "Browse solicitor profiles across the United Kingdom. Filter by city and practice area." },
   AE: { pageTitle: "Legal Consultant Directory", pageSubtitle: "Browse legal consultant profiles across the UAE. Filter by emirate and practice area." },

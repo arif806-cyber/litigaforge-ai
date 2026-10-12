@@ -280,7 +280,7 @@ export default function ClientDashboard() {
             <div className="mt-4 flex items-center gap-5 border-t border-white/10 pt-4">
               <div>
                 <p className="text-2xl font-bold text-white tabular-nums leading-none">{activeCases}</p>
-                <p className="text-[10px] text-blue-300 mt-0.5">{t.active_cases}</p>
+                <p className="text-[10px] text-blue-300 mt-0.5">Your posted cases</p>
               </div>
               <div className="w-px h-8 bg-white/15" />
               <div>
@@ -408,7 +408,7 @@ export default function ClientDashboard() {
                       <FileCheck className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-foreground text-[15px]">{t.my_assigned_cases}</h2>
+                      <h2 className="font-semibold text-foreground text-[15px]">Cases with a hired advocate</h2>
                       <p className="text-[11px] text-muted-foreground">{clientCases.length} total</p>
                     </div>
                   </div>
@@ -467,13 +467,13 @@ export default function ClientDashboard() {
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
                       <Briefcase className="w-7 h-7 text-blue-400" />
                     </div>
-                    <p className="font-semibold text-foreground text-base mb-1">{t.no_cases_yet}</p>
+                    <p className="font-semibold text-foreground text-base mb-1">No cases with a hired advocate yet</p>
                     <p className="text-sm text-muted-foreground mb-4 max-w-[240px] leading-relaxed">
-                      Post your first case and review relevant advocate profiles
+                      When an advocate accepts one of your posted cases, it will appear here.
                     </p>
                     <button onClick={() => setLocation("/post-case")}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
-                      <Plus className="w-4 h-4" /> {t.post_case_prompt}
+                      <Plus className="w-4 h-4" /> View your posted cases
                     </button>
                   </motion.div>
                 )}

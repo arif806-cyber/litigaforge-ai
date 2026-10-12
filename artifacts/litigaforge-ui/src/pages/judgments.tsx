@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import {
   BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale,
@@ -72,6 +73,7 @@ function formatDate(iso: string | null): string {
 }
 
 export default function Judgments() {
+  const { user } = useAuth();
   const { activeCode, activeConfig } = useCountry();
   const copy = JUDGMENTS_COPY[activeCode.toUpperCase()] ?? JUDGMENTS_COPY.IN;
   const [query, setQuery] = useState("");
@@ -158,7 +160,7 @@ export default function Judgments() {
                   style={{ background: "rgba(20,184,166,0.18)", color: "#2dd4bf" }}>NEW</span>
               </div>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: "#64748b" }}>
-                Forge Workspace lets you map case law visually, run what-if simulations, and synthesise legal strategy with Claude, Gemini &amp; GPT-5 working in parallel.
+                Forge Workspace helps you map case law visually, compare scenarios, and connect legal issues with relevant precedents.
               </p>
             </div>
           </div>

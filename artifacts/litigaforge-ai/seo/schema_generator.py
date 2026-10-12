@@ -25,7 +25,7 @@ SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com").rstrip("/")
 ORG_NAME = "Arivex AI Private Limited"
 PRODUCT_NAME = "LitigaForge"
 LOGO_URL = f"{SITE_URL}/logo.png"
-CONTACT_EMAIL = "info@arivex.ai"
+CONTACT_EMAIL = "info@litigaforge.com"
 
 
 # ── Shared org fragment ───────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ def _organization(data: dict) -> dict:
             "AI-powered client-lawyer matching and legal analysis platform for India",
         ),
         "foundingDate": "2024",
-        "areaServed": data.get("area_served", ["IN", "Telangana", "Andhra Pradesh"]),
+        "areaServed": data.get("area_served", ["IN"]),
     }
 
 

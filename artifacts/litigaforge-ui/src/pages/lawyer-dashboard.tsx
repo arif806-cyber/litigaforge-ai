@@ -543,7 +543,7 @@ export default function LawyerDashboard() {
           {/* Footer */}
           <p className="mt-5 text-xs text-muted-foreground/60">
             Questions?{" "}
-            <a href="mailto:support@litigaforge.ai" className="underline hover:text-muted-foreground">
+            <a href="mailto:info@litigaforge.com" className="underline hover:text-muted-foreground">
               Contact support
             </a>
           </p>

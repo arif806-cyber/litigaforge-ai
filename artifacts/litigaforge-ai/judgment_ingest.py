@@ -280,7 +280,7 @@ _BLOCK_CLOSE_RE = re.compile(
 _BR_RE = re.compile(r"(?i)<br\s*/?>")
 
 
-def _html_to_text(html: str) -> str:
+def _html_to_text(html: str, *, cap: int | None = FULL_TEXT_CAP) -> str:
     if not html:
         return ""
     # Preserve block boundaries so adjacent elements don't merge into one word
@@ -300,7 +300,7 @@ def _html_to_text(html: str) -> str:
     text = re.sub(r"\s+\n", "\n", text)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
-    return text[:FULL_TEXT_CAP]
+    return text if cap is None else text[:cap]
 
 
 # ── AI summarisation (ai_brain async cascade, strict JSON) ─────────────────────
@@ -315,6 +315,11 @@ _SUMMARY_SYSTEM = (
 
 def _build_summary_prompt(case_name: str, court: str, full_text: str, strict: bool) -> str:
     from ai_safety import wrap_user_prompt
+    needs_telugu = any(name in court.casefold() for name in ("telangana", "andhra"))
+    telugu_instruction = (
+        '"summary_te": "The same summary in natural Telugu, 3-5 sentences.",'
+        if needs_telugu else '"summary_te": "",'
+    )
     reminder = (
         "\nREMINDER: Return ONLY the JSON object. No markdown, no commentary."
         if strict else ""
@@ -330,6 +335,7 @@ Return ONLY a valid JSON object with EXACTLY these keys:
 {{
   "summary_en": "3-5 sentence plain-English summary: what the dispute was about and what the court held / decided.",
   "summary_hi": "The same summary in natural Hindi (Devanagari), 3-5 sentences.",
+  {telugu_instruction}
   "acts_cited": ["Statutes/sections actually referenced in the text, e.g. 'Section 138, Negotiable Instruments Act, 1881'. Empty array if none are clearly stated."],
   "outcome": "One short line stating the result, e.g. 'Appeal allowed; conviction set aside.'"
 }}
@@ -352,19 +358,28 @@ def _extract_json_object(text: str) -> dict:
         return {}
 
 
-def _valid_summary(obj: dict) -> Optional[dict]:
+def _valid_summary(obj: dict, *, require_telugu: bool = False) -> Optional[dict]:
     if not isinstance(obj, dict) or obj.get("insufficient"):
         return None
     en = (obj.get("summary_en") or "").strip()
     hi = (obj.get("summary_hi") or "").strip()
+    te = (obj.get("summary_te") or "").strip()
     outcome = (obj.get("outcome") or "").strip()
-    if len(en) < 40 or len(hi) < 10 or not outcome:
+    if len(en) < 40 or len(hi) < 10 or not outcome or (require_telugu and len(te) < 10):
+        return None
+    if re.search(
+        r"\b(reserved for (?:judg(?:ment|e)|orders?)|pending|awaited|"
+        r"not determinable|cannot be determined|undetermined|inconclusive)\b",
+        outcome,
+        re.IGNORECASE,
+    ):
         return None
     acts_raw = obj.get("acts_cited") or []
     acts = [str(a).strip() for a in acts_raw if isinstance(a, (str, int)) and str(a).strip()][:25]
     return {
         "summary_en": en[:4000],
         "summary_hi": hi[:4000],
+        "summary_te": te[:4000] or None,
         "acts_cited": acts,
         "outcome": outcome[:400],
     }
@@ -378,6 +393,7 @@ async def _summarize(case_name: str, court: str, full_text: str) -> Optional[dic
         _call_groq_async, _call_gemini_async,
     )
     from llm import legal_llm
+    require_telugu = any(name in court.casefold() for name in ("telangana", "andhra"))
     # Portable LiteLLM layer is the PRIMARY summariser; the ai_brain
     # multi-provider cascade stays as the fallback. legal_llm.acomplete shares
     # the (system, user, temperature, max_tokens) signature, so it slots in.
@@ -394,7 +410,7 @@ async def _summarize(case_name: str, court: str, full_text: str) -> Optional[dic
                 raw = None
             if not raw:
                 continue
-            result = _valid_summary(_extract_json_object(raw))
+            result = _valid_summary(_extract_json_object(raw), require_telugu=require_telugu)
             if result:
                 return result
     logger.warning("[IK] could not produce a valid summary for '%s' — skipping", case_name[:80])
@@ -431,15 +447,16 @@ async def _insert_one(row: dict) -> Optional[int]:
     return await fetchval(
         """INSERT INTO judgments
                (case_name, court, court_slug, bench, judgment_date, year, slug,
-                 full_text, text_complete, summary_en, summary_hi, acts_cited, outcome,
+                 full_text, text_complete, summary_en, summary_hi, summary_te, acts_cited, outcome,
                 source_url, source_name, status)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'published')
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'published')
            ON CONFLICT (court_slug, year, slug) DO NOTHING
            RETURNING id""",
         row["case_name"], row["court"], row["court_slug"], row.get("bench"),
         row.get("judgment_date"), row["year"], row["slug"], row.get("full_text"),
         bool(row.get("text_complete")), row["summary_en"], row["summary_hi"],
-        row.get("acts_cited") or [], row["outcome"], row["source_url"], SOURCE_NAME,
+        row.get("summary_te"), row.get("acts_cited") or [], row["outcome"],
+        row["source_url"], SOURCE_NAME,
     )
 
 
@@ -577,10 +594,11 @@ async def _do_run(
                 continue
 
             doc = await asyncio.to_thread(client.get_doc, tid)
-            full_text = _html_to_text(doc.get("doc") or "")
+            source_full_text = _html_to_text(doc.get("doc") or "", cap=None)
+            full_text = source_full_text[:FULL_TEXT_CAP]
             case_name = _clean_case_name(doc.get("title") or d.get("title") or "")
             jdate, year = _parse_date(doc.get("publishdate") or d.get("publishdate"))
-            if not case_name or not year or len(full_text) < 200:
+            if not case_name or not year or len(source_full_text) < 200:
                 stats["skipped_no_summary"] += 1
                 continue
             if await _near_duplicate(year, case_name):
@@ -598,7 +616,7 @@ async def _do_run(
             except Exception as _nlp_err:
                 logger.debug("[IK] legal_nlp unavailable: %s", _nlp_err)
 
-            summary = await _summarize(case_name, court, full_text)
+            summary = await _summarize(case_name, court, source_full_text)
             if not summary:
                 stats["skipped_no_summary"] += 1
                 continue
@@ -619,8 +637,9 @@ async def _do_run(
                 "bench": (doc.get("bench") or "").strip() or None,
                 "judgment_date": jdate, "year": year,
                 "slug": _case_slug(case_name), "full_text": full_text,
-                "text_complete": len(full_text) < FULL_TEXT_CAP,
+                "text_complete": 0 < len(source_full_text) < FULL_TEXT_CAP,
                 "summary_en": summary["summary_en"], "summary_hi": summary["summary_hi"],
+                "summary_te": summary.get("summary_te"),
                 "acts_cited": merged_acts, "outcome": summary["outcome"],
                 "source_url": source_url,
             }

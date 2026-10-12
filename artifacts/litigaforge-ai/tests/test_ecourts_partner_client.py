@@ -378,8 +378,15 @@ async def test_bulk_refresh_uses_documented_status_lists_and_waits_for_queued_ca
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append((request.method, request.url.path))
         if request.method == "POST":
+            body = __import__("json").loads(request.content)
+            if request.url.path.endswith("/bulk-refresh-status"):
+                assert set(body["cnrs"]) == {CNR_A, CNR_B}
+                return httpx.Response(200, json={"data": {"results": [
+                    {"cnr": CNR_A, "status": "completed"},
+                    {"cnr": CNR_B, "status": "completed"},
+                ]}})
             assert request.url.path == "/api/partner/case/bulk-refresh"
-            assert set(__import__("json").loads(request.content)["cnrs"]) == {CNR_A, CNR_B}
+            assert set(body["cnrs"]) == {CNR_A, CNR_B}
             return httpx.Response(
                 200,
                 json={
@@ -410,10 +417,11 @@ async def test_bulk_refresh_uses_documented_status_lists_and_waits_for_queued_ca
     assert results.keys() == {CNR_A, CNR_B}
     assert calls == [
         ("POST", "/api/partner/case/bulk-refresh"),
+        ("POST", "/api/partner/case/bulk-refresh-status"),
         ("GET", f"/api/partner/case/{CNR_A}"),
         ("GET", f"/api/partner/case/{CNR_B}"),
     ]
-    sleep.assert_awaited_once_with(client._BULK_REFRESH_WAIT_SECONDS)
+    sleep.assert_not_awaited()
     assert persist.await_count == 2
     mark_failure.assert_not_awaited()
 

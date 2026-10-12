@@ -10,6 +10,7 @@ import {
 } from "@xyflow/react";
 import { motion, AnimatePresence } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
+import NodeInspector from "@/components/workspace/NodeInspector";
 import WorkspaceOnboarding from "@/components/workspace/WorkspaceOnboarding";
 import { useAuth } from "@/lib/auth-context";
 import AgentPanel, { type AgentState, type CollabEvent, type LiveJudgment } from "@/components/workspace/AgentPanel";
@@ -55,6 +56,7 @@ interface WorkspaceJudgment {
   id: number;
   case_name: string;
   court: string;
+  judgment_date?: string;
   year: number;
   summary_en?: string;
   outcome?: string;
@@ -297,6 +299,11 @@ export default function ForgeWorkspace() {
   const [sessionTitle, setSessionTitle]     = useState("Untitled Workspace");
   const [caseDescription, setCaseDescription] = useState("");
   const [nodes, setNodes, onNodesChange]    = useNodesState<Node>([]);
+  const selectedNode = nodes.find(node => node.selected);
+  const [inspectorNodeId, setInspectorNodeId] = useState<string | null>(null);
+  useEffect(() => {
+    if (selectedNode) setInspectorNodeId(selectedNode.id);
+  }, [selectedNode?.id]);
   const [edges, setEdges, onEdgesChange]    = useEdgesState<Edge>([]);
   const [agentStates, setAgentStates]       = useState<Record<string, AgentState>>(makeDefaultAgentStates);
   const [isAnalyzing, setIsAnalyzing]       = useState(false);
@@ -376,10 +383,13 @@ export default function ForgeWorkspace() {
   }, [refreshUser]);
 
   const saveTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestCanvasRef = useRef({ nodes, edges, sessionId });
+  const saveInFlightRef = useRef(false);
+  const saveQueuedRef = useRef(false);
+  latestCanvasRef.current = { nodes, edges, sessionId };
   const addMenuRef          = useRef<HTMLDivElement>(null);
   const historyRef          = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
   const histIdxRef          = useRef<number>(-1);
-  const simAfterSummaryRef  = useRef<string>("");
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -456,8 +466,11 @@ export default function ForgeWorkspace() {
             `/judgments/item/${encodeURIComponent(judgmentRequest.court)}/${judgmentRequest.year}/${encodeURIComponent(judgmentRequest.slug)}`,
           );
           const judgment = await judgmentRes.json() as WorkspaceJudgment;
-          if (!activeSession) {
-            activeSession = await createSession(`Research — ${judgment.case_name}`);
+          const addToExisting = list.length > 0 && window.confirm(
+            `Add “${judgment.case_name}” to your most recently updated workspace?\n\nChoose Cancel to create a new workspace named after this judgment.`,
+          );
+          if (!addToExisting) {
+            activeSession = await createSession(judgment.case_name);
           }
           if (!activeSession) throw new Error("Could not create a workspace for this judgment.");
 
@@ -489,6 +502,7 @@ export default function ForgeWorkspace() {
               data: {
                 label: judgment.case_name,
                 court: judgment.court,
+                date: judgment.judgment_date ?? "",
                 year: judgment.year,
                 summary: judgment.summary_en || judgment.outcome || "",
                 citation: judgment.citation || "",
@@ -500,10 +514,6 @@ export default function ForgeWorkspace() {
               },
             };
             const nextNodes = [...currentNodes, newNode];
-            await api(`/workspace/sessions/${activeSession.id}/canvas`, {
-              method: "PUT",
-              body: JSON.stringify({ nodes: nextNodes, edges: currentEdges }),
-            });
             setNodes(nextNodes);
             setEdges(currentEdges);
             setFitViewTrigger(value => value + 1);
@@ -549,6 +559,9 @@ export default function ForgeWorkspace() {
       setNodes(startFromPattern ? patternNodes : []);
       setEdges([]);
       setAgentStates(makeDefaultAgentStates());
+      setCollabFeed([]);
+      setSynthesisScore(null);
+      setSimState({ phase: "idle", scenario: "", before: null, after: null, deltas: [], analysis: "", agents: [] });
       setSessionFolder(null);
       setShowNewSessionDialog(false);
       if (pattern) {
@@ -558,10 +571,6 @@ export default function ForgeWorkspace() {
         setSuggestions([]);
       }
       if (startFromPattern && patternNodes.length > 0) {
-        void api(`/workspace/sessions/${s.id}/canvas`, {
-          method: "PUT",
-          body: JSON.stringify({ nodes: patternNodes, edges: [] }),
-        }).catch(() => {});
         void api("/workspace/profile/event", {
           method: "POST",
           body: JSON.stringify({
@@ -638,17 +647,28 @@ export default function ForgeWorkspace() {
   }, [nodes, edges, sessionId]);
 
   async function saveCanvas(silent = false) {
-    if (!sessionId) return;
+    const current = latestCanvasRef.current;
+    if (!current.sessionId) return;
+    if (saveInFlightRef.current) {
+      saveQueuedRef.current = true;
+      return;
+    }
+    saveInFlightRef.current = true;
     if (!silent) setIsSaving(true);
     try {
-      await api(`/workspace/sessions/${sessionId}/canvas`, {
+      await api(`/workspace/sessions/${current.sessionId}/canvas`, {
         method: "PUT",
-        body: JSON.stringify({ nodes, edges }),
+        body: JSON.stringify({ nodes: current.nodes, edges: current.edges }),
       });
     } catch {
       if (!silent) addToast({ type: "error", message: "Save failed", detail: "Changes are queued — will retry on next edit." });
     } finally {
+      saveInFlightRef.current = false;
       if (!silent) setIsSaving(false);
+      if (saveQueuedRef.current) {
+        saveQueuedRef.current = false;
+        setTimeout(() => void saveCanvas(true), 0);
+      }
     }
   }
 
@@ -1034,6 +1054,16 @@ export default function ForgeWorkspace() {
                 });
               }
               localDoneCount++;
+            } else if (type === "provider_error") {
+              setAgentStates(prev => ({
+                ...prev,
+                [agentId]: {
+                  ...(prev[agentId] ?? { status: "idle", text: "" }),
+                  status: "failed",
+                  text: (event.error as string) || "AI analysis failed. Retry when the provider is available.",
+                  canvasNodeAdded: false,
+                },
+              }));
             } else if (type === "agent_consult") {
               setCollabFeed(prev => [...prev, {
                 from:      event.from as string,
@@ -1083,12 +1113,28 @@ export default function ForgeWorkspace() {
         }
       }
       // Use locally tracked counters — avoids stale closure reading idle state
-      addToast({
-        type: "success",
-        message: `Analysis complete — ${localDoneCount}/5 agents`,
-        detail: localSynthesisScore !== null ? `Consensus score: ${localSynthesisScore}/100` : "Canvas nodes updated.",
-        duration: 5000,
-      });
+      if (localDoneCount === 0) {
+        addToast({
+          type: "error",
+          message: "Analysis failed — no agents completed",
+          detail: "No results or canvas nodes were saved. Retry when the AI provider is available.",
+          duration: 8000,
+        });
+      } else if (localDoneCount < 5) {
+        addToast({
+          type: "warning",
+          message: `Analysis partially completed — ${localDoneCount}/5 agents`,
+          detail: "Failed agents did not add nodes or contribute to a consensus score.",
+          duration: 7000,
+        });
+      } else {
+        addToast({
+          type: "success",
+          message: "Analysis complete — 5/5 agents",
+          detail: localSynthesisScore !== null ? `Consensus score: ${localSynthesisScore}/100` : "Canvas nodes updated.",
+          duration: 5000,
+        });
+      }
     } catch (error) {
       setAgentStates(previousAgentStates);
       setCollabFeed(previousCollabFeed);
@@ -1110,7 +1156,6 @@ export default function ForgeWorkspace() {
 
   const runSimulation = useCallback(async (assumption: string) => {
     if (!sessionId || !assumption.trim() || simState.phase === "running") return;
-    const previousSimState = simState;
     setSimState({ phase: "running", scenario: assumption, before: null, after: null, deltas: [], analysis: "", agents: [] });
     try {
       const res = await workspaceStream(
@@ -1122,6 +1167,7 @@ export default function ForgeWorkspace() {
       const decoder = new TextDecoder();
       let buf = "";
       let localScoreChange: number | null = null;
+      let simulationError = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -1139,7 +1185,7 @@ export default function ForgeWorkspace() {
             } else if (etype === "sim_agent") {
               setSimState(p => ({ ...p, agents: [...new Set([...p.agents, ev.agent as string])] }));
             } else if (etype === "sim_token") {
-              setSimState(p => ({ ...p, analysis: p.analysis + (ev.token as string) }));
+              // Raw model templates are never surfaced as analysis.
             } else if (etype === "sim_delta") {
               const deltas = ev.deltas as NodeDelta[];
               setSimState(p => ({ ...p, deltas }));
@@ -1160,7 +1206,6 @@ export default function ForgeWorkspace() {
             } else if (etype === "sim_after") {
               const afterSummary = ev.summary as string;
               localScoreChange = ev.score_change as number;
-              simAfterSummaryRef.current = afterSummary;
               setSimState(p => ({
                 ...p,
                 after: {
@@ -1170,15 +1215,20 @@ export default function ForgeWorkspace() {
                   summary:         afterSummary,
                   recommendation:  ev.recommendation as string,
                 },
+                analysis: afterSummary,
               }));
+            } else if (etype === "sim_failed" || etype === "provider_error") {
+              simulationError = String(ev.error || "Simulation failed.");
             } else if (etype === "sim_complete") {
               setSimState(p => ({ ...p, phase: "complete" }));
-              // Auto-trigger proactive insights with sim context after 1.5 s
-              const ctx = assumption + (simAfterSummaryRef.current ? ` → ${simAfterSummaryRef.current}` : "");
-              setTimeout(() => setAutoInsightCtx(ctx.slice(0, 400)), 1500);
             }
           } catch { /* malformed */ }
         }
+      }
+      if (simulationError) {
+        setSimState(p => ({ ...p, phase: "failed", error: simulationError }));
+        addToast({ type: "error", message: "Simulation failed", detail: simulationError });
+        return;
       }
       // Toast on completion — mirrors pattern in runAnalysis
       const changeStr = localScoreChange !== null
@@ -1186,7 +1236,7 @@ export default function ForgeWorkspace() {
         : "Canvas updated. Check the Simulation tab.";
       addToast({ type: "success", message: "⚡ Simulation complete", detail: changeStr, duration: 5000 });
     } catch (error) {
-      setSimState(previousSimState);
+      setSimState({ phase: "failed", scenario: assumption, before: null, after: null, deltas: [], analysis: "", agents: [], error: error instanceof Error ? error.message : "Simulation failed." });
       addToast({
         type: "error",
         message: "Simulation interrupted",
@@ -1262,10 +1312,6 @@ export default function ForgeWorkspace() {
       const nextNodes = [...nodes, ...added];
       setNodes(nextNodes);
       setSuggestions(prev => prev.filter(x => x.id !== s.id));
-      void api(`/workspace/sessions/${sessionId}/canvas`, {
-        method: "PUT",
-        body: JSON.stringify({ nodes: nextNodes, edges }),
-      }).catch(() => {});
       void api("/workspace/profile/event", {
         method: "POST",
         body: JSON.stringify({
@@ -2213,6 +2259,15 @@ export default function ForgeWorkspace() {
             canRedo={canRedo}
             fitViewTrigger={fitViewTrigger}
           />
+          {selectedNode && inspectorNodeId === selectedNode.id && (
+            <NodeInspector
+              node={selectedNode}
+              onClose={() => setInspectorNodeId(null)}
+              onSave={data => setNodes(current => current.map(node =>
+                node.id === selectedNode.id ? { ...node, data: { ...node.data, ...data } } : node
+              ))}
+            />
+          )}
           {/* Connection hints tray — slides from bottom edge */}
           {connectionHints.length > 0 && hintNewNodeId && (
             <ConnectionHintsTray

@@ -279,7 +279,7 @@ function PrivacySection() {
             <p className="text-sm font-medium text-foreground">Request Data Export</p>
             <p className="text-xs text-muted-foreground">DPDP Act § 11 — Right to Access</p>
           </div>
-          <a href="mailto:privacy@litigaforge.ai?subject=Data Access Request"
+          <a href="mailto:info@litigaforge.com?subject=Data Access Request"
             className="text-xs font-semibold text-primary hover:underline">
             Email DPO
           </a>

@@ -389,6 +389,7 @@ async def ai_match_lawyers(
             FROM lawyers
             WHERE availability = 'available' AND verified = TRUE
               AND verification_status = 'verified' AND COALESCE(is_test, FALSE) = FALSE
+              AND COALESCE(admin_hidden, FALSE) = FALSE
            ORDER BY id""",
     )
 
@@ -607,6 +608,7 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
             JOIN lawyers l ON m.lawyer_id = l.id
             WHERE m.client_id = $1
               AND COALESCE(l.is_test, FALSE) = FALSE
+              AND COALESCE(l.admin_hidden, FALSE) = FALSE
            ORDER BY m.created_at DESC""",
         current_user["id"],
     )

@@ -4,7 +4,7 @@ import { runLongJob } from "@/lib/api";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-export type AgentStatus = "idle" | "thinking" | "done";
+export type AgentStatus = "idle" | "thinking" | "done" | "failed";
 
 export interface LiveJudgment {
   title: string;
@@ -158,6 +158,15 @@ function StatusChip({ status, def }: { status: AgentStatus; def: AgentDef }) {
       Working…
     </motion.span>
   );
+  if (status === "failed") return (
+    <span style={{
+      fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
+      color: "#f87171", background: "rgba(248,113,113,0.12)",
+      padding: "2px 7px", borderRadius: 8,
+    }}>
+      Failed
+    </span>
+  );
   return (
     <span style={{
       fontSize: 8.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
@@ -192,7 +201,7 @@ function AgentCard({
 }) {
   const isThinking   = state.status === "thinking";
   const isDone       = state.status === "done";
-  const hasContent   = (isThinking || isDone) && (state.text || state.reasoning);
+  const hasContent   = (isThinking || isDone || state.status === "failed") && (state.text || state.reasoning);
   const sections     = isDone ? parseAgentSections(state.text ?? "", def.id) : [];
 
   const [showReasoning, setShowReasoning] = useState(false);
@@ -950,7 +959,9 @@ const AgentPanel = memo(({
   textareaRef,
 }: AgentPanelProps) => {
   const doneCount = Object.values(agentStates).filter(s => s.status === "done").length;
+  const failedCount = Object.values(agentStates).filter(s => s.status === "failed").length;
   const allDone   = doneCount === AGENT_DEFS.length;
+  const allFailed = failedCount === AGENT_DEFS.length;
   const progress  = doneCount > 0 ? Math.round((doneCount / AGENT_DEFS.length) * 100) : 0;
   const activeAgent = AGENT_DEFS.find(d => agentStates[d.id]?.status === "thinking");
 
@@ -988,7 +999,7 @@ const AgentPanel = memo(({
               display: "flex", justifyContent: "space-between",
               fontSize: 9, color: FGD, marginBottom: 5,
             }}>
-              <span>{activeAgent ? `${activeAgent.emoji} ${activeAgent.name} working…` : allDone ? "✦ All agents done" : "Preparing…"}</span>
+              <span>{activeAgent ? `${activeAgent.emoji} ${activeAgent.name} working…` : allDone ? "✦ All agents done" : allFailed ? "All agents failed" : "Preparing…"}</span>
               <span style={{ fontWeight: 700, color: allDone ? "#22c55e" : "#14b8a6" }}>{doneCount}/{AGENT_DEFS.length}</span>
             </div>
             <div style={{ height: 4, borderRadius: 4, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
@@ -1052,9 +1063,19 @@ const AgentPanel = memo(({
             boxShadow: isAnalyzing || !sessionId ? "none" : "0 4px 20px rgba(13,148,136,0.35)",
           }}
         >
-          {isAnalyzing ? "⟳  Agents Working…" : "▶  Run Agent Analysis"}
+          {isAnalyzing ? "⟳  Agents Working…" : failedCount > 0 ? "↻  Retry Agent Analysis" : "▶  Run Agent Analysis"}
         </motion.button>
       </div>
+
+      {allFailed && (
+        <div role="alert" style={{
+          margin: "10px 10px 0", padding: "10px 12px", borderRadius: 8,
+          border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)",
+          color: "#fecaca", fontSize: 10, lineHeight: 1.5,
+        }}>
+          All five agents failed. No analysis or canvas nodes were saved. Retry when the AI provider is available.
+        </div>
+      )}
 
       {/* ── Agent cards ───────────────────────────────────────────────────── */}
       <div style={{ padding: "10px 10px 4px", display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>

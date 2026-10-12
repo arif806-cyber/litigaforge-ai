@@ -5,8 +5,8 @@ import { truncateTitle } from "@/lib/title";
 const SITE_URL = "https://litigaforge.com";
 const DEFAULT_OG_IMAGE = "https://litigaforge.com/og-image.png";
 
-const POSITIONING = "LitigaForge — case tracking and legal tools for Telangana & Andhra Pradesh advocates";
-const DEFAULT_KEYWORDS = "Telangana advocates, Andhra Pradesh advocates, case tracking, legal tools";
+const POSITIONING = "LitigaForge — AI legal tools for advocates and clients";
+const DEFAULT_KEYWORDS = "advocate tools, case tracking, legal research, legal tools";
 
 const OG_LOCALE: Record<string, string> = {
   IN: "en_IN", US: "en_US", GB: "en_GB", AE: "en_AE",
@@ -35,7 +35,7 @@ export function SEOHelmet({
   const urlCode = (typeof window !== "undefined" ? window.location.pathname.split("/")[1] : "in").toUpperCase();
   const isIndia = urlCode === "IN" || !urlCode;
   const title = _title ?? POSITIONING;
-  const description = _description ?? "Case tracking and legal tools for advocates in Telangana and Andhra Pradesh.";
+  const description = _description ?? "Case tracking, legal research, and practical tools for advocates and clients.";
   const keywords = _keywords ?? DEFAULT_KEYWORDS;
   const fullTitle = truncateTitle(title.includes("LitigaForge") ? title : `${title} | LitigaForge`);
   // Self-referencing canonical: use the explicit prop when given, otherwise

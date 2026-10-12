@@ -3,7 +3,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 
 /**
  * Static, defensible trust signals shown beneath the hero social-proof bar.
- * Claims are deliberately limited to the supported Telangana/AP product,
+ * Claims are deliberately limited to the product's supported capabilities,
  * legal-information tools, and advocates verified by a human when available.
  * We deliberately never ship fabricated
  * testimonials, partner logos or review counts. Localized via a local UI
@@ -11,9 +11,9 @@ import { useLanguage } from "@/hooks/useLanguage";
  */
 const UI: Record<string, Record<string, string>> = {
   countries: {
-    en: "Built for Telangana & Andhra Pradesh", es: "Diseñado para Telangana y Andhra Pradesh", hi: "तेलंगाना और आंध्र प्रदेश के लिए बनाया गया",
+    en: "Built for legal work", es: "Diseñado para el trabajo legal", hi: "कानूनी काम के लिए बनाया गया",
     te: "తెలంగాణ మరియు ఆంధ్రప్రదేశ్ కోసం రూపొందించబడింది", ar: "مصمم لتيلانجانا وأندرا براديش",
-    de: "Für Telangana und Andhra Pradesh entwickelt", fr: "Conçu pour le Telangana et l’Andhra Pradesh",
+    de: "Für juristische Arbeit entwickelt", fr: "Conçu pour le travail juridique",
   },
   verified: {
     en: "Admin-checked enrolment badge where shown", es: "Inscripción revisada donde se indique", hi: "जहाँ दिखे वहाँ नामांकन जाँचा गया",

@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useAuth } from "@/lib/auth-context";
 import {
   Scale,
   Phone,
@@ -83,6 +84,7 @@ interface CountryLandingProps {
 }
 
 export default function CountryLanding({ countryCode = "IN" }: CountryLandingProps) {
+  const { user } = useAuth();
   const cc = countryCode.toUpperCase();
   const isIndia = cc === "IN";
   const { t, lang } = useLanguage(cc);

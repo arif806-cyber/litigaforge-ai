@@ -14,7 +14,7 @@ import { useCountry } from "@/hooks/useCountry";
 import { safeAuthNext } from "@/lib/auth-context";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
-  IN: { badge: "Telangana & Andhra Pradesh", heading: "Legal tools\nbuilt for your practice.", sub: "Track cases, research Indian judgments, analyze documents, and manage advocate work in one platform.", trust: "Bar enrolment checked by LitigaForge where an advocate is admin-verified" },
+  IN: { badge: "Legal tools for advocates", heading: "Legal tools\nbuilt for your practice.", sub: "Track cases, research Indian judgments, analyze documents, and manage advocate work in one platform.", trust: "Bar enrolment checked by LitigaForge where an advocate is admin-verified" },
 };
 
 type Role = "client" | "lawyer";

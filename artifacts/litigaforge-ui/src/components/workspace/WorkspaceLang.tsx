@@ -78,7 +78,7 @@ export const STRINGS: Record<Lang, WS> = {
     statAgents:      "Agents",
     noSessions:      "No workspaces yet",
     welcomeTitle:    "Welcome to Forge Workspace",
-    welcomeSub:      "Legal Intelligence Operating System for Telangana & AP",
+    welcomeSub:      "Legal Intelligence Operating System for advocates",
     createFirst:     "Create Your First Workspace",
     demoBtn:         "⚖️ Try Demo: Family Pension Matter",
     emptyTitle:      "Your canvas is empty",

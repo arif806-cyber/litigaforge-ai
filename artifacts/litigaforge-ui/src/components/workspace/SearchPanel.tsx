@@ -61,7 +61,6 @@ function ResultCard({
   const [expanded, setExpanded] = useState(false);
   const d      = node.data;
   const color  = courtColor(d.court);
-  const score  = d.impact_score ?? 70;
   const nCite  = d.num_citing   ?? 0;
 
   return (
@@ -99,22 +98,6 @@ function ResultCard({
               {nCite.toLocaleString()} cites
             </span>
           )}
-          {/* Impact score bar */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
-            <div style={{ width: 36, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${score}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                style={{
-                  height: "100%",
-                  background: score >= 80 ? "#22c55e" : score >= 60 ? "#f59e0b" : "#ef4444",
-                  borderRadius: 2,
-                }}
-              />
-            </div>
-            <span style={{ fontSize: 8.5, color: "#64748b", fontWeight: 700 }}>{score}</span>
-          </div>
         </div>
 
         {/* Title */}

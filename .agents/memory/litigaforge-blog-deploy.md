@@ -80,3 +80,8 @@ Related Articles live in `src/pages/blog/[slug].astro`: frontmatter `getCollecti
 - `astro.config.mjs` has **no sitemap** and **no Cloudflare adapter**; the screenshotted "sitemap crash + empty collection" was a STALE older build, not current `main`.
 - `index.astro` root redirect previously used `{html}` which Astro escapes → rendered escaped text; fixed to a normal template.
 - Verify-deploy trick: change a detectable always-served page (root redirect) and poll the live URL — distinguishes "not deploying" from "source broken."
+
+## Blog sitemap source
+The Cloudflare Worker does not provide `/sitemap.xml`; its `/blog/` index renders the full set of published guide links and visible publication dates. The app's dynamic sitemap should enumerate that index and any pagination without a country-only filter, and map each guide date into `<lastmod>`. A local check found all 533 guides and all 533 dates.
+**Why:** the content site is hosted separately, and relying on its missing XML sitemap or filtering its index by jurisdiction silently omits valid guides.
+**How to apply:** when changing the API-server sitemap crawler, verify the full index-derived count and that each article URL has a `<lastmod>` before calling it complete.
