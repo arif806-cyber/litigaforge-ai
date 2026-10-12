@@ -555,6 +555,8 @@ async def lifespan(app: FastAPI):
             )
         """)
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT FALSE")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT")
@@ -1081,6 +1083,9 @@ async def lifespan(app: FastAPI):
                     updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            await conn.execute(
+                "ALTER TABLE workspace_sessions ADD COLUMN IF NOT EXISTS is_demo_fixture BOOLEAN NOT NULL DEFAULT FALSE"
+            )
             await conn.execute(
                 "ALTER TABLE workspace_sessions ADD COLUMN IF NOT EXISTS last_ik_query TEXT"
             )

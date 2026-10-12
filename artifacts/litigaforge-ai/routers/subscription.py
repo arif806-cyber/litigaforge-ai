@@ -8,7 +8,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from auth import require_user
+from auth import require_non_demo_user
 from database import get_pool, SUBSCRIPTION_PLANS
 from payments import (
     create_order,
@@ -235,7 +235,7 @@ async def subscription_plans():
 
 
 @router.get("/subscription/status")
-async def subscription_status(current_user: dict = Depends(require_user)):
+async def subscription_status(current_user: dict = Depends(require_non_demo_user)):
     """Return the current plan and its server-controlled expiry."""
     await expire_subscription_for_user(current_user["id"])
     from database import fetchrow
@@ -258,7 +258,7 @@ async def subscription_status(current_user: dict = Depends(require_user)):
 
 
 @router.post("/subscription/create-order")
-async def subscription_create_order(req: CreateOrderRequest, current_user: dict = Depends(require_user)):
+async def subscription_create_order(req: CreateOrderRequest, current_user: dict = Depends(require_non_demo_user)):
     if req.tier not in PLAN_BASE_PRICES or req.billing_period not in BILLING_PERIOD_DAYS:
         raise HTTPException(status_code=400, detail="Invalid tier. Choose professional or advocate_pro")
     try:
@@ -276,7 +276,7 @@ async def subscription_create_order(req: CreateOrderRequest, current_user: dict 
 
 
 @router.post("/subscription/verify")
-async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(require_user)):
+async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(require_non_demo_user)):
     if req.tier not in PLAN_BASE_PRICES or req.billing_period not in BILLING_PERIOD_DAYS:
         raise HTTPException(status_code=400, detail="Invalid tier")
 
@@ -326,7 +326,7 @@ async def subscription_verify(req: VerifyRequest, current_user: dict = Depends(r
 
 
 @router.post("/subscription/start-trial")
-async def subscription_start_trial(current_user: dict = Depends(require_user)):
+async def subscription_start_trial(current_user: dict = Depends(require_non_demo_user)):
     try:
         await _start_advocate_pro_trial(current_user["id"])
     except ValueError as exc:
@@ -400,7 +400,7 @@ async def subscription_upgrade_deprecated():
 # ── Invoice generation ──────────────────────────────────────────────────────────────────
 
 @router.get("/subscription/invoices")
-async def subscription_invoices(current_user: dict = Depends(require_user)):
+async def subscription_invoices(current_user: dict = Depends(require_non_demo_user)):
     """Return invoice history for the current user."""
     from database import fetch
     rows = await fetch(
@@ -415,7 +415,7 @@ async def subscription_invoices(current_user: dict = Depends(require_user)):
 
 
 @router.get("/subscription/download-invoice/{subscription_id}")
-async def download_invoice(subscription_id: int, current_user: dict = Depends(require_user)):
+async def download_invoice(subscription_id: int, current_user: dict = Depends(require_non_demo_user)):
     """Invoices are intentionally disabled until company billing details are verified."""
     raise HTTPException(status_code=410, detail="Invoices will be available soon.")
 
@@ -516,7 +516,7 @@ body {{ font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 40px; ba
 # ── Prorated downgrade ────────────────────────────────────────────────────────────────
 
 @router.post("/subscription/downgrade")
-async def subscription_downgrade(current_user: dict = Depends(require_user)):
+async def subscription_downgrade(current_user: dict = Depends(require_non_demo_user)):
     """Cancel the active paid plan and immediately downgrade to free."""
     from database import get_pool
     pool = await get_pool()

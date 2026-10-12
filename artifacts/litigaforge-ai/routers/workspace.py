@@ -35,6 +35,7 @@ from llm import legal_llm
 from llm.nim_embed import aembed_canvas, vec_to_str
 from case_law_search import search_case_law
 from jobs import collect_sse, enqueue_job
+from demo_workspace import reset_demo_fixture
 
 logger = logging.getLogger("litigaforge.workspace")
 router = APIRouter(tags=["workspace"])
@@ -43,6 +44,22 @@ _SSE_HEARTBEAT_SECONDS = 5
 
 IK_TOKEN = os.getenv("INDIANKANOON_API_TOKEN", "")
 IK_BASE  = "https://api.indiankanoon.org"
+
+
+@router.post("/workspace/demo/reset")
+async def reset_demo_workspace(request: Request, user=Depends(require_user)):
+    """Restore only the explicitly tagged fictional fixture for a demo account."""
+    if not user.get("is_demo"):
+        raise HTTPException(403, "Demo reset is available only to the isolated demo advocate.")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        demo_ok = await conn.fetchval(
+            "SELECT is_demo FROM users WHERE id=$1", user["id"]
+        )
+        if not demo_ok:
+            raise HTTPException(403, "Demo account is no longer enabled.")
+        session_id = await reset_demo_fixture(conn, int(user["id"]))
+    return {"ok": True, "session_id": session_id, "message": "Fictional demo matter and sample documents restored."}
 
 
 async def _await_provider_with_heartbeats(awaitable):

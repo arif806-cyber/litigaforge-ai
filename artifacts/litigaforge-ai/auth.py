@@ -163,6 +163,18 @@ async def require_user(token: str | None = Depends(_token_dependency)) -> dict:
     user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if user.get("must_change_password"):
+        raise HTTPException(
+            status_code=403,
+            detail="Change your temporary password before using LitigaForge.",
+        )
+    return user
+
+
+async def require_non_demo_user(user: dict = Depends(require_user)) -> dict:
+    """Prevent a shared demonstration identity from creating financial records."""
+    if user.get("is_demo"):
+        raise HTTPException(status_code=403, detail="Billing is disabled for demo accounts.")
     return user
 
 

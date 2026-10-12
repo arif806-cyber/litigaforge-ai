@@ -214,7 +214,9 @@ async def google_oauth(request: Request, response: Response):
 
 
 @router.get("/auth/me")
-async def me(current_user: dict = Depends(require_user)):
+async def me(current_user: dict = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(401, "Authentication required")
     # Expiry is checked on every authenticated session refresh so a stale
     # subscription can never remain visible merely because the JWT is valid.
     # Keep the request bounded to this account; the scheduler handles all users.
@@ -224,6 +226,35 @@ async def me(current_user: dict = Depends(require_user)):
     if not fresh_user:
         raise HTTPException(401, "User account no longer exists")
     return fresh_user
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/auth/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    response: Response,
+    current_user: dict = Depends(get_current_user),
+):
+    """Allow a signed-in account to replace its temporary password."""
+    if not current_user:
+        raise HTTPException(401, "Authentication required")
+    if len(body.new_password) < 12:
+        raise HTTPException(400, "Choose a password with at least 12 characters.")
+    password_user = await get_user_by_email(current_user["email"])
+    if not password_user or not verify_password(body.current_password, password_user["password_hash"]):
+        raise HTTPException(400, "Current password is incorrect.")
+    await db_execute(
+        "UPDATE users SET password_hash=$1, must_change_password=FALSE WHERE id=$2",
+        hash_password(body.new_password), current_user["id"],
+    )
+    await delete_all_user_refresh_tokens(current_user["id"])
+    await _issue_tokens(current_user["id"], response)
+    return {"ok": True}
 
 
 class UpdateProfileRequest(BaseModel):

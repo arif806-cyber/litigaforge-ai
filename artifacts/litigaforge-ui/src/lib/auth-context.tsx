@@ -30,7 +30,11 @@ export function safeAuthNext(value: string | null | undefined): string | null {
 }
 
 // Navigate after a successful auth — honors any pre-login saved destination.
-function navigateAfterAuth(role: string) {
+function navigateAfterAuth(role: string, isDemo = false) {
+  if (isDemo) {
+    window.location.href = "/workspace";
+    return;
+  }
   try {
     const returnTo = safeAuthNext(sessionStorage.getItem("lf_return_to"));
     if (returnTo && returnTo !== "/login" && returnTo !== "/register" && returnTo !== "/signup") {
@@ -52,6 +56,8 @@ export interface User {
   cases_this_month: number;
   month_reset_date: string;
   is_superuser: boolean;
+  is_demo?: boolean;
+  must_change_password?: boolean;
   role: "client" | "lawyer" | "advocate";
   created_at: string;
   is_verified?: boolean;
@@ -70,6 +76,7 @@ interface AuthCtx {
   passkeyLogin: (user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -132,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     setUser(data.user);
-    navigateAfterAuth(data.user?.role ?? "client");
+    navigateAfterAuth(data.user?.role ?? "client", !!data.user?.is_demo);
   };
 
   const register = async (name: string, email: string, password: string, role: string = "client", recaptchaToken?: string) => {
@@ -157,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ credential, role }),
     });
     setUser(data.user);
-    navigateAfterAuth(data.user?.role ?? "client");
+    navigateAfterAuth(data.user?.role ?? "client", !!data.user?.is_demo);
   };
 
   const appleLogin = async (idToken: string, firstName?: string, lastName?: string, role: string = "client") => {
@@ -166,12 +173,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ id_token: idToken, first_name: firstName ?? null, last_name: lastName ?? null, role }),
     });
     setUser(data.user);
-    navigateAfterAuth(data.user?.role ?? "client");
+    navigateAfterAuth(data.user?.role ?? "client", !!data.user?.is_demo);
   };
 
   const passkeyLogin = (userData: User) => {
     setUser(userData);
-    navigateAfterAuth(userData.role ?? "client");
+    navigateAfterAuth(userData.role ?? "client", !!userData.is_demo);
   };
 
   const logout = async () => {
@@ -181,6 +188,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ignore server errors during logout
     }
     setUser(null);
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await authFetch("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    await refreshUser();
   };
 
   if (loading) {
@@ -199,9 +214,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, appleLogin, passkeyLogin, logout, refreshUser }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, appleLogin, passkeyLogin, logout, refreshUser, changePassword }}>
+      {user?.must_change_password ? (
+        <ForcedPasswordChange onSubmit={changePassword} onLogout={logout} email={user.email} />
+      ) : children}
     </AuthContext.Provider>
+  );
+}
+
+function ForcedPasswordChange({ onSubmit, onLogout, email }: {
+  onSubmit: (currentPassword: string, newPassword: string) => Promise<void>;
+  onLogout: () => Promise<void>;
+  email: string;
+}) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+    if (next.length < 12) return setError("Use at least 12 characters.");
+    if (next !== confirm) return setError("The new passwords do not match.");
+    setSaving(true);
+    try { await onSubmit(current, next); }
+    catch (e) { setError(e instanceof Error ? e.message : "Password change failed."); }
+    finally { setSaving(false); }
+  }
+  return (
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#07101f", color: "#e2e8f0" }}>
+      <form onSubmit={submit} style={{ width: "min(100%, 440px)", padding: 28, borderRadius: 18, background: "#101b2d", border: "1px solid #24364d" }}>
+        <h1 style={{ fontSize: 24, margin: "0 0 8px" }}>Set a new password</h1>
+        <p style={{ color: "#a9b7c9", lineHeight: 1.6 }}>This demo advocate account uses a temporary password. Change it before continuing. Signed in as {email}.</p>
+        {["Current temporary password", "New password", "Confirm new password"].map((label, i) => (
+          <label key={label} style={{ display: "block", marginTop: 14, fontSize: 13 }}>
+            {label}
+            <input aria-label={label} type="password" autoComplete={i === 0 ? "current-password" : "new-password"} required value={[current, next, confirm][i]} onChange={e => (i === 0 ? setCurrent(e.target.value) : i === 1 ? setNext(e.target.value) : setConfirm(e.target.value))} style={{ display: "block", boxSizing: "border-box", width: "100%", marginTop: 6, padding: 11, borderRadius: 8, background: "#081321", border: "1px solid #34445a", color: "white" }} />
+          </label>
+        ))}
+        {error && <p role="alert" style={{ color: "#fca5a5" }}>{error}</p>}
+        <button disabled={saving} style={{ width: "100%", marginTop: 18, padding: 12, border: 0, borderRadius: 8, color: "#06201e", background: "#35d0bd", fontWeight: 800 }}>{saving ? "Saving…" : "Change password"}</button>
+        <button type="button" onClick={() => void onLogout()} style={{ width: "100%", marginTop: 10, padding: 10, border: "1px solid #34445a", borderRadius: 8, color: "#cbd5e1", background: "transparent" }}>Sign out</button>
+      </form>
+    </main>
   );
 }
 

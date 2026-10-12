@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react";
 import { motion, AnimatePresence } from "framer-motion";
 import ForgeCanvas from "@/components/workspace/ForgeCanvas";
-import ForgeTour, { checkForgeToured } from "@/components/workspace/ForgeTour";
+import WorkspaceOnboarding from "@/components/workspace/WorkspaceOnboarding";
 import { useAuth } from "@/lib/auth-context";
 import AgentPanel, { type AgentState, type CollabEvent, type LiveJudgment } from "@/components/workspace/AgentPanel";
 import { RELATIONSHIP_TYPES, type RelType } from "@/components/workspace/EdgeTypes";
@@ -180,33 +180,21 @@ const NODE_PRESETS: Record<string, { type: string; emoji: string; data: Record<s
 
 const AGENT_IDS = ["research", "strategy", "risk", "drafting", "predictive"];
 
-// ─── Demo matter: Family Pension Claim (Lalitha Devi v. State of Telangana) ──
+// ─── Public read-only demonstration: fictional exercise only ──────────────────
 
-const DEMO_CASE_DESCRIPTION = "Family pension claim for the widow of a deceased Telangana State government employee (35 years' service). Pension rejected on procedural grounds — Form-5 filed 7 days beyond the 90-day window. Seeking quashing of the rejection order and direction to release pension with arrears before CAT Hyderabad Bench under Rule 54, CCS (Pension) Rules 1972.";
+const DEMO_CASE_DESCRIPTION = "FICTIONAL TRAINING EXERCISE ONLY. Aster Components LLP asks for interim relief regarding a hypothetical notice and proposed transfer. All people, entities, dates, documents, and events are invented. No authentic authority or court record is supplied.";
 
 const DEMO_NODES: Node[] = [
-  { id: "df1", type: "fact",     position: { x: 120,  y: 110 }, data: { label: "Deceased Employee — 35 Yrs Service", content: "Mr. Ramu Reddy, Section Officer, Telangana Revenue Dept. Died in service Aug 2023. Wife Lalitha Devi nominated as family pension beneficiary in his service records (Form-2).", impact_score: 85 } },
-  { id: "df2", type: "fact",     position: { x: 390,  y: 110 }, data: { label: "Pension Rejected — Procedural Delay", content: "Dept. rejected Form-5 (family pension claim) because it was filed 97 days after the date of death — 7 days beyond the prescribed 90-day window under Rule 80(5) CCS (Pension) Rules.", impact_score: 80 } },
-  { id: "di1", type: "issue",    position: { x: 660,  y: 110 }, data: { label: "Core Legal Issue — Rule 54 vs. Procedural Bar", description: "Whether a 7-day procedural delay in filing Form-5 can extinguish the statutory right to family pension vested under Rule 54 of CCS (Pension) Rules, 1972 read with Article 300-A of the Constitution of India.", impact_score: 93 } },
-  { id: "da1", type: "argument", position: { x: 120,  y: 290 }, data: { label: "Pension Is Property — Cannot Be Forfeited", content: "Under Art. 300-A, pension is property. A procedural delay of 7 days does not justify forfeiture of a substantive constitutional right. Supported by D.S. Nakara v. Union of India (1983).", strength: 88, impact_score: 90 } },
-  { id: "da2", type: "argument", position: { x: 390,  y: 290 }, data: { label: "No SCN Issued — Natural Justice Violated", content: "Department denied pension without issuing a Show Cause Notice or any opportunity to explain the 7-day delay. Rejection ex-parte squarely violates the audi alteram partem principle.", strength: 79, impact_score: 81 } },
-  { id: "dr1", type: "risk",     position: { x: 660,  y: 290 }, data: { label: "Limitation Risk — OA May Be Time-Barred", description: "If the formal rejection letter was issued more than 3 years ago, the Original Application before CAT may face a limitation objection under Section 21 of the Administrative Tribunals Act, 1985.", severity: 6, impact_score: 50 } },
-  { id: "ds1", type: "strategy", position: { x: 120,  y: 470 }, data: { label: "File OA Before CAT Hyderabad Bench", description: "File Original Application under Section 19 of the Administrative Tribunals Act. Primary prayer: quash the rejection order. Alternative prayer: direct release of pension with 6% p.a. interest on arrears. Annex PPO, Form-2 nomination, and rejection letter.", confidence: 82, impact_score: 85 } },
-  { id: "dj1", type: "judgment", position: { x: 390,  y: 470 }, data: { label: "State of Jharkhand v. Jitendra Kumar Srivastava", court: "Supreme Court of India", summary: "Pension is not a bounty — it is a hard-earned statutory right. Procedural lapses cannot defeat it. Courts must adopt a liberal construction in favour of the pensioner.", impact_score: 94, citation: "(2013) 2 SCC 114" } },
-  { id: "dj2", type: "judgment", position: { x: 660,  y: 470 }, data: { label: "D.S. Nakara v. Union of India", court: "Supreme Court of India", summary: "Pension is earned by years of service; it is a property right under Art. 300-A. Rules arbitrarily curtailing it are constitutionally suspect.", impact_score: 89, citation: "(1983) 1 SCC 305" } },
+  { id: "df1", type: "fact", position: { x: 120, y: 110 }, data: { label: "Hypothetical notice received", content: "Fictional training assertion: a notice was received on 12 March. No delivery proof is supplied.", impact_score: 45 } },
+  { id: "di1", type: "issue", position: { x: 390, y: 110 }, data: { label: "Was notice properly served?", description: "Practice question only. Identify the records needed to verify service.", impact_score: 50 } },
+  { id: "dr1", type: "risk", position: { x: 390, y: 290 }, data: { label: "Service evidence missing", description: "No dispatch receipt, tracking record, or affidavit is included in this invented exercise.", impact_score: 35 } },
+  { id: "ds1", type: "strategy", position: { x: 660, y: 200 }, data: { label: "Request underlying service record", description: "Practice step: list the records to request before drawing a conclusion.", impact_score: 55 } },
 ];
 
 const DEMO_EDGES: Edge[] = [
-  { id: "de-f1-i1", source: "df1", target: "di1", type: "default", animated: true },
-  { id: "de-f2-i1", source: "df2", target: "di1", type: "default", animated: true },
-  { id: "de-i1-a1", source: "di1", target: "da1", type: "default", animated: false },
-  { id: "de-i1-a2", source: "di1", target: "da2", type: "default", animated: false },
-  { id: "de-i1-r1", source: "di1", target: "dr1", type: "default", animated: false },
-  { id: "de-a1-j1", source: "da1", target: "dj1", type: "default", animated: false },
-  { id: "de-a1-j2", source: "da1", target: "dj2", type: "default", animated: false },
-  { id: "de-a1-s1", source: "da1", target: "ds1", type: "default", animated: false },
-  { id: "de-a2-s1", source: "da2", target: "ds1", type: "default", animated: false },
-  { id: "de-j1-s1", source: "dj1", target: "ds1", type: "default", animated: false },
+  { id: "de-f1-i1", source: "df1", target: "di1", type: "default" },
+  { id: "de-i1-r1", source: "di1", target: "dr1", type: "default" },
+  { id: "de-r1-s1", source: "dr1", target: "ds1", type: "default" },
 ];
 
 /** Public, non-persistent Workspace look-in. It intentionally has no API calls. */
@@ -589,38 +577,6 @@ export default function ForgeWorkspace() {
     } catch {
       addToast({ type: "error", message: "Could not create workspace", detail: "Check your connection and try again." });
       return null;
-    }
-  }
-
-  async function createDemoSession() {
-    try {
-      const res = await api("/workspace/sessions", {
-        method: "POST",
-        body: JSON.stringify({
-          title: "Family Pension Claim — Lalitha Devi v. State of Telangana",
-          case_description: DEMO_CASE_DESCRIPTION,
-        }),
-      });
-      const s = await res.json() as WorkspaceSession;
-      // Persist demo canvas immediately so it survives a reload
-      void api(`/workspace/sessions/${s.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ nodes_json: DEMO_NODES, edges_json: DEMO_EDGES, case_description: DEMO_CASE_DESCRIPTION }),
-      }).catch(() => {});
-      setSessions(prev => [s, ...prev]);
-      setSessionId(s.id);
-      setSessionTitle(s.title);
-      setCaseDescription(DEMO_CASE_DESCRIPTION);
-      setNodes(DEMO_NODES);
-      setEdges(DEMO_EDGES);
-      setAgentStates(makeDefaultAgentStates());
-      addToast({
-        type: "success",
-        message: "Demo matter loaded!",
-        detail: "Family Pension canvas is ready. Click ⚡ Analyze to run the 5 AI agents.",
-      });
-    } catch {
-      addToast({ type: "error", message: "Could not load demo workspace", detail: "Check your connection and try again." });
     }
   }
 
@@ -1795,13 +1751,23 @@ export default function ForgeWorkspace() {
 
   const tourShownRef = useRef(false);
   useEffect(() => {
-    if (sessionId && !tourShownRef.current && !checkForgeToured()) {
+    const seenKey = user ? `litigaforge:forge-workspace-guide:v1:seen:${user.id}` : "";
+    let seen = true;
+    try { seen = !seenKey || localStorage.getItem(seenKey) === "1"; } catch { seen = false; }
+    if (sessionId && user && !tourShownRef.current && !seen) {
       tourShownRef.current = true;
       const tid = setTimeout(() => setShowTour(true), 1200);
       return () => clearTimeout(tid);
     }
     return undefined;
-  }, [sessionId]);
+  }, [sessionId, user]);
+
+  function closeWorkspaceGuide() {
+    if (user) {
+      try { localStorage.setItem(`litigaforge:forge-workspace-guide:v1:seen:${user.id}`, "1"); } catch {}
+    }
+    setShowTour(false);
+  }
 
   // ─── Close add menu on outside click ──────────────────────────────────────────
 
@@ -2083,6 +2049,19 @@ export default function ForgeWorkspace() {
           {isMobile ? "💾" : (isSaving ? t.saving : t.save)}
         </button>
 
+        <button
+          type="button"
+          onClick={() => setShowTour(true)}
+          aria-label="Open workspace guide"
+          title="Workspace guide and interactive walkthrough"
+          style={{ ...toolbarBtn(false), flexShrink: 0, padding: isMobile ? "5px 9px" : undefined }}
+        >{isMobile ? "?" : "Guide"}</button>
+        {user.is_demo && (
+          <span style={{ color: "#fbbf24", fontSize: 9, fontWeight: 800, letterSpacing: ".04em", whiteSpace: "nowrap" }}>
+            {isMobile ? "DEMO" : "DEMO · FICTIONAL DATA"}
+          </span>
+        )}
+
         {/* Desktop: node count badge */}
         {!isMobile && nodes.length > 0 && (
           <div style={{
@@ -2268,7 +2247,6 @@ export default function ForgeWorkspace() {
             <NoSessionWelcome
               t={t}
               onCreate={() => setShowNewSessionDialog(true)}
-              onCreateDemo={() => void createDemoSession()}
             />
           )}
           {sessionId && nodes.length === 0 && (
@@ -2282,12 +2260,17 @@ export default function ForgeWorkspace() {
               onFocusInput={focusInput}
             />
           )}
-          {/* First-visit guided tour */}
-          <AnimatePresence>
-            {showTour && (
-              <ForgeTour onDismiss={() => setShowTour(false)} />
-            )}
-          </AnimatePresence>
+          <WorkspaceOnboarding
+            open={showTour}
+            onClose={closeWorkspaceGuide}
+            userId={user.id}
+            demoMode={user.is_demo}
+            onResetDemo={user.is_demo ? async () => {
+              const response = await api("/workspace/demo/reset", { method: "POST" });
+              if (!response.ok) throw new Error("Could not restore the demo fixture.");
+              window.location.reload();
+            } : undefined}
+          />
           {/* Mobile: floating "Agents" pill FAB */}
           {isMobile && sessionId && nodes.length > 0 && (
             <motion.button
