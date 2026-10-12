@@ -106,7 +106,7 @@ const QA_PALETTES = [
   { bg: "bg-primary/10",    border: "border-primary/20",   label: "text-primary",   value: "text-primary/80"   },
   { bg: "bg-emerald-500/10", border: "border-emerald-500/20", label: "text-emerald-400", value: "text-emerald-300" },
   { bg: "bg-red-500/10",    border: "border-red-500/20",    label: "text-red-400",    value: "text-red-300"    },
-  { bg: "bg-violet-500/10", border: "border-violet-500/20", label: "text-violet-400", value: "text-violet-300" },
+  { bg: "bg-primary/10", border: "border-primary/20", label: "text-primary", value: "text-primary" },
   { bg: "bg-primary/10",    border: "border-primary/20",    label: "text-primary/80", value: "text-primary/60" },
   { bg: "bg-rose-500/10",   border: "border-rose-500/20",   label: "text-rose-400",   value: "text-rose-300"   },
   { bg: "bg-teal-500/10",   border: "border-teal-500/20",   label: "text-teal-400",   value: "text-teal-300"   },
@@ -346,7 +346,7 @@ export default function CaseDetail() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-secondary" />
       </div>
     );
   }
@@ -370,7 +370,7 @@ export default function CaseDetail() {
     { icon: FileText, label: "Case created", date: c.created_at, color: "text-primary", bg: "bg-primary/10" },
     ...caseMatches.map((m: any) => ({
       icon: Users, label: `Proposal received from ${m.lawyer_name}`, date: m.created_at,
-      color: "text-violet-400", bg: "bg-violet-500/10",
+      color: "text-primary", bg: "bg-primary/10",
     })),
     ...acceptedMatches.map((m: any) => ({
       icon: Check, label: `Match accepted — ${m.lawyer_name}`, date: m.created_at,
@@ -477,16 +477,16 @@ export default function CaseDetail() {
 
               {/* AI Overview */}
               {aiOverview ? (
-                <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 via-primary/10 to-primary/5 p-5">
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/10 to-secondary/5 p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                         <Sparkles className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <span className="text-sm font-bold text-violet-200">AI Legal Overview</span>
+                      <span className="text-sm font-bold text-primary">AI Legal Overview</span>
                     </div>
                     <button onClick={() => setAiOverview(null)}
-                      className="text-[10px] text-violet-400 hover:text-violet-300 font-medium transition-colors">
+                      className="text-[10px] text-primary hover:text-primary/80 font-medium transition-colors">
                       Regenerate
                     </button>
                   </div>
@@ -496,7 +496,7 @@ export default function CaseDetail() {
                 <button
                   onClick={generateOverview}
                   disabled={loadingOverview}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 shadow-sm"
                 >
                   {loadingOverview
                     ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating overview…</>
@@ -546,7 +546,7 @@ export default function CaseDetail() {
                       <ul className="space-y-2.5">
                         {c.description.split(/[.?!]/).filter((s: string) => s.trim().length > 10).slice(0, 5).map((sentence: string, i: number) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-secondary mt-1.5 flex-shrink-0" />
                             <span>{sentence.trim()}</span>
                           </li>
                         ))}
@@ -572,7 +572,7 @@ export default function CaseDetail() {
                         <Share2 className="w-4 h-4" /> Share Case
                       </button>
                       <button onClick={handleDownload}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-violet-500/10 text-violet-400 text-sm font-medium transition-colors" data-testid="action-download">
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-primary/10 text-primary text-sm font-medium transition-colors" data-testid="action-download">
                         <Download className="w-4 h-4" /> Download Summary
                       </button>
                       <hr className="border-border" />
@@ -719,11 +719,11 @@ export default function CaseDetail() {
                     {aiAnalysis ? (
                       <div className="space-y-3">
                         <div className="flex items-start gap-2">
-                          <Sparkles className="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" />
+                          <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                           <p className="text-sm text-foreground leading-relaxed line-clamp-4">{aiAnalysis}</p>
                         </div>
                         <button onClick={() => setTab("proposals")}
-                          className="text-xs font-semibold text-violet-400 hover:text-violet-300 flex items-center gap-1 transition-colors">
+                          className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
                           View Full Analysis <ChevronRight className="w-3 h-3" />
                         </button>
                       </div>
@@ -821,8 +821,8 @@ export default function CaseDetail() {
                           </div>
                         </div>
                         {m.ai_explanation && (
-                          <div className="mt-3 p-3 bg-violet-500/10 rounded-xl">
-                            <p className="text-xs text-violet-300 leading-relaxed">{m.ai_explanation}</p>
+                          <div className="mt-3 p-3 bg-primary/10 rounded-xl">
+                            <p className="text-xs text-primary leading-relaxed">{m.ai_explanation}</p>
                           </div>
                         )}
                         {m.client_message && (
@@ -918,7 +918,7 @@ export default function CaseDetail() {
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 {t.unread_count > 0 && (
-                                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                                  <span className="w-5 h-5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center">
                                     {t.unread_count}
                                   </span>
                                 )}
@@ -984,26 +984,26 @@ export default function CaseDetail() {
               <div className="space-y-3">
                 <div>
                   <label className="text-sm font-medium text-foreground">Title</label>
-                  <input className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-blue-400" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
+                  <input className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground">Case Type</label>
-                  <select className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-blue-400 bg-card" value={editForm.case_type} onChange={e => setEditForm(f => ({ ...f, case_type: e.target.value }))}>
+                  <select className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary bg-card" value={editForm.case_type} onChange={e => setEditForm(f => ({ ...f, case_type: e.target.value }))}>
                     {CASE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground">Description</label>
-                  <textarea rows={4} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-blue-400 resize-none" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                  <textarea rows={4} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary resize-none" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium text-foreground">Location</label>
-                    <input className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-blue-400" value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} />
+                    <input className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary" value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Budget</label>
-                    <input className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-blue-400" value={editForm.budget_range} onChange={e => setEditForm(f => ({ ...f, budget_range: e.target.value }))} />
+                    <input className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary" value={editForm.budget_range} onChange={e => setEditForm(f => ({ ...f, budget_range: e.target.value }))} />
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm cursor-pointer text-muted-foreground">

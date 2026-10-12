@@ -243,7 +243,7 @@ export default function ClientDashboard() {
 
   const quickActions = [
     { label: t.post_case,    icon: Plus,       iconColor: "text-amber-400",   iconBg: "bg-amber-500/20",   bgColor: "bg-amber-500/10 border-amber-500/25",   action: () => setLocation("/post-case") },
-    { label: t.doc_analyzer, icon: FileSearch, iconColor: "text-violet-400",  iconBg: "bg-violet-500/20",  bgColor: "bg-violet-500/10 border-violet-500/25", action: () => setLocation("/review") },
+    { label: t.doc_analyzer, icon: FileSearch, iconColor: "text-primary",  iconBg: "bg-primary/15",  bgColor: "bg-primary/10 border-primary/25", action: () => setLocation("/review") },
     { label: t.legal_qa,     icon: Gavel,      iconColor: "text-emerald-400", iconBg: "bg-emerald-500/20", bgColor: "bg-emerald-500/10 border-emerald-500/25", action: () => setLocation("/ask") },
     { label: t.free_aid,     icon: Heart,      iconColor: "text-rose-400",    iconBg: "bg-rose-500/20",    bgColor: "bg-rose-500/10 border-rose-500/25",    action: () => setLocation("/legal-aid") },
   ];
@@ -268,7 +268,7 @@ export default function ClientDashboard() {
                   <span className="text-base font-bold text-white">{initials}</span>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-blue-300">{t.good_day}</p>
+                  <p className="text-xs font-medium text-secondary-foreground/75">{t.good_day}</p>
                   <h1 className="text-xl font-bold text-white leading-tight">{firstName}</h1>
                 </div>
               </div>
@@ -280,24 +280,24 @@ export default function ClientDashboard() {
             <div className="mt-4 flex items-center gap-5 border-t border-white/10 pt-4">
               <div>
                 <p className="text-2xl font-bold text-white tabular-nums leading-none">{activeCases}</p>
-                <p className="text-[10px] text-blue-300 mt-0.5">Your posted cases</p>
+                <p className="text-[10px] text-secondary-foreground/75 mt-0.5">Your posted cases</p>
               </div>
               <div className="w-px h-8 bg-white/15" />
               <div>
                 <p className="text-2xl font-bold text-amber-300 tabular-nums leading-none">{upcomingHearings}</p>
-                <p className="text-[10px] text-blue-300 mt-0.5">{t.hearings}</p>
+                <p className="text-[10px] text-secondary-foreground/75 mt-0.5">{t.hearings}</p>
               </div>
               <div className="w-px h-8 bg-white/15" />
               <div>
                 <p className="text-2xl font-bold text-emerald-300 tabular-nums leading-none">{connectedLawyers}</p>
-                <p className="text-[10px] text-blue-300 mt-0.5">{t.my_lawyers}</p>
+                <p className="text-[10px] text-secondary-foreground/75 mt-0.5">{t.my_lawyers}</p>
               </div>
               {pendingMatches > 0 && (
                 <>
                   <div className="w-px h-8 bg-white/15" />
                   <div>
-                    <p className="text-2xl font-bold text-violet-300 tabular-nums leading-none">{pendingMatches}</p>
-                    <p className="text-[10px] text-blue-300 mt-0.5">Proposals</p>
+                    <p className="text-2xl font-bold text-primary tabular-nums leading-none">{pendingMatches}</p>
+                    <p className="text-[10px] text-secondary-foreground/75 mt-0.5">Proposals</p>
                   </div>
                 </>
               )}
@@ -465,7 +465,7 @@ export default function ClientDashboard() {
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="py-12 flex flex-col items-center text-center">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
-                      <Briefcase className="w-7 h-7 text-blue-400" />
+                      <Briefcase className="w-7 h-7 text-secondary" />
                     </div>
                     <p className="font-semibold text-foreground text-base mb-1">No cases with a hired advocate yet</p>
                     <p className="text-sm text-muted-foreground mb-4 max-w-[240px] leading-relaxed">
@@ -546,7 +546,7 @@ export default function ClientDashboard() {
                               const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nStage: ${c.case_stage || "N/A"}\nDescription: ${c.description || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
                               const blob = new Blob([text], { type: "text/plain" });
                               const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `case-${c.id}.txt`; a.click();
-                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-violet-400 hover:bg-violet-500/10 transition-colors" title="Download">
+                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Download">
                               <Download className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => setShowCaseDetail(c)}
@@ -567,8 +567,8 @@ export default function ClientDashboard() {
               <div className="px-5 py-4 border-b border-border">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-500/10 border border-violet-500/20">
-                      <Sparkles className="w-4 h-4 text-violet-400" />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
+                      <Sparkles className="w-4 h-4 text-primary" />
                     </div>
                     <div>
                       <h2 className="font-semibold text-foreground text-[15px]">{t.match_proposals}</h2>
@@ -576,7 +576,7 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   {pendingMatches > 0 && (
-                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
                       {pendingMatches} pending
                     </span>
                   )}
@@ -614,8 +614,8 @@ export default function ClientDashboard() {
                 {!matchLoading && filteredMatches.length === 0 && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="py-12 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4">
-                      <Sparkles className="w-7 h-7 text-violet-400" />
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+                      <Sparkles className="w-7 h-7 text-primary" />
                     </div>
                     <p className="font-semibold text-foreground mb-1">No {matchTab} proposals</p>
                     <p className="text-sm text-muted-foreground max-w-[220px] leading-relaxed">
@@ -625,7 +625,7 @@ export default function ClientDashboard() {
                     </p>
                     {matchTab === "pending" && (
                       <button onClick={() => setLocation("/post-case")}
-                        className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-500 transition-colors">
+                        className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors">
                         <Plus className="w-3.5 h-3.5" /> Post a Case
                       </button>
                     )}
@@ -716,7 +716,7 @@ export default function ClientDashboard() {
               </div>
               <div className="p-2">
                 {[
-                  { label: "Document Analyzer", icon: FileText, href: "/review",    color: "text-violet-400", bg: "bg-violet-500/10" },
+                  { label: "Document Analyzer", icon: FileText, href: "/review",    color: "text-primary", bg: "bg-primary/10" },
                   { label: "Judgment Finder",   icon: Scale,    href: "/judgments", color: "text-primary",   bg: "bg-primary/10" },
                   { label: "Legal Q&A",         icon: Gavel,    href: "/ask",       color: "text-amber-400",  bg: "bg-amber-500/10" },
                   { label: "Free Legal Aid",    icon: Shield,   href: "/legal-aid", color: "text-emerald-400", bg: "bg-emerald-500/10" },
@@ -843,7 +843,7 @@ export default function ClientDashboard() {
             <div className="rounded-xl p-3 bg-muted/40 border border-border">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[12px] font-semibold text-foreground">Case Documents</p>
-                <label className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-primary/100 text-white cursor-pointer transition-colors">
+                <label className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer transition-colors">
                   <Upload className="w-3 h-3" />
                   {docUploading ? "Uploading…" : "Upload"}
                   <input type="file" className="hidden" disabled={docUploading}

@@ -59,7 +59,7 @@ export function LegalDisclaimerFooter({ className }: { className?: string }) {
   return (
     <footer
       className={cn(
-        "flex-shrink-0 w-full border-t border-border bg-card",
+        "public-site-footer flex-shrink-0 w-full border-t border-border bg-card",
         className
       )}
     >

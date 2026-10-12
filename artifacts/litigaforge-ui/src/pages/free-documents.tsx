@@ -33,11 +33,11 @@ const CATEGORIES = [
 
 const CAT_COLORS: Record<string, string> = {
   Property: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  Civil: "bg-blue-100 text-blue-700 border-blue-200",
+  Civil: "bg-secondary/10 text-secondary border-secondary/25",
   Family: "bg-pink-100 text-pink-700 border-pink-200",
   Business: "bg-amber-100 text-amber-700 border-amber-200",
   Consumer: "bg-orange-100 text-orange-700 border-orange-200",
-  Finance: "bg-violet-100 text-violet-700 border-violet-200",
+  Finance: "bg-primary/10 text-primary border-primary/25",
   General: "bg-muted text-slate-700 border-border",
 };
 

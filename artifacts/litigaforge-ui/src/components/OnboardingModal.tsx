@@ -25,8 +25,8 @@ const CLIENT_STEPS = [
     subtitle: "AI Legal Strategy Engine",
     description: "Describe your situation in plain language. Our AI synthesises a step-by-step legal roadmap — statutes, arguments, and court procedures — tailored to your jurisdiction.",
     icon: Hammer,
-    color: "bg-blue-100 text-blue-700",
-    iconBg: "bg-blue-50",
+    color: "bg-secondary/10 text-secondary",
+    iconBg: "bg-secondary/10",
   },
   {
     title: "Post a Case & Match",
@@ -52,16 +52,16 @@ const LAWYER_STEPS = [
     subtitle: "AI-powered contract review",
     description: "Upload contracts, petitions, or FIRs. Our AI flags risks, highlights missing clauses, and gives actionable recommendations in seconds.",
     icon: FileText,
-    color: "bg-violet-100 text-violet-700",
-    iconBg: "bg-violet-50",
+    color: "bg-primary/10 text-primary",
+    iconBg: "bg-primary/10",
   },
   {
     title: "CNR Tracking & Case Management",
     subtitle: "Stay on top of every case",
     description: "Track cases via CNR number, manage documents, set hearing reminders, and keep clients updated — all from one dashboard.",
     icon: Search,
-    color: "bg-blue-100 text-blue-700",
-    iconBg: "bg-blue-50",
+    color: "bg-secondary/10 text-secondary",
+    iconBg: "bg-secondary/10",
   },
 ];
 
@@ -165,8 +165,8 @@ export default function OnboardingModal({ role, onComplete, redirectTo }: Onboar
           <div className="flex items-center justify-center gap-2 pt-1">
             <div className={`px-3 py-1 rounded-full text-[11px] font-semibold border ${
               role === "lawyer"
-                ? "bg-violet-50 text-violet-700 border-violet-200"
-                : "bg-blue-50 text-blue-700 border-blue-200"
+                ? "bg-primary/10 text-primary border-primary/25"
+                : "bg-secondary/10 text-secondary border-secondary/25"
             }`}>
               {role === "lawyer" ? "Advocate Portal" : "Client Portal"}
             </div>

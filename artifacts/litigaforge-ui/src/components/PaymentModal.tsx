@@ -147,7 +147,7 @@ export function PaymentModal({ matchId, lawyerName, caseTitle, onClose, onSucces
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#F5F3FF" }}>
-                  <Lock className="w-4 h-4 text-violet-600" />
+                  <Lock className="w-4 h-4 text-primary" />
                 </div>
                 <span className="font-bold text-gray-900 text-sm">Connect with Lawyer</span>
               </div>
@@ -160,7 +160,7 @@ export function PaymentModal({ matchId, lawyerName, caseTitle, onClose, onSucces
           <div className="px-5 pb-5">
             {step === "loading" && (
               <div className="py-10 flex flex-col items-center gap-3">
-                <Loader2 className="w-7 h-7 animate-spin text-violet-500" />
+                <Loader2 className="w-7 h-7 animate-spin text-primary" />
                 <p className="text-sm text-gray-500">Calculating connection fee…</p>
               </div>
             )}
@@ -190,11 +190,11 @@ export function PaymentModal({ matchId, lawyerName, caseTitle, onClose, onSucces
 
                 <div className="rounded-xl p-3.5 mb-4 flex items-center justify-between" style={{ background: "#1a2744" }}>
                   <div>
-                    <p className="text-[10px] text-blue-200 mb-0.5">Platform Connection Fee</p>
+                    <p className="text-[10px] text-secondary-foreground/80 mb-0.5">Platform Connection Fee</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold text-white">{formatPaise(amountPaise)}</p>
-                     <p className="text-[10px] text-blue-300">one-time · incl. GST</p>
+                     <p className="text-[10px] text-secondary-foreground/80">one-time · incl. GST</p>
                   </div>
                 </div>
 
@@ -240,8 +240,8 @@ export function PaymentModal({ matchId, lawyerName, caseTitle, onClose, onSucces
                       </a>
                     )}
                     {revealedContact.email && (
-                      <a href={`mailto:${revealedContact.email}`} className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600 transition-colors">
-                        <Mail className="w-4 h-4 text-blue-400" /> {revealedContact.email}
+                      <a href={`mailto:${revealedContact.email}`} className="flex items-center gap-2 text-sm text-gray-700 hover:text-secondary transition-colors">
+                        <Mail className="w-4 h-4 text-secondary" /> {revealedContact.email}
                       </a>
                     )}
                     {!revealedContact.phone && !revealedContact.email && (

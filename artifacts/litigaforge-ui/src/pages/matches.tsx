@@ -102,7 +102,7 @@ export default function Matches() {
         <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "hsl(var(--border))" }}>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(139,92,246,0.12)" }}>
-              <Sparkles className="w-4 h-4 text-violet-600" />
+              <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <h2 className="font-bold text-foreground text-sm">{t.match_proposals}</h2>
             <span className="text-[11px] text-muted-foreground">({matches.length})</span>

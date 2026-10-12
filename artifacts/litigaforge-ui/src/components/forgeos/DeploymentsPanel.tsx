@@ -59,7 +59,7 @@ export function DeploymentsPanel({
                 rel="noopener noreferrer"
                 className="flex items-center gap-2.5 rounded-lg border border-border p-2.5 hover:bg-muted/40 transition-colors"
               >
-                <GitPullRequest className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <GitPullRequest className="w-4 h-4 text-secondary flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">
                     #{pr.number} {pr.title} {pr.draft && <span className="text-[10px] text-muted-foreground">(draft)</span>}

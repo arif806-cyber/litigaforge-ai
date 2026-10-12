@@ -37,3 +37,4 @@
 - [LitigaForge demo account boundary](litigaforge-demo-account.md) — demo fixtures stay explicitly fictional and isolated; resets may touch only tagged demo workspace data.
 - [LitigaForge advocate earnings](litigaforge-advocate-earnings.md) — earnings use advocate-entered fees for accepted cases and must be labeled self-reported, not payment-verified.
 - [Forge Workspace access](litigaforge-workspace-access.md) — Forge Workspace is an advocate feature; retain prior client access, while ForgeOS stays admin-only.
+- [LitigaForge visual tokens](litigaforge-visual-tokens.md) — shared gold/teal semantic tokens govern the UI; keep blue/violet only for Forge Workspace node types and leave Astro /blog independent.

@@ -29,13 +29,13 @@ export function ActivityFeed({ activity }: { activity: ForgeActivityItem[] }) {
           <div
             className={cn(
               "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-              item.kind === "audit" ? "bg-blue-500/15" : "bg-violet-500/15"
+              item.kind === "audit" ? "bg-secondary/15" : "bg-primary/15"
             )}
           >
             {item.kind === "audit" ? (
-              <Activity className="w-3 h-3 text-blue-500" />
+              <Activity className="w-3 h-3 text-secondary" />
             ) : (
-              <GitCommitHorizontal className="w-3 h-3 text-violet-500" />
+              <GitCommitHorizontal className="w-3 h-3 text-primary" />
             )}
           </div>
           <div className="min-w-0 flex-1">

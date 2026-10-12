@@ -109,7 +109,7 @@ export function LawyerMatchCard({
           <Link href={`/messages?match=${match.id}`}>
             <button
               data-testid={`${testIdPrefix}-chat-${match.id}`}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors whitespace-nowrap"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors whitespace-nowrap"
             >
               <MessageSquare className="w-3 h-3" /> Chat
             </button>

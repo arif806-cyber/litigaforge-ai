@@ -15,6 +15,7 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { GlobalCommandPalette } from "@/components/GlobalCommandPalette";
 import { viewTransitionAroundNav } from "@/lib/view-transitions";
 import { SEOHelmet } from "@/components/SEOHelmet";
+import { PublicPageFrame } from "@/components/public-site-header";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import {
   getAppBase,
@@ -387,15 +388,15 @@ function Router() {
         {import.meta.env.DEV && DesignSystem && (
           <Route path="/design-system" component={DesignSystem} />
         )}
-        <Route path="/privacy" component={PrivacyPolicy} />
-        <Route path="/privacy-policy" component={PrivacyPolicy} />
-        <Route path="/terms" component={TermsOfService} />
-        <Route path="/about" component={About} />
-        <Route path="/contact" component={Contact} />
-        <Route path="/pricing" component={PricingRoute} />
+        <Route path="/privacy"><PublicPageFrame><PrivacyPolicy /></PublicPageFrame></Route>
+        <Route path="/privacy-policy"><PublicPageFrame><PrivacyPolicy /></PublicPageFrame></Route>
+        <Route path="/terms"><PublicPageFrame><TermsOfService /></PublicPageFrame></Route>
+        <Route path="/about"><PublicPageFrame><About /></PublicPageFrame></Route>
+        <Route path="/contact"><PublicPageFrame><Contact /></PublicPageFrame></Route>
+        <Route path="/pricing"><PublicPageFrame><PricingRoute /></PublicPageFrame></Route>
         <Route path="/digest" component={Digest} />
         <Route path="/profile/:username/research" component={ProfileResearch} />
-        <Route path="/refund-policy" component={RefundPolicy} />
+        <Route path="/refund-policy"><PublicPageFrame><RefundPolicy /></PublicPageFrame></Route>
         <Route path="/us-demand-letter" component={UsDemandLetterRoute} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Login} />
@@ -511,7 +512,7 @@ function FirstVisitDisclaimer() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>

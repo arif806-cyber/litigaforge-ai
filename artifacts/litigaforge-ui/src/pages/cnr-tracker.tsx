@@ -25,7 +25,7 @@ const EVENT_ICONS: Record<string, { color: string; Icon: React.ElementType }> = 
   hearing_scheduled: { Icon: Calendar,     color: "#F5B754" },
   hearing_adjourned: { Icon: Clock,        color: "#8B5CF6" },
   order_passed:      { Icon: Gavel,        color: "#34D399" },
-  status_changed:    { Icon: Activity,     color: "#60A5FA" },
+  status_changed:    { Icon: Activity,     color: "var(--secondary-oklch)" },
   case_disposed:     { Icon: CheckCircle2, color: "#34D399" },
   default:           { Icon: Info,         color: "#8A8FA3" },
 };
@@ -44,7 +44,7 @@ function StatusBadge({ status }: { status?: string }) {
       ? { bg: "rgba(245,183,84,0.12)",   color: "#F5B754", border: "rgba(245,183,84,0.25)"  }
       : s.includes("fresh") || s.includes("new")
       ? { bg: "rgba(139,92,246,0.12)",   color: "#8B5CF6", border: "rgba(139,92,246,0.25)"  }
-      : { bg: "rgba(96,165,250,0.12)",   color: "#60A5FA", border: "rgba(96,165,250,0.25)"  };
+      : { bg: "color-mix(in oklch, var(--secondary-oklch) 12%, transparent)", color: "var(--secondary-oklch)", border: "color-mix(in oklch, var(--secondary-oklch) 25%, transparent)" };
 
   return (
     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
@@ -200,7 +200,7 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
   if (!data.latest_status && data.livetrack_tier !== undefined) return (
     <div className="rounded-xl p-4 text-center space-y-2"
       style={{ background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.12)" }}>
-      <AlertTriangle className="w-4 h-4 text-blue-400/60 mx-auto" />
+      <AlertTriangle className="w-4 h-4 text-secondary/60 mx-auto" />
       <p className="text-xs text-white/40">
         {refreshState.status === "pending"
           ? "The eCourts India Partner API refresh is in progress."
@@ -209,7 +209,7 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
             : "No successful eCourts India Partner API response is available for this case yet."}
       </p>
       <p className="text-[11px] text-white/25">
-        Use the <span className="text-blue-400/70">Retry</span> button on the case card to request a fresh Partner API check.
+        Use the <span className="text-secondary">Retry</span> button on the case card to request a fresh Partner API check.
       </p>
     </div>
   );
@@ -234,11 +234,11 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
       )}
       <div className="rounded-xl p-4 text-center space-y-2.5"
         style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
-        <Lock className="w-5 h-5 text-violet-400 mx-auto" />
+        <Lock className="w-5 h-5 text-primary mx-auto" />
         <p className="text-xs text-white/50 max-w-xs mx-auto">{data.upgrade_hint}</p>
         <Link href="/subscription">
           <Button size="sm" className="text-xs"
-            style={{ background: "rgba(139,92,246,0.2)", color: "#A78BFA", border: "1px solid rgba(139,92,246,0.3)" }}>
+            style={{ background: "color-mix(in oklch, var(--primary-oklch) 20%, transparent)", color: "var(--primary-oklch)", border: "1px solid color-mix(in oklch, var(--primary-oklch) 30%, transparent)" }}>
             <Sparkles className="w-3 h-3 mr-1.5" />Upgrade to LiveTrack
           </Button>
         </Link>
@@ -360,8 +360,8 @@ function TrackedCaseCard({ tc }: { tc: any }) {
               background: refreshFailed ? "rgba(248,113,113,0.08)" : "rgba(96,165,250,0.07)",
               border: `1px solid ${refreshFailed ? "rgba(248,113,113,0.2)" : "rgba(96,165,250,0.15)"}`,
             }}>
-            <span className={`text-[11px] flex items-start gap-1.5 ${refreshFailed ? "text-red-300/90" : "text-blue-300/80"}`}>
-              <AlertTriangle className={`w-3 h-3 shrink-0 mt-0.5 ${refreshFailed ? "text-red-400" : "text-blue-400/70"}`} />
+            <span className={`text-[11px] flex items-start gap-1.5 ${refreshFailed ? "text-red-300/90" : "text-secondary-foreground/75"}`}>
+              <AlertTriangle className={`w-3 h-3 shrink-0 mt-0.5 ${refreshFailed ? "text-red-400" : "text-secondary"}`} />
               <span>
                 {refreshFailed
                   ? `Latest eCourts India Partner API refresh failed. Previously saved data is unchanged. ${refreshState.error || ""}`
@@ -375,7 +375,7 @@ function TrackedCaseCard({ tc }: { tc: any }) {
                 data-testid={`retry-${tc.cnr}`}
                 onClick={() => retryMutation.mutate(tc.id)}
                 disabled={retryMutation.isPending}
-                className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors
+                className="text-[11px] font-semibold text-secondary hover:text-secondary/80 transition-colors
                   flex items-center gap-1 shrink-0 disabled:opacity-50">
                 {retryMutation.isPending
                   ? <><Loader2 className="w-3 h-3 animate-spin" />Fetching…</>
@@ -391,7 +391,7 @@ function TrackedCaseCard({ tc }: { tc: any }) {
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(96,165,250,0.1)" }}>
-            <CalendarSearch className="w-5 h-5 text-blue-400" />
+            <CalendarSearch className="w-5 h-5 text-secondary" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -492,10 +492,9 @@ export default function CnrTracker() {
       <SEOHelmet title="CNR Case Tracker" description="Track live court cases via eCourts India." canonical="/cnr-tracker" />
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <CalendarSearch className="w-12 h-12 text-white/20 mx-auto" />
-          <h2 className="text-xl font-semibold text-white">Sign in to track cases</h2>
-          <Button onClick={() => (window.location.href = "/login")}
-            style={{ background: "#F5B754", color: "#0A0B10" }}>Sign in</Button>
+          <CalendarSearch className="w-12 h-12 text-muted-foreground/40 mx-auto" />
+          <h2 className="text-xl font-semibold text-foreground">Sign in to track cases</h2>
+          <Button onClick={() => (window.location.href = "/login")}>Sign in</Button>
         </div>
       </div>
     </>
@@ -540,10 +539,10 @@ export default function CnrTracker() {
           {user.subscription_tier === "free" && cases.length > 0 && (
             <div className="flex items-start gap-3 rounded-xl px-4 py-3"
               style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.18)" }}>
-              <Sparkles className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-violet-300">
+              <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-xs text-primary">
                 Free plan shows latest status only.{" "}
-                <Link href="/subscription" className="underline underline-offset-2 hover:text-violet-200">
+                <Link href="/subscription" className="underline underline-offset-2 hover:text-primary/80">
                   Upgrade to LiveTrack
                 </Link>{" "}
                 for full event history, hearing alerts &amp; AI predictions.

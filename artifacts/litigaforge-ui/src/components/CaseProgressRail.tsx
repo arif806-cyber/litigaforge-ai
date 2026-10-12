@@ -33,7 +33,7 @@ export default function CaseProgressRail({ currentStage }: CaseProgressRailProps
                   className={[
                     "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 select-none",
                     isDone   ? "bg-emerald-500 text-white shadow-sm" : "",
-                    isActive ? "bg-blue-600 text-white ring-4 ring-blue-100 animate-pulse" : "",
+                    isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20 animate-pulse" : "",
                     !isDone && !isActive ? "bg-muted text-muted-foreground" : "",
                   ].join(" ")}
                 >
@@ -42,7 +42,7 @@ export default function CaseProgressRail({ currentStage }: CaseProgressRailProps
                 <span
                   className={[
                     "text-[10px] mt-1.5 leading-tight text-center",
-                    isActive ? "font-bold text-blue-600" : "text-muted-foreground",
+                    isActive ? "font-bold text-primary" : "text-muted-foreground",
                   ].join(" ")}
                 >
                   {stage.label}

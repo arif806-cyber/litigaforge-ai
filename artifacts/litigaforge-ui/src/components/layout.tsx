@@ -20,6 +20,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Translation } from "@/i18n";
 import { useMessageNotifications } from "@/hooks/use-message-notifications";
+import { PublicSiteHeader } from "@/components/public-site-header";
 
 interface NavEntry {
   href: string;
@@ -112,8 +113,8 @@ function NavItem({
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent",
         ...(highlight && !active ? {
-          background: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(14,116,144,0.08))",
-          border: "1px solid rgba(20,184,166,0.25)",
+          background: "color-mix(in oklch, var(--secondary) 12%, transparent)",
+          border: "1px solid color-mix(in oklch, var(--secondary) 30%, transparent)",
         } : {}),
       }}
       className={cn(
@@ -121,14 +122,14 @@ function NavItem({
         active
           ? "bg-sidebar-primary text-sidebar-primary-foreground font-bold shadow-sm active:opacity-80"
           : highlight
-            ? "font-bold hover:bg-teal-500/10 active:bg-teal-500/10"
+            ? "font-bold hover:bg-secondary/10 active:bg-secondary/10"
             : "font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
       )}>
       <Icon className={cn(
         "w-4 h-4 flex-shrink-0",
-        active ? "text-sidebar-primary-foreground" : highlight ? "text-teal-400" : "group-hover:text-sidebar-foreground"
+        active ? "text-sidebar-primary-foreground" : highlight ? "text-secondary" : "group-hover:text-sidebar-foreground"
       )} />
-      <span className={cn("tracking-wide flex-1", highlight && !active ? "text-teal-400" : "")}>{label}</span>
+      <span className={cn("tracking-wide flex-1", highlight && !active ? "text-secondary" : "")}>{label}</span>
       {badge != null && badge > 0 && !active && (
         <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
           {badge > 99 ? "99+" : badge}
@@ -136,7 +137,7 @@ function NavItem({
       )}
       {highlight && !active && !badge && (
         <span className="ml-auto text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded"
-          style={{ background: "rgba(20,184,166,0.18)", color: "#2dd4bf" }}>
+          style={{ background: "color-mix(in oklch, var(--secondary) 20%, transparent)", color: "var(--secondary-foreground)" }}>
           NEW
         </span>
       )}
@@ -323,7 +324,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
     <>
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 h-[68px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-2 z-30"
-        style={{ boxShadow: "0 -1px 0 rgba(255,255,255,0.06), 0 -8px 32px rgba(0,0,0,0.4)" }}
+        style={{ boxShadow: "0 -1px 0 color-mix(in oklch, var(--foreground) 8%, transparent), 0 -8px 32px color-mix(in oklch, var(--background) 90%, transparent)" }}
       >
         {/* Left 2 primary tabs */}
         {mobileNav.map(({ href, icon: Icon, tKey, label }) => {
@@ -350,9 +351,9 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
         >
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#F5B754,#E09830)", boxShadow: "0 4px 16px rgba(245,183,84,0.40)" }}
+            style={{ background: "linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 72%, var(--foreground)))", boxShadow: "0 4px 16px color-mix(in oklch, var(--primary) 40%, transparent)" }}
           >
-            <Plus className="w-6 h-6 text-[#0A0B10]" strokeWidth={2.5} />
+            <Plus className="w-6 h-6 text-primary-foreground" strokeWidth={2.5} />
           </div>
           <span className="text-[10px] font-semibold text-primary leading-none mt-0.5">
             {isLawyer ? "Add" : "Post"}
@@ -421,11 +422,11 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
                         className={cn(
                           "flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors active:scale-95",
                           active ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground",
-                          item.highlight && !active ? "border border-teal-500/20" : ""
+                          item.highlight && !active ? "border border-secondary/20" : ""
                         )}
                       >
-                        <Icon className={cn("w-5 h-5", active ? "text-primary" : item.highlight ? "text-teal-400" : "text-muted-foreground")} />
-                        <span className={cn("text-[11px] font-medium leading-tight", item.highlight && !active ? "text-teal-400" : "")}>{label}</span>
+                        <Icon className={cn("w-5 h-5", active ? "text-primary" : item.highlight ? "text-secondary" : "text-muted-foreground")} />
+                        <span className={cn("text-[11px] font-medium leading-tight", item.highlight && !active ? "text-secondary" : "")}>{label}</span>
                       </Link>
                     );
                   })}
@@ -472,9 +473,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   useMessageNotifications();
+  const publicSurface = !user && !isWorkspace && /^(\/ask|\/review|\/judgments(?:\/|$)|\/lawyers(?:\/|$)|\/legal-aid|\/free-documents)/.test(location);
+
+  if (publicSurface) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
+        <PublicSiteHeader mobileMenu />
+        <main className="min-h-[50vh] flex-1">{children}</main>
+        <LegalDisclaimerFooter />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
+    <div className="lf-app-layout flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* Mobile top header */}
       <header className="flex-shrink-0 border-b border-border bg-card z-20 flex items-center justify-between px-4 h-14 shadow-sm md:hidden">
         <div className="flex items-center gap-2.5">

@@ -190,26 +190,26 @@ export default function Login() {
 
       {/* Left: Hero panel — navy dark */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #1a1b2e 0%, #0d0e1a 60%, #0A0B10 100%)" }}>
+        style={{ background: "linear-gradient(160deg, var(--sidebar), var(--background))" }}>
 
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+          style={{ backgroundImage: "linear-gradient(color-mix(in oklch, var(--foreground) 80%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, var(--foreground) 80%, transparent) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
 
         {/* Glow orbs */}
         <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
+          style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--primary) 9%, transparent) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
         <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
+          style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--secondary) 8%, transparent) 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
 
         {/* Logo */}
         <div className="relative flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.25)" }}>
-            <Scale className="w-5 h-5" style={{ color: "#f59e0b" }} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "color-mix(in oklch, var(--primary) 15%, transparent)", border: "1px solid color-mix(in oklch, var(--primary) 28%, transparent)" }}>
+            <Scale className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <span className="font-bold text-white text-sm tracking-tight">LitigaForge</span>
-            <span className="font-bold text-sm" style={{ color: "#f59e0b" }}> AI</span>
+            <span className="font-bold text-foreground text-sm tracking-tight">LitigaForge</span>
+            <span className="font-bold text-sm text-primary"> AI</span>
           </div>
         </div>
 
@@ -217,17 +217,17 @@ export default function Login() {
         <div className="relative space-y-6">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full"
-              style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
+              style={{ background: "color-mix(in oklch, var(--primary) 12%, transparent)", color: "var(--primary)", border: "1px solid color-mix(in oklch, var(--primary) 24%, transparent)" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse inline-block" />
               {copy.badge}
             </div>
-            <h2 className="text-3xl font-extrabold text-white leading-tight">
+            <h2 className="text-3xl font-extrabold text-foreground leading-tight">
               {headingLines[0]}<br />
-              <span style={{ background: "linear-gradient(90deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              <span style={{ background: "linear-gradient(90deg, var(--primary), var(--secondary))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                 {headingLines[1] ?? ""}
               </span>
             </h2>
-            <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               {copy.sub}
             </p>
           </div>
@@ -241,10 +241,10 @@ export default function Login() {
             ].map(({ n, label }, i, arr) => (
               <div key={label} className="flex items-center gap-5">
                 <div className="text-center">
-                  <p className="text-lg font-extrabold text-white">{n}</p>
-                  <p className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+                  <p className="text-lg font-extrabold text-foreground">{n}</p>
+                  <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
                 </div>
-                {i < arr.length - 1 && <div className="w-px h-7" style={{ background: "rgba(255,255,255,0.12)" }} />}
+                {i < arr.length - 1 && <div className="w-px h-7" style={{ background: "color-mix(in oklch, var(--foreground) 12%, transparent)" }} />}
               </div>
             ))}
           </div>
@@ -258,14 +258,14 @@ export default function Login() {
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-2.5">
                 <span className="text-[13px]">{icon}</span>
-                <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.5)" }}>{text}</span>
+                <span className="text-[12px] text-muted-foreground">{text}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Footer */}
-        <p className="relative text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+        <p className="relative text-[11px] text-muted-foreground">
           {copy.trust}
         </p>
       </div>
@@ -557,7 +557,7 @@ export default function Login() {
                 type="submit"
                 data-testid="create-account-btn"
                 disabled={loading || !email || !password || (!isSignIn && !name) || (!isSignIn && !consent)}
-                className="w-full h-12 rounded-xl font-semibold tracking-wide flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md bg-primary text-white"
+                className="w-full h-12 rounded-xl font-semibold tracking-wide flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md bg-primary text-primary-foreground"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                 {loading ? (isSignIn ? "Signing in…" : "Creating account…") : isSignIn ? "Sign In" : "Create Account"}

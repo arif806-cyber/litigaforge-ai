@@ -36,7 +36,7 @@ export default function TermsOfService() {
             <p className="text-sm text-muted-foreground">Effective: {EFFECTIVE_DATE} · Last reviewed: {EFFECTIVE_DATE}</p>
           </div>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-900">
+        <div className="bg-secondary/10 border border-secondary/25 text-foreground rounded-xl px-4 py-3 text-sm">
            <strong>Please read carefully.</strong> By creating an account or using LitigaForge, you agree to these Terms. If you do not agree, do not use the platform.
         </div>
       </div>

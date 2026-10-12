@@ -12,7 +12,7 @@ export default function LawyerFunnelStepper({ currentIndex }: LawyerFunnelSteppe
           key={s}
           title={s}
           className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${
-            i <= currentIndex ? "bg-blue-600" : "bg-gray-200"
+            i <= currentIndex ? "bg-primary" : "bg-muted"
           }`}
         />
       ))}

@@ -96,7 +96,7 @@ export default function IncomingCaseFeed({
         onTouchEnd={handleEnd}
       >
         <div className="flex justify-between items-start mb-2">
-          <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+          <span className="text-xs font-semibold bg-secondary/10 text-secondary border border-secondary/25 px-2 py-0.5 rounded-full">
             {current.category}
           </span>
           <ResponseTimerBadge requestedAt={current.created_at} />

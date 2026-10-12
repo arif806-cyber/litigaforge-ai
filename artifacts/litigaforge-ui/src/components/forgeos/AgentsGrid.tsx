@@ -29,10 +29,10 @@ function AgentCard({ agent }: { agent: ForgeAgent }) {
           <div
             className={cn(
               "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-lg",
-              isActive ? "bg-violet-500/15" : "bg-muted"
+              isActive ? "bg-primary/15" : "bg-muted"
             )}
           >
-            {agent.avatar || <Bot className={cn("w-4 h-4", isActive ? "text-violet-500" : "text-muted-foreground")} />}
+            {agent.avatar || <Bot className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">{agent.name}</p>
@@ -60,7 +60,7 @@ function AgentCard({ agent }: { agent: ForgeAgent }) {
           </div>
           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full rounded-full bg-violet-500 transition-all duration-500"
+              className="h-full rounded-full bg-primary transition-all duration-500"
               style={{ width: `${Math.max(4, agent.progress)}%` }}
             />
           </div>

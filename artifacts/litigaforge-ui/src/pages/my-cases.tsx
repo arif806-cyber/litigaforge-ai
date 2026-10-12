@@ -107,7 +107,7 @@ export default function MyCases() {
         {/* Tabs + Search */}
         <div className="px-5 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "hsl(var(--border))" }}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(139,92,246,0.12)" }}><FileText className="w-4 h-4 text-violet-400" /></div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10"><FileText className="w-4 h-4 text-primary" /></div>
             <h2 className="font-bold text-foreground text-sm">{t.my_cases}</h2>
             <span className="text-[11px] text-muted-foreground/60">({allCases.length})</span>
           </div>
@@ -161,7 +161,7 @@ export default function MyCases() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
-                      <FileText className="w-4 h-4 text-violet-400" />
+                      <FileText className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">

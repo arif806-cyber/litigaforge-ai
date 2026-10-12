@@ -203,7 +203,7 @@ export default function ForgeOsPage() {
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <Cpu className="w-6 h-6 text-violet-500" />
+          <Cpu className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-bold">ForgeOS Command Center</h1>
         </div>
         <div className="flex items-center gap-3">

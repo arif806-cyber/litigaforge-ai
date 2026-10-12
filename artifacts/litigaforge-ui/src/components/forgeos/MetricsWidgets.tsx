@@ -45,7 +45,7 @@ export function MetricsRow({
         label="AI Spend (all-time)"
         value={`$${aiCost.total_cost_usd.toFixed(2)}`}
         sub={`$${aiCost.cost_today_usd.toFixed(2)} today · ${aiCost.total_tokens.toLocaleString()} tokens`}
-        accent="bg-violet-500/15 text-violet-500"
+        accent="bg-primary/15 text-primary"
       />
       <KpiCard
         testId="forgeos-kpi-agents"
@@ -61,7 +61,7 @@ export function MetricsRow({
         label="Missions Running"
         value={`${missionCounts.running}`}
         sub={`${missionCounts.total} total · ${missionCounts.completed} completed`}
-        accent="bg-blue-500/15 text-blue-500"
+        accent="bg-secondary/15 text-secondary"
       />
     </div>
   );

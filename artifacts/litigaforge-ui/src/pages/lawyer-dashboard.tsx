@@ -101,7 +101,7 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
         {item.badge && (
           <span className={cn(
             "text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none",
-            item.badge === "AI" ? "bg-amber-400 text-[#0A0B10]" : "bg-blue-500 text-white"
+            item.badge === "AI" ? "bg-amber-400 text-primary-foreground" : "bg-secondary text-secondary-foreground"
           )}>{item.badge}</span>
         )}
       </Link>
@@ -450,7 +450,7 @@ export default function LawyerDashboard() {
                       {done ? (
                         <Check className="w-3 h-3 text-emerald-500" />
                       ) : active ? (
-                        <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
+                        <Loader2 className="w-3 h-3 text-secondary animate-spin" />
                       ) : (
                         <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
                       )}
@@ -889,9 +889,9 @@ export default function LawyerDashboard() {
                         <div key={item.id} className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                             style={{ background: isMatch ? "rgba(139,92,246,0.12)" : isAccepted ? "rgba(52,211,153,0.12)" : "rgba(139,92,246,0.12)" }}>
-                            {isMatch    && <Users       className="w-3.5 h-3.5 text-violet-400" />}
+                            {isMatch    && <Users       className="w-3.5 h-3.5 text-primary" />}
                             {isAccepted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-                            {isDoc      && <FileText    className="w-3.5 h-3.5 text-violet-500" />}
+                            {isDoc      && <FileText    className="w-3.5 h-3.5 text-primary" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-semibold text-foreground leading-tight">{item.title}</p>
@@ -1023,7 +1023,7 @@ export default function LawyerDashboard() {
                       {c.cnr_number && (
                         <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)" }}>
                           <Shield className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                          <span className="text-[11px] font-mono font-semibold text-blue-700 truncate">{c.cnr_number}</span>
+                          <span className="text-[11px] font-mono font-semibold text-secondary truncate">{c.cnr_number}</span>
                         </div>
                       )}
 
@@ -1037,7 +1037,7 @@ export default function LawyerDashboard() {
                             className="text-[11px] font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors"
                             data-testid={`edit-case-${c.id}`}>Edit</button>
                           <button onClick={(e) => { e.stopPropagation(); setPreselectedCaseId(String(c.id)); setShowDocModal(true); }}
-                            className="text-[11px] font-medium text-violet-400 hover:text-violet-300 px-2 py-1 rounded-lg hover:bg-violet-500/10 transition-colors"
+                            className="text-[11px] font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors"
                             data-testid={`upload-case-doc-${c.id}`}>+ Doc</button>
                         </div>
                       </div>
@@ -1169,7 +1169,7 @@ export default function LawyerDashboard() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
                   <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search documents..."
-                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:border-violet-400 transition-colors"
+                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:border-primary transition-colors"
                     style={{ borderColor: "hsl(var(--border))" }} />
                 </div>
 
@@ -1467,7 +1467,7 @@ function DocumentActions({
             {onAnalyze && !doc.ai_summary && (
               <button onClick={() => { onAnalyze(); setShowMenu(false); }} disabled={analyzing}
                 className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground hover:bg-primary/10 transition-colors text-left disabled:opacity-50">
-                <Sparkles className="w-3.5 h-3.5 text-violet-400" /> {analyzing ? "Analyzing..." : "AI Analyze"}
+                <Sparkles className="w-3.5 h-3.5 text-primary" /> {analyzing ? "Analyzing..." : "AI Analyze"}
               </button>
             )}
           </motion.div>
@@ -1586,7 +1586,7 @@ function CaseFolderModal({
             <div className="rounded-xl p-6 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
               <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No documents in this case folder yet.</p>
-              <button onClick={onUpload} className="mt-2 text-xs font-medium text-primary hover:text-blue-800 transition-colors">Upload your first document →</button>
+              <button onClick={onUpload} className="mt-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors">Upload your first document →</button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1607,7 +1607,7 @@ function CaseFolderModal({
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button onClick={() => setExpandedDoc(expandedDoc === d.id ? null : d.id)}
-                        className="text-xs font-medium text-primary hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors">
+                        className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors">
                         {expandedDoc === d.id ? "Collapse" : "View"}
                       </button>
                       <DocumentActions
@@ -1718,7 +1718,7 @@ function CaseForm({ onSubmit, loading, initialCase, countryCode }: { onSubmit: (
       <div>
         <label className="block text-xs font-semibold text-muted-foreground mb-1">Case Title *</label>
         <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Smith vs. ABC Corp"
-          className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "hsl(var(--border))" }} />
+          className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors" style={{ borderColor: "var(--border-oklch)" }} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="relative">
@@ -1756,18 +1756,18 @@ function CaseForm({ onSubmit, loading, initialCase, countryCode }: { onSubmit: (
         <div>
           <label className="block text-xs font-semibold text-muted-foreground mb-1">Client Name</label>
           <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g., Ravi Shankar"
-            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "hsl(var(--border))" }} />
+            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors" style={{ borderColor: "var(--border-oklch)" }} />
         </div>
         <div>
           <label className="block text-xs font-semibold text-muted-foreground mb-1">{caseTerms(countryCode).label}</label>
           <input value={cnrNumber} onChange={(e) => setCnrNumber(e.target.value)} placeholder={caseTerms(countryCode).placeholder}
-            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "hsl(var(--border))" }} />
+            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors" style={{ borderColor: "var(--border-oklch)" }} />
         </div>
       </div>
       <div>
         <label className="block text-xs font-semibold text-muted-foreground mb-1">Description</label>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Brief case facts..."
-          className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors resize-none" style={{ borderColor: "hsl(var(--border))" }} />
+          className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors resize-none" style={{ borderColor: "var(--border-oklch)" }} />
       </div>
       {isEdit && (
         <div className="grid grid-cols-3 gap-2">
@@ -1837,7 +1837,7 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
         <div>
           <label className="block text-xs font-semibold text-muted-foreground mb-1">Link to Case (optional)</label>
           <select value={caseId} onChange={(e) => setCaseId(e.target.value)}
-            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors bg-card" style={{ borderColor: "hsl(var(--border))" }}>
+            className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors bg-card" style={{ borderColor: "var(--border-oklch)" }}>
             <option value="">No case — general document</option>
             {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
           </select>
@@ -1849,22 +1849,22 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1">Document Name *</label>
             <input required value={filename} onChange={(e) => setFilename(e.target.value)} placeholder="e.g., FIR_2024_001.txt"
-              className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors" style={{ borderColor: "hsl(var(--border))" }} />
+              className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors" style={{ borderColor: "var(--border-oklch)" }} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1">Document Content *</label>
             <textarea required value={contentText} onChange={(e) => setContentText(e.target.value)} rows={6}
               placeholder="Paste FIR text, charge sheet, contract, or legal notice here..."
-              className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors resize-none font-mono" style={{ borderColor: "hsl(var(--border))" }} />
+              className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors resize-none font-mono" style={{ borderColor: "var(--border-oklch)" }} />
           </div>
         </>
       ) : (
         <>
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1">Select File</label>
-            <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors hover:bg-violet-500/10 hover:border-violet-500/40"
+            <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors hover:bg-primary/10 hover:border-primary/40"
               style={{ borderColor: "rgba(139,92,246,0.35)" }} onClick={() => fileRef.current?.click()}>
-              <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "#A78BFA" }} />
+              <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--primary-oklch)" }} />
               <p className="text-sm font-medium text-muted-foreground">{filename || "Click to select .txt, .pdf, .doc"}</p>
               <p className="text-[11px] text-muted-foreground/60 mt-1">Max 25MB — text extracted for AI analysis</p>
               <input ref={fileRef} type="file" accept=".txt,.pdf,.doc,.docx" className="hidden" onChange={handleFileChange} />
@@ -1874,14 +1874,14 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">Extracted Content Preview</label>
               <textarea value={contentText} onChange={(e) => setContentText(e.target.value)} rows={4}
-                className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-blue-400 transition-colors resize-none font-mono" style={{ borderColor: "hsl(var(--border))" }} />
+                className="w-full text-sm px-3 py-2.5 rounded-lg border focus:outline-none focus:border-primary transition-colors resize-none font-mono" style={{ borderColor: "var(--border-oklch)" }} />
             </div>
           )}
         </>
       )}
 
       <button type="submit" disabled={loading || (!filename.trim() && !contentText.trim())}
-        className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm">
+        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground font-semibold py-2.5 rounded-lg transition-colors text-sm">
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Save Document
       </button>
     </form>

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ArrowDown, ArrowRight, ArrowUpRight, BookOpen, BriefcaseBusiness, Check, ChevronDown, FileSearch, LockKeyhole, Menu, Scale, Search, ShieldCheck, Users, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, BookOpen, BriefcaseBusiness, Check, ChevronDown, FileSearch, LockKeyhole, Scale, Search, ShieldCheck, Users } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { BUSINESS_CONFIG } from "@/lib/business-config";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
+import { PublicSiteFooter, PublicSiteHeader } from "@/components/public-site-header";
 import "./landing.css";
 
 type PublicStats = {
@@ -41,7 +42,6 @@ function formatCount(value: unknown) {
 }
 
 function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
   const links = [
     { label: "For advocates", href: "#advocates" },
@@ -51,40 +51,25 @@ function Navbar() {
   ];
 
   return (
-    <header className="lf-nav">
-      <nav className="lf-nav-inner" aria-label="Main navigation">
-        <Link href="/" className="lf-brand" aria-label="LitigaForge AI home">
-          <span className="lf-brand-mark"><Scale size={19} strokeWidth={1.8} /></span>
-          <span>LitigaForge <i>AI</i></span>
-        </Link>
-        <div className="lf-nav-links">
-          {links.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
-        </div>
-        <div className="lf-nav-actions">
+    <PublicSiteHeader
+      links={links}
+      mobileMenu
+      actions={
+        <>
           <LanguageSwitcher />
           <CountrySwitcher />
           {user && <Link href="/workspace" className="lf-nav-workspace">Workspace <ArrowUpRight size={14} /></Link>}
           <Link href="/login" className="lf-button lf-button-small">Get started <ArrowRight size={15} /></Link>
-        </div>
-        <button
-          type="button"
-          className="lf-menu-toggle"
-          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </nav>
-      {menuOpen && (
-        <div className="lf-mobile-menu">
-          {links.map((link) => <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>{link.label}</a>)}
+        </>
+      }
+      mobileActions={
+        <>
           <div className="lf-mobile-switchers"><LanguageSwitcher /><CountrySwitcher /></div>
-          {user && <Link href="/workspace" onClick={() => setMenuOpen(false)}>Open workspace <ArrowUpRight size={15} /></Link>}
-          <Link href="/login" className="lf-button" onClick={() => setMenuOpen(false)}>Get started <ArrowRight size={16} /></Link>
-        </div>
-      )}
-    </header>
+          {user && <Link href="/workspace">Open workspace <ArrowUpRight size={15} /></Link>}
+          <Link href="/login" className="lf-button">Get started <ArrowRight size={16} /></Link>
+        </>
+      }
+    />
   );
 }
 
@@ -280,7 +265,7 @@ function FAQSection() {
 
 function Footer() {
   return (
-    <footer className="lf-footer">
+    <PublicSiteFooter className="lf-footer">
       <div className="lf-footer-main">
         <div className="lf-footer-brand">
           <Link href="/" className="lf-brand"><span className="lf-brand-mark"><Scale size={19} /></span><span>LitigaForge <i>AI</i></span></Link>
@@ -296,7 +281,7 @@ function Footer() {
         <span>© {new Date().getFullYear()} LitigaForge AI</span>
         <span>AI-generated information is not legal advice. Consult a qualified legal professional.</span>
       </div>
-    </footer>
+    </PublicSiteFooter>
   );
 }
 
