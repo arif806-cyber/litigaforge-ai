@@ -168,7 +168,7 @@ export default function ClientDashboard() {
   const clientCases: ClientCase[] = clientCasesData?.cases || [];
 
   const { data: requirementsData } = useQuery({
-    queryKey: ["client-requirements"],
+    queryKey: ["my-cases", user?.id],
     queryFn: () => apiFetch("/cases/requirements/mine"),
     enabled: !!user,
   });
@@ -199,9 +199,11 @@ export default function ClientDashboard() {
   });
 
   const filteredMatches = allMatches.filter((m) => m.status === matchTab);
-  const activeReqs = requirements.filter((r) => r.status === "open").length;
+  const activeReqs = requirements.filter((r) => (r.status ?? "").toLowerCase() === "open").length;
   const acceptedMatches = allMatches.filter((m) => m.status === "accepted").length;
-  const activeCases = clientCases.filter((c) => !["closed", "completed", "dismissed"].includes((c.status ?? "").toLowerCase())).length;
+  // My Cases is backed by the client's case requirements endpoint. Keep the
+  // dashboard KPI on that same source and count "open" as active.
+  const activeCases = requirements.filter((r) => (r.status ?? "").toLowerCase() === "open").length;
   const upcomingHearings = clientCases.filter((c) => c.hearing_date && new Date(c.hearing_date) >= new Date()).length;
   const connectedLawyers = [...new Set(clientCases.map((c) => c.lawyer_id))].length;
   const pendingMatches = allMatches.filter((m) => m.status === "pending").length;

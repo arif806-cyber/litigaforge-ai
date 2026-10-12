@@ -7,6 +7,7 @@ import {
 
 const COUNTRY_API_BASE = "/litigaforge";
 const countryConfigRequests = new Map<string, Promise<CountryConfig>>();
+const COUNTRY_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export interface CountryConfig {
   name: string;
@@ -48,12 +49,31 @@ export function useCountry() {
     setLoading(true);
     let request = countryConfigRequests.get(activeCode);
     if (!request) {
-      request = fetch(`${COUNTRY_API_BASE}/api/country/${activeCode}`)
-        .then((r) => {
-          if (!r.ok) throw new Error(`Country config request failed (${r.status})`);
-          return r.json();
-        })
-        .then((d) => d.config as CountryConfig);
+      const storageKey = `lf:country-config:${activeCode}`;
+      let cached: { expiresAt: number; config: CountryConfig } | null = null;
+      try {
+        const raw = sessionStorage.getItem(storageKey);
+        if (raw) cached = JSON.parse(raw);
+      } catch { /* storage may be unavailable; use the in-memory cache */ }
+      if (cached && cached.expiresAt > Date.now() && cached.config) {
+        request = Promise.resolve(cached.config);
+      } else {
+        request = fetch(`${COUNTRY_API_BASE}/api/country/${activeCode}`)
+          .then((r) => {
+            if (!r.ok) throw new Error(`Country config request failed (${r.status})`);
+            return r.json();
+          })
+          .then((d) => {
+            const config = d.config as CountryConfig;
+            try {
+              sessionStorage.setItem(storageKey, JSON.stringify({
+                expiresAt: Date.now() + COUNTRY_CACHE_TTL_MS,
+                config,
+              }));
+            } catch { /* storage may be unavailable; keep the in-memory cache */ }
+            return config;
+          });
+      }
       countryConfigRequests.set(activeCode, request);
     }
     request

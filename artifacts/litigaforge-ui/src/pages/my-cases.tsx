@@ -44,19 +44,19 @@ export default function MyCases() {
   const [expandedCase, setExpandedCase] = useState<number | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["my-cases"],
+    queryKey: ["my-cases", user?.id],
     queryFn: () => apiFetch("/cases/requirements/mine"),
     enabled: !!user,
   });
 
   const updateMutation = useMutation({
     mutationFn: (vars: { id: number; body: any }) => apiFetch(`/cases/requirements/${vars.id}`, { method: "PATCH", body: vars.body }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["my-cases"] }); setEditingCase(null); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["my-cases", user?.id] }); setEditingCase(null); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiFetch(`/cases/requirements/${id}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-cases"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-cases", user?.id] }),
   });
 
   const { data: matchesData } = useQuery({

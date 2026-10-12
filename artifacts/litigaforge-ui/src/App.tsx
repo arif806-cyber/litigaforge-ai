@@ -138,6 +138,15 @@ function WorkspaceRoute() {
   return <ForgeWorkspace />;
 }
 
+function AdvocateDashboardGate() {
+  const { user, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (user && user.role === "client" && !user.has_lawyer_profile) {
+    return <Redirect to="/lawyers/register" />;
+  }
+  return <LawyerDashboard />;
+}
+
 function SignupRedirect() {
   return <Redirect to={`/register${window.location.search}`} />;
 }
@@ -164,6 +173,7 @@ const UsDemandLetterRoute = errorRoute("us-demand-letter", UsDemandLetter);
 const SettingsRoute = protectedRoute(AccountSettings);
 const ClientDashboardRoute = protectedRoute(ClientDashboard);
 const LawyerDashboardRoute = protectedRoute(LawyerDashboard);
+const AdvocateDashboardRoute = protectedErrorRoute("advocate-dashboard", AdvocateDashboardGate);
 const SubscriptionRoute = errorRoute("subscription", Subscription);
 const AskRoute = errorRoute("ask", Ask);
 const ReviewRoute = errorRoute("review", Review);
@@ -392,9 +402,9 @@ function Router() {
           <Layout>
             <Switch>
               <Route path="/client-dashboard" component={ClientDashboardRoute} />
-              <Route path="/lawyer-dashboard" component={LawyerDashboardRoute} />
-              <Route path="/lawyer-dashboard/:section" component={LawyerDashboardRoute} />
-              <Route path="/advocate-dashboard"><Redirect to="/lawyer-dashboard" /></Route>
+              <Route path="/lawyer-dashboard" component={AdvocateDashboardRoute} />
+              <Route path="/lawyer-dashboard/:section" component={AdvocateDashboardRoute} />
+              <Route path="/advocate-dashboard" component={AdvocateDashboardRoute} />
               <Route path="/settings" component={SettingsRoute} />
               <Route path="/subscription" component={SubscriptionRoute} />
               <Route path="/ask" component={AskRoute} />

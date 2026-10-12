@@ -490,12 +490,13 @@ def _normalize_case_response(payload: dict, expected_cnr: str | None = None) -> 
     return normalized
 
 
-def _safe_snapshot_date(value: Any) -> str | None:
+def _safe_snapshot_date(value: Any) -> date | None:
     if not value:
         return None
     candidate = str(value)[:10]
     try:
-        return date.fromisoformat(candidate).isoformat()
+        # asyncpg's DATE codec expects datetime.date, not an ISO string.
+        return date.fromisoformat(candidate)
     except ValueError:
         return None
 
@@ -551,7 +552,11 @@ async def _persist_snapshot(tracked_case_id: str, raw: dict) -> None:
 
 async def _mark_refresh_failure(tracked_case_id: str, exc: Exception) -> None:
     if isinstance(exc, CourtDataError):
-        message = exc.user_message
+        message = (
+            "CNR not found on eCourts — check the number."
+            if exc.code == "not_found"
+            else exc.user_message
+        )
     elif isinstance(exc, ValueError):
         message = str(exc)
     else:

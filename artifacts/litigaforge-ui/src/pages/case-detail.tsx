@@ -201,7 +201,7 @@ export default function CaseDetail() {
   );
 
   const { data: threadsData } = useQuery({
-    queryKey: ["chat-threads"],
+    queryKey: ["chat-threads", user?.id],
     queryFn: () => apiFetch("/chat/threads"),
     enabled: !!user,
   });

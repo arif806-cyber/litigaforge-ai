@@ -39,7 +39,7 @@ export function useMessageNotifications() {
           const data = JSON.parse(messageEvent.data) as NewMessageEvent;
           if (data.event !== "new_message") return;
 
-          queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
+          queryClient.invalidateQueries({ queryKey: ["chat-threads", user.id] });
           queryClient.invalidateQueries({ queryKey: ["chat-messages", data.thread_id] });
 
           if (!location.startsWith("/messages")) {
