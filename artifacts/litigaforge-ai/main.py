@@ -1650,8 +1650,12 @@ async def lifespan(app: FastAPI):
                 logger.exception("docket: scheduled cause-list refresh error: %s", _e)
                 await _aio.sleep(1800)
 
-    _docket_sched = asyncio.ensure_future(_docket_schedule_loop())
-    app.state.docket_schedule_scheduler = _docket_sched
+    if (os.getenv("REPLIT_DEPLOYMENT") or "").strip():
+        _docket_sched = asyncio.ensure_future(_docket_schedule_loop())
+        app.state.docket_schedule_scheduler = _docket_sched
+    else:
+        app.state.docket_schedule_scheduler = None
+        logger.info("docket: scheduled cause-list refresh disabled outside production")
 
     yield
 
