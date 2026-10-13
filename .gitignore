@@ -54,3 +54,4 @@ Thumbs.db
 
 # Runtime data
 forge_memory_store.json
+/artifacts/litigaforge-ai/data/bare_acts_upload/*.pdf

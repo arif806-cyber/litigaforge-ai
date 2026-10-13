@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from pathlib import Path
 
 TABLES = [
     {
@@ -85,6 +86,19 @@ TABLES = [
         },
     },
 ]
+
+# When official BPR&D PDFs have been imported, use only their explicit pairs.
+_CROSSWALKS_PATH = Path(__file__).parent / "data" / "bare_acts_upload" / "crosswalks.json"
+if _CROSSWALKS_PATH.exists():
+    _loaded = json.loads(_CROSSWALKS_PATH.read_text(encoding="utf-8"))
+    _crosswalk = TABLES[0]
+    _crosswalk["data"].update({key: value["mapping"] for key, value in _loaded.items()})
+    _crosswalk["data"]["note"] = (
+        "Official BPR&D correspondence tables. Only explicit PDF mappings are included; "
+        "absence means unknown."
+    )
+    _crosswalk["sources"] = [value["source_url"] for value in _loaded.values()]
+    _crosswalk["status"] = "verified_official_crosswalk"
 
 
 async def ensure_reference_tables(conn) -> None:

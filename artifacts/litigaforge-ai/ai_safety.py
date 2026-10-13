@@ -211,6 +211,13 @@ def verify_citations(response: str) -> list[str]:
     warnings: list[str] = []
     if not response:
         return warnings
+    try:
+        from official_act_texts import _act_citation_warnings
+        warnings.extend(_act_citation_warnings(response))
+    except ImportError:
+        # Keep citation checks available in isolated unit tests that do not load
+        # the application module tree.
+        pass
 
     # Section citations like "Section 420" or "S.138" or "S.83"
     section_refs = re.findall(
@@ -227,7 +234,7 @@ def verify_citations(response: str) -> list[str]:
         if idx != -1:
             window = response[max(0, idx - 80):idx]
             if not re.search(
-                r'\b(?:Act|Code|Rules|Regulations|Constitution|Law|Statute)\b',
+                r'\b(?:Act|Code|Rules|Regulations|Constitution|Law|Statute|BNS|BNSS|BSA|Sanhita|Adhiniyam)\b',
                 window,
                 re.IGNORECASE,
             ):

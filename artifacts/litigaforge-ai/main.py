@@ -456,6 +456,8 @@ async def lifespan(app: FastAPI):
         """)
         from legal_reference_tables import ensure_reference_tables
         await ensure_reference_tables(conn)
+        from official_act_texts import ensure_act_text_table
+        await ensure_act_text_table(conn)
         logger.info("dated legal reference tables ready")
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IN'")
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS public_question TEXT")

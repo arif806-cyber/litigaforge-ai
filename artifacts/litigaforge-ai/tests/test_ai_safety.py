@@ -145,10 +145,10 @@ def test_verify_citations_finds_orphan_section():
     assert "Section 420" in warnings[0]
 
 
-def test_verify_citations_passes_with_act():
+def test_verify_citations_marks_act_text_not_loaded():
     text = "Under the IPC Act, Section 420 applies."
     warnings = verify_citations(text)
-    assert len(warnings) == 0
+    assert warnings == ["IPC: Act text not loaded yet; section citation not verified."]
 
 
 def test_verify_citations_no_sections():

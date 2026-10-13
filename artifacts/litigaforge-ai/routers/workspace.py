@@ -1100,6 +1100,9 @@ async def _stream_analysis(
             f"\n\n{agent['system']}"
             f"{format_instruction}"
         )
+        if agent["id"] == "drafting":
+            from official_act_texts import drafting_reference_instruction
+            prompt += "\n\nOFFICIAL ACT-TEXT AVAILABILITY:\n" + drafting_reference_instruction()
 
         # ── IK pre-fetch: inject real live judgments for Research Agent ──────
         if agent["id"] == "research" and session_id is not None and user_id is not None:
@@ -1197,6 +1200,13 @@ async def _stream_analysis(
         elif response.startswith("REASONING:"):
             reasoning = response.split("\n", 1)[0].replace("REASONING:", "").strip()[:300]
             analysis  = response.split("\n", 1)[-1].strip()
+        if agent["id"] == "drafting":
+            from ai_safety import verify_citations
+            citation_warnings = verify_citations(analysis)
+            if citation_warnings:
+                analysis += "\n\nSECTION VERIFICATION\n" + "\n".join(
+                    f"- {warning}" for warning in citation_warnings[:8]
+                )
 
         # ── Emit reasoning ──────────────────────────────────────────────────
         if reasoning:
