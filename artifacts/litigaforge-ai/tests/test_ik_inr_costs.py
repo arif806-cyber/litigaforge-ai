@@ -69,7 +69,7 @@ class _CachedConn:
 @pytest.mark.asyncio
 async def test_fresh_cache_avoids_paid_search_call(monkeypatch):
     monkeypatch.setenv("IK_ENABLED", "true")
-    monkeypatch.setenv("INDIAN_KANOON_API_TOKEN", "test-token")
+    monkeypatch.setenv("INDIANKANOON_API_TOKEN", "test-token")
     async def forbidden(*_args, **_kwargs):
         raise AssertionError("fresh cache must not call Indian Kanoon")
     monkeypatch.setattr(ik, "_ik_call", forbidden)

@@ -8,9 +8,16 @@ CREATE TABLE IF NOT EXISTS indian_kanoon_api_metrics (
 
 ALTER TABLE indian_kanoon_api_metrics
     ADD COLUMN IF NOT EXISTS cost_inr NUMERIC(12, 2) NOT NULL DEFAULT 0;
+ALTER TABLE indian_kanoon_api_metrics
+    ADD COLUMN IF NOT EXISTS feature TEXT NOT NULL DEFAULT 'general';
 
 CREATE INDEX IF NOT EXISTS idx_ik_api_metrics_created
     ON indian_kanoon_api_metrics(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ik_ingest_state (
+    id SMALLINT PRIMARY KEY CHECK (id = 1),
+    last_successful_date DATE NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS advocate_calendar_feeds (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

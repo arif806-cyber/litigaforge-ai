@@ -46,6 +46,11 @@ _FIRST_PROVIDER_WAIT_SECONDS = max(60.0, LLM_TIMEOUT)
 _SSE_HEARTBEAT_SECONDS = 5
 _AGENT_TIMEOUT_SECONDS = 90
 
+
+def _ik_cache_week(day):
+    anchor = datetime(1970, 1, 5, tzinfo=timezone.utc).date()
+    return day - timedelta(days=(day - anchor).days % 7)
+
 @router.post("/workspace/demo/reset")
 async def reset_demo_workspace(request: Request, user=Depends(require_user)):
     """Restore only the explicitly tagged fictional fixture for a demo account."""
@@ -413,7 +418,9 @@ async def _cached_ik_search(
     # Live fetch
     try:
         from case_law_search import _ik_call
-        data = await _ik_call(conn, "/search/", {"formInput": query, "pagenum": "0"})
+        data = await _ik_call(
+            conn, "/search/", {"formInput": query, "pagenum": "0"}, feature="workspace_search"
+        )
         docs: list[dict] = data.get("docs", [])[:10]
     except Exception as exc:
         if row and "cost cap" in str(exc).lower():
@@ -548,7 +555,9 @@ async def search_judgments(
         if not exists:
             raise HTTPException(404, "Session not found")
 
-        search = await search_case_law(conn, body.query, limit=body.max_results)
+        search = await search_case_law(
+            conn, body.query, limit=body.max_results, feature="workspace_search"
+        )
     nodes = [
         {
             "id":       f"judgment-{row['id']}",
@@ -572,6 +581,52 @@ async def search_judgments(
         "nodes": nodes, "source": search["source"], "total": len(nodes),
         "cached_due_to_cap": search.get("cached_due_to_cap", False),
         "status_message": search.get("status_message"),
+    }
+
+
+@router.get("/workspace/hearing-prep/judge-view")
+async def hearing_prep_judge_view(
+    judge: str, bench: str = "", topic: str = "", user=Depends(require_user),
+):
+    """Return a factual, cached list of recent Telangana/AP High Court decisions."""
+    from case_law_search import ik_cached_search, _ik_enabled
+    if not _ik_enabled():
+        raise HTTPException(404, "Indian Kanoon integration is disabled")
+    judge = " ".join(judge.split())[:120]
+    bench = " ".join(bench.split())[:160]
+    topic = " ".join(topic.split())[:180]
+    if len(judge) < 2:
+        raise HTTPException(422, "A judge name is required")
+    today = datetime.now(timezone.utc).date()
+    cache_date = _ik_cache_week(today)
+    params = {
+        "formInput": topic or "judgment",
+        "author": judge,
+        "bench": bench,
+        "doctypes": "andhra",
+        "fromdate": (cache_date - timedelta(days=365 * 7)).strftime("%-d-%-m-%Y"),
+        "todate": cache_date.strftime("%-d-%-m-%Y"),
+        "maxpages": "2",
+    }
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result, _ = await ik_cached_search(
+            conn, params, feature="hearing_prep_judge_view", ttl_hours=24 * 7
+        )
+    docs = result.get("docs") if isinstance(result.get("docs"), list) else []
+    docs = [d for d in docs if _re.search(
+        r"(telangana|andhra pradesh).*(high court)|(high court).*(telangana|andhra pradesh)",
+        str(d.get("docsource") or ""), re.I,
+    )]
+    return {
+        "judge": judge, "bench": bench, "topic": topic,
+        "judgments": [{
+            "title": _plain_text(d.get("title"))[:300],
+            "court": _plain_text(d.get("docsource"))[:160],
+            "date": d.get("publishdate") or d.get("date"),
+            "url": f"https://indiankanoon.org/doc/{d.get('tid')}/" if str(d.get("tid", "")).isdigit() else None,
+        } for d in docs[:8]],
+        "attribution": "Indian Kanoon",
     }
 
 
@@ -1046,6 +1101,51 @@ async def _stream_analysis(
     agent_outputs: dict[str, str] = {}
     agent_outputs_full: dict[str, str] = {}
     verified_judgments: list[dict] = []
+    hearing_prep_context = ""
+    judge_match = _re.search(
+        r"(?im)^(?:presiding\s+)?(?:judge|justice)\s*[:=-]\s*([^\n,;]{2,100})\s*$",
+        case_description or "",
+    )
+    if judge_match:
+        try:
+            from case_law_search import ik_cached_search, _ik_enabled
+            if _ik_enabled():
+                bench_match = _re.search(r"(?im)^bench\s*[:=-]\s*([^\n;]{2,160})\s*$", case_description or "")
+                today = datetime.now(timezone.utc).date()
+                cache_date = _ik_cache_week(today)
+                judge = judge_match.group(1).strip()
+                bench = bench_match.group(1).strip() if bench_match else ""
+                params = {
+                    "formInput": (context or case_description or "judgment")[:180],
+                    "author": judge[:120],
+                    "bench": bench[:160],
+                    "doctypes": "andhra",
+                    "fromdate": (cache_date - timedelta(days=365 * 7)).strftime("%-d-%-m-%Y"),
+                    "todate": cache_date.strftime("%-d-%-m-%Y"),
+                    "maxpages": "2",
+                }
+                pool = await get_pool()
+                async with pool.acquire() as conn:
+                    result, _ = await ik_cached_search(
+                        conn, params, feature="hearing_prep", ttl_hours=24 * 7
+                    )
+                docs = result.get("docs") if isinstance(result.get("docs"), list) else []
+                docs = [d for d in docs if _re.search(
+                    r"(telangana|andhra pradesh).*(high court)|(high court).*(telangana|andhra pradesh)",
+                    str(d.get("docsource") or ""), _re.I,
+                )]
+                if docs:
+                    hearing_prep_context = (
+                        "\n\nRECENT JUDGMENTS BY THE IDENTIFIED JUDGE (factual references only; "
+                        "not an outcome prediction):\n" + "\n".join(
+                            f"- {_plain_text(d.get('title'))} | {_plain_text(d.get('docsource'))} | "
+                            f"{d.get('publishdate') or d.get('date') or 'date unavailable'} | "
+                            f"https://indiankanoon.org/doc/{d.get('tid')}/"
+                            for d in docs[:5] if str(d.get("tid", "")).isdigit()
+                        ) + "\nSource: Indian Kanoon."
+                    )
+        except Exception as exc:
+            logger.info("Hearing-prep judge view unavailable (%s)", type(exc).__name__)
 
     for agent in _AGENTS:
         # ── Inter-agent consultation event ──────────────────────────────────
@@ -1097,6 +1197,7 @@ async def _stream_analysis(
             f"{prior_ctx}"
             f"\n\nAdditional Context: {context or 'None'}"
             f"{profile_line}"
+            f"{hearing_prep_context if agent['id'] == 'drafting' else ''}"
             f"\n\n{agent['system']}"
             f"{format_instruction}"
         )
@@ -1113,6 +1214,8 @@ async def _stream_analysis(
                     ik_docs, session_cache_hit = await _session_ik_docs(
                         _conn, session_id, user_id, ik_query, max_results=5,
                     )
+                    from case_law_search import add_ik_grounding
+                    ik_docs = await add_ik_grounding(_conn, ik_docs, feature="mock_bench")
                 verified_judgments = ik_docs or []
                 ik_block = _format_ik_for_prompt(verified_judgments)
                 prompt = ik_block + "\n\n" + prompt
@@ -1692,12 +1795,14 @@ async def simulate_what_if(
         try:
             query = (body.case_description + " " + body.assumption).strip()[:280]
             async with pool.acquire() as conn:
-                found = await search_case_law(conn, query, limit=5)
-            verified_judgments = [
+                found = await search_case_law(conn, query, limit=5, feature="mock_bench")
+                verified_judgments = [
                 dict(item) for item in found.get("results", [])
                 if (item.get("case_name") or item.get("title"))
                 and (item.get("source_url") or item.get("url"))
-            ]
+                ]
+                from case_law_search import add_ik_grounding
+                verified_judgments = await add_ik_grounding(conn, verified_judgments, feature="mock_bench")
         except Exception as exc:
             logger.warning("Simulation authority retrieval failed (%s)", type(exc).__name__)
 

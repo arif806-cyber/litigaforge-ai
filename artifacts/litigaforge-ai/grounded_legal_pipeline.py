@@ -108,14 +108,12 @@ async def retrieve_grounding(conn, question: str, profile: dict | None = None) -
     if state == "Telangana" or re.search(r"\b(india|indian|court|case|judgment|judgement|precedent)\b", question, re.I):
         try:
             from case_law_search import search_case_law
-            found = await search_case_law(conn, question[:280], limit=5)
-            for item in found["results"]:
-                text = item.get("full_text") or item.get("summary_en") or ""
-                if not text and item.get("ik_tid"):
-                    from judgment_ingest import IndianKanoonClient, _html_to_text, _token
-                    client = IndianKanoonClient(_token())
-                    doc = await asyncio.to_thread(client.get_doc, item["ik_tid"])
-                    text = _html_to_text(doc.get("doc") or "", cap=12000)
+            found = await search_case_law(conn, question[:280], limit=5, feature="authorities")
+            from case_law_search import add_ik_grounding
+            grounds = await add_ik_grounding(conn, found["results"], feature="authorities")
+            for item in grounds:
+                text = "\n\n".join(p["text"] for p in item.get("grounding_paragraphs", []))
+                text = text or item.get("summary_en") or ""
                 if text:
                     judgments.append({
                         "kind": "judgment", "citation": item.get("citation") or "",

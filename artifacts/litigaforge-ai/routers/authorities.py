@@ -33,7 +33,7 @@ def _safe_source_url(value) -> str | None:
 
 
 async def _check_monitor(conn, user_id: int, kind: str, monitor_id: int, query: str) -> dict:
-    found = await search_case_law(conn, query[:280], limit=10)
+    found = await search_case_law(conn, query[:280], limit=10, feature="authorities")
     new_alerts = []
     for item in found.get("results", []):
         case_name = str(item.get("case_name") or item.get("title") or "").strip()[:500]
@@ -62,6 +62,63 @@ async def _check_monitor(conn, user_id: int, kind: str, monitor_id: int, query: 
         monitor_id, user_id,
     )
     return {"new_count": len(new_alerts), "new_alerts": new_alerts}
+
+
+async def _check_citation_watch(conn, user_id: int, monitor_id: int, citation: str) -> dict:
+    """Resolve against the local citation index, then inspect one cached doc call."""
+    import re
+    from case_law_search import get_ik_document, _ik_enabled, _ik_token
+    if not _ik_enabled():
+        raise HTTPException(404, "Indian Kanoon integration is disabled")
+    if not _ik_token():
+        raise HTTPException(503, "Indian Kanoon server secret is not configured")
+
+    row = await conn.fetchrow(
+        """SELECT citation,case_name,source_url FROM judgments
+           WHERE status='published' AND citation ILIKE '%' || $1 || '%'
+           ORDER BY judgment_date DESC NULLS LAST LIMIT 1""",
+        citation[:240],
+    )
+    tid_match = re.search(r"/doc/(\d+)", str(row.get("source_url") or "")) if row else None
+    if not tid_match:
+        await conn.execute(
+            "UPDATE citation_watches SET last_checked_at=NOW() WHERE id=$1 AND user_id=$2",
+            monitor_id, user_id,
+        )
+        return {"new_count": 0, "new_alerts": [], "status": "not_in_local_index"}
+    document = await get_ik_document(conn, tid_match.group(1), feature="citation_watch")
+    citing = document.get("citedbyList") or document.get("citedby") or []
+    new_alerts = []
+    for later in citing[:50] if isinstance(citing, list) else []:
+        treatment = str(later.get("treatment") or later.get("treatments") or "").casefold()
+        if not any(term in treatment for term in (
+            "negative", "overruled", "overturned", "disapproved", "distinguished", "not followed",
+        )):
+            continue
+        tid = str(later.get("tid") or later.get("docid") or "")
+        title = str(later.get("title") or later.get("case_name") or "").strip()[:500]
+        if not title or not tid.isdigit():
+            continue
+        court = str(later.get("docsource") or later.get("court") or "Court").strip()[:160]
+        date = str(later.get("publishdate") or later.get("date") or "").strip()[:40]
+        url = f"https://indiankanoon.org/doc/{tid}/"
+        label = f"Negative treatment — {court}" + (f", {date}" if date else "")
+        key = hashlib.sha256(f"{user_id}|citation_watch|{monitor_id}|{url}".encode()).hexdigest()
+        inserted = await conn.fetchrow(
+            """INSERT INTO authority_alerts
+                 (user_id,monitor_kind,monitor_id,case_name,citation,source_url,source_name,dedupe_key)
+               VALUES($1,'citation_watch',$2,$3,$4,$5,'Indian Kanoon',$6)
+               ON CONFLICT(dedupe_key) DO NOTHING
+               RETURNING id,case_name,citation,source_url,source_name,created_at""",
+            user_id, monitor_id, title, label, url, key,
+        )
+        if inserted:
+            new_alerts.append(dict(inserted))
+    await conn.execute(
+        "UPDATE citation_watches SET last_checked_at=NOW() WHERE id=$1 AND user_id=$2",
+        monitor_id, user_id,
+    )
+    return {"new_count": len(new_alerts), "new_alerts": new_alerts, "source": "Indian Kanoon"}
 
 
 @router.get("/authorities")
@@ -168,7 +225,7 @@ async def check_citation_watch(watch_id: int, user=Depends(require_user)):
         )
         if not row:
             raise HTTPException(404, "Citation watch not found")
-        result = await _check_monitor(conn, user["id"], "citation_watch", watch_id, row["citation"])
+        result = await _check_citation_watch(conn, user["id"], watch_id, row["citation"])
     return result
 
 

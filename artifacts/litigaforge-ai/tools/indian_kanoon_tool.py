@@ -1,39 +1,8 @@
-"""
-Reusable synchronous wrapper for the IndianKanoon official API.
-
-Used by the Research Agent pre-fetch and available as a standalone tool
-for scripts, future LangGraph tool nodes, or CLI tests.
-
-Env vars:
-  INDIANKANOON_API_TOKEN   — required (official paid API token)
-  INDIAN_KANOON_API_KEY    — alias accepted for compatibility with user docs
-  INDIAN_KANOON_BASE_URL   — override base URL (default: https://api.indiankanoon.org)
-"""
-import os
+"""Metered, cached tools backed by the shared official Indian Kanoon client."""
 import re
 from typing import Dict, List, Optional
 
-import requests
-
-_TOKEN = (
-    os.getenv("INDIANKANOON_API_TOKEN")
-    or os.getenv("INDIAN_KANOON_API_KEY")
-    or ""
-).strip()
-
-BASE_URL = os.getenv("INDIAN_KANOON_BASE_URL", "https://api.indiankanoon.org").rstrip("/")
-
-_TIMEOUT = 15
-
-
-def _headers() -> dict:
-    return {
-        "Authorization": f"Token {_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-
-def search_indian_kanoon(
+async def search_indian_kanoon(
     query: str,
     max_results: int = 5,
     doctype: Optional[str] = None,
@@ -50,33 +19,22 @@ def search_indian_kanoon(
         max_results: Maximum number of results to return (default 5).
         doctype:     Optional document type filter (e.g. "judgments").
     """
-    if not _TOKEN:
-        return [{"error": "IndianKanoon API token not set (INDIANKANOON_API_TOKEN env var missing)"}]
-
-    params: dict = {"formInput": query, "pagenum": 0}
+    params: dict = {"formInput": query[:300], "pagenum": "0",
+                    "maxpages": str(max(1, min(5, (max_results + 9) // 10)))}
     if doctype:
-        params["doctype"] = doctype
-
+        params["doctypes"] = doctype[:120]
     try:
-        resp = requests.post(
-            f"{BASE_URL}/search/",
-            headers=_headers(),
-            data=params,
-            timeout=_TIMEOUT,
-        )
-        if resp.status_code == 401:
-            return [{"error": "IndianKanoon auth failed — check INDIANKANOON_API_TOKEN"}]
-        resp.raise_for_status()
-        data = resp.json()
-        docs = data.get("docs", [])
-        return docs[:max_results]
-    except requests.RequestException as exc:
-        return [{"error": f"IndianKanoon request failed: {exc}"}]
+        from case_law_search import ik_cached_search
+        from database import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            data, _ = await ik_cached_search(conn, params, feature="research_tool")
+        return (data.get("docs") or [])[:max_results]
     except Exception as exc:
-        return [{"error": f"Unexpected error calling IndianKanoon: {exc}"}]
+        return [{"error": f"Metered Indian Kanoon request failed: {type(exc).__name__}"}]
 
 
-def get_case_details(case_id: str) -> Dict:
+async def get_case_details(case_id: str) -> Dict:
     """
     Fetch full details of a specific case by its IndianKanoon tid.
 
@@ -86,23 +44,16 @@ def get_case_details(case_id: str) -> Dict:
     Args:
         case_id: The IndianKanoon document ID (tid / docid).
     """
-    if not _TOKEN:
-        return {"error": "IndianKanoon API token not set (INDIANKANOON_API_TOKEN env var missing)"}
-
     try:
-        resp = requests.get(
-            f"{BASE_URL}/doc/{case_id}/",
-            headers=_headers(),
-            timeout=_TIMEOUT,
-        )
-        if resp.status_code == 401:
-            return {"error": "IndianKanoon auth failed — check INDIANKANOON_API_TOKEN"}
-        resp.raise_for_status()
-        return resp.json()
-    except requests.RequestException as exc:
-        return {"error": f"IndianKanoon request failed: {exc}"}
+        if not case_id.isdigit():
+            return {"error": "case_id must be a numeric Indian Kanoon document ID"}
+        from case_law_search import get_ik_document
+        from database import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            return await get_ik_document(conn, case_id[:40], feature="research_tool")
     except Exception as exc:
-        return {"error": f"Unexpected error: {exc}"}
+        return {"error": f"Metered Indian Kanoon request failed: {type(exc).__name__}"}
 
 
 def strip_html(text: str) -> str:

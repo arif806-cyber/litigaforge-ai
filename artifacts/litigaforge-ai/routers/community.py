@@ -50,12 +50,14 @@ async def _retrieve_document_judgments(query: str, country: str) -> list[dict]:
         from case_law_search import search_case_law
         pool = await get_pool()
         async with pool.acquire() as conn:
-            result = await search_case_law(conn, query[:280], limit=5)
-        return [
+            result = await search_case_law(conn, query[:280], limit=5, feature="draft_checker")
+            judgments = [
             dict(item) for item in result.get("results", [])
             if (item.get("case_name") or item.get("title"))
             and (item.get("source_url") or item.get("url"))
-        ]
+            ]
+            from case_law_search import add_ik_grounding
+            return await add_ik_grounding(conn, judgments, feature="draft_checker")
     except Exception as exc:
         logger.warning("Document judgment retrieval failed (%s)", type(exc).__name__)
         return []

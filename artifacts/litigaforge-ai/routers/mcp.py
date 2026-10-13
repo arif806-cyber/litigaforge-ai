@@ -217,7 +217,7 @@ async def _search_judgments(arguments: dict) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
         search = await search_case_law(
-            conn, query, limit=limit, court=court, cache_writes=False
+            conn, query, limit=limit, court=court, feature="mcp"
         )
     for row in search["results"]:
         # Search is a discovery tool: never send stored judgment bodies in its

@@ -27,9 +27,10 @@ async def test_check_monitor_persists_only_linked_judgments(monkeypatch):
         async def execute(self, sql, *args):
             self.updates.append((sql, args))
 
-    async def fake_search(_conn, query, limit):
+    async def fake_search(_conn, query, limit, **kwargs):
         assert query == "contract damages"
         assert limit == 10
+        assert kwargs["feature"] == "authorities"
         return {"results": [
             {"case_name": "Linked Case v State", "source_url": "https://example.org/1", "citation": "2022 SCC"},
             {"case_name": "No source URL"},

@@ -13,7 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from auth import get_current_user
 from case_law_search import (
-    IKDailyCostCapExceeded, _ik_call, _ik_enabled, _ik_token,
+    IKDailyCostCapExceeded, _ik_call, _ik_enabled, _ik_token, get_ik_document as fetch_ik_document,
+    ik_cached_request,
     reserve_ik_budget, IK_BASE,
 )
 from database import fetchrow, get_pool
@@ -37,28 +38,33 @@ async def get_ik_document(request: Request, tid: str, user=Depends(get_current_u
     if not user:
         raise HTTPException(401, "Login required")
     tid = tid[:40]
-    row = await fetchrow(
-        "SELECT document_json, metadata_json FROM ik_document_cache WHERE doc_id=$1", tid,
-    )
-    if row and row.get("document_json"):
-        return {"document": row["document_json"], "metadata": row.get("metadata_json"), "cached": True}
     pool = await get_pool()
     try:
         async with pool.acquire() as conn:
-            document = await _ik_call(conn, f"/doc/{quote(tid, safe='')}/")
-            metadata = await _ik_call(conn, f"/docmeta/{quote(tid, safe='')}/")
-            await conn.execute(
-                """INSERT INTO ik_document_cache(doc_id,document_json,metadata_json)
-                   VALUES($1,$2::jsonb,$3::jsonb)
-                   ON CONFLICT(doc_id) DO UPDATE SET document_json=EXCLUDED.document_json,
-                     metadata_json=EXCLUDED.metadata_json,fetched_at=NOW()""",
-                tid, json.dumps(document), json.dumps(metadata),
-            )
+            before = await conn.fetchval("SELECT 1 FROM ik_document_cache WHERE doc_id=$1", tid)
+            document = await fetch_ik_document(conn, tid, feature="document")
+            metadata = {"paragraphs": document.get("_paragraphs", []),
+                        "citeList": document.get("citeList", []),
+                        "citedbyList": document.get("citedbyList", [])}
     except IKDailyCostCapExceeded:
         raise HTTPException(429, "Indian Kanoon daily cost cap reached")
     except httpx.HTTPError:
         raise HTTPException(502, "Indian Kanoon document request failed")
-    return {"document": document, "metadata": metadata, "cached": False}
+    return {"document": document, "metadata": metadata, "cached": bool(before),
+            "attribution": "Indian Kanoon"}
+
+
+@router.get("/ik/admin/costs")
+async def ik_costs_by_feature(user=Depends(get_current_user)):
+    if not user or user.get("role") != "admin":
+        raise HTTPException(403, "Admin access required")
+    from database import fetch
+    rows = await fetch(
+        """SELECT feature,endpoint,COUNT(*) AS calls,COALESCE(SUM(cost_inr),0) AS cost_inr
+           FROM indian_kanoon_api_metrics WHERE created_at >= CURRENT_DATE
+           GROUP BY feature,endpoint ORDER BY feature,endpoint"""
+    )
+    return {"date": "today", "costs": [dict(row) for row in rows], "currency": "INR"}
 
 
 @router.get("/ik/documents/{tid}/fragments")
@@ -72,12 +78,15 @@ async def get_ik_fragments(
     pool = await get_pool()
     try:
         async with pool.acquire() as conn:
-            result = await _ik_call(conn, f"/docfragment/{quote(tid[:40], safe='')}/", {"formInput": query})
+            result = await ik_cached_request(
+                conn, f"/docfragment/{quote(tid[:40], safe='')}/",
+                {"formInput": query}, feature="fragment",
+            )
     except IKDailyCostCapExceeded:
         raise HTTPException(429, "Indian Kanoon daily cost cap reached")
     except httpx.HTTPError:
         raise HTTPException(502, "Indian Kanoon fragment request failed")
-    return {"fragments": result}
+    return {"fragments": result, "attribution": "Indian Kanoon"}
 
 
 @router.post("/ik/documents/{tid}/attach/{case_id}")
@@ -95,7 +104,7 @@ async def attach_ik_original_copy(request: Request, tid: str, case_id: int, user
     pool = await get_pool()
     async with pool.acquire() as conn:
         try:
-            await reserve_ik_budget(conn, "/origdoc/")
+            await reserve_ik_budget(conn, "/origdoc/", feature="original_copy")
         except IKDailyCostCapExceeded:
             raise HTTPException(429, "Indian Kanoon daily cost cap reached")
     token = _ik_token()

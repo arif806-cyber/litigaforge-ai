@@ -85,6 +85,7 @@ interface AuthorityAlert {
   case_name: string;
   citation: string;
   source_url: string;
+  source_name?: string;
   created_at: string;
 }
 
@@ -204,10 +205,11 @@ function AuthorityTrackerPanel() {
         </div>
       </div>
       {!!alerts.length && <div className="space-y-2 border-t border-border pt-3">
-        <h3 className="text-xs font-semibold">Newly indexed judgments</h3>
+        <h3 className="text-xs font-semibold">Citation developments and newly indexed judgments</h3>
         {alerts.slice(0, 5).map(alert => <div key={alert.id} className="flex items-start gap-2 text-xs">
           <a href={alert.source_url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 text-primary hover:underline">
             {alert.case_name}{alert.citation ? ` — ${alert.citation}` : ""}
+            {alert.source_name === "Indian Kanoon" && <span className="ml-1 text-muted-foreground">(Indian Kanoon)</span>}
           </a>
           <button disabled={busy} onClick={() => void run(async () => {
             const res = await apiFetch(`/authorities/alerts/${alert.id}/read`, { method: "PATCH" });

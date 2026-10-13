@@ -18,6 +18,12 @@ def retrieved_authority_block(judgments: list[dict]) -> str:
         year = str(item.get("year") or "")
         url = (item.get("source_url") or item.get("url") or "").strip()
         lines.append(f"{index}. {title} | {citation} | {court} {year} | {url}")
+        paragraphs = item.get("grounding_paragraphs") or []
+        for paragraph in paragraphs[:8]:
+            label = str(paragraph.get("label") or "judgment paragraph")
+            text = str(paragraph.get("text") or "").strip()
+            if text:
+                lines.append(f"   [{label}] {text[:1600]}")
     if len(lines) == 1:
         return retrieved_authority_block([])
     lines.append("Do not cite any judgment outside this retrieved list.")

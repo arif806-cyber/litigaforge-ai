@@ -72,7 +72,7 @@ DEFAULT_QUERIES: list[tuple[str, str]] = [
 
 
 def _token() -> str:
-    return (os.getenv("INDIAN_KANOON_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
+    return os.getenv("INDIANKANOON_API_TOKEN", "").strip()
 
 
 def is_source_configured() -> bool:
@@ -143,6 +143,8 @@ class IndianKanoonClient:
             cls._last_request = time.monotonic()
 
     def _post(self, path: str, data: dict | None = None) -> dict:
+        if not is_source_configured():
+            raise IndianKanoonError("Indian Kanoon API access is disabled")
         url = f"{API_BASE}{path}"
         last_err: Optional[Exception] = None
         for attempt in range(1, MAX_RETRIES + 1):
@@ -196,6 +198,8 @@ class IndianKanoonClient:
 
     def get_original_copy(self, tid: Any) -> tuple[bytes, str]:
         """Fetch the original court copy from the official API."""
+        if not is_source_configured():
+            raise IndianKanoonError("Indian Kanoon API access is disabled")
         self._wait_turn()
         response = _req.post(
             f"{API_BASE}/origdoc/{tid}/", headers=self._headers, timeout=REQUEST_TIMEOUT,
@@ -590,22 +594,41 @@ async def _do_run(
     queries: Optional[list[tuple[str, str]]] = None,
     per_query_max: Optional[int] = None,
 ) -> None:
-    client = IndianKanoonClient(_token())
-
-    async def reserve_call(path: str) -> None:
-        from case_law_search import reserve_ik_budget
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            await reserve_ik_budget(conn, path)
+    from case_law_search import get_ik_document, ik_cached_search
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        last_success = await conn.fetchval(
+            "SELECT last_successful_date FROM ik_ingest_state WHERE id=1"
+        )
+    today = datetime.now(timezone.utc).date()
+    from_date = (last_success + timedelta(days=1)) if last_success else today - timedelta(days=1)
+    if from_date > today:
+        stats["status"] = "already_current"
+        return
 
     remaining = max_docs
     for label, form_input in (queries or _queries()):
         if remaining <= 0:
             break
         qstat = {"query": label, "found": 0, "inserted": 0}
-        await reserve_call("/search/")
-        docs = await asyncio.to_thread(client.search, form_input)
+        try:
+            maxpages = max(1, min(1000, int(os.getenv("JUDGMENT_INGEST_MAXPAGES", "3"))))
+        except ValueError:
+            raise IndianKanoonError("JUDGMENT_INGEST_MAXPAGES must be an integer from 1 to 1000")
+        params = {
+            "formInput": form_input,
+            "fromdate": from_date.strftime("%-d-%-m-%Y"),
+            "todate": today.strftime("%-d-%-m-%Y"),
+            "maxpages": str(maxpages),
+        }
+        params["doctypes"] = os.getenv("JUDGMENT_INGEST_DOCTYPES", "supremecourt,andhra").strip()
+        if os.getenv("JUDGMENT_INGEST_CITATION"):
+            params["cite"] = os.environ["JUDGMENT_INGEST_CITATION"]
+        async with pool.acquire() as conn:
+            result, cache_hit = await ik_cached_search(conn, params, feature="ingestion")
+        docs = result.get("docs") if isinstance(result.get("docs"), list) else []
         qstat["found"] = len(docs)
+        qstat["cache_hit"] = cache_hit
         stats["fetched"] += len(docs)
         for d in docs:
             if remaining <= 0:
@@ -625,8 +648,8 @@ async def _do_run(
                 stats["skipped_existing"] += 1
                 continue
 
-            await reserve_call("/doc/")
-            doc = await asyncio.to_thread(client.get_doc, tid)
+            async with pool.acquire() as conn:
+                doc = await get_ik_document(conn, str(tid), feature="ingestion")
             source_full_text = _html_to_text(doc.get("doc") or "", cap=None)
             full_text = source_full_text[:FULL_TEXT_CAP]
             case_name = _clean_case_name(doc.get("title") or d.get("title") or "")
@@ -728,6 +751,12 @@ async def run_ingestion(
             )
             try:
                 await _do_run(stats, cap, queries=queries, per_query_max=per_query_max)
+                async with pool.acquire() as state_conn:
+                    await state_conn.execute(
+                        """INSERT INTO ik_ingest_state(id,last_successful_date) VALUES(1,$1)
+                           ON CONFLICT(id) DO UPDATE SET last_successful_date=EXCLUDED.last_successful_date""",
+                        datetime.now(timezone.utc).date(),
+                    )
                 stats["status"] = "ok"
             except Exception as exc:
                 from case_law_search import IKDailyCostCapExceeded

@@ -1193,13 +1193,27 @@ async def lifespan(app: FastAPI):
                 )
             """)
             await conn.execute("""
+                CREATE TABLE IF NOT EXISTS ik_ingest_state (
+                    id SMALLINT PRIMARY KEY CHECK (id = 1),
+                    last_successful_date DATE NOT NULL
+                )
+            """)
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS indian_kanoon_api_metrics (
                     id BIGSERIAL PRIMARY KEY,
                     endpoint TEXT NOT NULL,
                     estimated_cost_usd NUMERIC NOT NULL DEFAULT 0,
+                    cost_inr NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    feature TEXT NOT NULL DEFAULT 'general',
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
+            await conn.execute(
+                "ALTER TABLE indian_kanoon_api_metrics ADD COLUMN IF NOT EXISTS cost_inr NUMERIC(12,2) NOT NULL DEFAULT 0"
+            )
+            await conn.execute(
+                "ALTER TABLE indian_kanoon_api_metrics ADD COLUMN IF NOT EXISTS feature TEXT NOT NULL DEFAULT 'general'"
+            )
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_ik_api_metrics_created "
                 "ON indian_kanoon_api_metrics(created_at DESC)"

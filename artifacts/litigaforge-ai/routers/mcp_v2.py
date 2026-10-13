@@ -1022,8 +1022,10 @@ async def call_tool(name: str, args: dict, user: dict) -> dict:
             raise ValueError("doc_id and a query of at least 2 characters are required")
         pool = await get_pool()
         async with pool.acquire() as conn:
-            from case_law_search import _ik_call
-            fragments = await _ik_call(conn, f"/docfragment/{doc_id}/", {"formInput": query})
+            from case_law_search import ik_cached_request
+            fragments = await ik_cached_request(
+                conn, f"/docfragment/{doc_id}/", {"formInput": query}, feature="mcp"
+            )
         return public_result(fragments, source="Indian Kanoon document fragments",
                              source_url=f"https://indiankanoon.org/doc/{doc_id}/",
                              identifier=f"ik-doc:{doc_id}", untrusted_text=True)

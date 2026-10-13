@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import logging
 import os
@@ -74,8 +75,7 @@ def _ik_enabled() -> bool:
 
 
 def _ik_token() -> str:
-    # Keep the legacy spelling as a migration fallback; never expose either value.
-    return (os.getenv("INDIAN_KANOON_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
+    return (os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
 
 
 async def _ik_spend_today(conn) -> Decimal:
@@ -90,7 +90,7 @@ class IKDailyCostCapExceeded(RuntimeError):
     pass
 
 
-async def reserve_ik_budget(conn, endpoint: str) -> None:
+async def reserve_ik_budget(conn, endpoint: str, *, feature: str = "general", units: int = 1) -> None:
     """Atomically reserve the configured official per-endpoint rupee price."""
     async with conn.transaction():
         await conn.execute("SELECT pg_advisory_xact_lock(734239111)")
@@ -101,26 +101,33 @@ async def reserve_ik_budget(conn, endpoint: str) -> None:
             wait = _IK_MIN_REQUEST_INTERVAL_SECONDS - (datetime.now(timezone.utc) - last).total_seconds()
             if wait > 0:
                 await conn.execute("SELECT pg_sleep($1)", wait)
-        price = ik_endpoint_price_inr(endpoint)
+        price = ik_endpoint_price_inr(endpoint) * max(1, min(int(units), 1000))
         spent = await _ik_spend_today(conn)
         if spent + price > ik_daily_cap_inr():
             raise IKDailyCostCapExceeded("Indian Kanoon daily cost cap reached")
         await conn.execute(
-            """INSERT INTO indian_kanoon_api_metrics(endpoint,cost_inr)
-               VALUES($1,$2)""",
+            """INSERT INTO indian_kanoon_api_metrics(endpoint,cost_inr,feature)
+               VALUES($1,$2,$3)""",
             endpoint.split("?")[0],
             price,
+            feature,
         )
 
 
-async def _ik_call(conn, path: str, data: dict | None = None) -> dict:
+async def _ik_call(conn, path: str, data: dict | None = None, *, feature: str = "general") -> dict:
     """Official API only; estimated call spend is tracked in ForgeOS metrics."""
     if not _ik_enabled():
         raise RuntimeError("Indian Kanoon integration is disabled")
     token = _ik_token()
     if not token:
         raise RuntimeError("Indian Kanoon server secret is not configured")
-    await reserve_ik_budget(conn, path)
+    units = 1
+    if path.split("?", 1)[0].rstrip("/") == "/search" and data and data.get("maxpages"):
+        try:
+            units = int(data["maxpages"])
+        except (TypeError, ValueError):
+            raise ValueError("Indian Kanoon maxpages must be an integer")
+    await reserve_ik_budget(conn, path, feature=feature, units=units)
     async with httpx.AsyncClient(timeout=30) as client:
         response = await client.post(
             f"{IK_BASE}{path}", data=data or {},
@@ -131,17 +138,150 @@ async def _ik_call(conn, path: str, data: dict | None = None) -> dict:
     return result if isinstance(result, dict) else {}
 
 
+_PARAGRAPH_LABELS = {
+    "facts", "issue", "issues", "petitioner's arguments", "petitioners arguments",
+    "respondent's arguments", "respondents arguments", "section", "precedent",
+    "court's reasoning", "courts reasoning", "reasoning", "conclusion",
+}
+
+
+def parse_ik_paragraphs(document_html: str) -> list[dict[str, str]]:
+    """Extract labeled paragraph blocks from official IK document HTML."""
+    try:
+        from lxml import html as lxml_html
+        root = lxml_html.fromstring(document_html or "<div></div>")
+    except Exception:
+        return []
+    blocks = []
+    for element in root.iter():
+        raw_label = " ".join(str(element.get(key) or "") for key in
+                             ("data-label", "data-section", "data-structure", "class", "id"))
+        label = re.sub(r"[_-]+", " ", raw_label).strip().lower()
+        label = re.sub(r"\s+", " ", label)
+        matched = "court's reasoning" if "court" in label and "reasoning" in label else \
+            next((known for known in _PARAGRAPH_LABELS if known in label), None)
+        if not matched:
+            continue
+        text = " ".join(" ".join(element.itertext()).split())
+        text = re.sub(r"^(facts|issues?|petitioners?['’]?s? arguments|respondents?['’]?s? arguments|section|precedent|court.?s reasoning|conclusion)\s*:?\s*", "", text, flags=re.I)
+        if text:
+            blocks.append({"label": matched, "text": html.unescape(text)[:12000]})
+    # Avoid nested duplicate captures while preserving paragraph-level text.
+    unique = []
+    seen = set()
+    for block in blocks:
+        key = (block["label"], block["text"])
+        if key not in seen:
+            unique.append(block)
+            seen.add(key)
+    return unique
+
+
+async def get_ik_document(conn, tid: str, *, feature: str = "document") -> dict:
+    """Get one official document with cited-by/cites lists; never fetch a cached tid twice."""
+    if not _ik_enabled():
+        raise RuntimeError("Indian Kanoon integration is disabled")
+    tid = re.sub(r"[^0-9]", "", str(tid))[:40]
+    if not tid:
+        return {}
+    lock_key = int(hashlib.sha256(("ik-doc:" + tid).encode()).hexdigest()[:15], 16)
+    await conn.execute("SELECT pg_advisory_lock($1)", lock_key)
+    try:
+        cached = await conn.fetchrow(
+            "SELECT document_json FROM ik_document_cache WHERE doc_id=$1", tid
+        )
+        if cached and cached.get("document_json"):
+            value = cached["document_json"]
+            return json.loads(value) if isinstance(value, str) else dict(value)
+        data = await _ik_call(
+            conn, f"/doc/{tid}/", {"maxcites": "50", "maxcitedby": "50"}, feature=feature
+        )
+        data["_paragraphs"] = parse_ik_paragraphs(str(data.get("doc") or ""))
+        await conn.execute(
+            """INSERT INTO ik_document_cache(doc_id,document_json,metadata_json)
+               VALUES($1,$2::jsonb,$3::jsonb)
+               ON CONFLICT(doc_id) DO NOTHING""",
+            tid, json.dumps(data), json.dumps({"paragraphs": data["_paragraphs"]}),
+        )
+        return data
+    finally:
+        await conn.execute("SELECT pg_advisory_unlock($1)", lock_key)
+
+
+async def ik_cached_request(conn, path: str, params: dict | None = None, *,
+                            feature: str, ttl_hours: int = 24) -> dict:
+    """Read-through cache for fragments/metadata; identical requests are metered once."""
+    if not _ik_enabled() or not _ik_token():
+        raise RuntimeError("Indian Kanoon integration is disabled or unconfigured")
+    canonical = json.dumps([path, params or {}], sort_keys=True, separators=(",", ":"))
+    key = hashlib.sha256(canonical.encode()).hexdigest()
+    cached = await conn.fetchrow(
+        "SELECT results_json,fetched_at FROM ikanoon_search_cache WHERE query_hash=$1", key
+    )
+    if cached and datetime.now(timezone.utc) - cached["fetched_at"] < timedelta(hours=ttl_hours):
+        value = cached["results_json"]
+        return json.loads(value) if isinstance(value, str) else dict(value)
+    lock_key = int(hashlib.sha256(("ik-request:" + key).encode()).hexdigest()[:15], 16)
+    await conn.execute("SELECT pg_advisory_lock($1)", lock_key)
+    try:
+        cached = await conn.fetchrow(
+            "SELECT results_json,fetched_at FROM ikanoon_search_cache WHERE query_hash=$1", key
+        )
+        if cached and datetime.now(timezone.utc) - cached["fetched_at"] < timedelta(hours=ttl_hours):
+            value = cached["results_json"]
+            return json.loads(value) if isinstance(value, str) else dict(value)
+        response = await _ik_call(conn, path, params, feature=feature)
+        await conn.execute(
+            """INSERT INTO ikanoon_search_cache(query_hash,query_text,results_json)
+               VALUES($1,$2,$3::jsonb) ON CONFLICT(query_hash) DO UPDATE
+               SET results_json=EXCLUDED.results_json,fetched_at=NOW(),hit_count=0""",
+            key, canonical[:1000], json.dumps(response),
+        )
+        return response
+    finally:
+        await conn.execute("SELECT pg_advisory_unlock($1)", lock_key)
+
+
+def judgment_tid(item: dict) -> str:
+    raw = str(item.get("ik_tid") or item.get("tid") or item.get("docid") or "")
+    if not raw:
+        raw = str(item.get("source_url") or item.get("url") or "")
+        match = re.search(r"/doc/(\d+)", raw)
+        raw = match.group(1) if match else ""
+    return re.sub(r"[^0-9]", "", raw)[:40]
+
+
+async def add_ik_grounding(conn, judgments: list[dict], *, feature: str) -> list[dict]:
+    """Attach selected paragraph excerpts to retrieved authority items."""
+    enriched = []
+    for original in judgments[:5]:
+        item = dict(original)
+        tid = judgment_tid(item)
+        if tid and _ik_enabled() and _ik_token():
+            try:
+                document = await get_ik_document(conn, tid, feature=feature)
+                paragraphs = document.get("_paragraphs") or parse_ik_paragraphs(str(document.get("doc") or ""))
+                preferred = [p for p in paragraphs if p["label"] in {"court's reasoning", "courts reasoning", "reasoning", "conclusion"}]
+                selected = preferred
+                if selected:
+                    item["grounding_paragraphs"] = selected[:8]
+            except Exception as exc:
+                logger.warning("IK paragraph grounding unavailable (%s)", type(exc).__name__)
+        enriched.append(item)
+    return enriched
+
+
 def _key(value: str) -> str:
     return _KEY_RE.sub("", (value or "").lower())
 
 
 async def _ik_search(
-    conn, query: str, limit: int, *, cache_writes: bool = True
+    conn, query: str, limit: int, *, cache_writes: bool = True, feature: str = "search",
 ) -> tuple[list[dict], bool]:
     """Read-through cache for the documented Indian Kanoon API.
 
-    Public callers can disable cache mutations to preserve a strictly read-only
-    request path. Authenticated Workspace searches retain the existing cache.
+    Callers may still opt out of writing the shared cache; normal product
+    surfaces cache the full official request and its filters.
     """
     if not _ik_enabled() or not _ik_token():
         return [], False
@@ -149,21 +289,33 @@ async def _ik_search(
     cached = await conn.fetchrow(
         "SELECT results_json, fetched_at FROM ikanoon_search_cache WHERE query_hash=$1", qhash
     )
+    cached_docs = []
+    if cached:
+        value = cached["results_json"]
+        value = json.loads(value) if isinstance(value, str) else value
+        cached_docs = value.get("docs", []) if isinstance(value, dict) else value
     cache_fresh = bool(cached and datetime.now(timezone.utc) - cached["fetched_at"] < timedelta(hours=24))
     if cache_fresh:
         if cache_writes:
             await conn.execute(
                 "UPDATE ikanoon_search_cache SET hit_count=hit_count+1 WHERE query_hash=$1", qhash
             )
-        return list(cached["results_json"])[:limit], False
+        return list(cached_docs)[:limit], False
     try:
-        data = await _ik_call(conn, "/search/", {"formInput": query, "pagenum": "0"})
+        if cache_writes:
+            data, _ = await ik_cached_search(
+                conn, {"formInput": query, "pagenum": "0"}, feature=feature
+            )
+        else:
+            data = await _ik_call(
+                conn, "/search/", {"formInput": query, "pagenum": "0"}, feature=feature
+            )
         docs = list(data.get("docs") or [])[:10]
     except Exception as exc:
         if isinstance(exc, IKDailyCostCapExceeded):
-            return list(cached["results_json"])[:limit], True
+            return list(cached_docs)[:limit], bool(cached_docs)
         logger.warning("Indian Kanoon search failed (%s)", type(exc).__name__)
-        return (list(cached["results_json"])[:limit], False) if cached else ([], False)
+        return (list(cached_docs)[:limit], False) if cached_docs else ([], False)
     if cache_writes:
         try:
             await conn.execute(
@@ -178,6 +330,41 @@ async def _ik_search(
     return docs[:limit], False
 
 
+async def ik_cached_search(conn, params: dict, *, feature: str, ttl_hours: int = 24) -> tuple[dict, bool]:
+    """Cache a complete official search request (including filters/maxpages)."""
+    if not _ik_enabled() or not _ik_token():
+        raise RuntimeError("Indian Kanoon integration is disabled or unconfigured")
+    canonical = json.dumps(params, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    qhash = hashlib.sha256(canonical.encode()).hexdigest()
+    cached = await conn.fetchrow(
+        "SELECT results_json,fetched_at FROM ikanoon_search_cache WHERE query_hash=$1", qhash
+    )
+    fresh = bool(cached and datetime.now(timezone.utc) - cached["fetched_at"] < timedelta(hours=ttl_hours))
+    if fresh:
+        value = cached["results_json"]
+        return (json.loads(value) if isinstance(value, str) else dict(value)), True
+    lock_key = int(hashlib.sha256(("ik-search:" + qhash).encode()).hexdigest()[:15], 16)
+    await conn.execute("SELECT pg_advisory_lock($1)", lock_key)
+    try:
+        cached = await conn.fetchrow(
+            "SELECT results_json,fetched_at FROM ikanoon_search_cache WHERE query_hash=$1", qhash
+        )
+        if cached and datetime.now(timezone.utc) - cached["fetched_at"] < timedelta(hours=ttl_hours):
+            value = cached["results_json"]
+            return (json.loads(value) if isinstance(value, str) else dict(value)), True
+        result = await _ik_call(conn, "/search/", params, feature=feature)
+        await conn.execute(
+            """INSERT INTO ikanoon_search_cache(query_hash,query_text,results_json)
+               VALUES($1,$2,$3::jsonb)
+               ON CONFLICT(query_hash) DO UPDATE SET results_json=EXCLUDED.results_json,
+                 fetched_at=NOW(),hit_count=0""",
+            qhash, str(params.get("formInput") or canonical)[:1000], json.dumps(result),
+        )
+        return result, False
+    finally:
+        await conn.execute("SELECT pg_advisory_unlock($1)", lock_key)
+
+
 async def search_case_law(
     conn,
     query: str,
@@ -185,6 +372,7 @@ async def search_case_law(
     limit: int = 10,
     court: str = "",
     cache_writes: bool = True,
+    feature: str = "search",
 ) -> dict[str, Any]:
     """Search local published text first, then supplement sparse results with IK.
 
@@ -245,7 +433,7 @@ async def search_case_law(
     cached_due_to_cap = False
     if len(results) < 3:
         ik_docs, cached_due_to_cap = await _ik_search(
-            conn, query, max(10, limit), cache_writes=cache_writes
+            conn, query, max(10, limit), cache_writes=cache_writes, feature=feature
         )
         for doc in ik_docs:
             tid = str(doc.get("tid") or doc.get("docid") or "")
