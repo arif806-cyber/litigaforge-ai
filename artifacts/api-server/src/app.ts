@@ -197,6 +197,68 @@ const _llmProxy = async (
 app.get("/api/llm/health", _llmProxy);
 app.get("/api/llm/{*splat}", _llmProxy);
 
+// OAuth discovery and authorization routes for the MCP service.
+const _oauthProxy = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  const suffix = req.originalUrl.replace(/^\/api/, "");
+  const target = `${_LLM_ORIGIN}${_LLM_BASE}${suffix}`;
+  const headers: Record<string, string> = {
+    accept: req.headers.accept ?? "application/json",
+    "x-forwarded-host": String(req.headers["x-forwarded-host"] ?? req.headers.host ?? ""),
+    "x-forwarded-proto": String(req.headers["x-forwarded-proto"] ?? req.protocol),
+  };
+  if (req.headers["content-type"]) headers["content-type"] = req.headers["content-type"];
+  try {
+    const upstream = await fetch(target, {
+      method: req.method,
+      headers,
+      body: ["GET", "HEAD"].includes(req.method)
+        ? undefined
+        : req.is("application/x-www-form-urlencoded")
+          ? new URLSearchParams(req.body as Record<string, string>).toString()
+          : JSON.stringify(req.body ?? {}),
+      signal: AbortSignal.timeout(30_000),
+    });
+    res.status(upstream.status);
+    for (const header of ["content-type", "cache-control", "pragma", "location", "www-authenticate"]) {
+      const value = upstream.headers.get(header);
+      if (value) res.setHeader(header, value);
+    }
+    res.send(Buffer.from(await upstream.arrayBuffer()));
+  } catch (err) {
+    logger.error({ err }, "MCP OAuth proxy failed");
+    res.status(502).json({ detail: "MCP OAuth service temporarily unavailable" });
+  }
+};
+app.all("/api/oauth/{*splat}", _oauthProxy);
+
+const _oauthDiscoveryProxy = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    const upstream = await fetch(`${_LLM_ORIGIN}${_LLM_BASE}${req.path}`, {
+      headers: {
+        accept: req.headers.accept ?? "application/json",
+        "x-forwarded-host": String(req.headers["x-forwarded-host"] ?? req.headers.host ?? ""),
+        "x-forwarded-proto": String(req.headers["x-forwarded-proto"] ?? req.protocol),
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    res.status(upstream.status);
+    const contentType = upstream.headers.get("content-type");
+    if (contentType) res.setHeader("content-type", contentType);
+    res.send(Buffer.from(await upstream.arrayBuffer()));
+  } catch (err) {
+    logger.error({ err }, "MCP OAuth metadata proxy failed");
+    res.status(502).json({ detail: "MCP OAuth metadata temporarily unavailable" });
+  }
+};
+app.get("/.well-known/oauth-protected-resource", _oauthDiscoveryProxy);
+app.get("/.well-known/oauth-authorization-server", _oauthDiscoveryProxy);
+
 // ── LitigaForge MCP reverse-proxy ─────────────────────────────────────────
 // Expose the Python service's stateless Streamable HTTP endpoint on the
 // canonical public URL https://litigaforge.com/mcp.
@@ -208,6 +270,8 @@ const _mcpProxy = async (
   try {
     const headers: Record<string, string> = {
       accept: req.headers.accept ?? "application/json, text/event-stream",
+      "x-forwarded-host": String(req.headers["x-forwarded-host"] ?? req.headers.host ?? ""),
+      "x-forwarded-proto": String(req.headers["x-forwarded-proto"] ?? req.protocol),
     };
     if (req.headers["content-type"]) {
       headers["content-type"] = req.headers["content-type"];
@@ -239,6 +303,7 @@ const _mcpProxy = async (
       "mcp-protocol-version",
       "mcp-session-id",
       "allow",
+      "www-authenticate",
     ]) {
       const value = upstream.headers.get(header);
       if (value) res.setHeader(header, value);

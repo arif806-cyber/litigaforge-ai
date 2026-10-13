@@ -72,6 +72,7 @@ CONNECT_V2_ENABLED = "true"
 MULTILANG_ENABLED = "true"
 CALENDAR_SYNC_ENABLED = "true"
 IK_ENABLED = "true"
+MCP_V2_ENABLED = "true"
 
 [nix]
 channel = "stable-25_05"

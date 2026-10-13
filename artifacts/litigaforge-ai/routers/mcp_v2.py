@@ -192,6 +192,43 @@ async def ensure_schema() -> None:
                 PRIMARY KEY(user_id,cnr)
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_oauth_clients (
+                client_id TEXT PRIMARY KEY,
+                client_name TEXT NOT NULL,
+                redirect_uris JSONB NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_oauth_codes (
+                code_hash TEXT PRIMARY KEY,
+                client_id TEXT NOT NULL REFERENCES mcp_oauth_clients(client_id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                redirect_uri TEXT NOT NULL,
+                code_challenge TEXT NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
+                used_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_oauth_access_tokens (
+                id BIGSERIAL PRIMARY KEY,
+                token_hash TEXT NOT NULL UNIQUE,
+                token_prefix TEXT NOT NULL,
+                client_id TEXT NOT NULL REFERENCES mcp_oauth_clients(client_id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                expires_at TIMESTAMPTZ NOT NULL,
+                last_used_at TIMESTAMPTZ,
+                revoked_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS mcp_oauth_token_prefix_idx
+            ON mcp_oauth_access_tokens(token_prefix) WHERE revoked_at IS NULL
+        """)
         for plan_id, config in _PLAN_DEFAULTS.items():
             await conn.execute("""
                 INSERT INTO mcp_plan_settings(plan_id,config) VALUES($1,$2::jsonb)
@@ -241,30 +278,46 @@ async def create_api_key(user: dict, label: str) -> dict:
     return {**dict(row), "key": raw}
 
 
-async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int, int]:
+async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int | None, int]:
     if not enabled():
         raise HTTPException(404, "MCP v2 is disabled")
     authz = request.headers.get("authorization", "")
     scheme, _, raw = authz.partition(" ")
-    if scheme.lower() != "bearer" or not raw.startswith(_PREFIX):
+    if scheme.lower() != "bearer" or not (raw.startswith(_PREFIX) or raw.startswith("lfo_")):
         raise HTTPException(401, "A LitigaForge MCP API key is required",
                             headers={"WWW-Authenticate": 'Bearer realm="LitigaForge MCP"'})
-    row = await fetchrow("""
-        SELECT k.id AS api_key_id, k.user_id, k.key_hash, k.scope,
-               u.email, u.name, u.role, u.subscription_tier,
-               COALESCE((SELECT l.verified FROM lawyers l WHERE l.user_id=u.id LIMIT 1),FALSE) AS is_verified
-        FROM mcp_api_keys k JOIN users u ON u.id = k.user_id
-        WHERE k.key_prefix = $1 AND k.revoked_at IS NULL
-        ORDER BY k.id DESC LIMIT 1
-    """, raw[:12])
-    if not row or not hmac.compare_digest(str(row["key_hash"]), _hash(raw)):
+    oauth_token = raw.startswith("lfo_")
+    if oauth_token:
+        row = await fetchrow("""
+            SELECT NULL::bigint AS api_key_id,t.user_id,t.token_hash,'read' AS scope,
+                   u.email,u.name,u.role,u.subscription_tier,
+                   COALESCE((SELECT l.verified FROM lawyers l WHERE l.user_id=u.id LIMIT 1),FALSE) AS is_verified
+            FROM mcp_oauth_access_tokens t JOIN users u ON u.id=t.user_id
+            WHERE t.token_prefix=$1 AND t.revoked_at IS NULL AND t.expires_at>NOW()
+            ORDER BY t.id DESC LIMIT 1
+        """, raw[:12])
+    else:
+        row = await fetchrow("""
+            SELECT k.id AS api_key_id, k.user_id, k.key_hash, k.scope,
+                   u.email, u.name, u.role, u.subscription_tier,
+                   COALESCE((SELECT l.verified FROM lawyers l WHERE l.user_id=u.id LIMIT 1),FALSE) AS is_verified
+            FROM mcp_api_keys k JOIN users u ON u.id = k.user_id
+            WHERE k.key_prefix = $1 AND k.revoked_at IS NULL
+            ORDER BY k.id DESC LIMIT 1
+        """, raw[:12])
+    if not row or not hmac.compare_digest(str(row["key_hash"] if not oauth_token else row["token_hash"]), _hash(raw)):
         raise HTTPException(401, "Invalid or revoked MCP API key",
                             headers={"WWW-Authenticate": 'Bearer realm="LitigaForge MCP"'})
     if row["scope"] != "read":
         raise HTTPException(403, "This key has no read-only scope")
     user = dict(row)
     user["id"] = int(row["user_id"])
-    key_id = int(row["api_key_id"])
+    key_id = int(row["api_key_id"]) if row["api_key_id"] is not None else None
+    if oauth_token:
+        await execute("UPDATE mcp_oauth_access_tokens SET last_used_at=NOW() WHERE token_prefix=$1 AND token_hash=$2",
+                      raw[:12], _hash(raw))
+    else:
+        await execute("UPDATE mcp_api_keys SET last_used_at=NOW() WHERE id=$1", key_id)
     user_id = int(row["user_id"])
     entitlement = await fetchrow("""
         SELECT plan_id,expires_at FROM mcp_user_entitlements
@@ -330,7 +383,6 @@ async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int, in
                 status = policy_error.pop("status")
                 raise HTTPException(status, detail=policy_error)
             user["mcp_overage_inr"] = overage_charge(config, int(monthly or 0))
-            await conn.execute("UPDATE mcp_api_keys SET last_used_at=NOW() WHERE id=$1", key_id)
             audit_id = await conn.fetchval("""
                 INSERT INTO mcp_call_audit(user_id,api_key_id,tool_name,args_sha256,outcome)
                 VALUES($1,$2,$3,'', 'reserved') RETURNING id
@@ -979,3 +1031,6 @@ async def call_tool(name: str, args: dict, user: dict) -> dict:
 
 __all__ = ["router", "enabled", "ensure_schema", "verify_bearer", "audit_call",
            "ik_spend_today", "public_result", "TOOLS", "TOOL_LIST", "call_tool"]
+
+from routers.mcp_oauth import router as _oauth_router
+router.include_router(_oauth_router)

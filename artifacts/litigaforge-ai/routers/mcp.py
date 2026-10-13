@@ -25,6 +25,18 @@ _PROTOCOL_VERSION = "2025-06-18"
 _SERVER_INFO = {"name": "litigaforge", "version": "1.0.0"}
 
 
+def _protected_resource_metadata_url(request: Request) -> str:
+    host = (
+        request.headers.get("x-forwarded-host")
+        or request.headers.get("host")
+        or "litigaforge.com"
+    ).split(",", 1)[0].strip()
+    scheme = request.headers.get("x-forwarded-proto", "https").split(",", 1)[0].strip().lower()
+    if not host or any(char in host for char in "\r\n/@") or scheme not in {"http", "https"}:
+        host, scheme = "litigaforge.com", "https"
+    return f'{scheme}://{host}/.well-known/oauth-protected-resource'
+
+
 def _json_safe(value: Any) -> Any:
     if isinstance(value, (datetime, date)):
         return value.isoformat()
@@ -307,7 +319,17 @@ async def mcp_post(request: Request):
         result = {}
     elif method == "tools/list":
         from routers import mcp_v2
-        if mcp_v2.enabled() and request.headers.get("authorization", "").lower().startswith("bearer lfm_"):
+        auth_header = request.headers.get("authorization", "").lower()
+        if mcp_v2.enabled() and not (
+            auth_header.startswith("bearer lfm_") or auth_header.startswith("bearer lfo_")
+        ):
+            response = _error(request_id, -32001, "MCP authentication required")
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = (
+                f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
+            )
+            return response
+        if mcp_v2.enabled():
             result = {"tools": mcp_v2.TOOL_LIST}
         else:
             result = {"tools": _TOOLS}
@@ -332,7 +354,7 @@ async def mcp_post(request: Request):
                         response = _error(request_id, -32001, message)
                         response.status_code = 401
                         response.headers["WWW-Authenticate"] = (
-                            'Bearer resource_metadata="https://litigaforge.com/.well-known/oauth-protected-resource"'
+                            f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
                         )
                         return response
                     if isinstance(detail, dict):

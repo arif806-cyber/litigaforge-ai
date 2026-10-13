@@ -50,9 +50,9 @@ export default function McpDocs() {
         <h2 className="text-xl font-semibold">Connect</h2>
         <p className="text-sm leading-6 text-muted-foreground">
           Endpoint: <code className="rounded bg-muted px-1.5 py-1">https://litigaforge.com/mcp</code>.
-          Create a read-only API key in Account Settings → MCP Connector, then provide it to your MCP client
-          as a Bearer token. Keys are shown once and can be revoked in Settings. OAuth 2.1 / PKCE is not
-          yet enabled; do not expect a browser authorization flow.
+          MCP clients can use OAuth authorization code with PKCE and dynamic client registration. Sign in
+          to LitigaForge and approve read-only access when prompted. A read-only API key from Account
+          Settings → MCP Connector is also supported for clients that cannot use OAuth.
         </p>
         <pre className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 text-xs"><code>{config}</code></pre>
       </section>
@@ -69,15 +69,15 @@ export default function McpDocs() {
         </div>
       </section>
       <section className="space-y-4 rounded-xl border border-amber-300 bg-amber-50/50 p-5">
-        <h2 className="text-xl font-semibold">Reviewer access instructions — OAuth setup pending</h2>
+        <h2 className="text-xl font-semibold">Reviewer access instructions</h2>
         <ol className="list-decimal space-y-2 pl-5 text-sm leading-6">
-          <li>Request a reviewer account from <a className="text-primary underline" href="mailto:info@litigaforge.com">info@litigaforge.com</a>.</li>
-          <li>LitigaForge staff must grant the non-purchasable Anthropic Reviewer entitlement; this seeds fictional CNR demo matters and saved public judgments, and expires within 30 days.</li>
-          <li>After the reviewer OAuth authorization flow is enabled, add <code>https://litigaforge.com/mcp</code> as a custom connector in Claude and sign in with the issued reviewer account.</li>
-          <li>Call each listed read-only tool and verify results use only the reviewer’s demo records for tracked-case tools.</li>
+          <li>For isolated development testing, use the reviewer email and password configured through Replit Secrets; do not put credentials in source control.</li>
+          <li>The development seed grants the non-purchasable Reviewer entitlement, creates fictional CNR demo matters and saved public judgments, and expires within 30 days.</li>
+          <li>Add <code>https://litigaforge.com/mcp</code> as a custom connector in your MCP client, sign in with the reviewer account, and approve read-only access.</li>
+          <li>Check that tracked-case tools return only the reviewer’s demo records. Public case-law tools return public legal sources.</li>
         </ol>
         <p className="text-sm font-medium text-amber-900">
-          OAuth 2.1/PKCE, dynamic registration, and a live Claude connector test are not yet available. Do not use these draft steps as a claim that the connector is ready or tested.
+          Reviewer fixtures and credentials are development-only. This page does not claim that a live Claude connector test has been run.
         </p>
       </section>
       <section className="space-y-3">
