@@ -1840,10 +1840,19 @@ _cors_origins = [f"https://{d.strip()}" for d in os.getenv("REPLIT_DOMAINS", "")
 _frontend_url = os.environ.get("FRONTEND_URL", "").strip()
 if _frontend_url:
     _cors_origins.append(_frontend_url)
+_explicit_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if "*" in _explicit_origins:
+    raise RuntimeError("ALLOWED_ORIGINS cannot contain '*' while credentialed CORS is enabled")
+_cors_origins.extend(_explicit_origins)
 # Always include the canonical production domain
 _prod_domain = "https://litiga-forge-ai.replit.app"
 if _prod_domain not in _cors_origins:
     _cors_origins.append(_prod_domain)
+_cors_origins = list(dict.fromkeys(_cors_origins))
 if not _cors_origins:
     _cors_origins = ["http://localhost:5173", "http://localhost:4173"]
 class _ConditionalGZipMiddleware:

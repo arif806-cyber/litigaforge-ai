@@ -8,10 +8,15 @@ dist
 /generated-artifacts/
 /.agents/outputs/
 /exports/
+/extract/
 /screenshots/
 /recordings/
 /attached_assets/
 /litigaforge_context.txt
+/litigaforge-blog-work/
+/.agents/memory/
+/deployable/web/
+/deployable/docker-compose.yml
 tmp
 out-tsc
 *.tsbuildinfo

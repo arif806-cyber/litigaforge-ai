@@ -2,7 +2,7 @@ name: Cloud deployment checks
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, feature/arifbase]
 permissions:
   contents: read
   packages: write
@@ -33,7 +33,7 @@ jobs:
           SESSION_SECRET: ci-placeholder-only
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:1/ci
   images:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/arifbase')
     needs: test
     runs-on: ubuntu-24.04
     strategy:
