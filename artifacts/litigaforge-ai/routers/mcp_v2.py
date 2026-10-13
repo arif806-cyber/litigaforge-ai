@@ -837,7 +837,7 @@ async def invite_mcp_reviewer(request: Request, user: dict = Depends(get_superus
         user_id = int(target["id"])
 
     grant = await grant_reviewer(user_id, user)
-    from auth import _create_password_reset_token, _frontend_account_url
+    from routers.auth import _create_password_reset_token, _frontend_account_url
     token = await _create_password_reset_token(user_id)
     setup_url = _frontend_account_url("/reset-password", token)
     await execute("""
