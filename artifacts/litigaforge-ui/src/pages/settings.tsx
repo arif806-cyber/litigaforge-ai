@@ -8,6 +8,7 @@ import {
   User, Mail, Lock, Trash2, Shield, ChevronRight,
   Loader2, CheckCircle, AlertTriangle, Eye, EyeOff,
   CalendarDays, Copy, RefreshCw, Link2,
+  KeyRound,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Languages } from "lucide-react";
@@ -29,10 +30,71 @@ export default function AccountSettings() {
       <ProfileSection user={user} />
       <LanguagePreferenceSection user={user} />
       {user?.lawyer_status && <><AdvocateProfileSection /><CalendarSyncSection /></>}
+      {(user?.role === "advocate" || user?.role === "lawyer") && <McpKeysSection />}
       <PasswordSection />
       <PrivacySection />
       <DangerZone onDeleted={logout} />
     </div>
+  );
+}
+
+function McpKeysSection() {
+  const queryClient = useQueryClient();
+  const [label, setLabel] = useState("Claude");
+  const [newKey, setNewKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["mcp-api-keys"],
+    queryFn: () => apiFetch("/mcp/keys"),
+    retry: false,
+  });
+  const create = async () => {
+    setBusy(true); setNotice(""); setNewKey("");
+    try {
+      const result = await apiFetch("/mcp/keys", { method: "POST", body: { label } });
+      setNewKey(result.key);
+      setNotice("Key created. Copy it now; it will not be shown again.");
+      await queryClient.invalidateQueries({ queryKey: ["mcp-api-keys"] });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not create the key.");
+    } finally { setBusy(false); }
+  };
+  const revoke = async (id: number) => {
+    if (!window.confirm("Revoke this MCP key? Connected clients will stop working.")) return;
+    setBusy(true); setNotice("");
+    try {
+      await apiFetch(`/mcp/keys/${id}`, { method: "DELETE" });
+      await queryClient.invalidateQueries({ queryKey: ["mcp-api-keys"] });
+      setNotice("Key revoked.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not revoke the key.");
+    } finally { setBusy(false); }
+  };
+  const keys = (data as any)?.keys ?? [];
+  return (
+    <Card icon={<KeyRound className="h-4 w-4" />} title="MCP Connector">
+      <p className="text-sm leading-6 text-muted-foreground">
+        Create a read-only key for Claude and other MCP clients. Keys are shown once.
+        Do not paste them into public documents or shared chats.
+      </p>
+      {isLoading && <p className="text-sm text-muted-foreground">Loading connector access…</p>}
+      {error && <p role="status" className="text-sm text-muted-foreground">MCP v2 is not enabled for this account or deployment.</p>}
+      {newKey && <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+        <p className="text-xs font-semibold">Copy this key now</p>
+        <input aria-label="New MCP API key" readOnly value={newKey} className="w-full rounded border border-border bg-background px-2 py-2 font-mono text-xs" />
+      </div>}
+      <div className="flex gap-2">
+        <input aria-label="MCP key label" value={label} maxLength={64} onChange={(e) => setLabel(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+        <button type="button" onClick={create} disabled={busy || !label.trim()} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Create key</button>
+      </div>
+      {keys.map((key: any) => <div key={key.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+        <div className="min-w-0"><p className="truncate text-sm font-medium">{key.label}</p><p className="font-mono text-xs text-muted-foreground">{key.key_prefix}… · read-only</p></div>
+        <button type="button" onClick={() => void revoke(key.id)} disabled={busy} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Revoke</button>
+      </div>)}
+      {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
+      <a href="/mcp-docs" className="text-sm font-semibold text-primary underline underline-offset-4">MCP setup and tool documentation</a>
+    </Card>
   );
 }
 

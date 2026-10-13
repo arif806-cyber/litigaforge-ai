@@ -93,6 +93,11 @@ const ROUTES = {
     ogTitle: 'Terms of Service \u2014 LitigaForge AI',
     desc: 'Terms governing your use of LitigaForge AI \u2014 acceptable use, disclaimers and the limits of AI-generated legal information.',
   },
+  '/mcp-docs': {
+    title: 'LitigaForge MCP Connector | Indian Legal Data',
+    ogTitle: 'LitigaForge MCP Connector',
+    desc: 'Connect MCP clients to read-only Indian court records, judgments, and legal reference data with source attribution.',
+  },
   '/refund-policy': {
     title: 'Refund Policy | LitigaForge AI',
     ogTitle: 'Refund Policy \u2014 LitigaForge AI',

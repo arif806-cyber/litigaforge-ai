@@ -1535,6 +1535,10 @@ async def lifespan(app: FastAPI):
         )
     logger.info("✓ Startup checks passed")
 
+    if os.getenv("MCP_V2_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}:
+        from routers.mcp_v2 import ensure_schema as _ensure_mcp_v2_schema
+        await _ensure_mcp_v2_schema()
+
     # Daily judgment-ingestion scheduler (production only; benign no-op without a
     # compliant API token). Returns None when disabled.
     from judgment_ingest import start_scheduler as _start_judgment_scheduler
@@ -2123,7 +2127,7 @@ from routers import (
     judgments_router, research_router,
     llm_router, workspace_router, personalization_router,
     presence_router, cnr_router,
-    court_intelligence_router, mcp_router,
+    court_intelligence_router, mcp_router, mcp_v2_router,
 )
 from country_router import router as country_router
 from jobs import router as jobs_router
@@ -2170,6 +2174,7 @@ app.include_router(presence_router,         prefix=BASE_PATH)
 app.include_router(cnr_router,              prefix=BASE_PATH)
 app.include_router(court_intelligence_router, prefix=BASE_PATH)
 app.include_router(mcp_router,              prefix=BASE_PATH)
+app.include_router(mcp_v2_router,           prefix=BASE_PATH)
 app.include_router(jobs_router,             prefix=BASE_PATH)
 app.include_router(connect_v2_router,       prefix=BASE_PATH)
 app.include_router(indian_kanoon_router,    prefix=BASE_PATH)

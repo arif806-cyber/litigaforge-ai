@@ -5,6 +5,7 @@ HTTP.  It exposes only published legal information and performs no AI calls or
 writes, keeping the endpoint inexpensive and safe for remote clients.
 """
 
+import asyncio
 import json
 from datetime import date, datetime
 from typing import Any
@@ -297,7 +298,11 @@ async def mcp_post(request: Request):
     elif method == "ping":
         result = {}
     elif method == "tools/list":
-        result = {"tools": _TOOLS}
+        from routers import mcp_v2
+        if mcp_v2.enabled() and request.headers.get("authorization", "").lower().startswith("bearer lfm_"):
+            result = {"tools": mcp_v2.TOOL_LIST}
+        else:
+            result = {"tools": _TOOLS}
     elif method == "tools/call":
         if not isinstance(params, dict):
             return _error(request_id, -32602, "Invalid params")
@@ -306,7 +311,31 @@ async def mcp_post(request: Request):
         if not isinstance(name, str) or not isinstance(arguments, dict):
             return _error(request_id, -32602, "Invalid params")
         try:
-            data = await _call_tool(name, arguments)
+            from routers import mcp_v2
+            if name in mcp_v2.TOOLS:
+                if not mcp_v2.enabled():
+                    return _error(request_id, -32601, "Method not found")
+                try:
+                    user, key_id, audit_id = await mcp_v2.verify_bearer(request)
+                except Exception as exc:
+                    detail = getattr(exc, "detail", "MCP authentication required")
+                    return _error(request_id, -32001, str(detail))
+                outcome = "ok"
+                cost_before = await mcp_v2.ik_spend_today() if name in {"judgment_search", "judgment_passages"} else 0
+                try:
+                    data = await asyncio.wait_for(
+                        mcp_v2.call_tool(name, arguments, user), timeout=25
+                    )
+                except Exception:
+                    outcome = "error"
+                    raise
+                finally:
+                    cost_after = await mcp_v2.ik_spend_today() if name in {"judgment_search", "judgment_passages"} else cost_before
+                    await mcp_v2.audit_call(user, key_id, audit_id, name, arguments,
+                                            cost_inr=max(0, cost_after - cost_before),
+                                            outcome=outcome)
+            else:
+                data = await _call_tool(name, arguments)
             result = _tool_result(data)
         except LookupError as exc:
             return _error(request_id, -32601, str(exc))

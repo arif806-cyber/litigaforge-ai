@@ -1,0 +1,8 @@
+{
+  "LitigaForge": {
+    "type": "http",
+    "url": "https://litigaforge.com/mcp",
+    "title": "LitigaForge (India)",
+    "description": "Indian courts: eCourts case status, cause lists and orders; grounded Indian judgments (via Indian Kanoon); bare acts and IPC→BNS mappings."
+  }
+}

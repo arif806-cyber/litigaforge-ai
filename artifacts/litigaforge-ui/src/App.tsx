@@ -58,6 +58,7 @@ const DemoPage            = lazy(() => import("@/pages/demo"));
 const PrivacyPolicy       = lazy(() => import("@/pages/privacy"));
 const TermsOfService      = lazy(() => import("@/pages/terms"));
 const About               = lazy(() => import("@/pages/about"));
+const McpDocs             = lazy(() => import("@/pages/mcp-docs"));
 const Contact             = lazy(() => import("@/pages/contact"));
 const Digest              = lazy(() => import("@/pages/digest"));
 const ProfileResearch     = lazy(() => import("@/pages/profile-research"));
@@ -405,6 +406,7 @@ function Router() {
         <Route path="/privacy"><PublicPageFrame><PrivacyPolicy /></PublicPageFrame></Route>
         <Route path="/privacy-policy"><PublicPageFrame><PrivacyPolicy /></PublicPageFrame></Route>
         <Route path="/terms"><PublicPageFrame><TermsOfService /></PublicPageFrame></Route>
+        <Route path="/mcp-docs"><PublicPageFrame><McpDocs /></PublicPageFrame></Route>
         <Route path="/about"><PublicPageFrame><About /></PublicPageFrame></Route>
         <Route path="/contact"><PublicPageFrame><Contact /></PublicPageFrame></Route>
         <Route path="/pricing"><PublicPageFrame><PricingRoute /></PublicPageFrame></Route>
