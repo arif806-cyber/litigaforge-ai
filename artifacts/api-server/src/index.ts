@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startBlogScheduler } from "./lib/blogScheduler";
+import { schedulersEnabled } from "./lib/environment";
 
 const rawPort = process.env["PORT"];
 
@@ -23,5 +24,5 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  startBlogScheduler();
+  if (schedulersEnabled()) startBlogScheduler();
 });

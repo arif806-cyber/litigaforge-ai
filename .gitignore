@@ -6,6 +6,12 @@ dist
 # instead of relying on a cached cloud build that may serve stale HTML.
 !artifacts/litigaforge-ui/dist/
 /generated-artifacts/
+/.agents/outputs/
+/exports/
+/screenshots/
+/recordings/
+/attached_assets/
+/litigaforge_context.txt
 tmp
 out-tsc
 *.tsbuildinfo

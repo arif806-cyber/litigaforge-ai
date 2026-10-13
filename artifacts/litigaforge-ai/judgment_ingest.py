@@ -84,14 +84,8 @@ def is_source_configured() -> bool:
 
 
 def _is_prod() -> bool:
-    """Fail-closed production detection — ANY production signal counts. Mirrors
-    routers/paid_documents.py so an unset ENVIRONMENT in a real deployment never
-    accidentally toggles behaviour."""
-    if (os.getenv("REPLIT_DEPLOYMENT") or "").strip():
-        return True
-    if (os.getenv("NODE_ENV") or "").strip().lower() == "production":
-        return True
-    return (os.getenv("ENVIRONMENT") or "development").strip().lower() in ("production", "prod")
+    from runtime_env import is_production
+    return is_production()
 
 
 def _max_docs() -> int:

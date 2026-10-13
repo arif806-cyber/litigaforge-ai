@@ -660,18 +660,23 @@ Open the Replit preview — you'll be redirected to `/login`. Register a free ac
 ## Deploy on Your Own Server
 
 ```bash
-git clone https://github.com/arif806-cyber/litigaforge-ai.git
-cd litigaforge-ai/deployable
+git clone https://github.com/arif806-cyber/litigaforge-cloud.git
+cd litigaforge-cloud/deployable
 cp .env.example .env
-# Set SESSION_SECRET and DATABASE_URL at minimum
+# Set strong passwords, provider credentials, and SITE_ADDRESS.
 docker compose up -d --build
 ```
 
-```bash
-docker compose logs -f          # live logs
-docker compose down             # stop
-docker compose up -d --build    # rebuild after changes
-```
+The stack includes PostgreSQL 16 with pgvector, Redis, MinIO, FastAPI,
+api-server, the built React UI, and Caddy for HTTPS. Full configuration,
+external scheduler commands, encrypted database backup/restore and storage
+migration instructions are in [`deployable/README.md`](deployable/README.md).
+
+Replit remains the default: unset `APP_ENV` there and the runtime recognizes
+Replit's existing production marker. Portable hosts set `APP_ENV` explicitly.
+Set `SCHEDULER_ENABLED=true` on one instance only; it defaults to false in
+Compose. Database dumps are encrypted with age before object-storage upload.
+Never commit dumps, client documents, or secrets.
 
 ---
 

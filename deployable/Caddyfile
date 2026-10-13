@@ -1,0 +1,6 @@
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+	@api path /litigaforge/* /api/* /blog* /_astro/*
+	reverse_proxy @api api-server:8080
+	reverse_proxy ui:80
+}

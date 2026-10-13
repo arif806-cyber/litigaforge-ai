@@ -95,6 +95,35 @@ def test_s3_backend_uses_bucket_and_preserves_storage_contract(monkeypatch):
     )
 
 
+def test_local_storage_is_rooted_and_rejects_traversal(tmp_path, monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    monkeypatch.setenv("LOCAL_STORAGE_DIR", str(tmp_path))
+    from storage import get_object_storage
+
+    storage = get_object_storage()
+    storage.upload_from_bytes("case/document.txt", b"safe")
+    assert storage.download_as_bytes("case/document.txt") == b"safe"
+    storage.delete("case/document.txt")
+    with pytest.raises(ValueError, match="inside LOCAL_STORAGE_DIR"):
+        storage.upload_from_bytes("../outside.txt", b"no")
+
+
+def test_app_env_and_scheduler_policy_preserve_replit_fallback(monkeypatch):
+    from runtime_env import app_env, schedulers_enabled
+
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("NODE_ENV", raising=False)
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.setenv("REPLIT_DEPLOYMENT", "1")
+    assert app_env() == "production"
+    assert schedulers_enabled() is True
+    monkeypatch.setenv("APP_ENV", "development")
+    assert app_env() == "development"
+    assert schedulers_enabled() is False
+    monkeypatch.setenv("SCHEDULER_ENABLED", "true")
+    assert schedulers_enabled() is True
+
+
 def test_legal_prompt_uses_current_indian_criminal_law():
     from llm.config import LEGAL_SYSTEM_PROMPT
 

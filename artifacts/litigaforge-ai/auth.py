@@ -58,7 +58,8 @@ REFRESH_TOKEN_DAYS = 7
 # ── Cookie helpers ────────────────────────────────────────────────────────────
 
 def _is_prod() -> bool:
-    return os.getenv("ENVIRONMENT", "development").lower() in ("production", "prod")
+    from runtime_env import is_production
+    return is_production()
 
 
 def set_auth_cookie(response: Response, token: str) -> None:

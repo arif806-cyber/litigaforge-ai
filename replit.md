@@ -8,7 +8,8 @@ Client–Lawyer matching platform + legal AI for Telangana & AP. Clients post ca
 - **Frontend** — workflow `artifacts/litigaforge-ui: web`: `pnpm --filter @workspace/litigaforge-ui run dev`
 - **Prod build** — `PORT=23790 BASE_PATH=/ pnpm --filter @workspace/litigaforge-ui run build`
 - `BASE_PATH=/litigaforge` and `PORT=5000` are **shared Replit env vars** — all workflows inherit them; do NOT add them inline to workflow commands.
-- GitHub: repo `arif806-cyber/litigaforge-ai`, branch `feature/arifbase`.
+- GitHub: Replit's existing sync target remains `arif806-cyber/litigaforge-ai`, branch `feature/arifbase`. A separate private cloud target is `arif806-cyber/litigaforge-cloud`.
+- Cloud portability: leave `APP_ENV` unset on Replit to preserve `REPLIT_DEPLOYMENT`/legacy fallbacks. Use `SCHEDULER_ENABLED` to control background schedules; cloud Compose disables them by default. Do not commit database dumps or client/legal uploads; backups are age-encrypted before object-storage upload.
 - The deployed app builds from the **Replit workspace, not GitHub** — several features only go live **after a republish** (flagged per-feature below).
 
 ## Stack

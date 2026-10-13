@@ -2,6 +2,7 @@ fastapi==0.115.5
 uvicorn[standard]==0.32.1
 pydantic==2.10.3
 python-dotenv==1.0.1
+setuptools==75.8.0
 requests==2.32.3
 langgraph==0.2.55
 langchain==0.3.13

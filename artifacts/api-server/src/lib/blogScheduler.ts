@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { appEnvironment } from "./environment";
 
 const BLOG_REPO = "arif806-cyber/litigaforge-blog";
 const WORKFLOW = "pipeline.yml";
@@ -69,7 +70,7 @@ async function triggerBlogPipeline(token: string): Promise<void> {
 
 /** Starts an in-process, fail-closed, at-most-daily India blog scheduler. */
 export function startBlogScheduler(): void {
-  if (process.env["NODE_ENV"] !== "production") {
+  if (!["production", "prod"].includes(appEnvironment())) {
     logger.info("blog-scheduler: non-production environment — disabled");
     return;
   }

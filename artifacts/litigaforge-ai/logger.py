@@ -9,6 +9,7 @@ import sys
 import os
 from datetime import datetime, timezone
 from typing import Any
+from runtime_env import is_production
 
 
 class JSONFormatter(logging.Formatter):
@@ -38,8 +39,7 @@ def get_logger(name: str) -> logging.Logger:
         return logger
 
     handler = logging.StreamHandler(sys.stdout)
-    env = os.environ.get("ENVIRONMENT", "development")
-    if env == "production":
+    if is_production():
         handler.setFormatter(JSONFormatter())
         logger.setLevel(logging.INFO)
     else:

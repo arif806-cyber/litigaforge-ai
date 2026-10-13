@@ -377,6 +377,11 @@ async def _ensure_sample_judgments(conn) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from runtime_env import schedulers_enabled
+    _schedulers_enabled = schedulers_enabled()
+    app.state.scheduler_enabled = _schedulers_enabled
+    if not _schedulers_enabled:
+        logger.info("schedulers disabled by SCHEDULER_ENABLED / APP_ENV policy")
     pool = await get_pool()
     conn = await pool.acquire()
     try:
@@ -1533,15 +1538,15 @@ async def lifespan(app: FastAPI):
     # Daily judgment-ingestion scheduler (production only; benign no-op without a
     # compliant API token). Returns None when disabled.
     from judgment_ingest import start_scheduler as _start_judgment_scheduler
-    app.state.judgment_scheduler = _start_judgment_scheduler()
+    app.state.judgment_scheduler = _start_judgment_scheduler() if _schedulers_enabled else None
 
     # Daily judgment-digest scheduler (production only; reports loudly when SMTP
     # is unconfigured instead of silently mock-sending). None when disabled.
     from digest import start_scheduler as _start_digest_scheduler
-    app.state.digest_scheduler = _start_digest_scheduler()
+    app.state.digest_scheduler = _start_digest_scheduler() if _schedulers_enabled else None
 
     from authority_scheduler import start_scheduler as _start_authority_scheduler
-    app.state.authority_monitor_scheduler = _start_authority_scheduler()
+    app.state.authority_monitor_scheduler = _start_authority_scheduler() if _schedulers_enabled else None
 
     # Daily subscription expiry sweep. This is intentionally cancellable so
     # reloads/shutdowns never leave a task running against a closed pool.
@@ -1552,7 +1557,7 @@ async def lifespan(app: FastAPI):
         expired = await _expire_subscriptions()
         reconciled = await _run_daily_reconciliation()
         return expired + reconciled
-    app.state.subscription_scheduler = _start_subscription_scheduler(_daily_sweep)
+    app.state.subscription_scheduler = _start_subscription_scheduler(_daily_sweep) if _schedulers_enabled else None
 
     # Daily product health check (production only). Deliberately independent
     # of FORGEOS_ENABLED — the table + scheduler must exist and run even if
@@ -1563,7 +1568,7 @@ async def lifespan(app: FastAPI):
         await init_health_check_table()
     except Exception as _hce:
         logger.warning("health-check: table init failed: %s", _hce)
-    app.state.health_check_scheduler = _start_health_check_scheduler()
+    app.state.health_check_scheduler = _start_health_check_scheduler() if _schedulers_enabled else None
 
     # ── ForgeOS (multi-agent orchestration subsystem) — fully gated ──────────
     # Inert unless FORGEOS_ENABLED is set: no tables, no seed data, no
@@ -1579,7 +1584,7 @@ async def lifespan(app: FastAPI):
             await seed_agents()
             await seed_schedules()
             from forgeos.scheduler import start_scheduler as _start_forgeos_scheduler
-            app.state.forgeos_scheduler = _start_forgeos_scheduler()
+            app.state.forgeos_scheduler = _start_forgeos_scheduler() if _schedulers_enabled else None
             logger.info("forgeos: subsystem enabled — tables ready, agents seeded, scheduler started")
         except Exception as _fe:
             logger.error("forgeos: startup failed: %s", _fe, exc_info=True)
@@ -1672,7 +1677,7 @@ async def lifespan(app: FastAPI):
                 logger.exception("court-intel: nightly refresh error: %s", _e)
                 await _aio.sleep(3600)  # back off 1h on error
 
-    _ci_sched = asyncio.ensure_future(_case_refresh_loop())
+    _ci_sched = asyncio.ensure_future(_case_refresh_loop()) if _schedulers_enabled else None
     app.state.court_intel_scheduler = _ci_sched
 
     # ── Hourly notification retry (Phase 2) ───────────────────────────────────
@@ -1691,7 +1696,7 @@ async def lifespan(app: FastAPI):
                 logger.exception("court-intel: notification retry error: %s", _e)
                 await _aio.sleep(300)  # back off 5 min on error
 
-    _notif_retry_sched = asyncio.ensure_future(_notification_retry_loop())
+    _notif_retry_sched = asyncio.ensure_future(_notification_retry_loop()) if _schedulers_enabled else None
     app.state.notif_retry_scheduler = _notif_retry_sched
 
     # DocketView listings are prefetched twice daily so page views never trigger
@@ -1724,7 +1729,7 @@ async def lifespan(app: FastAPI):
                 logger.exception("docket: scheduled cause-list refresh error: %s", _e)
                 await _aio.sleep(1800)
 
-    if (os.getenv("REPLIT_DEPLOYMENT") or "").strip():
+    if _schedulers_enabled:
         _docket_sched = asyncio.ensure_future(_docket_schedule_loop())
         app.state.docket_schedule_scheduler = _docket_sched
     else:
