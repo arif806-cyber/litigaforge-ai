@@ -105,6 +105,7 @@ async def test_login_normalizes_email_before_lookup(monkeypatch):
     user = {"id": 3, "email": "person@example.com", "password_hash": "hash"}
     lookup = AsyncMock(return_value=user)
     monkeypatch.setattr(auth_router, "get_user_by_email", lookup)
+    monkeypatch.setattr(auth_router, "db_fetchrow", AsyncMock(return_value=None))
     monkeypatch.setattr(auth_router, "verify_password", lambda *_: True)
     monkeypatch.setattr(auth_router, "_issue_tokens", AsyncMock(return_value="token"))
 
@@ -180,7 +181,9 @@ async def test_lawyer_matches_masks_until_that_advocate_is_paid_and_interested()
         monkeypatch.setattr(matching_router, "fetchrow", AsyncMock(return_value={"id": 12}))
         fetch = AsyncMock(return_value=[])
         monkeypatch.setattr(matching_router, "fetch", fetch)
-        await matching_router.lawyer_matches({"id": 9, "role": "advocate"})
+        await matching_router.lawyer_matches(
+            {"id": 9, "role": "advocate", "has_lawyer_profile": False}
+        )
         query = fetch.await_args.args[0]
         profile_query = matching_router.fetchrow.await_args.args[0]
         assert "verified = TRUE" in profile_query
@@ -202,7 +205,9 @@ async def test_lawyer_matches_rejects_suspended_or_revoked_advocate(monkeypatch)
     monkeypatch.setattr(matching_router, "fetch", fetch)
 
     with pytest.raises(Exception) as error:
-        await matching_router.lawyer_matches({"id": 9, "role": "advocate"})
+        await matching_router.lawyer_matches(
+            {"id": 9, "role": "advocate", "has_lawyer_profile": False}
+        )
 
     assert "verified advocates" in str(error.value).lower()
     fetch.assert_not_awaited()

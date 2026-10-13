@@ -344,7 +344,9 @@ async def test_expired_subscription_payment_replay_cannot_restore_access(monkeyp
 @pytest.mark.asyncio
 async def test_expired_subscription_status_is_free(monkeypatch):
     expire = AsyncMock()
+    reconcile = AsyncMock()
     monkeypatch.setattr(subscription, "expire_subscription_for_user", expire)
+    monkeypatch.setattr(subscription, "reconcile_active_subscriptions", reconcile)
     monkeypatch.setattr(database, "fetchrow", AsyncMock(return_value={
         "tier": "professional", "status": "expired",
         "started_at": None, "expires_at": "yesterday",
@@ -352,6 +354,7 @@ async def test_expired_subscription_status_is_free(monkeypatch):
     }))
     result = await subscription.subscription_status({"id": 9, "subscription_tier": "professional"})
     expire.assert_awaited_once_with(9)
+    reconcile.assert_awaited_once_with(9)
     assert result["tier"] == "free"
     assert result["status"] == "expired"
 

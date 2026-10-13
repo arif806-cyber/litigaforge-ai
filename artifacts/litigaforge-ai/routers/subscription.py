@@ -156,13 +156,13 @@ async def _start_advocate_pro_trial(user_id: int) -> None:
                     """INSERT INTO subscriptions
                        (user_id, tier, started_at, expires_at, status, payment_ref,
                         billing_period, is_trial)
-                        VALUES ($1, 'advocate_pro', NOW(),
+                        VALUES ($1, 'professional', NOW(),
                                NOW() + INTERVAL '30 days', 'active', NULL,
                                'monthly', TRUE)""",
                     user_id,
                 )
                 await conn.execute(
-                    "UPDATE users SET subscription_tier='advocate_pro' WHERE id=$1",
+                    "UPDATE users SET subscription_tier='professional' WHERE id=$1",
                     user_id,
                 )
     except ValueError:

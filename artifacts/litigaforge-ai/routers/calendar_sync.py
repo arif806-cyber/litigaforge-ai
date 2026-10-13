@@ -62,6 +62,19 @@ async def create_calendar_feed(request: Request, user=Depends(get_current_user))
     return {"feed_url": f"{str(request.base_url).rstrip('/')}/litigaforge/calendar-sync/{token}.ics"}
 
 
+@router.get("/calendar-sync/feed/status")
+async def calendar_feed_status(user=Depends(get_current_user)):
+    if not calendar_enabled():
+        return {"enabled": False, "active": False}
+    _advocate(user)
+    feed = await fetchrow(
+        """SELECT created_at FROM advocate_calendar_feeds
+           WHERE user_id=$1 AND revoked_at IS NULL""",
+        user["id"],
+    )
+    return {"enabled": True, "active": bool(feed)}
+
+
 @router.delete("/calendar-sync/feed")
 async def revoke_calendar_feed(user=Depends(get_current_user)):
     if not calendar_enabled():

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import {
   BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale,
   Gavel, ArrowRight, CalendarDays, Landmark, Zap,
+  Bell, BookmarkPlus, Eye, LibraryBig, Trash2,
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
@@ -70,6 +71,153 @@ function formatDate(iso: string | null): string {
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+interface AuthorityMonitor {
+  id: number;
+  query?: string;
+  citation?: string;
+  last_checked_at?: string | null;
+}
+
+interface AuthorityAlert {
+  id: number;
+  case_name: string;
+  citation: string;
+  source_url: string;
+  created_at: string;
+}
+
+function AuthorityTrackerPanel() {
+  const [searches, setSearches] = useState<AuthorityMonitor[]>([]);
+  const [watches, setWatches] = useState<AuthorityMonitor[]>([]);
+  const [alerts, setAlerts] = useState<AuthorityAlert[]>([]);
+  const [searchText, setSearchText] = useState("");
+  const [citationText, setCitationText] = useState("");
+  const [referenceCount, setReferenceCount] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function reload() {
+    const [searchRes, watchRes, alertRes, referenceRes] = await Promise.all([
+      apiFetch("/authorities/saved-searches"),
+      apiFetch("/authorities/citation-watches"),
+      apiFetch("/authorities/alerts"),
+      apiFetch("/authorities"),
+    ]);
+    if (!searchRes.ok || !watchRes.ok || !alertRes.ok || !referenceRes.ok) {
+      throw new Error("Authority research tools could not be loaded.");
+    }
+    const [searchData, watchData, alertData, referenceData] = await Promise.all([
+      searchRes.json(), watchRes.json(), alertRes.json(), referenceRes.json(),
+    ]);
+    setSearches(searchData.searches ?? []);
+    setWatches(watchData.watches ?? []);
+    setAlerts(alertData.alerts ?? []);
+    setReferenceCount((referenceData.authorities ?? []).length);
+  }
+
+  useEffect(() => {
+    void reload().catch(error => setMessage(error instanceof Error ? error.message : "Could not load research tools."));
+  }, []);
+
+  async function run(action: () => Promise<void>, success?: string) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await action();
+      await reload();
+      if (success) setMessage(success);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The request failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function post(path: string, body?: unknown) {
+    const res = await apiFetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!res.ok) throw new Error("Could not save or check this authority monitor.");
+    return res.json().catch(() => ({}));
+  }
+
+  async function remove(path: string) {
+    const res = await apiFetch(path, { method: "DELETE" });
+    if (!res.ok) throw new Error("Could not remove this monitor.");
+  }
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-5 space-y-4" data-testid="authority-tracker">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-bold flex items-center gap-2"><LibraryBig className="w-4 h-4 text-primary" />Authorities &amp; research alerts</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Save case-law searches, watch citations, and check for newly indexed judgments. {referenceCount} reference tables available.
+          </p>
+        </div>
+        <span className="text-xs rounded-full bg-muted px-2.5 py-1 text-muted-foreground flex items-center gap-1">
+          <Bell className="w-3.5 h-3.5" /> {alerts.length} unread
+        </span>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold flex items-center gap-1.5"><BookmarkPlus className="w-3.5 h-3.5" />Saved case-law search</label>
+          <div className="flex gap-2">
+            <input value={searchText} onChange={e => setSearchText(e.target.value)} maxLength={280}
+              placeholder="e.g. interim injunction in property disputes" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs" />
+            <Button size="sm" disabled={busy || searchText.trim().length < 3} onClick={() => void run(async () => {
+              await post("/authorities/saved-searches", { query: searchText.trim() });
+              setSearchText("");
+            }, "Search saved.")}>Save</Button>
+          </div>
+          {searches.map(item => <div key={item.id} className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs">
+            <span className="min-w-0 flex-1 truncate">{item.query}</span>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void run(async () => {
+              const result = await post(`/authorities/saved-searches/${item.id}/check`);
+              setMessage(`${result.new_count ?? 0} new judgment${result.new_count === 1 ? "" : "s"} found.`);
+            })}>Check</Button>
+            <button aria-label="Remove saved search" disabled={busy} onClick={() => void run(() => remove(`/authorities/saved-searches/${item.id}`))} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>)}
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-semibold flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />Citation watch</label>
+          <div className="flex gap-2">
+            <input value={citationText} onChange={e => setCitationText(e.target.value)} maxLength={240}
+              placeholder="Enter a case name or citation" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs" />
+            <Button size="sm" disabled={busy || citationText.trim().length < 3} onClick={() => void run(async () => {
+              await post("/authorities/citation-watches", { citation: citationText.trim() });
+              setCitationText("");
+            }, "Citation watch saved.")}>Watch</Button>
+          </div>
+          {watches.map(item => <div key={item.id} className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs">
+            <span className="min-w-0 flex-1 truncate">{item.citation}</span>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void run(async () => {
+              const result = await post(`/authorities/citation-watches/${item.id}/check`);
+              setMessage(`${result.new_count ?? 0} new judgment${result.new_count === 1 ? "" : "s"} found.`);
+            })}>Check</Button>
+            <button aria-label="Remove citation watch" disabled={busy} onClick={() => void run(() => remove(`/authorities/citation-watches/${item.id}`))} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>)}
+        </div>
+      </div>
+      {!!alerts.length && <div className="space-y-2 border-t border-border pt-3">
+        <h3 className="text-xs font-semibold">Newly indexed judgments</h3>
+        {alerts.slice(0, 5).map(alert => <div key={alert.id} className="flex items-start gap-2 text-xs">
+          <a href={alert.source_url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 text-primary hover:underline">
+            {alert.case_name}{alert.citation ? ` — ${alert.citation}` : ""}
+          </a>
+          <button disabled={busy} onClick={() => void run(async () => {
+            const res = await apiFetch(`/authorities/alerts/${alert.id}/read`, { method: "PATCH" });
+            if (!res.ok) throw new Error("Could not mark this alert as read.");
+          })} className="text-muted-foreground hover:text-foreground">Read</button>
+        </div>)}
+      </div>}
+      {message && <p role="status" className="text-xs text-muted-foreground">{message}</p>}
+    </section>
+  );
 }
 
 export default function Judgments() {
@@ -137,6 +285,7 @@ export default function Judgments() {
       icon={<Gavel className="w-6 h-6 text-primary" />}
     >
       <div className="space-y-10">
+        {user && <AuthorityTrackerPanel />}
         {/* ── Forge Workspace promo banner ─────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -490,7 +639,7 @@ export default function Judgments() {
             <div className="flex flex-col items-center gap-3 pt-4">
               <IKanoonAttribution sourceName={(search.data as { source_name?: string } | undefined)?.source_name} />
               <p className="text-xs text-center text-muted-foreground font-mono">
-                Citations are AI-generated. Verify on {sourceName} before citing in court.
+                Results come from retrieved case-law records. Check the linked judgment before citing it in court.
               </p>
             </div>
           </motion.div>

@@ -624,14 +624,8 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
 async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user)):
     if not current_user:
         raise HTTPException(401, "Login required")
-    if (
-        current_user.get("role") not in ("advocate", "lawyer")
-        or not current_user.get("has_lawyer_profile")
-    ):
-        raise HTTPException(
-            403,
-            "Advocate access required. Complete your advocate profile to receive matches.",
-        )
+    if current_user.get("role") not in ("advocate", "lawyer"):
+        raise HTTPException(403, "Advocate access required to receive matches")
     # Only verified, active advocate profiles may receive case data.  Keeping
     # this gate in the profile lookup also prevents suspended/revoked lawyers
     # from seeing anonymous details through previously-created matches.

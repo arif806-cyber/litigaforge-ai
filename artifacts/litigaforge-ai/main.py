@@ -2112,6 +2112,7 @@ from routers.docket import router as docket_router
 from routers.connect_v2 import router as connect_v2_router
 from routers.indian_kanoon import router as indian_kanoon_router
 from routers.calendar_sync import router as calendar_sync_router
+from routers.authorities import router as authorities_router
 
 # ForgeOS router is imported ONLY when FORGEOS_ENABLED is set — keeps the
 # subsystem fully inert (no import, no routes) when disabled/unset.
@@ -2153,6 +2154,7 @@ app.include_router(jobs_router,             prefix=BASE_PATH)
 app.include_router(connect_v2_router,       prefix=BASE_PATH)
 app.include_router(indian_kanoon_router,    prefix=BASE_PATH)
 app.include_router(calendar_sync_router,    prefix=BASE_PATH)
+app.include_router(authorities_router,       prefix=BASE_PATH)
 if forgeos_router is not None:
     app.include_router(forgeos_router, prefix=BASE_PATH)
 

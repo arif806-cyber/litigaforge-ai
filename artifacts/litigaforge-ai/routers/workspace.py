@@ -38,6 +38,7 @@ from llm.nim_embed import aembed_canvas, vec_to_str
 from case_law_search import search_case_law
 from jobs import collect_sse, enqueue_job
 from demo_workspace import reset_demo_fixture
+from citation_grounding import retrieved_authority_block
 
 logger = logging.getLogger("litigaforge.workspace")
 router = APIRouter(tags=["workspace"])
@@ -704,9 +705,11 @@ _AGENTS = [
             "(c) Insurance — compulsory third-party policy claim. "
             "Adapt to the actual case type — name each track and its governing statute.\n\n"
             "STEP 3 — KEY JUDGMENTS: Cite 3 to 5 REAL Supreme Court or High Court "
-            "judgments directly relevant to these specific facts. For each: "
+            "judgments directly relevant to these specific facts, but ONLY if they "
+            "appear in the retrieved Indian Kanoon source list appended to the prompt. "
+            "If that list is empty, say no verified judgments were retrieved and do not name cases. For each: "
             "Case Name v. Party (Year, Court) — one sentence on what it held and why "
-            "it DIRECTLY helps THIS case. Use well-known binding Indian precedents.\n\n"
+            "it DIRECTLY helps THIS case. Never rely on memory to fill the list.\n\n"
             "STEP 4 — FIRST STEPS: Numbered list of 3 to 5 immediate actions the lawyer "
             "must take RIGHT NOW. Each step must cite a specific statute or section. "
             "Example: '1. File MACT petition u/s 166 Motor Vehicles Act at District "
@@ -871,9 +874,13 @@ def _build_ik_query(case_description: str) -> str:
 
 def _format_ik_for_prompt(docs: list[dict]) -> str:
     """Format IK search results as an injected prompt block for the Research Agent."""
+    if not docs:
+        return (
+            "=== Verified case authorities ===\n"
+            "No judgments were retrieved for this matter. Do not name or cite any case."
+        )
     lines = [
-        "=== Live Indian Kanoon Results (real judgments fetched via API — "
-        "cite these in KEY JUDGMENTS) ===",
+        "=== Retrieved Indian Kanoon judgments (the only cases that may be cited) ===",
     ]
     for i, doc in enumerate(docs, 1):
         title    = (doc.get("title") or "Unknown Case")[:90]
@@ -888,9 +895,37 @@ def _format_ik_for_prompt(docs: list[dict]) -> str:
         if headline:
             lines.append(f"   Summary: {headline}")
     lines.append(
-        "Use ONLY the cases above for the KEY JUDGMENTS section. Do not invent citations."
+        "Use ONLY the cases above throughout the analysis. Do not invent, recall, or infer other cases."
     )
     return "\n".join(lines)
+
+
+def _strip_unretrieved_judgment_citations(text: str, docs: list[dict]) -> str:
+    """Remove case-name/report citations unless their authority was retrieved."""
+    from citation_extractor import extract_citations_sync
+
+    normalize = lambda value: _re.sub(r"[^a-z0-9]", "", str(value).lower())
+    allowed_names = [normalize(d.get("title") or d.get("case_name") or "") for d in docs]
+    allowed_citations = [normalize(d.get("citation") or "") for d in docs]
+    sentences = _re.split(r"(?<=[.!?])\s+", text)
+    out = []
+    case_name = _re.compile(
+        r"\b[A-Z][A-Za-z0-9&.'()\- ]{1,90}\s+v(?:s\.?|\.?)\s+[A-Z][A-Za-z0-9&.'()\- ]{1,90}"
+    )
+    for sentence in sentences:
+        names = [normalize(match.group(0)) for match in case_name.finditer(sentence)]
+        citations = [normalize(c["normalized"]) for c in extract_citations_sync(sentence)]
+        known_name = any(name and any(name in title or title in name for title in allowed_names if title) for name in names)
+        unknown_citation = any(
+            citation and not any(citation == allowed or citation in allowed or allowed in citation
+                                 for allowed in allowed_citations if allowed)
+            for citation in citations
+        )
+        if (names and not known_name) or unknown_citation:
+            out.append("[Unverified judgment reference removed.]")
+        else:
+            out.append(sentence)
+    return " ".join(out)
 
 
 # ─── Case Folder — auto-create after analysis ─────────────────────────────────
@@ -1010,6 +1045,7 @@ async def _stream_analysis(
 
     agent_outputs: dict[str, str] = {}
     agent_outputs_full: dict[str, str] = {}
+    verified_judgments: list[dict] = []
 
     for agent in _AGENTS:
         # ── Inter-agent consultation event ──────────────────────────────────
@@ -1074,9 +1110,10 @@ async def _stream_analysis(
                     ik_docs, session_cache_hit = await _session_ik_docs(
                         _conn, session_id, user_id, ik_query, max_results=5,
                     )
+                verified_judgments = ik_docs or []
+                ik_block = _format_ik_for_prompt(verified_judgments)
+                prompt = ik_block + "\n\n" + prompt
                 if ik_docs:
-                    ik_block = _format_ik_for_prompt(ik_docs)
-                    prompt = ik_block + "\n\n" + prompt
                     judgments = [
                         {
                             "title": (doc.get("title") or "Unknown Case")[:200],
@@ -1099,6 +1136,12 @@ async def _stream_analysis(
                     )
             except Exception as _ik_exc:
                 logger.warning("IK pre-fetch for Research Agent failed: %s", _ik_exc)
+                prompt = _format_ik_for_prompt([]) + "\n\n" + prompt
+
+        prompt += (
+            "\n\nCASE CITATION SAFETY: Cite no judgment unless its name/citation appears in the "
+            "retrieved Indian Kanoon list above. If no list was retrieved, do not name or cite cases."
+        )
 
         try:
             response = ""
@@ -1142,6 +1185,7 @@ async def _stream_analysis(
                 "retryable": True,
             })
             continue
+        response = _strip_unretrieved_judgment_citations(response, verified_judgments)
 
         # ── Parse reasoning + analysis ──────────────────────────────────────
         reasoning = ""
@@ -1634,6 +1678,19 @@ async def simulate_what_if(
         yield ": heartbeat\n\n"
         yield sse({"type": "sim_before", "avg_score": avg_before, "risk_level": risk_before, "node_count": len(nodes)})
 
+        verified_judgments: list[dict] = []
+        try:
+            query = (body.case_description + " " + body.assumption).strip()[:280]
+            async with pool.acquire() as conn:
+                found = await search_case_law(conn, query, limit=5)
+            verified_judgments = [
+                dict(item) for item in found.get("results", [])
+                if (item.get("case_name") or item.get("title"))
+                and (item.get("source_url") or item.get("url"))
+            ]
+        except Exception as exc:
+            logger.warning("Simulation authority retrieval failed (%s)", type(exc).__name__)
+
         # ── Agent involvement ───────────────────────────────────────────────
         yield sse({"type": "sim_agent", "agent": "risk",     "message": "Risk & Counter Agent stress-testing the assumption…"})
         await asyncio.sleep(0.35)
@@ -1650,6 +1707,9 @@ async def simulate_what_if(
             f"Case: {body.case_description or 'Legal case — no description provided'}\n"
             f"Canvas ({len(nodes)} nodes, avg score {avg_before}, risk {risk_before}):\n{node_summary}\n\n"
             f"WHAT-IF SCENARIO: {body.assumption}\n\n"
+            f"{retrieved_authority_block(verified_judgments)}\n\n"
+            "Do not cite a judgment unless it appears in the verified list above. If the list is empty, "
+            "do not name any cases. This is a hypothetical simulation, not a prediction or legal advice.\n\n"
             "Analyze this hypothetical as Risk & Counter Agent + Strategy Agent.\n"
             "Respond EXACTLY in this format:\n"
             "SUMMARY: [2-3 sentence impact summary]\n"
@@ -1721,6 +1781,13 @@ async def simulate_what_if(
             yield sse({"type": "sim_failed", "error": "The AI response did not contain a complete structured simulation."})
             return
 
+        summary = _strip_unretrieved_judgment_citations(summary, verified_judgments)
+        recommendation = _strip_unretrieved_judgment_citations(recommendation, verified_judgments)
+        for change in node_changes:
+            change["reason"] = _strip_unretrieved_judgment_citations(
+                change["reason"], verified_judgments,
+            )
+
         actual_labels = {
             _plain_text(n.get("data", {}).get("label")).casefold()
             for n in nodes if isinstance(n.get("data"), dict)
@@ -1740,6 +1807,14 @@ async def simulate_what_if(
             "score_change":   score_change,
             "summary":        summary or raw[:300],
             "recommendation": recommendation,
+            "judgment_sources": [
+                {
+                    "case_name": item.get("case_name") or item.get("title"),
+                    "citation": item.get("citation") or "",
+                    "url": item.get("source_url") or item.get("url"),
+                }
+                for item in verified_judgments
+            ],
         })
         yield sse({"type": "sim_complete"})
         yield sse({"type": "sim_end"})

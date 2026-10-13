@@ -23,6 +23,7 @@ def client():
 @pytest.fixture(autouse=True)
 def isolate_auth_side_effects(monkeypatch):
     monkeypatch.setattr(auth_router, "store_refresh_token", AsyncMock())
+    monkeypatch.setattr(auth_router, "db_fetchrow", AsyncMock(return_value=None))
     monkeypatch.setattr(
         auth_router, "_create_verification_token",
         AsyncMock(return_value="test-verification-token"),
@@ -103,6 +104,7 @@ def test_login_success(mock_verify, mock_get_user, client):
     data = r.json()
     assert data["user"]["email"] == "test@example.com"
     assert "token" not in data
+    assert data["user"]["has_lawyer_profile"] is False
     _assert_http_only_session_cookies(r)
 
 

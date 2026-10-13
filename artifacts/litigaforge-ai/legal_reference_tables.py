@@ -111,6 +111,45 @@ async def ensure_reference_tables(conn) -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     """)
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS saved_authority_searches (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            query TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_checked_at TIMESTAMPTZ,
+            UNIQUE(user_id, query)
+        )
+    """)
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS citation_watches (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            citation TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_checked_at TIMESTAMPTZ,
+            UNIQUE(user_id, citation)
+        )
+    """)
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS authority_alerts (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            monitor_kind TEXT NOT NULL CHECK (monitor_kind IN ('saved_search','citation_watch')),
+            monitor_id BIGINT NOT NULL,
+            case_name TEXT NOT NULL,
+            citation TEXT NOT NULL DEFAULT '',
+            source_url TEXT NOT NULL,
+            source_name TEXT NOT NULL DEFAULT '',
+            dedupe_key TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            read_at TIMESTAMPTZ
+        )
+    """)
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_authority_alerts_user_unread "
+        "ON authority_alerts(user_id, created_at DESC) WHERE read_at IS NULL"
+    )
     for item in TABLES:
         await conn.execute(
             """INSERT INTO legal_reference_tables

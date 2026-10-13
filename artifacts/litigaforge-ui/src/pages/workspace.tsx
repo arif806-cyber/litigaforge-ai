@@ -1229,6 +1229,19 @@ export default function ForgeWorkspace() {
                   scoreChange:     localScoreChange as number,
                   summary:         afterSummary,
                   recommendation:  ev.recommendation as string,
+                  judgmentSources: Array.isArray(ev.judgment_sources)
+                    ? (ev.judgment_sources as Array<Record<string, unknown>>).flatMap(source => {
+                        const url = typeof source.url === "string" ? source.url : "";
+                        try {
+                          if (!["http:", "https:"].includes(new URL(url).protocol)) return [];
+                        } catch { return []; }
+                        return [{
+                          caseName: String(source.case_name || "Retrieved judgment"),
+                          citation: String(source.citation || ""),
+                          url,
+                        }];
+                      })
+                    : [],
                 },
                 analysis: afterSummary,
               }));

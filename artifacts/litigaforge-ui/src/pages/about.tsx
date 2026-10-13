@@ -89,6 +89,16 @@ export default function About() {
           </p>
         </Section>
 
+        <Section icon={<BookOpen className="w-4 h-4" />} title="Case-law sources">
+          <p>
+            Indian judgment search is powered by{" "}
+            <a className="text-primary underline" href="https://indiankanoon.org" target="_blank" rel="noopener noreferrer">
+              Indian Kanoon
+            </a>
+            . Search results are retrieved records; review the linked source judgment before relying on a citation.
+          </p>
+        </Section>
+
         <Section icon={<Mail className="w-4 h-4" />} title="Contact">
           <div className="bg-muted/40 rounded-xl p-4 text-sm space-y-2 border border-border">
             <p className="flex items-center gap-2">

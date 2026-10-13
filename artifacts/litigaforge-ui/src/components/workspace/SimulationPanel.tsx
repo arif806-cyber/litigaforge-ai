@@ -23,6 +23,7 @@ export interface SimAfter {
   scoreChange:   number;
   summary:       string;
   recommendation:string;
+  judgmentSources?: { caseName: string; citation: string; url: string }[];
 }
 
 export interface SimulationResult {
@@ -397,6 +398,20 @@ export default function SimulationPanel({
                     }}>
                       <strong style={{ color: "#e2e8f0" }}>Recommendation: </strong>
                       {simState.after.recommendation}
+                    </div>
+                  )}
+                  {!!simState.after.judgmentSources?.length && (
+                    <div style={{ fontSize: 9, color: "#94a3b8", lineHeight: 1.6 }}>
+                      <strong style={{ color: "#e2e8f0" }}>Retrieved judgments:</strong>
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 16 }}>
+                        {simState.after.judgmentSources.map((source, index) => (
+                          <li key={`${source.url}-${index}`}>
+                            <a href={source.url} target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "underline" }}>
+                              {source.caseName}{source.citation ? ` — ${source.citation}` : ""}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </motion.div>

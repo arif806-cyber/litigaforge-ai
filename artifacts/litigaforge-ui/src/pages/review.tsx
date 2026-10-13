@@ -60,6 +60,7 @@ interface AnalysisResult {
   jurisdiction_issues: string[];
   recommendations: string[];
   recommendation_follow_ups: RecommendationFollowUp[];
+  judgment_sources: { case_name: string; citation: string; url: string }[];
 }
 
 type FollowUpFieldType = "text" | "date" | "number" | "textarea";
@@ -228,6 +229,24 @@ function normalizeAnalysis(data: unknown): AnalysisResult {
       fields: fallbackFollowUpFields(recommendation, recommendationIndex),
     };
   });
+  const judgmentSources = Array.isArray(root.judgment_sources)
+    ? root.judgment_sources.flatMap((source): AnalysisResult["judgment_sources"] => {
+        if (!source || typeof source !== "object") return [];
+        const item = source as Record<string, unknown>;
+        const url = typeof item.url === "string" ? item.url : "";
+        try {
+          const parsed = new URL(url);
+          if (!["http:", "https:"].includes(parsed.protocol)) return [];
+        } catch {
+          return [];
+        }
+        return [{
+          case_name: String(item.case_name ?? "Retrieved judgment"),
+          citation: String(item.citation ?? ""),
+          url,
+        }];
+      })
+    : [];
 
   return {
     summary: typeof a.summary === "string" ? a.summary : "",
@@ -237,6 +256,7 @@ function normalizeAnalysis(data: unknown): AnalysisResult {
     jurisdiction_issues: jurisdiction,
     recommendations,
     recommendation_follow_ups: recommendationFollowUps,
+    judgment_sources: judgmentSources,
   };
 }
 
@@ -711,6 +731,26 @@ export default function Review() {
                   </div>
                 </div>
               </div>
+
+              {result.judgment_sources.length > 0 && (
+                <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8">
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    Retrieved case-law sources
+                  </h3>
+                  <ul className="space-y-2">
+                    {result.judgment_sources.map((source, index) => (
+                      <li key={`${source.url}-${index}`} className="text-sm">
+                        <a href={source.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2">
+                          {source.case_name}
+                        </a>
+                        {source.citation && <span className="ml-2 font-mono text-xs text-muted-foreground">{source.citation}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-xs text-muted-foreground">Only retrieved case-law records are supplied as authorities; verify the source judgment before relying on it.</p>
+                </div>
+              )}
 
               {/* Risks */}
               {result.risks.length > 0 && (

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { SEOHelmet } from "@/components/SEOHelmet";
@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import {
   User, Mail, Lock, Trash2, Shield, ChevronRight,
   Loader2, CheckCircle, AlertTriangle, Eye, EyeOff,
+  CalendarDays, Copy, RefreshCw, Link2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Languages } from "lucide-react";
@@ -27,11 +28,95 @@ export default function AccountSettings() {
 
       <ProfileSection user={user} />
       <LanguagePreferenceSection user={user} />
-      {user?.lawyer_status && <AdvocateProfileSection />}
+      {user?.lawyer_status && <><AdvocateProfileSection /><CalendarSyncSection /></>}
       <PasswordSection />
       <PrivacySection />
       <DangerZone onDeleted={logout} />
     </div>
+  );
+}
+
+function CalendarSyncSection() {
+  const queryClient = useQueryClient();
+  const [feedUrl, setFeedUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["calendar-sync-status"],
+    queryFn: () => apiFetch("/calendar-sync/feed/status"),
+    staleTime: 30_000,
+  });
+
+  const createFeed = async () => {
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await apiFetch("/calendar-sync/feed", { method: "POST" });
+      setFeedUrl(result.feed_url);
+      setNotice("Private calendar link created. Save it now; it cannot be shown again.");
+      await queryClient.invalidateQueries({ queryKey: ["calendar-sync-status"] });
+    } catch (e: any) {
+      setNotice(e?.message || "Could not create the calendar link.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revokeFeed = async () => {
+    if (!window.confirm("Revoke this calendar link? Any calendar app using it will stop receiving updates.")) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      await apiFetch("/calendar-sync/feed", { method: "DELETE" });
+      setFeedUrl("");
+      setNotice("Calendar link revoked.");
+      await queryClient.invalidateQueries({ queryKey: ["calendar-sync-status"] });
+    } catch (e: any) {
+      setNotice(e?.message || "Could not revoke the calendar link.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyFeed = async () => {
+    try {
+      await navigator.clipboard.writeText(feedUrl);
+      setNotice("Calendar link copied.");
+    } catch {
+      setNotice("Copy failed. Select and copy the link manually.");
+    }
+  };
+
+  const enabled = Boolean((data as any)?.enabled);
+  const active = Boolean((data as any)?.active);
+  return (
+    <Card icon={<CalendarDays className="w-4 h-4" />} title="Calendar Sync">
+      {isLoading ? <p className="text-sm text-muted-foreground">Checking calendar availability…</p> :
+        error ? <p role="alert" className="text-sm text-destructive">Could not check calendar sync status.</p> :
+        !enabled ? <p className="text-sm text-muted-foreground">Private calendar sync is not enabled for this deployment.</p> :
+        <div className="space-y-3">
+          <p className="text-sm leading-6 text-muted-foreground">
+            Subscribe to your case hearing dates and accepted Connect case follow-ups from a calendar app.
+            The link is private: anyone who has it can view these dates. Keep it confidential.
+          </p>
+          {active && <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">A private feed is active.</p>}
+          {feedUrl && <div className="flex gap-2">
+            <input aria-label="Private calendar feed URL" readOnly value={feedUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs" />
+            <button type="button" onClick={copyFeed} className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted" aria-label="Copy calendar link">
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </button>
+          </div>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={createFeed} disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <RefreshCw className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+              {active ? "Replace private link" : "Create private link"}
+            </button>
+            {active && <button type="button" onClick={revokeFeed} disabled={busy} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50">Revoke link</button>}
+          </div>
+          <p className="text-xs text-muted-foreground">Replacing the link immediately revokes the previous one. If you lose the URL, create a replacement.</p>
+          {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
+        </div>}
+    </Card>
   );
 }
 

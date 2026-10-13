@@ -33,6 +33,7 @@ from llm import legal_llm
 from jobs import enqueue_job
 from public_ai_policy import enforce_public_ai_policy
 from legal_chat_policy import build_case_profile
+from citation_grounding import retrieved_authority_block, scrub_unretrieved_citations
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
@@ -40,6 +41,24 @@ router = APIRouter(tags=["community"])
 
 _SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com").rstrip("/")
 _BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
+
+
+async def _retrieve_document_judgments(query: str, country: str) -> list[dict]:
+    if normalize_code(country) != "IN":
+        return []
+    try:
+        from case_law_search import search_case_law
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            result = await search_case_law(conn, query[:280], limit=5)
+        return [
+            dict(item) for item in result.get("results", [])
+            if (item.get("case_name") or item.get("title"))
+            and (item.get("source_url") or item.get("url"))
+        ]
+    except Exception as exc:
+        logger.warning("Document judgment retrieval failed (%s)", type(exc).__name__)
+        return []
 
 
 # ── AI helpers ──────────────────────────────────────────────────────────────────────
@@ -837,6 +856,10 @@ async def analyze_document(
 
     cfg = get_config(req.country)
     label = _doc_label(req.document_type)
+    retrieved_judgments = (
+        await _retrieve_document_judgments(safe_text, req.country)
+        if req.mode == "analyze" else []
+    )
     if req.mode == "correct":
         if not safe_context:
             raise HTTPException(422, "Correction details are required")
@@ -878,6 +901,7 @@ Document text to analyze:
 {safe_text[:8000]}
 ---"""
         max_tokens = 2500
+        prompt += "\n\n" + retrieved_authority_block(retrieved_judgments)
 
     async def work():
         raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, req.country), max_tokens)
@@ -899,7 +923,16 @@ Document text to analyze:
                 "corrected_document": corrected_document.strip(),
                 "document_type": req.document_type,
             }
-        return {"analysis": result, "document_type": req.document_type}
+        result = scrub_unretrieved_citations(result, retrieved_judgments)
+        sources = [
+            {
+                "case_name": item.get("case_name") or item.get("title"),
+                "citation": item.get("citation") or "",
+                "url": item.get("source_url") or item.get("url"),
+            }
+            for item in retrieved_judgments
+        ]
+        return {"analysis": result, "document_type": req.document_type, "judgment_sources": sources}
     return await enqueue_job(current_user["id"], work)
 
 
@@ -1057,6 +1090,10 @@ async def _analyze_document_file_work(
 
     cfg = get_config(country)
     label = _doc_label(document_type)
+    retrieved_judgments = (
+        await _retrieve_document_judgments(extracted_text, country)
+        if mode == "analyze" else []
+    )
     if mode == "correct":
         if not safe_context:
             raise HTTPException(422, "Correction details are required")
@@ -1098,6 +1135,7 @@ Document text to analyze:
 {extracted_text[:8000]}
 ----"""
         max_tokens = 2500
+        prompt += "\n\n" + retrieved_authority_block(retrieved_judgments)
 
     raw = await asyncio.to_thread(_ai, wrap_user_prompt(prompt, country), max_tokens)
     raw = validate_ai_response(raw)
@@ -1120,10 +1158,18 @@ Document text to analyze:
             "source": analysis_source,
         }
     return {
-        "analysis": result,
+        "analysis": scrub_unretrieved_citations(result, retrieved_judgments),
         "document_type": document_type,
         "source": analysis_source,
         "extracted_chars": len(extracted_text),
+        "judgment_sources": [
+            {
+                "case_name": item.get("case_name") or item.get("title"),
+                "citation": item.get("citation") or "",
+                "url": item.get("source_url") or item.get("url"),
+            }
+            for item in retrieved_judgments
+        ],
     }
 
 
