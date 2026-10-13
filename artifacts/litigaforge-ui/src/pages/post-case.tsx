@@ -15,6 +15,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
 import { POST_CASE_COPY } from "@/lib/country-copy";
 import { ClarifyDialog } from "@/components/ClarifyDialog";
+import { useConnectFlags } from "@/hooks/use-connect-v2";
+import { ConnectCasePost } from "@/pages/connect-v2";
 
 const CASE_TYPES = [
   { id: "Property Dispute", label: "Property & Real Estate", icon: Home },
@@ -37,15 +39,28 @@ const BUDGET_RANGES = [
   { label: "Flexible / Discuss",     budget_min: 0,      budget_max: 0      },
 ];
 
-export default function PostCase() {
+function consumeChatPrefill(): { title?: string; case_type?: string; description?: string; location?: string } {
+  try {
+    const raw = sessionStorage.getItem("legal-chat-case-prefill");
+    if (!raw) return {};
+    sessionStorage.removeItem("legal-chat-case-prefill");
+    const value = JSON.parse(raw);
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function LegacyPostCase() {
   const { user } = useAuth();
   const { activeCode } = useCountry();
   const copy = POST_CASE_COPY[activeCode.toUpperCase()] ?? POST_CASE_COPY.IN;
   const [, setLocation] = useLocation();
-  const [title, setTitle] = useState("");
-  const [caseType, setCaseType] = useState("");
-  const [description, setDescription] = useState("");
-  const [locationVal, setLocationVal] = useState("");
+  const [chatPrefill] = useState(consumeChatPrefill);
+  const [title, setTitle] = useState(chatPrefill.title ?? "");
+  const [caseType, setCaseType] = useState(CASE_TYPES.some(item => item.id === chatPrefill.case_type) ? chatPrefill.case_type! : "");
+  const [description, setDescription] = useState(chatPrefill.description ?? "");
+  const [locationVal, setLocationVal] = useState(chatPrefill.location ?? "");
   const [budgetIdx, setBudgetIdx] = useState<number | "">("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -208,4 +223,9 @@ export default function PostCase() {
       />
     </PageShell>
   );
+}
+
+export default function PostCase() {
+  const { data: flags } = useConnectFlags();
+  return flags?.connect_v2 ? <ConnectCasePost /> : <LegacyPostCase />;
 }

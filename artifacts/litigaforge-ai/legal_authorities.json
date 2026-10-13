@@ -1,0 +1,114 @@
+{
+  "checked_on": "2026-10-12",
+  "india": {
+    "common": [
+      {
+        "id": "tpa-106",
+        "citation": "Section 106, Transfer of Property Act, 1882",
+        "summary": "Duration and termination notice for certain leases in the absence of a contract or local usage; applicability must be checked against the tenancy facts.",
+        "aliases": ["TPA Section 106", "Section 106 TPA"],
+        "source": "https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00042_188204_1523272233671&orderno=114&sectionId=44211&sectionno=106",
+        "verified_on": "2026-10-12"
+      },
+      {
+        "id": "cpc-2-2",
+        "citation": "Section 2(2), Code of Civil Procedure, 1908",
+        "summary": "Defines decree.",
+        "aliases": ["CPC Section 2(2)", "Section 2(2) CPC"],
+        "source": "https://www.indiacode.nic.in/indiacode/bitstream/123456789/2191/1/A190805.pdf",
+        "verified_on": "2026-10-12"
+      },
+      {
+        "id": "cpc-2-12",
+        "citation": "Section 2(12), Code of Civil Procedure, 1908",
+        "summary": "Defines mesne profits.",
+        "aliases": ["CPC Section 2(12)", "Section 2(12) CPC"],
+        "source": "https://www.indiacode.nic.in/indiacode/bitstream/123456789/2191/1/A190805.pdf",
+        "verified_on": "2026-10-12"
+      },
+      {
+        "id": "cpc-order-37",
+        "citation": "Order XXXVII, Code of Civil Procedure, 1908",
+        "summary": "Summary procedure applies only to the categories of claims specified in the Order, including qualifying written-contract liquidated demands; not a default route for an unwritten tenancy.",
+        "aliases": ["Order 37 CPC", "Order XXXVII CPC"],
+        "source": "https://www.indiacode.nic.in/indiacode/bitstream/123456789/2191/1/A190805.pdf",
+        "verified_on": "2026-10-12"
+      },
+      {
+        "id": "bns-329",
+        "citation": "Section 329, Bharatiya Nyaya Sanhita, 2023",
+        "summary": "Criminal trespass and house-trespass.",
+        "aliases": ["BNS Section 329"],
+        "source": "https://www.indiacode.nic.in/indiacode/bitstream/123456789/20062/1/a202345.pdf",
+        "verified_on": "2026-10-12"
+      },
+      {
+        "id": "bns-351",
+        "citation": "Section 351, Bharatiya Nyaya Sanhita, 2023",
+        "summary": "Criminal intimidation.",
+        "aliases": ["BNS Section 351"],
+        "source": "https://www.indiacode.nic.in/indiacode/bitstream/123456789/20062/1/a202345.pdf",
+        "verified_on": "2026-10-12"
+      },
+      {
+        "id": "bnss-2023",
+        "citation": "Bharatiya Nagarik Suraksha Sanhita, 2023",
+        "summary": "Current criminal procedure code for matters governed by the new criminal laws; check commencement and transition provisions for the event date.",
+        "aliases": ["BNSS"],
+        "source": "https://www.indiacode.nic.in/bitstream/123456789/20099/1/A202346.pdf",
+        "verified_on": "2026-10-12"
+      },
+      {
+        "id": "bsa-2023",
+        "citation": "Bharatiya Sakshya Adhiniyam, 2023",
+        "summary": "Current evidence statute for proceedings governed by the new criminal laws; check transitional applicability.",
+        "aliases": ["BSA"],
+        "source": "https://upload.indiacode.nic.in/view-casepdf?id=AC_CEN_5_23_00049_2023-47_1719292804654&type=act",
+        "verified_on": "2026-10-12"
+      }
+    ],
+    "states": {
+      "Telangana": {
+        "authorities": [
+          {
+            "id": "telangana-rent-control-act",
+            "citation": "Telangana Buildings (Lease, Rent and Eviction) Control Act, 1960",
+            "summary": "State rent-control statute; verify building coverage and exemptions before recommending the Rent Controller.",
+            "aliases": ["A.P. Buildings (Lease, Rent and Eviction) Control Act, 1960 as adapted to Telangana"],
+            "source": "https://www.indiacode.nic.in/handle/123456789/8607?view_type=browse",
+            "verified_on": "2026-10-12"
+          }
+        ],
+        "civil_courts_act": {
+          "citation": "Telangana Civil Courts Act, 1972, as amended by Act 14 of 2024",
+          "source": "https://law.telangana.gov.in/fileShow?fileName=%2FUploads%2FLawDepartment%2FpdfNew%2FAct%2019%20of%201972%20%20-%2014%20of%202024.pdf",
+          "verified_on": "2026-10-12"
+        },
+        "hyderabad_courts": {
+          "court_names": ["City Civil Court, Hyderabad", "Metropolitan Sessions Court, Hyderabad", "City Small Causes Court, Hyderabad"],
+          "civil_hierarchy": ["Junior Civil Judge", "Senior Civil Judge", "District Judge"],
+          "route_rule": "Potential court structures only; confirm subject-matter, territorial, and current pecuniary jurisdiction before filing.",
+          "source": "https://tshc.gov.in/documents/2024_06_21T21_24_27_rtia2019.pdf",
+          "verified_on": "2026-10-12"
+        },
+        "pecuniary_limits": {
+          "verified_value": null,
+          "unit": "INR",
+          "effective_on": null,
+          "source": "https://law.telangana.gov.in/fileShow?fileName=%2FUploads%2FLawDepartment%2FpdfNew%2FAct%20No%2014%20of%202024.pdf",
+          "status": "Act 14 of 2024 states it commences on a date appointed by separate Telangana Gazette notification. That commencement notification was not verified in this review.",
+          "instruction": "Until commencement is verified, say “check current limit” and do not state a number. Recheck the Telangana Gazette before changing this entry."
+        }
+      }
+    },
+    "legacy_codes": {
+      "effective_date": "2024-07-01",
+      "acts": [
+        {"old": "Indian Penal Code, 1860", "current": "Bharatiya Nyaya Sanhita, 2023", "section_map": {"441": "329", "503": "351"}},
+        {"old": "Code of Criminal Procedure, 1973", "current": "Bharatiya Nagarik Suraksha Sanhita, 2023", "section_map": {}},
+        {"old": "Indian Evidence Act, 1872", "current": "Bharatiya Sakshya Adhiniyam, 2023", "section_map": {}}
+      ],
+      "note": "Do not assume section numbers map one-to-one. For legacy section numbers without an explicit verified mapping, omit the current-section number and request lookup."
+    }
+  }
+}

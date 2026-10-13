@@ -11,6 +11,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { cn } from "@/lib/utils";
+import { languageName, useConnectFlags } from "@/hooks/use-connect-v2";
 
 /* ── Types ───────────────────────────────────────────────────── */
 interface ChatThread {
@@ -36,6 +37,7 @@ interface ChatMessage {
   file_url: string | null;
   filename: string | null;
   file_size: number | null;
+  original_language?: string;
   created_at: string;
 }
 
@@ -106,10 +108,37 @@ function ThreadRow({
 
 /* ── Message bubble ──────────────────────────────────────────── */
 function MessageBubble({ msg, currentUserId }: { msg: ChatMessage; currentUserId: number }) {
+  const { user } = useAuth();
+  const flags = useConnectFlags();
+  const [translation, setTranslation] = useState("");
+  const [translationError, setTranslationError] = useState("");
+  const [translating, setTranslating] = useState(false);
+  const [showTranslated, setShowTranslated] = useState(false);
   const isMe = msg.sender_id === currentUserId;
   const isAI = msg.sender_role === "ai";
   const time = new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const isFile = msg.message_type === "file" && msg.file_url;
+  const sourceLanguage = msg.original_language || "en";
+  const targetLanguage = (user as (typeof user & { preferred_language?: string }) | null)?.preferred_language || "en";
+  const canTranslate = !!flags.data?.multilang && !isFile && sourceLanguage !== targetLanguage;
+  const requestTranslation = async () => {
+    if (translation) { setShowTranslated(true); return; }
+    setTranslating(true);
+    setTranslationError("");
+    try {
+      const result = await apiFetch("/connect-v2/translate", {
+        method: "POST",
+        body: { text: msg.content, source_language: sourceLanguage, target_language: targetLanguage },
+      }) as { text?: string; unavailable?: boolean };
+      if (!result?.text || result.unavailable) throw new Error("Translation unavailable. The original message remains unchanged.");
+      setTranslation(result.text);
+      setShowTranslated(true);
+    } catch (error) {
+      setTranslationError(error instanceof Error ? error.message : "Translation unavailable.");
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   if (isAI) {
     return (
@@ -165,6 +194,16 @@ function MessageBubble({ msg, currentUserId }: { msg: ChatMessage; currentUserId
             : "bg-card border border-border text-foreground rounded-bl-sm"
         )}>
           {msg.content}
+        </div>}
+        {canTranslate && <div className="max-w-full text-[11px]">
+          {showTranslated && translation
+            ? <div className="mt-1 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+                <p className="mb-1 font-semibold text-primary">Translated from {languageName(sourceLanguage)}</p>
+                <p lang={targetLanguage} dir={["ur", "sd"].includes(targetLanguage) ? "rtl" : "ltr"} className="whitespace-pre-wrap text-xs leading-6">{translation}</p>
+                <button type="button" onClick={() => setShowTranslated(false)} className="mt-2 font-semibold text-primary underline-offset-4 hover:underline">View original</button>
+              </div>
+            : <button type="button" onClick={requestTranslation} disabled={translating} className="mt-1 font-semibold text-primary underline-offset-4 hover:underline disabled:opacity-50">{translating ? "Translating…" : "Translate message"}</button>}
+          {translationError && <p role="status" className="mt-1 text-muted-foreground">{translationError}</p>}
         </div>}
         <div className={cn("flex items-center gap-1 mt-1", isMe ? "flex-row-reverse" : "flex-row")}>
           <span className="text-[10px] text-muted-foreground">{time}</span>

@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -38,7 +39,7 @@
   --color-sidebar-primary-foreground: var(--primary-foreground-oklch);
   --color-sidebar-accent: var(--muted-oklch);
   --color-sidebar-accent-foreground: var(--foreground-oklch);
-  --font-sans: "Space Grotesk", "Noto Sans Devanagari", "Noto Sans Telugu", "Noto Sans Arabic", ui-sans-serif, sans-serif;
+  --font-sans: "DM Sans", "Noto Sans Devanagari", "Noto Sans Telugu", "Noto Sans Arabic", ui-sans-serif, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -49,6 +50,15 @@
   @keyframes shimmer { from { background-position: 200% center; } to { background-position: -200% center; } }
   @keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 }
+
+.connect-display { font-family: "Newsreader", Georgia, serif; letter-spacing: -0.035em; }
+.connect-surface {
+  background-color: var(--card);
+  background-image: linear-gradient(90deg, color-mix(in oklch, var(--primary) 3%, transparent) 1px, transparent 1px);
+  background-size: 48px 100%;
+}
+.connect-step-enter { animation: connect-step-in .28s ease-out both; }
+@keyframes connect-step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* LitigaForge foundation. This is the only source of semantic color tokens.
    sRGB fallbacks precede the OKLCH values for browsers without modern color support. */

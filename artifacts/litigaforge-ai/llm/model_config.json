@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "provider": "anthropic",
+  "models": {
+    "drafting": "claude-fable-5-1",
+    "forge_strategy": "claude-fable-5-1",
+    "forge_risk": "claude-fable-5-1",
+    "forge_predictive": "claude-fable-5-1",
+    "what_if": "claude-fable-5-1",
+    "legal_qa": "claude-opus-5-5",
+    "workspace_research": "claude-opus-5-5",
+    "routing": "claude-haiku-5-5",
+    "intent": "claude-haiku-5-5",
+    "clarification": "claude-haiku-5-5",
+    "case_profile": "claude-haiku-5-5",
+    "citation_verification": "claude-haiku-5-5",
+    "judgment_summary": "claude-haiku-5-5",
+    "telugu_summary": "claude-haiku-5-5",
+    "translation": "claude-haiku-5-5",
+    "document_summary": "claude-opus-5-5",
+    "summary_quality_fallback": "claude-sonnet-5-5"
+  },
+  "pricing_usd_per_million_tokens": {
+    "effective_date": "2026-09-22",
+    "claude-fable-5-1": {"input": 10.0, "output": 50.0, "cache_read": 0.25, "cache_write_5m": 12.5},
+    "claude-opus-5-5": {"input": 4.0, "output": 20.0, "cache_read": 0.2, "cache_write_5m": 5.0},
+    "claude-haiku-5-5": {"input": 0.1, "output": 0.5, "cache_read": 0.01, "cache_write_5m": 0.125},
+    "claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1, "cache_write_5m": 2.5}
+  },
+  "rollout": {
+    "mode": "legacy",
+    "description": "Experimental grounded pipeline only. Do not switch traffic until the old-vs-new eval gate passes."
+  }
+}

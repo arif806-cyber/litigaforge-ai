@@ -21,6 +21,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import type { Translation } from "@/i18n";
 import { useMessageNotifications } from "@/hooks/use-message-notifications";
 import { PublicSiteHeader } from "@/components/public-site-header";
+import { useConnectFlags } from "@/hooks/use-connect-v2";
+import { connectV2Strings } from "@/i18n/connect-v2";
 
 interface NavEntry {
   href: string;
@@ -200,12 +202,21 @@ function SidebarContent({
   onNav?: () => void;
   user: User | null;
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const connectStrings = connectV2Strings(lang);
+  const { data: connectFlags } = useConnectFlags();
   const unreadCount = useUnreadCount();
   const isAdvocate = user?.role === "lawyer" || user?.role === "advocate";
   const viewingClientWorkspace = location.startsWith("/client");
   const isClient = !!user && (!isAdvocate || viewingClientWorkspace);
   const roleNav = !user ? publicNav : isClient ? clientNav : lawyerNav;
+  const activeRoleNav = isAdvocate && !isClient && connectFlags?.connect_v2
+    ? [
+        ...roleNav.filter((item) => item.href !== "/matches"),
+        { href: "/requests", label: connectStrings.requests, icon: Inbox },
+        { href: "/advocate/cases", label: connectStrings.acceptedCases, icon: FileText },
+      ]
+    : roleNav;
   const roleLabel = !user ? "Public tools" : isClient ? "Client" : "Advocate";
   const showRoleSwitch = !!user && (isAdvocate || !!user.lawyer_status);
   const roleSwitch: NavEntry | null = showRoleSwitch
@@ -241,7 +252,7 @@ function SidebarContent({
         <div className="px-3 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">
           {!user ? "Explore" : isClient ? "Match & Connect" : "Lawyer Portal"}
         </div>
-        {roleNav.map(item => (
+        {activeRoleNav.map(item => (
           <NavItem
             key={item.href}
             {...item}
@@ -294,7 +305,9 @@ const lawyerMobileNav: NavEntry[] = [
 
 /* ─── Bottom Tab Bar ─── */
 function BottomTabBar({ location, user }: { location: string; user: User | null }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const connectStrings = connectV2Strings(lang);
+  const { data: connectFlags } = useConnectFlags();
   const { logout } = useAuth();
   const [, setLocation] = useLocation();
   const unreadCount = useUnreadCount();
@@ -303,12 +316,18 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   useEffect(() => { closeDrawer(); }, [location, closeDrawer]);
 
-  const isLawyer  = user?.role === "lawyer";
-  const mobileNav = isLawyer ? lawyerMobileNav : clientMobileNav;
+  const isLawyer  = user?.role === "lawyer" || user?.role === "advocate";
+  const mobileNav = isLawyer
+    ? connectFlags?.connect_v2
+      ? [{ href: "/lawyer-dashboard", label: "Dashboard", icon: Star }, { href: "/requests", label: connectStrings.requests, icon: Inbox }]
+      : lawyerMobileNav
+    : clientMobileNav;
   const fabHref   = isLawyer ? "/lawyer-dashboard" : "/post-case";
 
   const extraNav: NavEntry[] = isLawyer
     ? [
+        ...(connectFlags?.connect_v2 ? [{ href: "/advocate/cases", label: connectStrings.acceptedCases, icon: FileText }] : []),
+        ...(connectFlags?.connect_v2 ? [] : [{ href: "/matches", label: "Client Requests", icon: Users, tKey: "client_requests" as const }]),
         { href: "/review",       label: "Doc Analyzer",    icon: FileSearch, tKey: "doc_analyzer"  },
         { href: "/subscription", label: "Profile & Plans", icon: Crown,      tKey: "profile_plans" },
       ]

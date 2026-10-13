@@ -12,6 +12,9 @@ import { getRecaptchaToken } from "@/lib/recaptcha";
 import { trackEvent } from "@/lib/analytics";
 import { useCountry } from "@/hooks/useCountry";
 import { safeAuthNext } from "@/lib/auth-context";
+import { apiFetch } from "@/lib/api";
+import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-connect-v2";
+import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
   IN: { badge: "Legal tools for advocates", heading: "Legal tools\nbuilt for your practice.", sub: "Track cases, research Indian judgments, analyze documents, and manage advocate work in one platform.", trust: "Bar enrolment checked by LitigaForge where an advocate is admin-verified" },
@@ -31,6 +34,7 @@ export default function Login() {
   const { login, register, googleLogin, appleLogin, passkeyLogin } = useAuth();
   const [, setLocation] = useLocation();
   const { activeCode } = useCountry();
+  const { data: connectFlags } = useConnectFlags();
   const copy = COUNTRY_COPY[activeCode.toUpperCase()] ?? COUNTRY_COPY.IN;
   const headingLines = copy.heading.split("\n");
 
@@ -46,6 +50,8 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [preferredLanguage, setPreferredLanguage] = useState("en");
+  const [languageSaveNotice, setLanguageSaveNotice] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
@@ -162,6 +168,18 @@ export default function Login() {
         const recaptchaToken = await getRecaptchaToken("register");
         await register(name, email, password, role === "lawyer" ? "advocate" : "client", recaptchaToken ?? undefined);
         trackEvent("register_success", { role });
+        if (activeCode.toUpperCase() === "IN" && connectFlags?.multilang) {
+          try {
+            await apiFetch("/auth/profile/language", {
+              method: "PATCH",
+              body: { preferred_language: preferredLanguage },
+            });
+            localStorage.setItem(CONNECT_LANGUAGE_STORAGE_KEY, preferredLanguage);
+          } catch {
+            localStorage.setItem(CONNECT_LANGUAGE_STORAGE_KEY, preferredLanguage);
+            setLanguageSaveNotice("Your account was created, but we could not save this language preference. You can set it later in Settings.");
+          }
+        }
         // Show onboarding for first-time users
         const alreadyOnboarded = localStorage.getItem("lf_onboarded");
         if (!alreadyOnboarded) {
@@ -464,6 +482,14 @@ export default function Login() {
                 )}
               </AnimatePresence>
 
+              {!isSignIn && activeCode.toUpperCase() === "IN" && connectFlags?.connect_v2 && connectFlags.multilang && (
+                <div className="space-y-2">
+                  <label htmlFor="signup-language" className="text-sm font-medium text-foreground">Preferred language for case connections</label>
+                  <ConnectLanguageSelect flags={connectFlags} value={preferredLanguage} onChange={setPreferredLanguage} id="signup-language" />
+                  <p className="text-xs leading-5 text-muted-foreground">Your preference helps us connect you in a language you are comfortable using. Legal details stay in your original words.</p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Email Address</label>
                 <input
@@ -518,6 +544,7 @@ export default function Login() {
                   {error}
                 </div>
               )}
+              {languageSaveNotice && <p role="status" className="rounded-lg border border-amber-700/20 bg-amber-700/5 px-3 py-2 text-xs leading-5 text-amber-800 dark:text-amber-200">{languageSaveNotice}</p>}
 
               {!isSignIn && (
                 <motion.div

@@ -32,6 +32,7 @@ from jurisdiction import (
 from llm import legal_llm
 from jobs import enqueue_job
 from public_ai_policy import enforce_public_ai_policy
+from legal_chat_policy import build_case_profile
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
@@ -98,8 +99,10 @@ _SURFACE_LABELS = {
 
 class ClarifyRequest(BaseModel):
     text: str = ""
+    context: str = ""
     surface: str = "general"
     country: str = "IN"
+    history: List[dict] = Field(default_factory=list)
 
 
 @router.post("/clarify")
@@ -112,6 +115,14 @@ async def clarify_input(req: ClarifyRequest, request: Request,
     # proxy addresses must not be used as an additional user-level quota.
     try:
         safe_text = sanitize_text(req.text or "", max_length=4000, field_name="text")
+        safe_context = sanitize_text(req.context or "", max_length=2000, field_name="context")
+        history = [
+            {"role": item.get("role"), "content": sanitize_text(
+                str(item.get("content", "")), max_length=2000, field_name="history"
+            )}
+            for item in req.history[-24:]
+            if isinstance(item, dict) and item.get("role") in {"user", "ai"}
+        ]
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -121,15 +132,29 @@ async def clarify_input(req: ClarifyRequest, request: Request,
     if len(safe_text.strip()) < 2:
         return {"needs_clarification": False, "questions": []}
 
+    profile = build_case_profile(history, safe_text + "\n" + safe_context) if req.surface == "chat" else {}
+    if profile.get("conflicts"):
+        return {
+            "needs_clarification": True,
+            "questions": ["You gave conflicting answers about whether there is a written rental agreement. Which is correct?"],
+            "case_profile": profile,
+        }
+
     prompt = f"""You are {advisor_descriptor(req.country)} helping a user get a more accurate answer.
-The user is {label}. Their current input is shown below.
+The user is {label}. Use the accumulated profile and all prior turns below, not only the latest sentence.
+ACCUMULATED PROFILE: {json.dumps(profile, ensure_ascii=False)}
+CONVERSATION: {json.dumps(history[-16:], ensure_ascii=False)}
+LATEST INPUT: {safe_text[:4000]}
+OPTIONAL FORM DETAILS: {safe_context}
 
 Decide whether 1 to 3 SHORT clarifying questions would materially improve the quality of the answer.
 Rules:
 - If the input is already specific and detailed enough, return an EMPTY array.
 - Each question must be specific, answerable in one short sentence, and relevant to {cfg['name']} law.
 - Never ask for personally identifying information (full name, exact address, ID numbers).
-- Do not repeat information the user already provided.
+- Never ask again for facts recorded in the accumulated profile or already answered in prior turns.
+- Ask at most one round. Prioritize only details that change the route or draft; do not ask for completeness for its own sake.
+- If the user requested a draft, ask only for material missing facts and do not delay a usable draft over names, dates, or addresses (use placeholders).
 - Maximum 3 questions.
 
 Return ONLY a valid JSON array of strings, e.g. ["Which state or city is this in?", "Was anyone injured?"]
@@ -517,7 +542,21 @@ Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimer
     country = normalize_code(req.country)
     async def work():
         answer = ""
-        if legal_llm.is_configured():
+        grounded_result = None
+        if (os.getenv("LITIGAFORGE_AI_PIPELINE_MODE", "legacy").strip().lower() == "grounded"
+                and country == "IN"):
+            from database import get_pool
+            from grounded_legal_pipeline import grounded_answer
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                grounded_result = await grounded_answer(conn, safe_question, country=country)
+            answer = grounded_result["reply"]
+            if grounded_result["sources"]:
+                answer += "\n\n## Sources\n" + "\n".join(
+                    f"- [{item['label']}]({item['url']})"
+                    for item in grounded_result["sources"]
+                )
+        elif legal_llm.is_configured():
             try:
                 answer = await legal_llm.acomplete(
                     None, wrap_user_prompt(prompt, req.country), None, 1800
@@ -557,10 +596,16 @@ Be specific, cite real {cfg['name']} law, and avoid unhelpful generic disclaimer
                    RETURNING id, created_at""",
                 uid, safe_question, req.category, answer, country,
             )
-        return {"id": row["id"], "question": safe_question, "category": req.category,
+        result = {"id": row["id"], "question": safe_question, "category": req.category,
                 "country": country, "answer": answer,
                 "sharing_status": "pending" if queued_for_moderation else "private",
                 "created_at": str(row["created_at"])}
+        if grounded_result:
+            result["sources"] = grounded_result["sources"]
+            result["models"] = grounded_result["models"]
+            result["latency_ms"] = grounded_result["latency_ms"]
+            result["cost_usd"] = grounded_result["cost_usd"]
+        return result
     return await enqueue_job(uid, work)
 
 

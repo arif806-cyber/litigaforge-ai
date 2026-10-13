@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { useCountry } from "@/hooks/useCountry";
 import { formatDate } from "@/lib/locale";
 import { useToast } from "@/hooks/use-toast";
+import { useConnectFlags } from "@/hooks/use-connect-v2";
+import { ConnectCaseDetail } from "@/pages/connect-v2";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   open:    { bg: "rgba(52,211,153,0.12)", text: "#34D399", border: "rgba(52,211,153,0.25)" },
@@ -152,7 +154,7 @@ function MatchScoreBar({ score }: { score: number }) {
   );
 }
 
-export default function CaseDetail() {
+function LegacyCaseDetail() {
   const [, params] = useRoute("/my-cases/:id");
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -1025,4 +1027,9 @@ export default function CaseDetail() {
       </AnimatePresence>
     </>
   );
+}
+
+export default function CaseDetail() {
+  const { data: flags } = useConnectFlags();
+  return flags?.connect_v2 ? <ConnectCaseDetail /> : <LegacyCaseDetail />;
 }

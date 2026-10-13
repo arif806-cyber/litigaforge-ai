@@ -9,6 +9,9 @@ import {
   Loader2, CheckCircle, AlertTriangle, Eye, EyeOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Languages } from "lucide-react";
+import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-connect-v2";
+import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
 
 export default function AccountSettings() {
   const { user, logout } = useAuth();
@@ -23,11 +26,56 @@ export default function AccountSettings() {
       </div>
 
       <ProfileSection user={user} />
+      <LanguagePreferenceSection user={user} />
       {user?.lawyer_status && <AdvocateProfileSection />}
       <PasswordSection />
       <PrivacySection />
       <DangerZone onDeleted={logout} />
     </div>
+  );
+}
+
+function LanguagePreferenceSection({ user }: { user: any }) {
+  const { data: flags, isLoading } = useConnectFlags();
+  const [language, setLanguage] = useState(user?.preferred_language ?? "en");
+  const [savedLanguage, setSavedLanguage] = useState(user?.preferred_language ?? "en");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    setLanguage(user?.preferred_language ?? "en");
+    setSavedLanguage(user?.preferred_language ?? "en");
+  }, [user?.preferred_language]);
+  if (isLoading || !flags?.connect_v2 || !flags.multilang) return null;
+
+  const save = async () => {
+    setSaving(true);
+    setNotice("");
+    try {
+      await apiFetch("/auth/profile/language", {
+        method: "PATCH",
+        body: { preferred_language: language },
+      });
+      localStorage.setItem(CONNECT_LANGUAGE_STORAGE_KEY, language);
+      setSavedLanguage(language);
+      setNotice("Preferred language saved.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save your language preference.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card icon={<Languages className="h-4 w-4" />} title="Language for case connections">
+      <div className="space-y-3">
+        <p className="text-sm leading-6 text-muted-foreground">Choose the language you prefer for describing a legal matter. Case content stays in the original language; the interface is not machine-translated.</p>
+        <ConnectLanguageSelect flags={flags} value={language} onChange={(value) => { setLanguage(value); setNotice(""); }} />
+        {notice && <p role="status" className={`text-sm ${notice.includes("saved") ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}`}>{notice}</p>}
+        <button type="button" onClick={save} disabled={saving || language === savedLanguage} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50" data-testid="button-save-language">
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}{saving ? "Saving…" : "Save language"}
+        </button>
+      </div>
+    </Card>
   );
 }
 

@@ -454,6 +454,9 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        from legal_reference_tables import ensure_reference_tables
+        await ensure_reference_tables(conn)
+        logger.info("dated legal reference tables ready")
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'IN'")
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS public_question TEXT")
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS public_answer TEXT")
@@ -566,6 +569,7 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language TEXT NOT NULL DEFAULT 'en'")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT")
         # ── Research Portfolio: public username + profile visibility ──────────
@@ -628,6 +632,45 @@ async def lifespan(app: FastAPI):
                 lawyer_message TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS problem_type TEXT")
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS connect_v2 BOOLEAN NOT NULL DEFAULT FALSE")
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS original_language TEXT NOT NULL DEFAULT 'en'")
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS hide_name BOOLEAN NOT NULL DEFAULT TRUE")
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS document_paths JSONB NOT NULL DEFAULT '[]'::jsonb")
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS voice_path TEXT")
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS voice_transcript TEXT")
+        await conn.execute("ALTER TABLE case_requirements ADD COLUMN IF NOT EXISTS voice_language TEXT")
+        await conn.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS connect_v2 BOOLEAN NOT NULL DEFAULT FALSE")
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS connect_case_updates (
+                id BIGSERIAL PRIMARY KEY,
+                case_id INTEGER NOT NULL REFERENCES case_requirements(id) ON DELETE CASCADE,
+                author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                next_step TEXT NOT NULL,
+                next_step_date DATE,
+                update_text TEXT NOT NULL,
+                original_language TEXT NOT NULL DEFAULT 'en',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS connect_case_checklist (
+                id BIGSERIAL PRIMARY KEY,
+                case_id INTEGER NOT NULL REFERENCES case_requirements(id) ON DELETE CASCADE,
+                label TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'requested',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS translation_cache (
+                cache_key TEXT PRIMARY KEY,
+                source_language TEXT NOT NULL,
+                target_language TEXT NOT NULL,
+                translated_text TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """)
         await conn.execute("""
@@ -731,6 +774,7 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS filename TEXT")
         await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_size INTEGER")
         await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_path TEXT")
+        await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS original_language TEXT NOT NULL DEFAULT 'en'")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS lawyer_cases (
                 id SERIAL PRIMARY KEY,
@@ -748,6 +792,8 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("ALTER TABLE lawyer_cases ADD COLUMN IF NOT EXISTS connect_case_id INTEGER REFERENCES case_requirements(id) ON DELETE SET NULL")
+        await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_lawyer_cases_connect_case ON lawyer_cases(connect_case_id)")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS lawyer_documents (
                 id SERIAL PRIMARY KEY,
@@ -2041,6 +2087,7 @@ from routers import (
 from country_router import router as country_router
 from jobs import router as jobs_router
 from routers.docket import router as docket_router
+from routers.connect_v2 import router as connect_v2_router
 
 # ForgeOS router is imported ONLY when FORGEOS_ENABLED is set — keeps the
 # subsystem fully inert (no import, no routes) when disabled/unset.
@@ -2079,6 +2126,7 @@ app.include_router(cnr_router,              prefix=BASE_PATH)
 app.include_router(court_intelligence_router, prefix=BASE_PATH)
 app.include_router(mcp_router,              prefix=BASE_PATH)
 app.include_router(jobs_router,             prefix=BASE_PATH)
+app.include_router(connect_v2_router,       prefix=BASE_PATH)
 if forgeos_router is not None:
     app.include_router(forgeos_router, prefix=BASE_PATH)
 

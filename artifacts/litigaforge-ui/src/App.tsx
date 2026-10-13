@@ -17,6 +17,7 @@ import { viewTransitionAroundNav } from "@/lib/view-transitions";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { PublicPageFrame } from "@/components/public-site-header";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { useConnectFlags } from "@/hooks/use-connect-v2";
 import {
   getAppBase,
   getCountryFromPath,
@@ -68,6 +69,9 @@ const WorkspaceDemoPreview = lazy(() =>
   import("@/pages/workspace").then((m) => ({ default: m.WorkspaceDemoPreview })),
 );
 const MessagesPage        = lazy(() => import("@/pages/messages"));
+const AdvocateRequestsPage = lazy(() => import("@/pages/connect-v2").then((m) => ({ default: m.AdvocateRequests })));
+const ConnectCaseDetailPage = lazy(() => import("@/pages/connect-v2").then((m) => ({ default: m.ConnectCaseDetail })));
+const ConnectAdvocateCasesPage = lazy(() => import("@/pages/connect-v2").then((m) => ({ default: m.ConnectAdvocateCases })));
 const CnrTracker          = lazy(() => import("@/pages/cnr-tracker"));
 const DocketView          = lazy(() => import("@/pages/docket-view"));
 const ForgeOsPage         = lazy(() => import("@/pages/forgeos"));
@@ -175,6 +179,7 @@ function protectedErrorRoute(section: string, Component: React.ComponentType) {
 
 const UsDemandLetterRoute = errorRoute("us-demand-letter", UsDemandLetter);
 const SettingsRoute = protectedRoute(AccountSettings);
+const AdvocateRequestsRoute = protectedErrorRoute("advocate-requests", AdvocateRequestsPage);
 const ClientDashboardRoute = protectedRoute(ClientDashboard);
 const LawyerDashboardRoute = protectedRoute(LawyerDashboard);
 const AdvocateDashboardRoute = protectedErrorRoute("advocate-dashboard", AdvocateDashboardGate);
@@ -189,7 +194,6 @@ const CityLawyersRoute = errorRoute("city-lawyers", CityPage);
 const LawyersRoute = errorRoute("lawyers", LawyersPage);
 const LegalAidRoute = errorRoute("legal-aid", LegalAid);
 const PostCaseRoute = protectedErrorRoute("post-case", PostCase);
-const CaseDetailRoute = protectedErrorRoute("case-detail", CaseDetail);
 const MyCasesRoute = protectedErrorRoute("my-cases", MyCases);
 const MatchesRoute = protectedErrorRoute("matches", Matches);
 const DocumentsRoute = protectedErrorRoute("documents", DocumentsPage);
@@ -204,6 +208,16 @@ const StableWorkspaceRoute = errorRoute("workspace", WorkspaceRoute);
 const MessagesRoute = protectedErrorRoute("messages", MessagesPage);
 const CnrTrackerRoute = errorRoute("cnr-tracker", CnrTracker);
 const DocketRoute = protectedRoute(DocketView);
+
+function MyCaseDetailSwitch() {
+  const flags = useConnectFlags();
+  if (flags.isLoading) return <div className="mx-auto max-w-5xl p-6"><div className="h-24 animate-pulse rounded-2xl bg-muted" /><div className="mt-4 h-64 animate-pulse rounded-2xl bg-muted" /></div>;
+  return flags.data?.connect_v2 ? <ConnectCaseDetailPage /> : <CaseDetail />;
+}
+
+const MyCaseDetailRoute = protectedErrorRoute("case-detail", MyCaseDetailSwitch);
+const ConnectAdvocateCasesRoute = protectedErrorRoute("advocate-cases", ConnectAdvocateCasesPage);
+const ConnectAdvocateCaseDetailRoute = protectedErrorRoute("advocate-case-detail", ConnectCaseDetailPage);
 
 function ForLawyersRoute() {
   return <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
@@ -424,7 +438,9 @@ function Router() {
               <Route path="/lawyers" component={LawyersRoute} />
               <Route path="/legal-aid" component={LegalAidRoute} />
               <Route path="/post-case" component={PostCaseRoute} />
-              <Route path="/my-cases/:id" component={CaseDetailRoute} />
+              <Route path="/advocate/cases/:id" component={ConnectAdvocateCaseDetailRoute} />
+              <Route path="/advocate/cases" component={ConnectAdvocateCasesRoute} />
+              <Route path="/my-cases/:id" component={MyCaseDetailRoute} />
               <Route path="/my-cases" component={MyCasesRoute} />
               <Route path="/matches" component={MatchesRoute} />
               <Route path="/documents" component={DocumentsRoute} />
@@ -438,6 +454,7 @@ function Router() {
               <Route path="/forgeos" component={ForgeOsRoute} />
               <Route path="/workspace" component={StableWorkspaceRoute} />
               <Route path="/messages" component={MessagesRoute} />
+              <Route path="/requests" component={AdvocateRequestsRoute} />
               <Route path="/cnr-tracker" component={CnrTrackerRoute} />
               <Route path="/docket" component={DocketRoute} />
               <Route path="/cnr"><Redirect to="/cnr-tracker" /></Route>

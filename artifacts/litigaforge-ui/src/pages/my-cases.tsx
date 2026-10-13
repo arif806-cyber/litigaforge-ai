@@ -19,6 +19,8 @@ import { formatDate } from "@/lib/locale";
 import { LawyerMatchCard } from "@/components/LawyerMatchCard";
 import { useLawyerPresence } from "@/hooks/useLawyerPresence";
 import { useClientPresence } from "@/hooks/useClientPresence";
+import { useConnectFlags } from "@/hooks/use-connect-v2";
+import { ConnectMyCases } from "@/pages/connect-v2";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   open:    { bg: "rgba(52,211,153,0.12)",  text: "#34D399", border: "rgba(52,211,153,0.25)"  },
@@ -31,7 +33,7 @@ const CASE_TYPES = [
   "Labour", "Tax", "IP / Trademark", "Other"
 ];
 
-export default function MyCases() {
+function LegacyMyCases() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
@@ -292,4 +294,9 @@ export default function MyCases() {
       </AnimatePresence>
     </PageShell>
   );
+}
+
+export default function MyCases() {
+  const { data: flags } = useConnectFlags();
+  return flags?.connect_v2 ? <ConnectMyCases /> : <LegacyMyCases />;
 }

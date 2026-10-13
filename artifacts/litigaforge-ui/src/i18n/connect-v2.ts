@@ -1,0 +1,88 @@
+export interface ConnectV2Strings {
+  requests: string;
+  acceptedCases: string;
+  documents: string;
+  phone: string;
+  messages: string;
+  noRanking: string;
+  noCommission: string;
+  original: string;
+  translatedFrom: string;
+  viewOriginal: string;
+  hideOriginal: string;
+  translation: string;
+  translate: string;
+  translating: string;
+  translateAgain: string;
+  translationUnavailable: string;
+  noTranslationRequested: string;
+  originalAuthoritative: string;
+}
+
+const CONNECT_V2_STRINGS: Record<string, ConnectV2Strings> = {
+  en: {
+    requests: "Requests",
+    acceptedCases: "Accepted cases",
+    documents: "Documents",
+    phone: "Call",
+    messages: "Messages",
+    noRanking: "Advocates are not ranked by payment.",
+    noCommission: "There are no commissions or paid referrals.",
+    original: "Original",
+    translatedFrom: "Translated from",
+    viewOriginal: "View original",
+    hideOriginal: "Hide original",
+    translation: "Translation",
+    translate: "Translate",
+    translating: "Translating…",
+    translateAgain: "Translate again",
+    translationUnavailable: "Translation unavailable. The original text remains visible; no substitute has been shown.",
+    noTranslationRequested: "No translation requested yet.",
+    originalAuthoritative: "The original remains the authoritative version.",
+  },
+  hi: {
+    requests: "अनुरोध",
+    acceptedCases: "स्वीकृत मामले",
+    documents: "दस्तावेज़",
+    phone: "कॉल करें",
+    messages: "संदेश",
+    noRanking: "भुगतान के आधार पर अधिवक्ताओं की रैंकिंग नहीं होती।",
+    noCommission: "कोई कमीशन या सशुल्क रेफ़रल नहीं है।",
+    original: "मूल",
+    translatedFrom: "से अनुवादित",
+    viewOriginal: "मूल देखें",
+    hideOriginal: "मूल छिपाएँ",
+    translation: "अनुवाद",
+    translate: "अनुवाद करें",
+    translating: "अनुवाद हो रहा है…",
+    translateAgain: "फिर से अनुवाद करें",
+    translationUnavailable: "अनुवाद उपलब्ध नहीं है। मूल पाठ दिखाई दे रहा है; कोई दूसरा पाठ नहीं दिखाया गया है।",
+    noTranslationRequested: "अभी तक अनुवाद का अनुरोध नहीं किया गया है।",
+    originalAuthoritative: "मूल पाठ ही आधिकारिक संस्करण है।",
+  },
+  te: {
+    requests: "అభ్యర్థనలు",
+    acceptedCases: "ఆమోదించిన కేసులు",
+    documents: "పత్రాలు",
+    phone: "కాల్ చేయండి",
+    messages: "సందేశాలు",
+    noRanking: "చెల్లింపు ఆధారంగా న్యాయవాదులకు ర్యాంకింగ్ ఇవ్వబడదు.",
+    noCommission: "కమీషన్లు లేదా చెల్లింపు రిఫరల్‌లు లేవు.",
+    original: "అసలు",
+    translatedFrom: "నుండి అనువదించబడింది",
+    viewOriginal: "అసలు చూడండి",
+    hideOriginal: "అసలు దాచండి",
+    translation: "అనువాదం",
+    translate: "అనువదించండి",
+    translating: "అనువదిస్తోంది…",
+    translateAgain: "మళ్లీ అనువదించండి",
+    translationUnavailable: "అనువాదం అందుబాటులో లేదు. అసలు పాఠ్యం అలాగే ఉంది; దాని స్థానంలో వేరే పాఠ్యం చూపించలేదు.",
+    noTranslationRequested: "ఇంకా అనువాదం అభ్యర్థించలేదు.",
+    originalAuthoritative: "అసలు పాఠ్యమే అధికారిక సంస్కరణ.",
+  },
+};
+
+export function connectV2Strings(language: string): ConnectV2Strings {
+  const shortCode = language.toLowerCase().split("-")[0];
+  return CONNECT_V2_STRINGS[shortCode] ?? CONNECT_V2_STRINGS.en;
+}

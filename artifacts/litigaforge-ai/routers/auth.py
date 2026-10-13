@@ -45,6 +45,7 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     role: str = "client"
+    preferred_language: str = "en"
     recaptcha_token: str | None = None
 
 
@@ -89,6 +90,15 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     if req.role not in ("client", "advocate", "lawyer"):
         raise HTTPException(status_code=422, detail="Role must be client or advocate")
     safe_role = req.role
+    preferred_language = "en"
+    try:
+        from routers.connect_v2 import LANGUAGES, multilang_enabled
+        if multilang_enabled():
+            if req.preferred_language not in LANGUAGES:
+                raise HTTPException(status_code=422, detail="Choose an available language")
+            preferred_language = req.preferred_language
+    except ImportError:
+        pass
 
     # reCAPTCHA v3 (non-blocking when RECAPTCHA_SECRET_KEY not configured)
     _recaptcha_secret = _os.getenv("RECAPTCHA_SECRET") or _os.getenv("RECAPTCHA_SECRET_KEY")
@@ -119,6 +129,9 @@ async def register(req: RegisterRequest, request: Request, response: Response):
             password_hash=hash_password(req.password),
             role=safe_role,
         )
+        if preferred_language != "en":
+            await db_execute("UPDATE users SET preferred_language=$1 WHERE id=$2", preferred_language, user["id"])
+            user["preferred_language"] = preferred_language
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     await _issue_tokens(user["id"], response)

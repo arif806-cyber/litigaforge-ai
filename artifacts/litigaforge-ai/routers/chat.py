@@ -15,13 +15,14 @@ import json
 import asyncio
 import logging
 import os
+import re
 import time
 import uuid
 from typing import Dict, List, Optional
 
 import requests as _req
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from auth import get_current_user, require_ai_user, decode_token
 from routers.presence import manager as notification_manager
@@ -34,6 +35,10 @@ from jurisdiction import (
     country_name, normalize_code,
 )
 from jobs import enqueue_job
+from legal_chat_policy import (
+    build_case_profile, is_lawyer_request,
+    make_legal_chat_prompt, validate_citations,
+)
 
 logger = logging.getLogger("litigaforge.chat")
 router = APIRouter(tags=["chat"])
@@ -152,6 +157,7 @@ class AIChatRequest(BaseModel):
     context: str = ""
     thread_id: Optional[int] = None
     country: str = "IN"
+    history: List[dict] = Field(default_factory=list)
 
 
 @router.post("/ai-legal-chat", status_code=202)
@@ -164,17 +170,34 @@ async def ai_legal_chat(
     try:
         safe_message = sanitize_text(req.message, max_length=2000, field_name="message")
         safe_context = sanitize_text(req.context, max_length=2000, field_name="context") if req.context else ""
+        history = [
+            {"role": item.get("role"), "content": sanitize_text(
+                str(item.get("content", "")), max_length=2000, field_name="history"
+            )}
+            for item in req.history[-24:]
+            if isinstance(item, dict) and item.get("role") in {"user", "ai"}
+        ]
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
     code = normalize_code(req.country)
+    case_profile = build_case_profile(history, safe_message + "\n" + safe_context)
+    if code == "IN":
+        full_prompt = make_legal_chat_prompt(safe_message, safe_context, case_profile, history)
+    else:
+        full_prompt = f"""You are LitigaForge AI, {advisor_descriptor(code)}.
+{jurisdiction_block(code)}
+Give practical, concise legal information for {country_name(code)}. Do not invent facts,
+court limits, laws, citations, or case law. If a fact is missing, use [placeholders] for
+a requested draft and list missing details at the end. Ask at most one concise round of
+clarifying questions. Avoid repeated disclaimers; the page already displays one.
+Prior conversation: {json.dumps(history[-16:], ensure_ascii=False)}
+User context: {safe_context}
+Current request: {safe_message}"""
     system_prompt = f"""You are LitigaForge AI, {advisor_descriptor(code)}.
 You help advocates and clients with legal drafting, procedural guidance, and case analysis.
 
 {jurisdiction_block(code)}
-
-IMPORTANT: Always include this disclaimer at the end of your response:
-"This is AI-generated guidance only. Please verify with a qualified lawyer before acting. This platform only connects users. Final attorney-client relationship is directly between client and lawyer. We are not providing legal advice."
 
 Before recommending any court, tribunal, consumer forum, or authority, check the
 claim amount and stated territorial jurisdiction. Do not quote pecuniary limits
@@ -182,22 +205,84 @@ unless confident they are current and applicable. If venue depends on missing
 facts or the limit is uncertain, say so and ask for the missing detail rather
 than directing the user to a specific forum.
 
-Be concise and accurate, and cite the real statutes, sections, and procedures of {country_name(code)} where applicable."""
-
-    user_prompt = safe_message
-    if safe_context:
-        user_prompt = f"Context: {safe_context}\n\nQuestion: {safe_message}"
-
-    full_prompt = f"{system_prompt}\n\n{user_prompt}"
+Be concise and accurate. Do not repeat the page's legal disclaimer."""
+    full_prompt = f"{system_prompt}\n\n{full_prompt}"
     async def work():
-        response = await asyncio.to_thread(_ai, wrap_user_prompt(full_prompt), 2500)
-        response = add_disclaimer(localize_currency(validate_ai_response(response), code))
+        grounded_result = None
+        if os.getenv("LITIGAFORGE_AI_PIPELINE_MODE", "legacy").strip().lower() == "grounded":
+            if code != "IN":
+                raise RuntimeError("Grounded pipeline is not enabled for this jurisdiction yet.")
+            from database import get_pool
+            from grounded_legal_pipeline import grounded_answer
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                grounded_result = await grounded_answer(
+                    conn, safe_message, history=history, context=safe_context, country=code,
+                )
+            response = grounded_result["reply"]
+            if grounded_result["draft"] and not response.startswith(
+                "Draft — review by an advocate before filing"
+            ):
+                response = "Draft — review by an advocate before filing\n\n" + response
+            sources = grounded_result["sources"]
+            if sources:
+                response += "\n\n## Sources\n" + "\n".join(
+                    f"- [{item['label']}]({item['url']})" for item in sources
+                )
+        else:
+            response = await asyncio.to_thread(_ai, wrap_user_prompt(full_prompt), 2500)
+        response = localize_currency(validate_ai_response(response), code)
+        if code == "IN":
+            response = validate_citations(response)
+        # The page already carries a fixed disclaimer banner; remove the standard
+        # appended block from this endpoint to avoid repeating it in every turn.
+        response = re.sub(
+            r"(?is)(?:\n{1,2}---\s*\n)?\*?This is (?:AI-generated guidance|legal information), not legal advice\..{0,350}$",
+            "", response,
+        ).strip()
         if req.thread_id:
             await execute(
                 """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content)
                    VALUES ($1, NULL, 'ai', $2)""", req.thread_id, response,
             )
-        return {"reply": response, "disclaimer": "AI-generated guidance only. Verify with a qualified lawyer."}
+        actions = []
+        if is_lawyer_request(safe_message):
+            post_case_type = {
+                "residential_rent_eviction": "Property Dispute",
+                "family": "Family Matter",
+                "criminal": "Criminal",
+                "civil": "Civil",
+                "consumer": "Consumer",
+                "employment": "Labour",
+                "motor_accident": "Motor",
+            }.get(case_profile.get("matter_type"), "")
+            prefill_lines = [
+                f"Role: {case_profile['role']}" if case_profile.get("role") else "",
+                f"Matter: {case_profile['matter_type']}" if case_profile.get("matter_type") else "",
+                f"Location: {', '.join(x for x in [case_profile.get('city'), case_profile.get('state')] if x)}"
+                if case_profile.get("city") or case_profile.get("state") else "",
+                f"Monthly amount (INR): {case_profile['monthly_amount_inr']}" if case_profile.get("monthly_amount_inr") else "",
+                f"Unpaid months: {case_profile['unpaid_months']}" if case_profile.get("unpaid_months") else "",
+                f"Key dates: {', '.join(case_profile['key_dates'])}" if case_profile.get("key_dates") else "",
+                f"Documents: {', '.join(case_profile['documents'])}" if case_profile.get("documents") else "",
+                f"User request: {safe_message[:600]}",
+            ]
+            actions = [
+                {"label": "Post this as a case", "href": "/post-case", "kind": "post_case",
+                 "prefill": {"case_type": post_case_type,
+                             "title": "Rental arrears / eviction consultation" if case_profile.get("matter_type") == "residential_rent_eviction" else "Legal matter consultation",
+                             "location": ", ".join(x for x in [case_profile.get("city"), case_profile.get("state")] if x),
+                             "description": "\n".join(line for line in prefill_lines if line)[:1800]}},
+                {"label": "Browse advocates", "href": "/lawyers", "kind": "link"},
+                {"label": "Free legal aid", "href": "/legal-aid", "kind": "link"},
+            ]
+        result = {"reply": response, "actions": actions}
+        if grounded_result:
+            result["sources"] = grounded_result["sources"]
+            result["models"] = grounded_result["models"]
+            result["latency_ms"] = grounded_result["latency_ms"]
+            result["cost_usd"] = grounded_result["cost_usd"]
+        return result
     return await enqueue_job(current_user["id"], work)
 
 
@@ -211,6 +296,7 @@ class ChatThreadRequest(BaseModel):
 class ChatMessageRequest(BaseModel):
     thread_id: int
     content: str
+    language: str = "auto"
 
 
 async def _authorized_chat_participants(thread_id: int, user_id: int):
@@ -338,13 +424,22 @@ async def send_chat_message(
         safe_content = sanitize_text(req.content, max_length=2000, field_name="content")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+    language = "en"
+    try:
+        from routers.connect_v2 import detect_language, multilang_enabled, LANGUAGES
+        if multilang_enabled():
+            language = detect_language(safe_content) if req.language == "auto" else req.language
+            if language not in LANGUAGES:
+                raise HTTPException(422, "Unsupported message language")
+    except ImportError:
+        pass
 
     row = await fetchrow(
-        """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content)
-           VALUES ($1, $2, 'user', $3)
+        """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content, original_language)
+           VALUES ($1, $2, 'user', $3, $4)
            RETURNING id, thread_id, sender_id, sender_role, content, message_type,
-                     file_url, filename, file_size, created_at""",
-        req.thread_id, current_user["id"], safe_content,
+                     file_url, filename, file_size, original_language, created_at""",
+        req.thread_id, current_user["id"], safe_content, language,
     )
     row["created_at"] = str(row["created_at"])
     await _broadcast_chat_message(req.thread_id, current_user, auth, row)
@@ -449,10 +544,10 @@ async def get_chat_messages(
         # Cursor pagination: 50 messages before the timestamp, returned oldest-first
         rows = await fetch(
             """SELECT id, thread_id, sender_id, sender_role, content, message_type,
-                      file_url, filename, file_size, created_at
+                      file_url, filename, file_size, original_language, created_at
                FROM (
                    SELECT id, thread_id, sender_id, sender_role, content, message_type,
-                          file_url, filename, file_size, created_at
+                          file_url, filename, file_size, original_language, created_at
                    FROM chat_messages
                    WHERE thread_id = $1 AND created_at < $2::timestamptz
                    ORDER BY created_at DESC LIMIT 50
@@ -464,10 +559,10 @@ async def get_chat_messages(
         # Initial load: latest 50, returned oldest-first
         rows = await fetch(
             """SELECT id, thread_id, sender_id, sender_role, content, message_type,
-                      file_url, filename, file_size, created_at
+                      file_url, filename, file_size, original_language, created_at
                FROM (
                    SELECT id, thread_id, sender_id, sender_role, content, message_type,
-                          file_url, filename, file_size, created_at
+                          file_url, filename, file_size, original_language, created_at
                    FROM chat_messages WHERE thread_id = $1
                    ORDER BY created_at DESC LIMIT 50
                ) sub

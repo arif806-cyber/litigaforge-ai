@@ -94,6 +94,24 @@ async def acomplete(system: str, user: str, temperature=None, max_tokens=None) -
     return _text(resp)
 
 
+async def acomplete_for_model(model: str, system: str, user: str,
+                              temperature=None, max_tokens=None) -> str:
+    """Use the shared LiteLLM client with an Anthropic feature-model override."""
+    if not model.startswith("anthropic/"):
+        raise ValueError("Feature model overrides must use the configured Anthropic integration")
+    from llm.config import _resolve_creds
+    lib = _lib()
+    kwargs = _kwargs(max_tokens, temperature)
+    kwargs["model"] = model
+    base, key = _resolve_creds(model)
+    if base:
+        kwargs["api_base"] = base
+    if key:
+        kwargs["api_key"] = key
+    resp = await lib.acompletion(messages=_messages(system, user), **kwargs)
+    return _text(resp)
+
+
 async def acomplete_with_usage(system: str, user: str, temperature=None, max_tokens=None) -> dict:
     """Async completion that also returns token usage + real USD cost.
 

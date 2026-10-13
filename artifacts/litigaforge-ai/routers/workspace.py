@@ -1379,6 +1379,27 @@ async def ask_agent(
             "Be direct and practical."
         )
 
+        if (agent_id == "research"
+                and os.getenv("LITIGAFORGE_AI_PIPELINE_MODE", "legacy").strip().lower() == "grounded"):
+            from database import get_pool
+            from grounded_legal_pipeline import grounded_stream
+            pool = await get_pool()
+            try:
+                async with pool.acquire() as conn:
+                    async for part in grounded_stream(
+                        conn, f"{body.case_description}\n\n{body.question}",
+                    ):
+                        if isinstance(part, dict):
+                            yield sse({"type": "sources", "agent": agent_id, **part})
+                        else:
+                            yield sse({"type": "token", "agent": agent_id, "token": part})
+                yield sse({"type": "done", "agent": agent_id})
+            except Exception as exc:
+                logger.warning("Grounded research failed type=%s", type(exc).__name__)
+                yield sse({"type": "error", "agent": agent_id,
+                           "error": "Couldn't complete, try again."})
+            return
+
         try:
             response = await legal_llm.aask_legal_question(prompt)
             response  = (response or "").strip() or (

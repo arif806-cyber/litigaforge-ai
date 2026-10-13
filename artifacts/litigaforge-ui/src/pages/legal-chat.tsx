@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { LEGAL_CHAT_COPY } from "@/lib/country-copy";
 import { LegalDisclaimerBanner } from "@/components/legal-disclaimer";
 import ReactMarkdown from "react-markdown";
+import { useConnectFlags, CONNECT_LANGUAGE_STORAGE_KEY } from "@/hooks/use-connect-v2";
 
 const DETAIL_FIELDS = [
   { id: "location", label: "Location / jurisdiction", placeholder: "e.g. city, state or region" },
@@ -24,32 +25,41 @@ const DETAIL_FIELDS = [
 ] as const;
 
 const TEMPLATES = [
-  { id: "legal_notice", label: "Legal Notice", icon: FileText, prompt: "Draft a formal legal notice for [describe issue]. Include all the sections required under the applicable law of my jurisdiction." },
-  { id: "agreement", label: "Agreement Draft", icon: Scale, prompt: "Draft a [rental/partnership/employment] agreement with the standard clauses that are valid and enforceable in my jurisdiction." },
-  { id: "petition", label: "Court Petition", icon: Gavel, prompt: "Draft a petition for a [civil/criminal/writ] matter for filing in the appropriate court in my jurisdiction." },
-  { id: "reply", label: "Reply to Notice", icon: BookOpen, prompt: "Draft a reply to a legal notice received regarding [matter]. Be firm but legally sound." },
+  { id: "legal_notice", label: "Legal Notice", icon: FileText, prompt: "Draft a legal notice" },
+  { id: "agreement", label: "Agreement Draft", icon: Scale, prompt: "Draft an agreement" },
+  { id: "petition", label: "Court Petition", icon: Gavel, prompt: "Draft a court petition" },
+  { id: "reply", label: "Reply to Notice", icon: BookOpen, prompt: "Draft a reply to a legal notice" },
 ];
 
+type ChatAction = { label: string; href: string; kind: string; prefill?: Record<string, string> };
 interface Message {
   id: number;
   role: "user" | "ai";
   content: string;
+  actions?: ChatAction[];
 }
 
 export default function LegalChat() {
   const { user } = useAuth();
   const { activeCode, activeConfig } = useCountry();
+  const { data: connectFlags } = useConnectFlags();
+  const preferredLanguage = localStorage.getItem(CONNECT_LANGUAGE_STORAGE_KEY)
+    || (user as (typeof user & { preferred_language?: string }) | null)?.preferred_language
+    || "en";
   const [input, setInput] = useState("");
   const [pendingQ, setPendingQ] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [details, setDetails] = useState<Record<string, string>>({});
+  const [selectedTemplate, setSelectedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
+  const [templateFields, setTemplateFields] = useState({ matter: "", location: "", court: "", facts: "" });
 
   const chatCopy = LEGAL_CHAT_COPY[activeCode.toUpperCase()] ?? LEGAL_CHAT_COPY.IN;
+  const welcomeMessage = chatCopy.welcome.replace(/\n\n---\n\*This platform only connects users\..*$/s, "");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
       role: "ai",
-      content: chatCopy.welcome,
+      content: welcomeMessage,
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
@@ -80,15 +90,19 @@ export default function LegalChat() {
     return parts.length ? "Additional details provided by the user:\n- " + parts.join("\n- ") : "";
   };
 
-  const callAI = async (message: string, context: string): Promise<boolean> => {
+  const callAI = async (message: string, context: string, extraTurns: Array<{role: "user" | "ai"; content: string}> = []): Promise<boolean> => {
     setTypingStage(0);
     setIsTyping(true);
     try {
-      const data = await runLongJob<{ reply?: string }>("/ai-legal-chat", {
+      const data = await runLongJob<{ reply?: string; actions?: ChatAction[] }>("/ai-legal-chat", {
         method: "POST",
-        body: { message, context, country: activeCode },
+        body: { message, context, country: activeCode, ...(connectFlags?.multilang ? { language: preferredLanguage } : {}), history: [
+          ...messages.map(({ role, content }) => ({ role, content })),
+          ...extraTurns,
+          { role: "user", content: message },
+        ] },
       });
-      const aiMsg: Message = { id: Date.now() + 1, role: "ai", content: data.reply || "Sorry, I could not generate a response." };
+      const aiMsg: Message = { id: Date.now() + 1, role: "ai", content: data.reply || "Sorry, I could not generate a response.", actions: data.actions };
       setMessages((prev) => [...prev, aiMsg]);
       return true;
     } catch (err: any) {
@@ -118,7 +132,7 @@ export default function LegalChat() {
       } else {
         const ctx = [formDetails, `User's answers to the clarifying questions: ${text.trim()}`]
           .filter(Boolean).join("\n\n");
-        const ok = await callAI(original, ctx);
+        const ok = await callAI(original, ctx, [{ role: "user", content: text.trim() }]);
         if (ok && clearInputOnSuccess) setInput("");
       }
       return;
@@ -129,7 +143,10 @@ export default function LegalChat() {
     try {
       const clarify = await apiFetch("/clarify", {
         method: "POST",
-        body: JSON.stringify({ text, surface: "chat", country: activeCode }),
+        body: JSON.stringify({ text, context: formDetails, surface: "chat", country: activeCode, ...(connectFlags?.multilang ? { language: preferredLanguage } : {}), history: [
+          ...messages.map(({ role, content }) => ({ role, content })),
+          { role: "user", content: text },
+        ] }),
       });
       const questions: string[] = Array.isArray(clarify?.questions) ? clarify.questions : [];
       if (questions.length > 0) {
@@ -159,7 +176,16 @@ export default function LegalChat() {
   };
 
   const handleTemplate = (template: typeof TEMPLATES[0]) => {
-    sendMessage(template.prompt);
+    setTemplateFields({ matter: "", location: details.location ?? "", court: "", facts: "" });
+    setSelectedTemplate(template);
+  };
+
+  const submitTemplate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTemplate) return;
+    const f = templateFields;
+    setSelectedTemplate(null);
+    sendMessage(`${selectedTemplate.prompt} for this matter.\nMatter: ${f.matter || "[matter]"}\nState/city or region: ${f.location || "[location]"}\nCourt/forum: ${f.court || "[court/forum to be confirmed]"}\nFacts, dates, amounts, documents: ${f.facts || "[facts and supporting documents]"}\nUse placeholders for unknown facts and list details to confirm.`, true);
   };
 
   if (!user) {
@@ -197,7 +223,7 @@ export default function LegalChat() {
   const clearChat = () => {
     if (!confirm("Clear this chat session? This cannot be undone.")) return;
     setMessages([
-      { id: 0, role: "ai", content: chatCopy.welcome },
+      { id: 0, role: "ai", content: welcomeMessage },
     ]);
   };
 
@@ -257,6 +283,16 @@ export default function LegalChat() {
                 {msg.role === "ai"
                   ? <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
                   : msg.content}
+                {msg.actions?.length ? <div className="flex flex-wrap gap-2 mt-3">
+                  {msg.actions.map(action => <button key={action.kind} type="button"
+                    onClick={() => {
+                      if (action.prefill) sessionStorage.setItem("legal-chat-case-prefill", JSON.stringify(action.prefill));
+                      window.location.href = action.href;
+                    }}
+                    className="text-xs font-semibold rounded-md border border-primary/30 px-3 py-1.5 text-primary hover:bg-primary/5">
+                    {action.label}
+                  </button>)}
+                </div> : null}
               </div>
             </motion.div>
           ))}
@@ -368,6 +404,48 @@ export default function LegalChat() {
           AI-generated guidance only. Verify with a qualified lawyer. We do not provide legal advice.
         </p>
       </div>
+      {selectedTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <form role="dialog" aria-modal="true" aria-labelledby="template-dialog-title"
+            onSubmit={submitTemplate}
+            className="w-full max-w-xl rounded-xl border border-border bg-card p-5 shadow-xl space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="template-dialog-title" className="text-lg font-semibold">{selectedTemplate.label}</h2>
+                <p className="text-sm text-muted-foreground">Share the key facts. Unknown details can stay as placeholders.</p>
+              </div>
+              <button type="button" onClick={() => setSelectedTemplate(null)} aria-label="Close template form"
+                className="text-sm text-muted-foreground hover:text-foreground">Close</button>
+            </div>
+            <label className="block text-sm font-medium">Matter and issue
+              <input required value={templateFields.matter} onChange={e => setTemplateFields(p => ({ ...p, matter: e.target.value }))}
+                placeholder="e.g. unpaid rent, consumer refund, employment termination"
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block text-sm font-medium">State/city or region
+                <input value={templateFields.location} onChange={e => setTemplateFields(p => ({ ...p, location: e.target.value }))}
+                  placeholder="e.g. Hyderabad, Telangana"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+              </label>
+              <label className="block text-sm font-medium">Court or forum (if known)
+                <input value={templateFields.court} onChange={e => setTemplateFields(p => ({ ...p, court: e.target.value }))}
+                  placeholder="Leave blank if unsure"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+              </label>
+            </div>
+            <label className="block text-sm font-medium">Key facts, dates, amounts, and documents
+              <textarea rows={4} value={templateFields.facts} onChange={e => setTemplateFields(p => ({ ...p, facts: e.target.value }))}
+                placeholder="Include the sequence of events and any documents or notices."
+                className="mt-1 w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setSelectedTemplate(null)}>Cancel</Button>
+              <Button type="submit">Continue</Button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

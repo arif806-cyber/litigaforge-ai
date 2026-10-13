@@ -16,3 +16,10 @@ The court intelligence tables (`tracked_cases`, `case_notifications`) hit this â
 **Why:** The project predates the UUID-PK convention; changing `users.id` would require a full schema migration.
 
 **How to apply:** When adding a new table that references `users(id)`, always declare `user_id INTEGER NOT NULL REFERENCES users(id)`. Use UUID PKs only for the new table's own `id` column (safe with `gen_random_uuid()`).
+
+## asyncpg date parameters
+For `$n::date` parameters, pass `datetime.date` objects, not ISO date strings. asyncpg applies its date codec before PostgreSQL's cast, so a string can fail startup DDL/seeding even with an explicit `::date`.
+
+**Why:** A legal-reference seed failed during lifespan initialization with a string-to-date codec error.
+
+**How to apply:** Convert configured ISO dates with `date.fromisoformat()` at the database boundary; keep nullable dates as `None`.

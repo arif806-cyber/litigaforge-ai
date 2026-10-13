@@ -381,6 +381,8 @@ async def ai_match_lawyers(
     )
     if not case:
         raise HTTPException(404, "Case requirement not found")
+    if case.get("connect_v2"):
+        raise HTTPException(409, "This request uses the private Connect flow")
 
     # Fetch all verified lawyers
     lawyers = await fetch(
@@ -607,6 +609,7 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
            JOIN case_requirements c ON m.case_requirement_id = c.id
             JOIN lawyers l ON m.lawyer_id = l.id
             WHERE m.client_id = $1
+               AND COALESCE(m.connect_v2, FALSE) = FALSE
               AND COALESCE(l.is_test, FALSE) = FALSE
               AND COALESCE(l.admin_hidden, FALSE) = FALSE
            ORDER BY m.created_at DESC""",
@@ -657,6 +660,7 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
            FROM matches m
            JOIN case_requirements c ON m.case_requirement_id = c.id
            WHERE m.lawyer_id = $1
+              AND COALESCE(m.connect_v2, FALSE) = FALSE
            ORDER BY m.created_at DESC""",
         lawyer_id,
     )
@@ -727,6 +731,8 @@ async def create_match_payment(
     )
     if not row:
         raise HTTPException(404, "Match not found")
+    if row.get("connect_v2"):
+        raise HTTPException(409, "Connect requests do not use platform fees or commissions")
     if row["client_id"] != current_user["id"]:
         raise HTTPException(403, "Not your match")
     if row["status"] not in {"pending", "interested"}:
@@ -786,6 +792,8 @@ async def verify_match_payment(
                 )
                 if not match:
                     raise HTTPException(404, "Match not found")
+                if match.get("connect_v2"):
+                    raise HTTPException(409, "Connect requests do not use platform fees or commissions")
                 if match["client_id"] != current_user["id"]:
                     raise HTTPException(403, "Not your match")
                 expected_amount = int(match["commission_amount"] or calc_commission_paise())
@@ -861,6 +869,8 @@ async def accept_match(
     match = await fetchrow("SELECT * FROM matches WHERE id = $1", match_id)
     if not match:
         raise HTTPException(404, "Match not found")
+    if match.get("connect_v2"):
+        raise HTTPException(409, "This request uses Advocate Connect; continue from the Connect case flow.")
 
     lawyer_row = await fetchrow("SELECT id FROM lawyers WHERE user_id = $1", current_user["id"])
     is_lawyer = lawyer_row and lawyer_row["id"] == match["lawyer_id"]
@@ -897,6 +907,8 @@ async def decline_match(
     match = await fetchrow("SELECT * FROM matches WHERE id = $1", match_id)
     if not match:
         raise HTTPException(404, "Match not found")
+    if match.get("connect_v2"):
+        raise HTTPException(409, "This request uses Advocate Connect; continue from the Connect case flow.")
 
     lawyer_row = await fetchrow("SELECT id FROM lawyers WHERE user_id = $1", current_user["id"])
     is_lawyer = lawyer_row and lawyer_row["id"] == match["lawyer_id"]
