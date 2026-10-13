@@ -629,9 +629,9 @@ if (true) { // serve frontend in both dev and production when dist exists
       "/subscription": {
         title: `LitigaForge AI Plans — ${subscriptionPlanCopy.freeName}, ${subscriptionPlanCopy.advocateProName} & ${subscriptionPlanCopy.chamberName}`,
         ogTitle: `LitigaForge AI Plans — ${subscriptionPlanCopy.freeName}, ${subscriptionPlanCopy.advocateProName} & ${subscriptionPlanCopy.chamberName}`,
-        description: `Compare ${subscriptionPlanCopy.freeName}, ${subscriptionPlanCopy.advocateProName} (₹${subscriptionPlanCopy.advocateProMonthly}/month), and ${subscriptionPlanCopy.chamberName} (₹${subscriptionPlanCopy.chamberMonthly}/month) plans for legal tools and advocate practice management.`,
+        description: `Compare ${subscriptionPlanCopy.freeName}, ${subscriptionPlanCopy.advocateProName} (₹${subscriptionPlanCopy.advocateProMonthlyDisplay}/month), and ${subscriptionPlanCopy.chamberName} (₹${subscriptionPlanCopy.chamberMonthlyDisplay}/month) plans for legal tools and advocate practice management.`,
         h1: "Plans &amp; Pricing",
-        intro: `Start free with legal Q&amp;A, document analysis and judgment search. ${subscriptionPlanCopy.advocateProName} is ₹${subscriptionPlanCopy.advocateProMonthly}/month; ${subscriptionPlanCopy.chamberName} is ₹${subscriptionPlanCopy.chamberMonthly}/month for full practice and case management.`,
+        intro: `Start free with legal Q&amp;A, document analysis and judgment search. ${subscriptionPlanCopy.advocateProName} is ₹${subscriptionPlanCopy.advocateProMonthlyDisplay}/month; ${subscriptionPlanCopy.chamberName} is ₹${subscriptionPlanCopy.chamberMonthlyDisplay}/month for full practice and case management.`,
       },
       "/pricing": {
         title: "Pricing | LitigaForge AI",
@@ -984,7 +984,7 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@type": "FAQPage",
           mainEntity: [
             { "@type": "Question", name: "What is included in the free plan on LitigaForge?", acceptedAnswer: { "@type": "Answer", text: "The free plan includes legal information tools, document analysis, judgment search, the free legal aid finder, advocate profiles, and free legal document templates. No credit card required." } },
-            { "@type": "Question", name: `What does ${subscriptionPlanCopy.advocateProName} include?`, acceptedAnswer: { "@type": "Answer", text: `${subscriptionPlanCopy.advocateProName} includes expanded AI legal information, document analysis, document upload and management, and all free plan features. It is ₹${subscriptionPlanCopy.advocateProMonthly}/month.` } },
+            { "@type": "Question", name: `What does ${subscriptionPlanCopy.advocateProName} include?`, acceptedAnswer: { "@type": "Answer", text: `${subscriptionPlanCopy.advocateProName} includes expanded AI legal information, document analysis, document upload and management, and all free plan features. It is ₹${subscriptionPlanCopy.advocateProMonthlyDisplay}/month.` } },
             { "@type": "Question", name: "What is the Advocate Pro plan and who needs it?", acceptedAnswer: { "@type": "Answer", text: "Advocate Pro is designed for practicing advocates and includes case management, client document workspace, billing tools and hearing date reminders." } },
             { "@type": "Question", name: "Can I get a refund if I cancel my LitigaForge AI subscription?", acceptedAnswer: { "@type": "Answer", text: "LitigaForge AI offers a prorated refund for unused days if you cancel within the first 7 days of a billing period. After 7 days, the subscription continues until the end of the cycle and is not refunded. To cancel or request a refund, email info@litigaforge.com." } },
           ],

@@ -23,6 +23,8 @@ export const subscriptionPlanCopy = {
   freeName: sharedPrices.advocate.free.name,
   advocateProName: sharedPrices.advocate.professional.name,
   advocateProMonthly: sharedPrices.advocate.professional.monthly,
+  advocateProMonthlyDisplay: sharedPrices.advocate.professional.monthly.toLocaleString("en-IN"),
   chamberName: sharedPrices.advocate.advocate_pro.name,
   chamberMonthly: sharedPrices.advocate.advocate_pro.monthly,
+  chamberMonthlyDisplay: sharedPrices.advocate.advocate_pro.monthly.toLocaleString("en-IN"),
 };

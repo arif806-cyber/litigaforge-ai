@@ -36,8 +36,10 @@ test("subscription SEO uses the shared advocate plan names and prices", () => {
     freeName: "Free",
     advocateProName: "Advocate Pro",
     advocateProMonthly: 999,
+    advocateProMonthlyDisplay: "999",
     chamberName: "Chamber",
     chamberMonthly: 2499,
+    chamberMonthlyDisplay: "2,499",
   });
   const appSource = readFileSync(resolve(root, "api-server/src/app.ts"), "utf8");
   assert.match(appSource, /subscriptionPlanCopy\.advocateProName/);
