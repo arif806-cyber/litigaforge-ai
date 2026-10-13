@@ -163,6 +163,10 @@ def test_free_plan_tool_gating_daily_quota_and_judgment_caps():
         recent=0, daily=0, monthly=0, tool_daily=3)["code"] == "tool_daily_cap_exceeded"
     assert mcp_v2.call_policy_error(config, "update_draft_sections",
         recent=0, daily=0, monthly=0, tool_daily=20)["code"] == "tool_daily_cap_exceeded"
+    assert mcp_v2.call_policy_error(config, "verify_citation",
+        recent=0, daily=18, monthly=18, tool_daily=0, units=3)["code"] == "daily_quota_exceeded"
+    assert mcp_v2.call_policy_error(config, "verify_citation",
+        recent=0, daily=0, monthly=0, tool_daily=1, units=3)["code"] == "tool_daily_cap_exceeded"
 
 
 def test_firm_monthly_overage_is_counted_and_not_blocked():
@@ -213,6 +217,8 @@ def test_new_tools_have_prompt_and_schema_contracts():
     verify = next(item for item in mcp_v2.TOOL_LIST if item["name"] == "verify_citation")
     assert verify["inputSchema"]["properties"]["citations"]["maxItems"] == 10
     assert verify["annotations"]["readOnlyHint"] is True
+    update = next(item for item in mcp_v2.TOOL_LIST if item["name"] == "update_draft_sections")
+    assert "references" not in update["inputSchema"]["required"]
     assert "hearing_brief" not in mcp_v2._PLAN_DEFAULTS["reviewer"]["tools"]
     assert "hearing_brief" in mcp_v2._PLAN_DEFAULTS["firm"]["tools"]
 
@@ -230,6 +236,37 @@ def test_draft_crosswalk_is_local_bounded_and_marks_suggestions():
     assert data["references"][0]["suggested_sections"] == ["1(1)"]
     assert "suggested" in data["suggestions"][0]
     assert "pre-1 July 2024" in data["references"][0]["legacy_note"]
+
+
+def test_draft_reference_extraction_covers_supported_citation_forms_with_positions():
+    from routers.mcp_v2_legal_tools import _update_draft
+    draft = ("Section 420 IPC; u/s 302 I.P.C.; S. 438 Cr.P.C.; "
+             "Sections 34 and 120B IPC; Section 65B of the Evidence Act; 498-A IPC")
+    data = _update_draft({"draft": draft})["data"]
+    refs = data["references"]
+    assert [(r["code"], r["section"]) for r in refs] == [
+        ("ipc", "420"), ("ipc", "302"), ("crpc", "438"), ("ipc", "34"),
+        ("ipc", "120B"), ("evidence act", "65B"), ("ipc", "498-A"),
+    ]
+    for ref in refs:
+        start = ref["position"]["start"]
+        end = ref["position"]["end"]
+        assert draft[start:end] == ref["section"]
+    assert data["draft_text_stored"] is False
+    assert data["draft_text_sent_to_external_services"] is False
+
+
+def test_known_statute_mappings_and_merged_statuses():
+    from routers.mcp_v2_legal_tools import _update_draft
+    refs = [
+        {"code": "IPC", "section": "420"},
+        {"code": "IPC", "section": "302"},
+        {"code": "CrPC", "section": "438"},
+        {"code": "Evidence Act", "section": "65B"},
+    ]
+    rows = _update_draft({"draft": "local draft", "references": refs})["data"]["references"]
+    assert [r["suggested_sections"] for r in rows] == [["318(4)"], ["103"], ["482"], ["63"]]
+    assert [r["status"] for r in rows] == ["merged", "changed", "changed", "changed"]
 
 
 def test_citation_verification_uses_mocked_sources_and_exact_missing_notice(monkeypatch):
@@ -265,7 +302,8 @@ def test_citation_uses_mocked_ik_calls_and_sends_only_citation_and_proposition(m
     captured = {}
     async def search(_conn, params, **_kwargs):
         captured.update(params)
-        return {"docs": [{"title": "Public case", "tid": "123", "docsource": "Supreme Court"}]}, False
+        return {"docs": [{"title": "A v B (2020) 1 SCC 1", "tid": "123",
+                          "docsource": "Supreme Court"}]}, False
     async def document(_conn, _tid, **_kwargs):
         return {"treatment": None, "_paragraphs": []}
     async def fragments(_conn, _path, params, **_kwargs):
@@ -282,8 +320,26 @@ def test_citation_uses_mocked_ik_calls_and_sends_only_citation_and_proposition(m
     assert captured["fragment_params"] == {"formInput": "statutory interpretation"}
     record = result["data"]["citations"][0]
     assert record["indian_kanoon_verified"] is True
+    assert record["match_status"] == "exact"
+    assert result["data"]["metadata"]["estimated_cost_inr"] == 0.75
     assert record["treatment"] == "not determinable from available source metadata"
     assert record["fragments"]
+
+
+def test_citation_match_reports_differences_and_rejects_unrelated_titles():
+    from routers.mcp_v2_legal_tools import _compare_citation
+    status, differences = _compare_citation(
+        "A v B (2017) 1 SCC 1",
+        title="A v B (2018) 1 SCC 10",
+        citation="(2018) 1 SCC 10",
+        court="Supreme Court",
+    )
+    assert status == "likely"
+    assert "year 2017 vs 2018" in differences
+    assert "page 1 vs 10" in differences
+    assert _compare_citation(
+        "2020 1 SCC 1", title="An unrelated case", citation="2020 1 SCC 10"
+    )[0] == "no_match"
 
 
 def test_hearing_brief_is_owner_scoped_and_uses_mocked_court_sources(monkeypatch):

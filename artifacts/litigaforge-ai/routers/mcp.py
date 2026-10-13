@@ -371,7 +371,11 @@ async def mcp_post(request: Request):
                 if not mcp_v2.enabled():
                     return _error(request_id, -32601, "Method not found")
                 try:
-                    user, key_id, audit_id = await mcp_v2.verify_bearer(request, name)
+                    units = 1
+                    if name == "verify_citation":
+                        citations = arguments.get("citations")
+                        units = len(citations) if isinstance(citations, list) else 1
+                    user, key_id, audit_id = await mcp_v2.verify_bearer(request, name, units)
                 except Exception as exc:
                     detail = getattr(exc, "detail", "MCP authentication required")
                     if isinstance(exc, HTTPException) and exc.status_code == 401:

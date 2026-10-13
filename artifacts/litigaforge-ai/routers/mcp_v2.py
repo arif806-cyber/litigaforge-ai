@@ -56,7 +56,8 @@ def _hash(raw: str) -> str:
 
 
 def call_policy_error(config: dict, tool_name: str, *, recent: int, daily: int,
-                      monthly: int, tool_daily: int) -> dict | None:
+                      monthly: int, tool_daily: int, units: int = 1) -> dict | None:
+    units = max(1, int(units))
     if not config.get("enabled") or tool_name not in config.get("tools", []):
         return {"status": 403, "code": "tool_not_in_plan",
                 "message": "This MCP tool is not included in your plan.",
@@ -65,18 +66,18 @@ def call_policy_error(config: dict, tool_name: str, *, recent: int, daily: int,
         return {"status": 429, "code": "rate_limited", "message": "MCP API key rate limit reached.",
                 "reset_at": (datetime.utcnow().replace(second=0, microsecond=0)).isoformat() + "Z",
                 "upgrade_url": "https://litigaforge.com/pricing"}
-    if config.get("daily_calls") is not None and daily >= int(config["daily_calls"]):
+    if config.get("daily_calls") is not None and daily + units > int(config["daily_calls"]):
         from datetime import timedelta
         reset = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return {"status": 429, "code": "daily_quota_exceeded", "message": "Daily MCP plan limit reached.",
                 "reset_at": reset.isoformat() + "Z", "upgrade_url": "https://litigaforge.com/pricing"}
-    if config.get("monthly_calls") is not None and monthly >= int(config["monthly_calls"]):
+    if config.get("monthly_calls") is not None and monthly + units > int(config["monthly_calls"]):
         if float(config.get("overage_inr", 0) or 0) <= 0:
             return {"status": 429, "code": "monthly_quota_exceeded",
                     "message": "Monthly MCP plan limit reached.", "reset_at": "next calendar month",
                     "upgrade_url": "https://litigaforge.com/pricing"}
     tool_cap = (config.get("tool_daily_caps") or {}).get(tool_name)
-    if tool_cap is not None and tool_daily >= int(tool_cap):
+    if tool_cap is not None and tool_daily + units > int(tool_cap):
         from datetime import timedelta
         reset = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return {"status": 429, "code": "tool_daily_cap_exceeded",
@@ -365,7 +366,7 @@ async def create_api_key(user: dict, label: str) -> dict:
     return {**dict(row), "key": raw}
 
 
-async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int | None, int]:
+async def verify_bearer(request: Request, tool_name: str, units: int = 1) -> tuple[dict, int | None, int]:
     if not enabled():
         raise HTTPException(404, "MCP v2 is disabled")
     authz = request.headers.get("authorization", "")
@@ -411,6 +412,13 @@ async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int | N
         user["mcp_org_id"] = organization_id
     plans = await get_plan_configs()
     config = plans.get(plan_id, plans["free"])
+    units = max(1, min(int(units), 10))
+    if tool_name == "verify_citation" and plan_id == "free" and units > 3:
+        raise HTTPException(429, detail={
+            "code": "free_citation_batch_limit",
+            "message": "The Free plan allows at most 3 citations per verify_citation call.",
+            "upgrade_url": "https://litigaforge.com/pricing",
+        })
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -444,16 +452,20 @@ async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int | N
             tool_cap = (config.get("tool_daily_caps") or {}).get(tool_name)
             policy_error = call_policy_error(
                 config, tool_name, recent=int(recent or 0), daily=int(daily or 0),
-                monthly=int(monthly or 0), tool_daily=int(tool_daily or 0),
+                monthly=int(monthly or 0), tool_daily=int(tool_daily or 0), units=units,
             )
             if policy_error:
                 status = policy_error.pop("status")
                 raise HTTPException(status, detail=policy_error)
             user["mcp_overage_inr"] = overage_charge(config, int(monthly or 0))
-            audit_id = await conn.fetchval("""
-                INSERT INTO mcp_call_audit(user_id,api_key_id,tool_name,args_sha256,outcome)
-                VALUES($1,$2,$3,'', 'reserved') RETURNING id
-            """, user_id, key_id, tool_name)
+            audit_ids = []
+            for _ in range(units):
+                audit_ids.append(await conn.fetchval("""
+                    INSERT INTO mcp_call_audit(user_id,api_key_id,tool_name,args_sha256,outcome)
+                    VALUES($1,$2,$3,'', 'reserved') RETURNING id
+                """, user_id, key_id, tool_name))
+            audit_id = int(audit_ids[0])
+            user["_mcp_audit_ids"] = [int(value) for value in audit_ids]
     user["mcp_plan"] = plan_id
     return user, key_id, int(audit_id)
 
@@ -479,11 +491,13 @@ async def audit_call(user: dict, key_id: int, audit_id: int, tool: str, args: di
     """)
     await execute("""
         UPDATE mcp_call_audit
-        SET tool_name=$1,args_sha256=$2,cost_inr=$3,outcome=$4,overage_inr=$5
-        WHERE id=$6 AND user_id=$7 AND api_key_id=$8 AND outcome='reserved'
+        SET tool_name=$1,args_sha256=$2,cost_inr=CASE WHEN id=$6 THEN $3 ELSE 0 END,
+            outcome=$4,overage_inr=$5
+        WHERE id=ANY($9::bigint[]) AND user_id=$7
+          AND api_key_id IS NOT DISTINCT FROM $8 AND outcome='reserved'
     """, tool, hashlib.sha256(canonical.encode()).hexdigest(),
          max(0, float(cost_inr)), outcome[:32], float(user.get("mcp_overage_inr", 0)),
-         audit_id, int(user["id"]), key_id)
+         audit_id, int(user["id"]), key_id, user.get("_mcp_audit_ids", [audit_id]))
 
 
 async def ik_spend_today() -> float:
@@ -929,7 +943,7 @@ TOOL_DEFS = [
         "proposition": {"type": "string", "maxLength": 500},
         "include_fragments": {"type": "boolean", "default": False},
     }),
-    ("update_draft_sections", ["draft", "references"], {
+    ("update_draft_sections", ["draft"], {
         "draft": {"type": "string", "maxLength": 30000},
         "references": {"type": "array", "minItems": 1, "maxItems": 100,
                        "items": {"type": "object", "required": ["code", "section"],
