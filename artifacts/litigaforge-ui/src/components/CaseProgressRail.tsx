@@ -1,8 +1,8 @@
 const STAGES = [
   { key: "posted",    label: "Posted" },
   { key: "matched",   label: "Matched" },
-  { key: "requested", label: "Requested" },
-  { key: "proposals", label: "Proposals" },
+  { key: "requested", label: "Request" },
+  { key: "proposals", label: "Proposal" },
   { key: "hired",     label: "Hired" },
   { key: "completed", label: "Complete" },
 ] as const;
@@ -46,7 +46,7 @@ export default function CaseProgressRail({ currentStage }: CaseProgressRailProps
               </div>
               <span
                 className={[
-                  "mt-1.5 min-h-8 w-full break-words px-0.5 text-center text-[9px] leading-tight",
+                  "mt-1.5 min-h-8 w-full break-words px-0.5 text-center text-[11px] leading-tight",
                   isActive ? "font-bold text-primary" : "text-muted-foreground",
                 ].join(" ")}
               >

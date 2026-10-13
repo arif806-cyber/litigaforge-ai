@@ -142,13 +142,13 @@ function AuthorityTrackerPanel() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-2">
           <label className="text-xs font-semibold flex items-center gap-1.5"><BookmarkPlus className="w-3.5 h-3.5" />Saved case-law search</label>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input value={searchText} onChange={e => setSearchText(e.target.value)} maxLength={280}
               placeholder="e.g. interim injunction in property disputes" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs" />
             <Button size="sm" disabled={busy || searchText.trim().length < 3} onClick={() => void run(async () => {
               await post("/authorities/saved-searches", { query: searchText.trim() });
               setSearchText("");
-            }, "Search saved.")}>Save</Button>
+              }, "Search saved.")} className="w-full sm:w-auto">Save</Button>
           </div>
           {searches.map(item => <div key={item.id} className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs">
             <span className="min-w-0 flex-1 truncate">{item.query}</span>
@@ -161,13 +161,13 @@ function AuthorityTrackerPanel() {
         </div>
         <div className="space-y-2">
           <label className="text-xs font-semibold flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />Citation watch</label>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input value={citationText} onChange={e => setCitationText(e.target.value)} maxLength={240}
               placeholder="Enter a case name or citation" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs" />
             <Button size="sm" disabled={busy || citationText.trim().length < 3} onClick={() => void run(async () => {
               await post("/authorities/citation-watches", { citation: citationText.trim() });
               setCitationText("");
-            }, "Citation watch saved.")}>Watch</Button>
+            }, "Citation watch saved.")} className="w-full sm:w-auto">Watch</Button>
           </div>
           {watches.map(item => <div key={item.id} className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs">
             <span className="min-w-0 flex-1 truncate">{item.citation}</span>

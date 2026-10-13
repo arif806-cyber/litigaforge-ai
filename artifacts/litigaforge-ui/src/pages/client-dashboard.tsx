@@ -258,47 +258,46 @@ export default function ClientDashboard() {
 
         {/* ── Greeting Banner ─────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl overflow-hidden relative"
-          style={{ background: "linear-gradient(135deg, #14151F 0%, #1a1b2e 60%, #0e0f1a 100%)" }}>
-          <div className="absolute inset-0 opacity-[0.04]"
+          className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card to-muted shadow-sm">
+          <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.12]"
             style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #f59e0b 0%, transparent 50%), radial-gradient(circle at 80% 20%, #10b981 0%, transparent 40%)" }} />
           <div className="relative px-5 py-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-base font-bold text-white">{initials}</span>
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                  <span className="text-base font-bold text-foreground">{initials}</span>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-secondary-foreground/75">{t.good_day}</p>
-                  <h1 className="text-xl font-bold text-white leading-tight">{firstName}</h1>
+                  <p className="text-xs font-medium text-muted-foreground">{t.good_day}</p>
+                  <h1 className="text-xl font-bold leading-tight text-foreground">{firstName}</h1>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/25 flex-shrink-0">
-                <Shield className="w-3.5 h-3.5" /> AI Protected
+              <div className="flex flex-shrink-0 items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                <Shield className="h-3.5 w-3.5" /> AI Protected
               </div>
             </div>
             {/* Inline mini-stats */}
-            <div className="mt-4 flex items-center gap-5 border-t border-white/10 pt-4">
+            <div className="mt-4 flex items-center gap-5 border-t border-border pt-4">
               <div>
-                <p className="text-2xl font-bold text-white tabular-nums leading-none">{activeCases}</p>
-                <p className="text-[10px] text-secondary-foreground/75 mt-0.5">Your posted cases</p>
+                <p className="text-2xl font-bold leading-none text-foreground tabular-nums">{activeCases}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">Your posted cases</p>
               </div>
-              <div className="w-px h-8 bg-white/15" />
+              <div className="h-8 w-px bg-border" />
               <div>
-                <p className="text-2xl font-bold text-amber-300 tabular-nums leading-none">{upcomingHearings}</p>
-                <p className="text-[10px] text-secondary-foreground/75 mt-0.5">{t.hearings}</p>
+                <p className="text-2xl font-bold leading-none text-amber-700 tabular-nums dark:text-amber-300">{upcomingHearings}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{t.hearings}</p>
               </div>
-              <div className="w-px h-8 bg-white/15" />
+              <div className="h-8 w-px bg-border" />
               <div>
-                <p className="text-2xl font-bold text-emerald-300 tabular-nums leading-none">{connectedLawyers}</p>
-                <p className="text-[10px] text-secondary-foreground/75 mt-0.5">{t.my_lawyers}</p>
+                <p className="text-2xl font-bold leading-none text-emerald-700 tabular-nums dark:text-emerald-300">{connectedLawyers}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{t.my_lawyers}</p>
               </div>
               {pendingMatches > 0 && (
                 <>
-                  <div className="w-px h-8 bg-white/15" />
+                    <div className="h-8 w-px bg-border" />
                   <div>
-                    <p className="text-2xl font-bold text-primary tabular-nums leading-none">{pendingMatches}</p>
-                    <p className="text-[10px] text-secondary-foreground/75 mt-0.5">Proposals</p>
+                      <p className="text-2xl font-bold leading-none text-primary tabular-nums">{pendingMatches}</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">Proposals</p>
                   </div>
                 </>
               )}
@@ -353,7 +352,7 @@ export default function ClientDashboard() {
               {(activeConfig.top_services?.length ?? 0) > 0 && (
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Top Services</p>
-                  <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                <div className="flex flex-wrap gap-2 pb-1">
                     {activeConfig.top_services!.map((s: string) => (
                       <span key={s} className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         {s}

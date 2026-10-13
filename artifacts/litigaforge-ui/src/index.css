@@ -54,6 +54,9 @@
 .connect-display { font-family: "Newsreader", Georgia, serif; letter-spacing: -0.035em; }
 .scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hidden::-webkit-scrollbar { display: none; }
+.lfm-grouped-row .item-content { width: 100%; }
+.lfm-grouped-row .item-inner { min-width: 0; flex: 1 1 auto; }
+.lfm-grouped-row .item-after { margin-left: auto !important; flex-shrink: 0; }
 .connect-surface {
   background-color: var(--card);
   background-image: linear-gradient(90deg, color-mix(in oklch, hsl(var(--primary)) 3%, transparent) 1px, transparent 1px);

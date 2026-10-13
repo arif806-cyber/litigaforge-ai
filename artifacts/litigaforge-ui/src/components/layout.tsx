@@ -90,29 +90,39 @@ function navLabel(item: NavEntry, t: Translation): string {
 
 function mobileTitleForPath(path: string): string {
   if (path.startsWith("/client-dashboard")) return "Dashboard";
-  if (path.startsWith("/lawyer-dashboard")) return "Advocate dashboard";
-  if (path.startsWith("/post-case")) return "Post a case";
+  if (path.startsWith("/lawyer-dashboard")) return "Advocate Dashboard";
+  if (path.startsWith("/post-case")) return "Post a Case";
   if (path.startsWith("/my-cases/")) return "Case details";
   if (path.startsWith("/my-cases")) return "My cases";
   if (path.startsWith("/advocate/cases/")) return "Case details";
   if (path.startsWith("/requests") || path.startsWith("/matches")) return "Client requests";
   if (path.startsWith("/messages")) return "Messages";
   if (path.startsWith("/judgments/")) return "Judgment details";
-  if (path.startsWith("/judgments")) return "Judgment finder";
+  if (path.startsWith("/judgments")) return "Judgment Finder";
   if (path.startsWith("/legal-chat")) return "AI drafting";
   if (path.startsWith("/ask")) return "Legal Q&A";
   if (path.startsWith("/review")) return "Document analyzer";
-  if (path.startsWith("/cnr-tracker")) return "CNR tracker";
+  if (path.startsWith("/cnr-tracker")) return "CNR Case Tracker";
   if (path.startsWith("/free-documents/") || path.startsWith("/document-template/")) return "Document";
-  if (path.startsWith("/free-documents")) return "Free documents";
+  if (path.startsWith("/free-documents")) return "Free Documents";
   if (path.startsWith("/settings")) return "Settings";
-  if (path.startsWith("/subscription")) return "Subscription";
+  if (path.startsWith("/subscription")) return "Subscription Plans";
   if (path.startsWith("/admin")) return "Admin";
-  if (path.startsWith("/lawyers/register")) return "Advocate registration";
-  if (path.startsWith("/lawyers")) return "Find a lawyer";
+  if (path.startsWith("/lawyers/register")) return "Advocate Registration";
+  if (path.startsWith("/lawyers")) return "Find a Lawyer";
   if (path.startsWith("/documents")) return "Documents";
   if (path.startsWith("/docket")) return "Docket";
   return "LitigaForge";
+}
+
+function mobileSubtitleForPath(path: string): string {
+  if (path.startsWith("/judgments")) return "Search published Indian court decisions.";
+  if (path.startsWith("/subscription")) return "Plans and billing for your account.";
+  if (path.startsWith("/cnr-tracker")) return "Track hearings, orders, and case status.";
+  if (path.startsWith("/settings")) return "Manage your account and preferences.";
+  if (path.startsWith("/client-dashboard")) return "Your cases, updates, and next steps.";
+  if (path.startsWith("/lawyer-dashboard")) return "Your practice, cases, and client updates.";
+  return "";
 }
 
 /* ─── Unread messages hook ─── */
@@ -521,24 +531,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <NavBar
         className="lf-mobile-topbar md:hidden"
         title={mobileTitle}
+        subtitle={mobileSubtitleForPath(location)}
         large={!isMobileDetail}
         scrollEl={scrollElement}
         leading={isMobileDetail
           ? <button type="button" onClick={handleBack} className="inline-flex min-h-11 items-center gap-0.5 text-primary" aria-label="Go back">
               <ChevronLeft className="h-6 w-6" /><span className="text-sm">{backHref === "/judgments" ? "Judgments" : backHref === "/free-documents" ? "Documents" : "Cases"}</span>
             </button>
-          : <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><Scale className="h-4 w-4" /></div>}
-        trailing={<div className="flex items-center gap-1">
-          <CountrySwitcher />
-          <LanguageSwitcher />
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-95"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
-        </div>}
+          : null}
       />
 
       <div className="flex flex-1 overflow-hidden">

@@ -1,4 +1,4 @@
-import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
+import { type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import {
   Badge as KonstaBadge,
   Block,
@@ -35,8 +35,12 @@ export function NavBar({ title, leading, trailing, subtitle, large = false, scro
   return (
     <KonstaNavbar
       className={`lf-konsta-navbar sticky top-0 z-30 md:hidden ${className}`}
-      title={title}
-      subtitle={subtitle}
+      title={
+        <span className="flex flex-col items-center leading-tight">
+          <span>{title}</span>
+          {subtitle && <span className="mt-1 max-w-[80vw] truncate text-xs font-normal text-muted-foreground">{subtitle}</span>}
+        </span>
+      }
       left={leading}
       right={trailing}
       large={large}
@@ -125,22 +129,17 @@ export function Sheet({
   open, onOpenChange, title, description, children, footer, className = "",
   dismissible = true, size = "large", onConfirm, confirmLabel = "Done", confirmDisabled = false,
 }: SheetProps) {
-  const snapPoints = size === "medium" ? [0.56, 0.94] : [0.88, 1];
-  const [snapPoint, setSnapPoint] = useState<number | string | null>(snapPoints[0]);
   return (
     <Drawer.Root
       open={open}
       onOpenChange={onOpenChange}
       dismissible={dismissible}
-      snapPoints={snapPoints}
-      activeSnapPoint={snapPoint}
-      setActiveSnapPoint={setSnapPoint}
       shouldScaleBackground={false}
     >
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-[80] bg-black/45" />
         <Drawer.Content
-          className={`lf-konsta-sheet fixed inset-x-0 bottom-0 z-[81] mx-auto flex max-h-[96dvh] w-full max-w-2xl flex-col rounded-t-[12px] bg-card text-foreground outline-none ${className}`}
+          className={`lf-konsta-sheet fixed inset-x-0 bottom-0 z-[81] mx-auto flex ${size === "large" ? "h-[88dvh]" : "h-[56dvh]"} max-h-[96dvh] w-full max-w-2xl flex-col rounded-t-[12px] bg-card text-foreground outline-none ${className}`}
         >
           <Drawer.Handle className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-muted-foreground/40" />
           <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3">
@@ -216,7 +215,7 @@ export function GroupedRow({
       component={href ? Link : onClick ? "button" : "li"}
       linkProps={href ? { href } : undefined}
       onClick={disabled ? undefined : onClick}
-      className={className}
+       className={`lfm-grouped-row ${className}`}
       data-testid={testId}
       aria-selected={selected}
       colors={{

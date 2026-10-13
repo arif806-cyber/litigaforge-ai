@@ -415,16 +415,19 @@ export default function Subscription() {
           </div>
         )}
 
-        <SegmentedControl
-          className="mx-auto w-fit md:hidden"
-          label="Billing period"
-          value={annualBilling ? "annual" : "monthly"}
-          onValueChange={(value) => setAnnualBilling(value === "annual")}
-          options={[
-            { value: "monthly", label: "Monthly" },
-            { value: "annual", label: <>Annual <span className="ml-1 text-[10px]">2 months free</span></> },
-          ]}
-        />
+        <div className="mx-auto flex w-fit items-center gap-2 md:hidden">
+          <SegmentedControl
+            className="w-fit"
+            label="Billing period"
+            value={annualBilling ? "annual" : "monthly"}
+            onValueChange={(value) => setAnnualBilling(value === "annual")}
+            options={[
+              { value: "monthly", label: "Monthly" },
+              { value: "annual", label: "Annual" },
+            ]}
+          />
+          <span className="rounded-full bg-green-100 px-2 py-1 text-[10px] font-semibold whitespace-nowrap text-green-700">2 months free</span>
+        </div>
         <div className="mx-auto hidden w-fit items-center gap-1 rounded-full border border-border bg-card p-1 shadow-sm md:flex">
           <Button
             type="button"

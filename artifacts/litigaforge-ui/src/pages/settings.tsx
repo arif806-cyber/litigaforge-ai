@@ -17,6 +17,9 @@ import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
 import { canShowMcpConnector } from "@/lib/mcp-connector-visibility";
 import { GroupedList, GroupedRow } from "@/components/mobile-primitives";
 import { FeatureIcon } from "@/components/FeatureIcon";
+import CountrySwitcher from "@/components/CountrySwitcher";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTheme } from "@/lib/theme-provider";
 
 function scrollToSettingsSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -24,23 +27,36 @@ function scrollToSettingsSection(id: string) {
 
 export default function AccountSettings() {
   const { user, logout, activePortal } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
       <SEOHelmet title="Account Settings" description="Manage your LitigaForge AI account, profile, privacy, and data." canonical="/settings" />
 
       <div>
-        <h1 className="text-xl font-bold text-foreground">Account Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your profile, privacy, and data rights</p>
+        <h1 className="hidden text-xl font-bold text-foreground md:block">Account Settings</h1>
+        <p className="hidden text-sm text-muted-foreground mt-1 md:block">Manage your profile, privacy, and data rights</p>
       </div>
+
+      <div id="settings-install-slot" className="md:hidden" />
 
       <nav className="md:hidden" aria-label="Settings sections">
         <GroupedList label="Settings sections" title="Quick access">
-          <GroupedRow title="Profile" leading={<FeatureIcon feature="accountPrivacy" size="small" />} trailing="Account" onClick={() => scrollToSettingsSection("settings-profile")} accessory />
-          <GroupedRow title="Language" leading={<FeatureIcon feature="settings" size="small" />} trailing="Preferences" onClick={() => scrollToSettingsSection("settings-language")} accessory />
+          <GroupedRow title="Profile" leading={<FeatureIcon feature="profile" size="small" />} trailing={user?.name} onClick={() => scrollToSettingsSection("settings-profile")} accessory />
           {user?.lawyer_status && <GroupedRow title="Advocate profile" leading={<FeatureIcon feature="settings" size="small" />} trailing="Professional" onClick={() => scrollToSettingsSection("settings-advocate")} accessory />}
-          <GroupedRow title="Password" leading={<FeatureIcon feature="accountPrivacy" size="small" />} trailing="Security" onClick={() => scrollToSettingsSection("settings-password")} accessory />
-          <GroupedRow title="Privacy & data" leading={<FeatureIcon feature="accountPrivacy" size="small" />} trailing="Privacy" onClick={() => scrollToSettingsSection("settings-privacy")} accessory />
+          <GroupedRow title="Password & Security" leading={<FeatureIcon feature="password" size="small" />} onClick={() => scrollToSettingsSection("settings-password")} accessory />
+          <GroupedRow title="Privacy & Data" leading={<FeatureIcon feature="accountPrivacy" size="small" />} onClick={() => scrollToSettingsSection("settings-privacy")} accessory />
+        </GroupedList>
+        <GroupedList label="Regional preferences" title="Preferences" className="mt-4">
+          <GroupedRow title="Country" leading={<FeatureIcon feature="language" size="small" />} trailing={<CountrySwitcher />} accessory={false} />
+          <GroupedRow title="Language" leading={<FeatureIcon feature="language" size="small" />} trailing={<LanguageSwitcher />} accessory={false} />
+          <GroupedRow title="Appearance" leading={<FeatureIcon feature="settings" size="small" />}
+            trailing={<div className="flex gap-1" role="group" aria-label="Theme">
+              {(["system", "light", "dark"] as const).map(value => (
+                <button key={value} type="button" onClick={() => setTheme(value)} aria-pressed={theme === value}
+                  className={`rounded-full px-2 py-1 text-[11px] capitalize ${theme === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{value}</button>
+              ))}
+            </div>} accessory={false} />
         </GroupedList>
       </nav>
       <div id="settings-profile" className="scroll-mt-6"><ProfileSection user={user} /></div>
