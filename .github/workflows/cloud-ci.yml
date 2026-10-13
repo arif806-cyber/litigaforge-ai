@@ -26,6 +26,7 @@ jobs:
       - run: pnpm run typecheck:libs
       - run: pnpm -r --filter "./artifacts/**" --if-present run typecheck
       - run: pip install -r artifacts/litigaforge-ai/requirements.txt
+      - run: pip install pytest
       - run: pytest -q tests
         working-directory: artifacts/litigaforge-ai
         env:
