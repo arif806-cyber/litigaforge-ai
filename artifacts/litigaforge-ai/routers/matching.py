@@ -608,10 +608,22 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
            FROM matches m
            JOIN case_requirements c ON m.case_requirement_id = c.id
             JOIN lawyers l ON m.lawyer_id = l.id
+             JOIN users lu ON lu.id = l.user_id
             WHERE m.client_id = $1
                AND COALESCE(m.connect_v2, FALSE) = FALSE
               AND COALESCE(l.is_test, FALSE) = FALSE
               AND COALESCE(l.admin_hidden, FALSE) = FALSE
+               AND COALESCE(lu.is_demo, FALSE) = FALSE
+               AND lower(COALESCE(lu.email, '')) NOT LIKE '%@%.test'
+               AND lower(COALESCE(lu.email, '')) NOT LIKE '%@%.local'
+               AND lower(COALESCE(lu.email, '')) NOT LIKE '%@example.com'
+               AND lower(COALESCE(lu.email, '')) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+               AND lower(COALESCE(lu.email, '')) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')
+               AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE '%@%.test'
+               AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE '%@%.local'
+               AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE '%@example.com'
+               AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+               AND lower(COALESCE(lu.email, l.email, '')) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')
            ORDER BY m.created_at DESC""",
         current_user["id"],
     )
@@ -653,8 +665,13 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
                   CASE WHEN c.is_anonymous THEN NULL ELSE c.user_id END as client_user_id
            FROM matches m
            JOIN case_requirements c ON m.case_requirement_id = c.id
+            JOIN users cu ON cu.id = c.user_id
            WHERE m.lawyer_id = $1
               AND COALESCE(m.connect_v2, FALSE) = FALSE
+               AND lower(cu.email) NOT LIKE '%@litigaforge.test'
+               AND lower(cu.email) NOT LIKE '%@%.litigaforge.local'
+               AND lower(cu.email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+               AND lower(cu.email) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')
            ORDER BY m.created_at DESC""",
         lawyer_id,
     )

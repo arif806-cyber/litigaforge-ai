@@ -120,6 +120,8 @@ export default function ForgeOsPage() {
     enabled: isSuperuser,
     staleTime: 15_000,
   });
+  const featureUnavailable = dashboardQuery.isError
+    && /404|not enabled|disabled/i.test(String(dashboardQuery.error));
 
   const streamStatus = useForgeOsStream(isSuperuser);
 
@@ -221,7 +223,9 @@ export default function ForgeOsPage() {
             )}
             Create Test Mission
           </Button>
-          <LiveIndicator status={streamStatus} />
+          {featureUnavailable
+            ? <span className="text-xs text-muted-foreground">Not enabled yet</span>
+            : <LiveIndicator status={streamStatus} />}
         </div>
       </div>
 
@@ -237,7 +241,9 @@ export default function ForgeOsPage() {
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : dashboardQuery.isError || !dashboardQuery.data ? (
-        <p className="text-sm text-destructive py-8 text-center">Failed to load ForgeOS dashboard.</p>
+        <p role="status" className="text-sm text-muted-foreground py-8 text-center">
+          {featureUnavailable ? "ForgeOS is not enabled yet in this deployment." : "ForgeOS dashboard could not be loaded. Please try again later."}
+        </p>
       ) : (
         <>
           {tab === "overview" && <OverviewTab snapshot={dashboardQuery.data} />}

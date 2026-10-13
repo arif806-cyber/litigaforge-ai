@@ -32,12 +32,11 @@ def reviewer_credentials() -> tuple[str, str]:
 
 
 def assert_development_only() -> None:
-    from judgment_ingest import _is_prod
+    from runtime_env import assert_development_database
 
-    if _is_prod() or os.getenv("REPLIT_DEPLOYMENT"):
-        raise RuntimeError("Refusing to seed the Reviewer account outside development.")
     if os.getenv("APP_ENV", "development").strip().lower() in {"production", "prod"}:
         raise RuntimeError("Refusing to seed the Reviewer account in a production environment.")
+    assert_development_database()
     if not os.getenv("DATABASE_URL"):
         raise RuntimeError("DATABASE_URL is unavailable; no account was changed.")
     if os.getenv("MCP_V2_ENABLED", "false").strip().lower() not in {"1", "true", "yes", "on"}:

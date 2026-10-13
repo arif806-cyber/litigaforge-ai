@@ -80,11 +80,11 @@ function McpKeysSection() {
   const keys = (data as any)?.keys ?? [];
   return (
     <Card icon={<KeyRound className="h-4 w-4" />} title="MCP Connector">
-      <p className="text-sm leading-6 text-muted-foreground">
+      {!error && <p className="text-sm leading-6 text-muted-foreground">
         Free accounts include 20 connector calls per day. Create a read-only key for Claude and other MCP clients. Keys are shown once.
         Do not paste them into public documents or shared chats.
-      </p>
-      {!!usage && <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm">
+      </p>}
+      {!error && !!usage && <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm">
         <div><span className="text-muted-foreground">Calls today</span><p className="font-semibold">{usage.today}</p></div>
         <div><span className="text-muted-foreground">Calls this month</span><p className="font-semibold">{usage.this_month}</p></div>
         <div className="col-span-2"><span className="text-muted-foreground">By tool this month</span>
@@ -99,10 +99,10 @@ function McpKeysSection() {
         <p className="text-xs font-semibold">Copy this key now</p>
         <input aria-label="New MCP API key" readOnly value={newKey} className="w-full rounded border border-border bg-background px-2 py-2 font-mono text-xs" />
       </div>}
-      <div className="flex gap-2">
+      {!error && <div className="flex gap-2">
         <input aria-label="MCP key label" value={label} maxLength={64} onChange={(e) => setLabel(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
         <button type="button" onClick={create} disabled={busy || !label.trim()} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Create key</button>
-      </div>
+      </div>}
       {keys.map((key: any) => <div key={key.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
         <div className="min-w-0"><p className="truncate text-sm font-medium">{key.label}</p><p className="font-mono text-xs text-muted-foreground">{key.key_prefix}… · read-only</p></div>
         <button type="button" onClick={() => void revoke(key.id)} disabled={busy} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Revoke</button>

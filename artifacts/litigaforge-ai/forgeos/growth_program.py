@@ -240,9 +240,20 @@ async def _kpi_context_lines() -> list[str]:
     revenue = await dashboard._revenue_summary()
     rows = await fetch(
         """SELECT
-             (SELECT COUNT(*) FROM lawyers WHERE verification_status = 'pending') AS pending_verifications,
-             (SELECT COUNT(*) FROM lawyers WHERE verified = TRUE) AS verified_lawyers,
-             (SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days') AS signups_7d
+             (SELECT COUNT(*) FROM lawyers l WHERE verification_status = 'pending'
+                AND COALESCE(l.is_test,FALSE)=FALSE AND COALESCE(l.admin_hidden,FALSE)=FALSE
+                AND LOWER(l.email) NOT LIKE '%@%.test' AND LOWER(l.email) NOT LIKE '%@%.local'
+                AND LOWER(l.email) NOT LIKE '%@example.com') AS pending_verifications,
+             (SELECT COUNT(*) FROM lawyers l WHERE verified = TRUE
+                AND COALESCE(l.is_test,FALSE)=FALSE AND COALESCE(l.admin_hidden,FALSE)=FALSE
+                AND LOWER(l.email) NOT LIKE '%@%.test' AND LOWER(l.email) NOT LIKE '%@%.local'
+                AND LOWER(l.email) NOT LIKE '%@example.com') AS verified_lawyers,
+             (SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'
+                AND COALESCE(is_demo,FALSE)=FALSE
+                AND LOWER(email) NOT LIKE '%@%.test' AND LOWER(email) NOT LIKE '%@%.local'
+                AND LOWER(email) NOT LIKE '%@example.com'
+                AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS signups_7d
         """
     )
     counts = dict(rows[0]) if rows else {}

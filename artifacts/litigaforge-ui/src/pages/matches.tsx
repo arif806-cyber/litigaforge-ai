@@ -19,6 +19,7 @@ import { useLawyerPresence } from "@/hooks/useLawyerPresence";
 
 export default function Matches() {
   const { user } = useAuth();
+  const isAdvocate = user?.role === "advocate" || user?.role === "lawyer";
   const [_, setLocation] = useLocation();
   const { t } = useLanguage();
   const [tab, setTab] = useState<"pending" | "accepted" | "declined">("pending");
@@ -31,8 +32,8 @@ export default function Matches() {
   const caseId = searchParams.get("case");
 
   const { data: clientMatches, isLoading, refetch } = useQuery({
-    queryKey: ["matches-client"],
-    queryFn: () => apiFetch("/matches/client"),
+    queryKey: ["matches", isAdvocate ? "advocate" : "client"],
+    queryFn: () => apiFetch(isAdvocate ? "/matches/lawyer" : "/matches/client"),
     enabled: !!user,
   });
 
@@ -80,11 +81,11 @@ export default function Matches() {
     ));
 
   return (
-    <PageShell title={t.match_proposals} subtitle="AI-scored lawyer proposals for your cases.">
-      <SEOHelmet title="Match Proposals — LitigaForge AI" description="Review AI-matched lawyer proposals." />
+    <PageShell title={isAdvocate ? "Client Requests" : t.match_proposals} subtitle={isAdvocate ? "Review client requests matched to your advocate profile." : "AI-scored lawyer proposals for your cases."}>
+      <SEOHelmet title={`${isAdvocate ? "Client Requests" : "Match Proposals"} — LitigaForge AI`} description={isAdvocate ? "Review incoming client requests." : "Review AI-matched lawyer proposals."} />
 
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setLocation("/my-cases")} className="text-muted-foreground hover:text-muted-foreground">
+          <button onClick={() => setLocation(isAdvocate ? "/lawyers" : "/my-cases")} className="text-muted-foreground hover:text-muted-foreground">
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
@@ -138,13 +139,11 @@ export default function Matches() {
             <div className="rounded-xl p-8 text-center" style={{ background: "hsl(var(--muted))", border: "1px dashed hsl(var(--border))" }}>
               <Sparkles className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No match proposals yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">You can browse verified advocates while you wait.</p>
-              <Button size="sm" className="mt-3" onClick={() => setLocation("/my-cases")}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Go to My Cases
+              <p className="text-xs text-muted-foreground mt-1">{isAdvocate ? "New requests will appear here when clients are matched to your profile." : "You can browse verified advocates while you wait."}</p>
+              <Button size="sm" className="mt-3" onClick={() => setLocation(isAdvocate ? "/lawyers" : "/my-cases")}>
+                <ArrowLeft className="w-4 h-4 mr-1" /> {isAdvocate ? "Browse Advocates" : "Go to My Cases"}
               </Button>
-              <Button size="sm" variant="outline" className="mt-3 ml-2" onClick={() => setLocation("/lawyers")}>
-                Browse Advocates
-              </Button>
+              {!isAdvocate && <Button size="sm" variant="outline" className="mt-3 ml-2" onClick={() => setLocation("/lawyers")}>Browse Advocates</Button>}
             </div>
           )}
 
@@ -154,7 +153,15 @@ export default function Matches() {
             </p>
           )}
 
-          {filtered.map((m: any) => (
+          {filtered.map((m: any) => isAdvocate ? (
+            <article key={m.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <h3 className="font-semibold">{m.case_title || "Client request"}</h3>
+              <p className="text-sm text-muted-foreground">{[m.case_type, m.location, m.budget_range].filter(Boolean).join(" · ")}</p>
+              {m.description && <p className="text-sm whitespace-pre-wrap">{m.description}</p>}
+              {m.client_message && <p className="text-sm text-muted-foreground">{m.client_message}</p>}
+              <p className="text-xs text-muted-foreground capitalize">Status: {m.status}</p>
+            </article>
+          ) : (
             <LawyerMatchCard key={m.id} match={m}
               isReviewing={reviewingIds.has(m.lawyer_id)}
               onAccept={(match) => setPayingMatch(match)}

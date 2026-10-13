@@ -1488,7 +1488,7 @@ async def list_lawyers(
     response.headers["Cache-Control"] = "public, max-age=300"
 
     # Version this key so a pre-deployment cache entry containing PII is never reused.
-    ck = cache_key("lawyers-v4-public-hidden", country or "", district or "", practice_area or "", language or "", search or "")
+    ck = cache_key("lawyers-v5-exclude-test-accounts", country or "", district or "", practice_area or "", language or "", search or "")
     cached = await cache_get(ck)
     if cached is not None:
         return cached
@@ -1497,6 +1497,13 @@ async def list_lawyers(
         "l.verified = TRUE",
         "COALESCE(l.is_test, FALSE) = FALSE",
         "COALESCE(l.admin_hidden, FALSE) = FALSE",
+        "COALESCE(u.is_demo, FALSE) = FALSE",
+        "NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id=l.user_id AND (COALESCE(tu.is_demo,FALSE)=TRUE OR LOWER(tu.email) LIKE '%@%.test' OR LOWER(tu.email) LIKE '%@%.local' OR LOWER(tu.email) LIKE '%@example.com' OR LOWER(tu.email) LIKE 'jane\\_%@test.com' ESCAPE '\\' OR LOWER(tu.email) IN ('info@litigaforge.com','demo@litigaforge.com')))",
+        "LOWER(COALESCE(u.email, '')) NOT LIKE '%@%.test'",
+        "LOWER(COALESCE(u.email, '')) NOT LIKE '%@%.local'",
+        "LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.com'",
+        "LOWER(COALESCE(u.email, '')) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'",
+        "LOWER(COALESCE(u.email, '')) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')",
         "l.verification_status = 'verified'",
     ], []
     if country:
@@ -1524,6 +1531,7 @@ async def list_lawyers(
         f"l.languages, l.experience_years, l.bio, "
         f"l.availability, l.verification_status, l.verified "
         f"FROM lawyers l "
+        f"LEFT JOIN users u ON u.id = l.user_id "
         f"{where} "
         f"ORDER BY "
         f"  l.experience_years DESC "
@@ -1542,10 +1550,17 @@ async def get_public_lawyer(lawyer_id: int):
         """SELECT id, name, district, district AS city, practice_areas, languages,
                   experience_years, verification_status, verified, bio,
                   availability
-           FROM lawyers
+           FROM lawyers l
            WHERE id = $1 AND verified = TRUE AND COALESCE(is_test, FALSE) = FALSE
              AND COALESCE(admin_hidden, FALSE) = FALSE
-             AND verification_status = 'verified'""",
+             AND verification_status = 'verified'
+             AND NOT EXISTS (
+               SELECT 1 FROM users u WHERE u.id=l.user_id
+                 AND (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                   OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                   OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                   OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com'))
+             )""",
         lawyer_id,
     )
     if not row:

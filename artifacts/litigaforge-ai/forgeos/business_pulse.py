@@ -28,12 +28,43 @@ logger = get_logger("litigaforge.forgeos.business_pulse")
 async def _counts_today() -> dict:
     rows = await fetch(
         """SELECT
-             (SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE) AS new_signups,
-             (SELECT COUNT(*) FROM case_requirements WHERE created_at >= CURRENT_DATE) AS new_cases,
-             (SELECT COUNT(*) FROM matches WHERE created_at >= CURRENT_DATE) AS new_matches,
-             (SELECT COUNT(*) FROM matches WHERE status = 'accepted'
-                AND created_at >= CURRENT_DATE) AS accepted_matches,
-             (SELECT COUNT(*) FROM lawyers WHERE verification_status = 'pending') AS pending_verifications,
+             (SELECT COUNT(*) FROM users WHERE created_at >= CURRENT_DATE
+                AND COALESCE(is_demo,FALSE)=FALSE
+                AND LOWER(email) NOT LIKE '%@%.test' AND LOWER(email) NOT LIKE '%@%.local'
+                AND LOWER(email) NOT LIKE '%@example.com'
+                AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS new_signups,
+             (SELECT COUNT(*) FROM case_requirements c WHERE c.created_at >= CURRENT_DATE
+                AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=c.user_id AND
+                  (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                   OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                   OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                   OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com')))) AS new_cases,
+             (SELECT COUNT(*) FROM matches m WHERE m.created_at >= CURRENT_DATE
+                AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=m.client_id AND
+                  (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                   OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                   OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                   OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com')))
+                AND NOT EXISTS (SELECT 1 FROM lawyers l JOIN users u ON u.id=l.user_id WHERE l.id=m.lawyer_id AND
+                  (COALESCE(u.is_demo,FALSE)=TRUE OR COALESCE(l.is_test,FALSE)=TRUE
+                   OR LOWER(u.email) LIKE '%@%.test' OR LOWER(u.email) LIKE '%@%.local'
+                   OR LOWER(u.email) LIKE '%@example.com'))) AS new_matches,
+              (SELECT COUNT(*) FROM matches m WHERE status = 'accepted'
+                 AND created_at >= CURRENT_DATE
+                 AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=m.client_id AND
+                   (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                    OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                    OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                    OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com')))
+                 AND NOT EXISTS (SELECT 1 FROM lawyers l JOIN users u ON u.id=l.user_id WHERE l.id=m.lawyer_id AND
+                   (COALESCE(u.is_demo,FALSE)=TRUE OR COALESCE(l.is_test,FALSE)=TRUE
+                    OR LOWER(u.email) LIKE '%@%.test' OR LOWER(u.email) LIKE '%@%.local'
+                    OR LOWER(u.email) LIKE '%@example.com'))) AS accepted_matches,
+              (SELECT COUNT(*) FROM lawyers l WHERE verification_status = 'pending'
+                 AND COALESCE(l.is_test,FALSE)=FALSE AND COALESCE(l.admin_hidden,FALSE)=FALSE
+                 AND LOWER(l.email) NOT LIKE '%@%.test' AND LOWER(l.email) NOT LIKE '%@%.local'
+                 AND LOWER(l.email) NOT LIKE '%@example.com') AS pending_verifications,
              (SELECT COUNT(*) FROM contact_messages WHERE created_at >= CURRENT_DATE) AS new_contact_messages
         """
     )
@@ -46,10 +77,20 @@ async def _week_over_week() -> dict:
     rows = await fetch(
         """SELECT
              (SELECT COUNT(*) FROM users
-                WHERE created_at >= NOW() - INTERVAL '7 days') AS signups_this_week,
+                WHERE created_at >= NOW() - INTERVAL '7 days'
+                  AND COALESCE(is_demo,FALSE)=FALSE
+                  AND LOWER(email) NOT LIKE '%@%.test' AND LOWER(email) NOT LIKE '%@%.local'
+                  AND LOWER(email) NOT LIKE '%@example.com'
+                  AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                  AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS signups_this_week,
              (SELECT COUNT(*) FROM users
                 WHERE created_at >= NOW() - INTERVAL '14 days'
-                AND created_at < NOW() - INTERVAL '7 days') AS signups_last_week,
+                AND created_at < NOW() - INTERVAL '7 days'
+                AND COALESCE(is_demo,FALSE)=FALSE
+                AND LOWER(email) NOT LIKE '%@%.test' AND LOWER(email) NOT LIKE '%@%.local'
+                AND LOWER(email) NOT LIKE '%@example.com'
+                AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS signups_last_week,
              (SELECT COUNT(*) FROM case_requirements
                 WHERE created_at >= NOW() - INTERVAL '7 days') AS cases_this_week,
              (SELECT COUNT(*) FROM case_requirements

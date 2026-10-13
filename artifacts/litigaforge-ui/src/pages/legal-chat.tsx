@@ -65,8 +65,14 @@ export default function LegalChat() {
   const [isTyping, setIsTyping] = useState(false);
   const [typingStage, setTypingStage] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const didMount = useRef(false);
 
   useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      window.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 

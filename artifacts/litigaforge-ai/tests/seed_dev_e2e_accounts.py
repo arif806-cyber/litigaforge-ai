@@ -25,10 +25,9 @@ ALLOWED_EMAILS = {
 
 
 def _assert_development_only() -> None:
-    from judgment_ingest import _is_prod
+    from runtime_env import assert_development_database
 
-    if _is_prod() or os.getenv("REPLIT_DEPLOYMENT"):
-        raise RuntimeError("Refusing to seed e2e identities in a production environment.")
+    assert_development_database()
     if not os.getenv("DATABASE_URL"):
         raise RuntimeError("DATABASE_URL is unavailable; no accounts were changed.")
     if (

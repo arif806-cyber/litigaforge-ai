@@ -34,6 +34,10 @@ def anon_post(path: str, **kwargs) -> httpx.Response:
 
 @pytest.fixture(scope="session")
 def client():
+    # These tests write through the live registration API; fail before the first
+    # request if the test process is deployed or configured for production DB.
+    from runtime_env import assert_development_database
+    assert_development_database()
     with httpx.Client(base_url=BASE_URL, timeout=15) as c:
         yield c
 

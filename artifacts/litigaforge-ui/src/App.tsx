@@ -142,7 +142,7 @@ function WorkspaceRoute() {
       const destination = `${window.location.pathname}${window.location.search}${window.location.hash}`;
       sessionStorage.setItem("lf_return_to", destination);
     } catch { /* ignore */ }
-    return <Redirect to="/lawyers/register" />;
+    return <Redirect to="/lawyer-dashboard" />;
   }
   return <ForgeWorkspace />;
 }

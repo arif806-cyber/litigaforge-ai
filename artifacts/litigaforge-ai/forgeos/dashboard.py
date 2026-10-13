@@ -48,7 +48,14 @@ async def _revenue_summary() -> dict:
 
     rows = await fetch(
         """SELECT subscription_tier, COUNT(*) AS n FROM users
-           WHERE subscription_tier != 'free' GROUP BY subscription_tier"""
+           WHERE subscription_tier != 'free'
+             AND COALESCE(is_demo, FALSE) = FALSE
+             AND LOWER(email) NOT LIKE '%@%.test'
+             AND LOWER(email) NOT LIKE '%@%.local'
+             AND LOWER(email) NOT LIKE '%@example.com'
+             AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+             AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')
+           GROUP BY subscription_tier"""
     )
     by_tier = {}
     mrr_paise = 0
@@ -60,7 +67,13 @@ async def _revenue_summary() -> dict:
         mrr_paise += price_paise * count
 
     total_paid_rows = await fetch(
-        "SELECT COUNT(*) AS n FROM users WHERE subscription_tier != 'free'"
+        """SELECT COUNT(*) AS n FROM users WHERE subscription_tier != 'free'
+           AND COALESCE(is_demo, FALSE) = FALSE
+           AND LOWER(email) NOT LIKE '%@%.test'
+           AND LOWER(email) NOT LIKE '%@%.local'
+           AND LOWER(email) NOT LIKE '%@example.com'
+           AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+           AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')"""
     )
     return {
         "mrr_rupees": mrr_paise / 100,

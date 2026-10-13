@@ -106,16 +106,22 @@ function AuthorityTrackerPanel() {
       apiFetch("/authorities/alerts"),
       apiFetch("/authorities"),
     ]);
-    if (!searchRes.ok || !watchRes.ok || !alertRes.ok || !referenceRes.ok) {
+    if (!searchRes.ok && !watchRes.ok && !alertRes.ok && !referenceRes.ok) {
       throw new Error("Authority research tools could not be loaded.");
     }
+    const read = async (response: Response) => response.ok
+      ? response.json().catch(() => null)
+      : null;
     const [searchData, watchData, alertData, referenceData] = await Promise.all([
-      searchRes.json(), watchRes.json(), alertRes.json(), referenceRes.json(),
+      read(searchRes), read(watchRes), read(alertRes), read(referenceRes),
     ]);
-    setSearches(searchData.searches ?? []);
-    setWatches(watchData.watches ?? []);
-    setAlerts(alertData.alerts ?? []);
-    setReferenceCount((referenceData.authorities ?? []).length);
+    setSearches(searchData?.searches ?? []);
+    setWatches(watchData?.watches ?? []);
+    setAlerts(alertData?.alerts ?? []);
+    const authorities = Array.isArray(referenceData?.authorities)
+      ? referenceData.authorities
+      : Array.isArray(referenceData) ? referenceData : [];
+    setReferenceCount(authorities.length);
   }
 
   useEffect(() => {
@@ -157,7 +163,8 @@ function AuthorityTrackerPanel() {
         <div>
           <h2 className="font-bold flex items-center gap-2"><LibraryBig className="w-4 h-4 text-primary" />Authorities &amp; research alerts</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Save case-law searches, watch citations, and check for newly indexed judgments. {referenceCount} reference tables available.
+            Save case-law searches and watch citations.
+            {referenceCount > 0 ? ` ${referenceCount} reference tables available.` : " No reference tables are available yet."}
           </p>
         </div>
         <span className="text-xs rounded-full bg-muted px-2.5 py-1 text-muted-foreground flex items-center gap-1">

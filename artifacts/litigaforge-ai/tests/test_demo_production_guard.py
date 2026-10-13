@@ -63,3 +63,32 @@ async def test_seed_advocate_registration_is_blocked_in_production(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         await auth_router.register.__wrapped__(request, None, Response())
     assert exc.value.status_code == 403
+
+
+def test_test_or_seed_guard_refuses_production_database(monkeypatch):
+    from runtime_env import assert_development_database
+
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.delenv("REPLIT_DEPLOYMENT", raising=False)
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.setenv("PGDATABASE", "heliumdb")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused:unused@db.invalid/neondb")
+    with pytest.raises(RuntimeError, match="production"):
+        assert_development_database()
+
+
+@pytest.mark.asyncio
+async def test_test_identity_registration_refused_for_production_database(monkeypatch):
+    from routers import auth as auth_router
+
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.delenv("REPLIT_DEPLOYMENT", raising=False)
+    monkeypatch.setenv("PGDATABASE", "heliumdb")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused:unused@db.invalid/neondb")
+    request = auth_router.RegisterRequest(
+        name="Test User", email="test_abcdef@litigaforge.test",
+        password="safe-password-for-test", role="client",
+    )
+    with pytest.raises(HTTPException) as exc:
+        await auth_router.register.__wrapped__(request, None, Response())
+    assert exc.value.status_code == 403

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 
 
 def app_env() -> str:
@@ -23,6 +24,35 @@ def is_production_or_deployed() -> bool:
         is_production()
         or bool((os.getenv("REPLIT_DEPLOYMENT") or "").strip())
         or (os.getenv("ENVIRONMENT") or "").strip().lower() in {"production", "prod"}
+    )
+
+
+def is_production_database() -> bool:
+    """Fail closed for the production database even in a dev-labelled process."""
+    databases = {(os.getenv("PGDATABASE") or "").strip().lower()}
+    dsn = (os.getenv("DATABASE_URL") or "").strip()
+    if dsn:
+        try:
+            databases.add(urlparse(dsn).path.lstrip("/").split("/", 1)[0].split("?", 1)[0].lower())
+        except ValueError:
+            return True
+    return "neondb" in databases
+
+
+def assert_development_database() -> None:
+    if is_production_or_deployed() or is_production_database():
+        raise RuntimeError("Refusing test or seed operation; development-only guard detected a production environment/database.")
+
+
+def is_test_account_email(email: str) -> bool:
+    normalized = (email or "").strip().lower()
+    domain = normalized.rsplit("@", 1)[-1] if "@" in normalized else ""
+    return (
+        domain == "litigaforge.test"
+        or domain.endswith(".litigaforge.local")
+        or (domain == "test.com" and normalized.startswith("jane_"))
+        or normalized in {"info@litigaforge.com", "demo@litigaforge.com"}
+        or normalized == (os.getenv("DEMO_ADVOCATE_EMAIL") or "").strip().lower()
     )
 
 

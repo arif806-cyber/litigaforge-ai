@@ -174,7 +174,7 @@ async def ai_legal_chat(
             {"role": item.get("role"), "content": sanitize_text(
                 str(item.get("content", "")), max_length=2000, field_name="history"
             )}
-            for item in req.history[-24:]
+            for item in req.history[-12:]
             if isinstance(item, dict) and item.get("role") in {"user", "ai"}
         ]
     except ValueError as e:
@@ -230,7 +230,7 @@ Be concise and accurate. Do not repeat the page's legal disclaimer."""
                     f"- [{item['label']}]({item['url']})" for item in sources
                 )
         else:
-            response = await asyncio.to_thread(_ai, wrap_user_prompt(full_prompt), 2500)
+            response = await asyncio.to_thread(_ai, wrap_user_prompt(full_prompt), 3500)
         response = localize_currency(validate_ai_response(response), code)
         if code == "IN":
             response = validate_citations(response)
@@ -240,6 +240,8 @@ Be concise and accurate. Do not repeat the page's legal disclaimer."""
             r"(?is)(?:\n{1,2}---\s*\n)?\*?This is (?:AI-generated guidance|legal information), not legal advice\..{0,350}$",
             "", response,
         ).strip()
+        if response and not re.search(r"[.!?…)\]}`\"'»]$", response):
+            response += "\n\nNote: This answer may have been shortened. Ask me to continue from the last sentence."
         if req.thread_id:
             await execute(
                 """INSERT INTO chat_messages (thread_id, sender_id, sender_role, content)

@@ -89,7 +89,9 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     # `lawyer` remains readable for legacy accounts; new registrations use advocate.
     if req.role not in ("client", "advocate", "lawyer"):
         raise HTTPException(status_code=422, detail="Role must be client or advocate")
-    from runtime_env import is_production_or_deployed, is_seed_advocate_email
+    from runtime_env import is_production_or_deployed, is_production_database, is_seed_advocate_email, is_test_account_email
+    if (is_production_or_deployed() or is_production_database()) and is_test_account_email(normalized_email):
+        raise HTTPException(status_code=403, detail="Test and demo accounts cannot be registered in production.")
     if is_production_or_deployed() and req.role in ("advocate", "lawyer") and is_seed_advocate_email(normalized_email):
         raise HTTPException(status_code=403, detail="Seed advocate accounts are disabled in production.")
     safe_role = req.role
@@ -214,6 +216,9 @@ async def google_oauth(request: Request, response: Response):
     email = token_info.get("email", "").lower().strip()
     if not email:
         raise HTTPException(status_code=400, detail="Google account has no email address")
+    from runtime_env import is_production_or_deployed, is_production_database, is_test_account_email
+    if (is_production_or_deployed() or is_production_database()) and is_test_account_email(email):
+        raise HTTPException(status_code=403, detail="Test and demo accounts cannot be registered in production.")
 
     raw_name = (token_info.get("name") or token_info.get("given_name") or email.split("@")[0])[:100]
     try:
