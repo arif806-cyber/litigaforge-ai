@@ -59,6 +59,27 @@ async def test_public_lawyer_query_is_verified_non_test_and_pii_free():
 
 
 @pytest.mark.asyncio
+async def test_startup_quarantines_only_explicit_seed_addresses_and_reserved_domains():
+    from main import _mark_test_lawyers
+
+    captured = {}
+
+    class FakeConnection:
+        async def execute(self, query, *args):
+            captured.update(query=query, args=args)
+
+    await _mark_test_lawyers(FakeConnection(), "seed@litigaforge.test")
+    query = captured["query"].lower()
+    assert "lower(email) like '%@%.test'" in query
+    assert "lower(email) like '%@%.local'" in query
+    assert "lower(email) like '%@example.com'" in query
+    assert "lower(email) = any(array[" in query
+    assert "name ilike" not in query
+    assert "email ilike '%test%'" not in query
+    assert captured["args"] == ("seed@litigaforge.test",)
+
+
+@pytest.mark.asyncio
 async def test_sixth_free_case_returns_upgrade_response():
     from routers.matching import CaseRequirementRequest, create_case_requirement
 

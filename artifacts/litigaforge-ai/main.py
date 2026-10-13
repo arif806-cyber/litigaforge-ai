@@ -22,6 +22,24 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
+
+async def _mark_test_lawyers(conn, demo_email: str = "") -> None:
+    await conn.execute("""
+        UPDATE lawyers SET is_test = TRUE, verified = FALSE, verification_status = 'rejected'
+        WHERE (email IS NOT NULL AND (
+            lower(email) LIKE '%@%.test'
+            OR lower(email) LIKE '%@%.local'
+            OR lower(email) LIKE '%@example.com'
+            OR ($1 <> '' AND lower(email) = lower($1))
+            OR lower(email) = ANY(ARRAY[
+                'lf.audit.client.20260905@gmail.com',
+                'lf.audit.adv.20260905@gmail.com',
+                'grok.qa.advocate.20260905@litigaforge.com',
+                'grok.qa.client.20260905@litigaforge.com'
+            ])
+        ))
+    """, demo_email)
+
 load_dotenv()
 
 from logger import get_logger
@@ -597,21 +615,8 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT FALSE")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'in'")
         await conn.execute("UPDATE lawyers SET country = 'in' WHERE country IS NULL")
-        # Never expose known seed/dummy profiles through the public directory or matching.
-        await conn.execute("""
-            UPDATE lawyers SET is_test = TRUE, verified = FALSE, verification_status = 'rejected'
-            WHERE name ILIKE '%test%' OR email ILIKE '%test%' OR email ILIKE '%dbtest%'
-               OR name ILIKE 'Lawyer_test%'
-        """)
-        await conn.execute("""
-            DELETE FROM users
-            WHERE email IN (
-                'lf.audit.client.20260905@gmail.com',
-                'lf.audit.adv.20260905@gmail.com',
-                'grok.qa.advocate.20260905@litigaforge.com',
-                'grok.qa.client.20260905@litigaforge.com'
-            )
-        """)
+        # Narrow quarantine by explicit seed emails and reserved test domains.
+        await _mark_test_lawyers(conn, os.getenv("DEMO_ADVOCATE_EMAIL", ""))
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS case_requirements (
                 id SERIAL PRIMARY KEY,
