@@ -17,6 +17,29 @@ from database import execute, fetch, fetchrow, get_pool
 router = APIRouter(tags=["mcp-v2"])
 _PREFIX = "lfm_"
 _DISCLAIMER = "Lead for advocate verification, not legal advice."
+_ALL_MCP_TOOLS = [
+    "ecourts_case_status", "ecourts_cause_list", "ecourts_order",
+    "judgment_search", "judgment_passages", "citing_judgments",
+    "bare_act_section", "old_to_new_section", "limitation_lookup",
+    "my_cases", "my_case",
+]
+_PLAN_DEFAULTS = {
+    "free": {"enabled": True, "price_inr": 0, "gst_percent": 0, "daily_calls": 20,
+             "monthly_calls": None, "seats": 1, "overage_inr": 0,
+             "tools": ["bare_act_section", "old_to_new_section", "limitation_lookup",
+                       "judgment_search", "judgment_passages", "citing_judgments"],
+             "tool_daily_caps": {"judgment_search": 3, "judgment_passages": 3, "citing_judgments": 3}},
+    "reviewer": {"enabled": True, "price_inr": 0, "gst_percent": 0, "daily_calls": 200,
+                 "monthly_calls": None, "seats": 1, "overage_inr": 0, "expires_days": 30,
+                 "purchasable": False, "tools": _ALL_MCP_TOOLS},
+    "advocate_addon": {"enabled": True, "price_inr": 499, "gst_percent": 18, "daily_calls": 300,
+                       "monthly_calls": None, "seats": 1, "overage_inr": 0, "verified_advocate_only": True,
+                       "tools": _ALL_MCP_TOOLS},
+    "firm": {"enabled": True, "price_inr": 15000, "gst_percent": 18, "daily_calls": None,
+             "monthly_calls": 10000, "seats": 10, "overage_inr": 2, "tools": _ALL_MCP_TOOLS},
+    "data_api": {"enabled": False, "price_inr": 0, "gst_percent": 18, "daily_calls": 0,
+                 "monthly_calls": 0, "seats": 0, "overage_inr": 0, "tools": []},
+}
 
 
 def enabled() -> bool:
@@ -25,6 +48,49 @@ def enabled() -> bool:
 
 def _hash(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def call_policy_error(config: dict, tool_name: str, *, recent: int, daily: int,
+                      monthly: int, tool_daily: int) -> dict | None:
+    if not config.get("enabled") or tool_name not in config.get("tools", []):
+        return {"status": 403, "code": "tool_not_in_plan",
+                "message": "This MCP tool is not included in your plan.",
+                "upgrade_url": "https://litigaforge.com/pricing"}
+    if recent >= 30:
+        return {"status": 429, "code": "rate_limited", "message": "MCP API key rate limit reached.",
+                "reset_at": (datetime.utcnow().replace(second=0, microsecond=0)).isoformat() + "Z",
+                "upgrade_url": "https://litigaforge.com/pricing"}
+    if config.get("daily_calls") is not None and daily >= int(config["daily_calls"]):
+        from datetime import timedelta
+        reset = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        return {"status": 429, "code": "daily_quota_exceeded", "message": "Daily MCP plan limit reached.",
+                "reset_at": reset.isoformat() + "Z", "upgrade_url": "https://litigaforge.com/pricing"}
+    if config.get("monthly_calls") is not None and monthly >= int(config["monthly_calls"]):
+        if float(config.get("overage_inr", 0) or 0) <= 0:
+            return {"status": 429, "code": "monthly_quota_exceeded",
+                    "message": "Monthly MCP plan limit reached.", "reset_at": "next calendar month",
+                    "upgrade_url": "https://litigaforge.com/pricing"}
+    tool_cap = (config.get("tool_daily_caps") or {}).get(tool_name)
+    if tool_cap is not None and tool_daily >= int(tool_cap):
+        from datetime import timedelta
+        reset = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        return {"status": 429, "code": "tool_daily_cap_exceeded",
+                "message": "Daily limit for this MCP tool reached.", "reset_at": reset.isoformat() + "Z",
+                "upgrade_url": "https://litigaforge.com/pricing"}
+    return None
+
+
+def overage_charge(config: dict, previous_month_calls: int) -> float:
+    limit = config.get("monthly_calls")
+    rate = float(config.get("overage_inr", 0) or 0)
+    return rate if limit is not None and previous_month_calls >= int(limit) else 0.0
+
+
+def reviewer_entitlement_active(expires_at: datetime | None, now: datetime | None = None) -> bool:
+    if not expires_at:
+        return False
+    current = now or datetime.now(expires_at.tzinfo) if expires_at.tzinfo else datetime.utcnow()
+    return expires_at > current
 
 
 async def ensure_schema() -> None:
@@ -61,6 +127,89 @@ async def ensure_schema() -> None:
             CREATE INDEX IF NOT EXISTS mcp_call_audit_user_day_idx
             ON mcp_call_audit(user_id, created_at)
         """)
+        await conn.execute("""
+            ALTER TABLE mcp_call_audit ADD COLUMN IF NOT EXISTS overage_inr NUMERIC(12,2) NOT NULL DEFAULT 0
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_plan_settings (
+                plan_id TEXT PRIMARY KEY, config JSONB NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_config_migrations (
+                migration_id TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_user_entitlements (
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                plan_id TEXT NOT NULL REFERENCES mcp_plan_settings(plan_id),
+                expires_at TIMESTAMPTZ, invited_by INTEGER REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY(user_id, plan_id)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_organizations (
+                id BIGSERIAL PRIMARY KEY,
+                owner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_organization_members (
+                organization_id BIGINT NOT NULL REFERENCES mcp_organizations(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role TEXT NOT NULL DEFAULT 'member',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY(organization_id,user_id)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_paid_subscriptions (
+                id BIGSERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                plan_id TEXT NOT NULL REFERENCES mcp_plan_settings(plan_id),
+                organization_id BIGINT REFERENCES mcp_organizations(id) ON DELETE SET NULL,
+                payment_id TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL DEFAULT 'active',
+                started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                expires_at TIMESTAMPTZ NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            ALTER TABLE mcp_paid_subscriptions ADD COLUMN IF NOT EXISTS
+            organization_id BIGINT REFERENCES mcp_organizations(id) ON DELETE SET NULL
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_reviewer_demo_cases (
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                cnr TEXT NOT NULL, case_type TEXT NOT NULL, court_name TEXT NOT NULL,
+                status TEXT NOT NULL, next_date DATE, stage TEXT NOT NULL,
+                sample_order TEXT NOT NULL,
+                PRIMARY KEY(user_id,cnr)
+            )
+        """)
+        for plan_id, config in _PLAN_DEFAULTS.items():
+            await conn.execute("""
+                INSERT INTO mcp_plan_settings(plan_id,config) VALUES($1,$2::jsonb)
+                ON CONFLICT(plan_id) DO NOTHING
+            """, plan_id, json.dumps(config))
+        async with conn.transaction():
+            price_migration = await conn.fetchval("""
+                INSERT INTO mcp_config_migrations(migration_id)
+                VALUES('firm_plan_price_15000_v1')
+                ON CONFLICT(migration_id) DO NOTHING
+                RETURNING migration_id
+            """)
+            if price_migration:
+                await conn.execute("""
+                    UPDATE mcp_plan_settings
+                    SET config=jsonb_set(config,'{price_inr}','15000'::jsonb,TRUE),updated_at=NOW()
+                    WHERE plan_id='firm' AND config->>'price_inr'='10000'
+                """)
 
 
 async def _paid_advocate(user: dict) -> bool:
@@ -80,8 +229,6 @@ async def _paid_advocate(user: dict) -> bool:
 async def create_api_key(user: dict, label: str) -> dict:
     if not enabled():
         raise HTTPException(404, "MCP v2 is disabled")
-    if user.get("role") not in {"advocate", "lawyer"}:
-        raise HTTPException(403, "MCP access is limited to advocate accounts")
     cleaned = " ".join(label.split())[:64]
     if not cleaned:
         raise HTTPException(422, "Key label is required")
@@ -94,7 +241,7 @@ async def create_api_key(user: dict, label: str) -> dict:
     return {**dict(row), "key": raw}
 
 
-async def verify_bearer(request: Request) -> tuple[dict, int, int]:
+async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int, int]:
     if not enabled():
         raise HTTPException(404, "MCP v2 is disabled")
     authz = request.headers.get("authorization", "")
@@ -104,7 +251,8 @@ async def verify_bearer(request: Request) -> tuple[dict, int, int]:
                             headers={"WWW-Authenticate": 'Bearer realm="LitigaForge MCP"'})
     row = await fetchrow("""
         SELECT k.id AS api_key_id, k.user_id, k.key_hash, k.scope,
-               u.email, u.name, u.role, u.subscription_tier
+               u.email, u.name, u.role, u.subscription_tier,
+               COALESCE((SELECT l.verified FROM lawyers l WHERE l.user_id=u.id LIMIT 1),FALSE) AS is_verified
         FROM mcp_api_keys k JOIN users u ON u.id = k.user_id
         WHERE k.key_prefix = $1 AND k.revoked_at IS NULL
         ORDER BY k.id DESC LIMIT 1
@@ -116,15 +264,38 @@ async def verify_bearer(request: Request) -> tuple[dict, int, int]:
         raise HTTPException(403, "This key has no read-only scope")
     user = dict(row)
     user["id"] = int(row["user_id"])
-    if user.get("role") not in {"advocate", "lawyer"}:
-        raise HTTPException(403, "MCP access is limited to advocate accounts")
-    paid = await _paid_advocate(user)
     key_id = int(row["api_key_id"])
     user_id = int(row["user_id"])
+    entitlement = await fetchrow("""
+        SELECT plan_id,expires_at FROM mcp_user_entitlements
+        WHERE user_id=$1
+        ORDER BY CASE plan_id WHEN 'reviewer' THEN 0 ELSE 1 END,created_at DESC LIMIT 1
+    """, user_id)
+    if entitlement and (entitlement["plan_id"] != "reviewer" or reviewer_entitlement_active(entitlement["expires_at"])):
+        plan_id = entitlement["plan_id"]
+    else:
+        active_tier = await fetchrow("""
+            SELECT s.plan_id,s.organization_id FROM mcp_paid_subscriptions s
+            LEFT JOIN mcp_organization_members m ON m.organization_id=s.organization_id
+            WHERE (s.user_id=$1 OR m.user_id=$1)
+              AND s.plan_id IN ('advocate_addon','firm') AND s.status='active'
+              AND s.expires_at > NOW()
+            ORDER BY s.started_at DESC LIMIT 1
+        """, user_id)
+        if active_tier and active_tier["plan_id"] == "firm":
+            user["mcp_org_id"] = int(active_tier["organization_id"])
+        plan_id = (
+            "firm" if active_tier and active_tier["plan_id"] == "firm" else
+            "advocate_addon" if active_tier and user.get("is_verified") and user.get("role") in {"advocate", "lawyer"} else
+            "free"
+        )
+    plans = await get_plan_configs()
+    config = plans.get(plan_id, plans["free"])
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            await conn.execute("SELECT pg_advisory_xact_lock($1)", user_id)
+            lock_key = -1_000_000_000_000 - int(user.get("mcp_org_id") or user_id)
+            await conn.execute("SELECT pg_advisory_xact_lock($1)", lock_key)
             recent = await conn.fetchval("""
                 SELECT COUNT(*) FROM mcp_call_audit
                 WHERE api_key_id = $1 AND created_at > NOW() - INTERVAL '1 minute'
@@ -133,29 +304,56 @@ async def verify_bearer(request: Request) -> tuple[dict, int, int]:
                 SELECT COUNT(*) FROM mcp_call_audit
                 WHERE user_id = $1 AND created_at >= CURRENT_DATE
             """, user_id)
-            max_daily = 500 if paid else 5
-            if int(recent or 0) >= 30:
-                raise HTTPException(429, "MCP API key rate limit reached")
-            if int(daily or 0) >= max_daily:
-                raise HTTPException(429, "Daily MCP quota reached")
+            tool_daily = await conn.fetchval("""
+                SELECT COUNT(*) FROM mcp_call_audit
+                WHERE user_id=$1 AND tool_name=$2 AND created_at >= CURRENT_DATE
+            """, user_id, tool_name)
+            if plan_id == "firm" and user.get("mcp_org_id"):
+                monthly = await conn.fetchval("""
+                    SELECT COUNT(*) FROM mcp_call_audit
+                    WHERE user_id IN (SELECT user_id FROM mcp_organization_members WHERE organization_id=$1)
+                      AND created_at >= date_trunc('month',NOW())
+                """, int(user["mcp_org_id"]))
+            else:
+                monthly = await conn.fetchval("""
+                    SELECT COUNT(*) FROM mcp_call_audit
+                    WHERE user_id=$1 AND created_at >= date_trunc('month',NOW())
+                """, user_id)
+            max_daily = config.get("daily_calls")
+            max_monthly = config.get("monthly_calls")
+            tool_cap = (config.get("tool_daily_caps") or {}).get(tool_name)
+            policy_error = call_policy_error(
+                config, tool_name, recent=int(recent or 0), daily=int(daily or 0),
+                monthly=int(monthly or 0), tool_daily=int(tool_daily or 0),
+            )
+            if policy_error:
+                status = policy_error.pop("status")
+                raise HTTPException(status, detail=policy_error)
+            user["mcp_overage_inr"] = overage_charge(config, int(monthly or 0))
             await conn.execute("UPDATE mcp_api_keys SET last_used_at=NOW() WHERE id=$1", key_id)
             audit_id = await conn.fetchval("""
                 INSERT INTO mcp_call_audit(user_id,api_key_id,tool_name,args_sha256,outcome)
-                VALUES($1,$2,'_reserved','', 'reserved') RETURNING id
-            """, user_id, key_id)
-    user["mcp_paid"] = paid
+                VALUES($1,$2,$3,'', 'reserved') RETURNING id
+            """, user_id, key_id, tool_name)
+    user["mcp_plan"] = plan_id
     return user, key_id, int(audit_id)
 
 
 async def audit_call(user: dict, key_id: int, audit_id: int, tool: str, args: dict,
                      *, cost_inr: float = 0, outcome: str = "ok") -> None:
     canonical = json.dumps(args, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    await execute("DELETE FROM mcp_call_audit WHERE created_at < NOW() - INTERVAL '90 days'")
+    await execute("""
+        DELETE FROM mcp_api_keys
+        WHERE revoked_at IS NOT NULL AND revoked_at < NOW() - INTERVAL '90 days'
+    """)
     await execute("""
         UPDATE mcp_call_audit
-        SET tool_name=$1,args_sha256=$2,cost_inr=$3,outcome=$4
-        WHERE id=$5 AND user_id=$6 AND api_key_id=$7 AND outcome='reserved'
+        SET tool_name=$1,args_sha256=$2,cost_inr=$3,outcome=$4,overage_inr=$5
+        WHERE id=$6 AND user_id=$7 AND api_key_id=$8 AND outcome='reserved'
     """, tool, hashlib.sha256(canonical.encode()).hexdigest(),
-         max(0, float(cost_inr)), outcome[:32], audit_id, int(user["id"]), key_id)
+         max(0, float(cost_inr)), outcome[:32], float(user.get("mcp_overage_inr", 0)),
+         audit_id, int(user["id"]), key_id)
 
 
 async def ik_spend_today() -> float:
@@ -164,6 +362,328 @@ async def ik_spend_today() -> float:
         FROM indian_kanoon_api_metrics WHERE created_at >= CURRENT_DATE
     """)
     return float(row["total"] or 0) if row else 0.0
+
+
+async def get_plan_configs() -> dict:
+    if not enabled():
+        return _PLAN_DEFAULTS
+    rows = await fetch("SELECT plan_id,config FROM mcp_plan_settings")
+    return {row["plan_id"]: dict(row["config"]) for row in rows}
+
+
+@router.get("/mcp/plans")
+async def public_mcp_plans():
+    configs = await get_plan_configs()
+    return {"plans": configs}
+
+
+@router.get("/mcp/health")
+async def mcp_health():
+    if not enabled():
+        return {"status": "disabled", "mcp_v2_enabled": False}
+    await fetchrow("SELECT 1 AS ok")
+    return {"status": "ok", "mcp_v2_enabled": True}
+
+
+@router.get("/mcp/usage")
+async def mcp_usage(user: dict = Depends(require_user)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    row = await fetchrow("""
+        SELECT COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) AS today,
+               COUNT(*) FILTER (WHERE created_at >= date_trunc('month', NOW())) AS this_month,
+               COALESCE(SUM(cost_inr),0) AS cost_inr,
+               COALESCE(SUM(overage_inr),0) AS overage_inr
+        FROM mcp_call_audit WHERE user_id=$1 AND outcome <> 'reserved'
+    """, int(user["id"]))
+    by_tool = await fetch("""
+        SELECT tool_name, COUNT(*) AS calls FROM mcp_call_audit
+        WHERE user_id=$1 AND outcome <> 'reserved'
+          AND created_at >= date_trunc('month', NOW())
+        GROUP BY tool_name ORDER BY calls DESC
+    """, int(user["id"]))
+    return {"today": int(row["today"] or 0), "this_month": int(row["this_month"] or 0),
+            "cost_inr": float(row["cost_inr"] or 0),
+            "overage_inr": float(row["overage_inr"] or 0),
+            "by_tool": [dict(item) for item in by_tool]}
+
+
+@router.post("/mcp/checkout/{plan_id}")
+async def mcp_checkout(plan_id: str, user: dict = Depends(require_user)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    if plan_id not in {"advocate_addon", "firm"}:
+        raise HTTPException(400, "Only paid MCP plans can be purchased")
+    config = (await get_plan_configs()).get(plan_id, {})
+    if not config.get("enabled"):
+        raise HTTPException(409, "This MCP plan is unavailable")
+    if plan_id == "advocate_addon":
+        verified = await fetchrow("""
+            SELECT 1 FROM lawyers WHERE user_id=$1 AND verified=TRUE LIMIT 1
+        """, int(user["id"]))
+        if not verified or user.get("role") not in {"advocate", "lawyer"}:
+            raise HTTPException(403, "The Advocate MCP add-on requires a verified advocate account")
+    amount = int(round(float(config["price_inr"]) * (100 + float(config.get("gst_percent", 18))) ))
+    from payments import get_client
+    try:
+        order = get_client().order.create({
+            "amount": amount, "currency": "INR",
+            "receipt": f"mcp_{user['id']}_{plan_id}_{int(datetime.utcnow().timestamp())}",
+            "notes": {"user_id": str(user["id"]), "tier": f"mcp_{plan_id}", "billing_period": "monthly"},
+        })
+    except Exception as exc:
+        raise HTTPException(503, "Razorpay checkout is unavailable") from exc
+    return {"order_id": order["id"], "amount": amount, "currency": "INR",
+            "key_id": os.environ.get("RAZORPAY_KEY_ID", ""), "plan_id": plan_id}
+
+
+@router.post("/mcp/checkout/verify")
+async def verify_mcp_checkout(request: Request, user: dict = Depends(require_user)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    try:
+        body = await request.json()
+        plan_id = str(body["plan_id"])
+        order_id = str(body["razorpay_order_id"])
+        payment_id = str(body["razorpay_payment_id"])
+        signature = str(body["razorpay_signature"])
+    except Exception as exc:
+        raise HTTPException(400, "Missing or invalid payment details") from exc
+    if plan_id not in {"advocate_addon", "firm"}:
+        raise HTTPException(400, "Invalid MCP plan")
+    config = (await get_plan_configs()).get(plan_id, {})
+    if not config.get("enabled"):
+        raise HTTPException(409, "This MCP plan is unavailable")
+    expected = int(round(float(config["price_inr"]) * (100 + float(config.get("gst_percent", 18)))))
+    from payments import _validate_provider_payment, verify_payment
+    try:
+        order, _payment = _validate_provider_payment(order_id, payment_id, expected)
+    except Exception as exc:
+        raise HTTPException(400, "Could not verify Razorpay payment") from exc
+    notes = order.get("notes") or {}
+    if (order.get("amount") != expected or order.get("currency") != "INR"
+        or str(notes.get("user_id")) != str(user["id"])
+        or notes.get("tier") != f"mcp_{plan_id}"
+        or not verify_payment(order_id, payment_id, signature)):
+        raise HTTPException(400, "Payment does not match the selected MCP plan")
+    if plan_id == "advocate_addon":
+        verified = await fetchrow("SELECT 1 FROM lawyers WHERE user_id=$1 AND verified=TRUE LIMIT 1",
+                                  int(user["id"]))
+        if not verified or user.get("role") not in {"advocate", "lawyer"}:
+            raise HTTPException(403, "The Advocate MCP add-on requires a verified advocate account")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", payment_id)
+            existing = await conn.fetchrow(
+                "SELECT user_id,plan_id,organization_id FROM mcp_paid_subscriptions WHERE payment_id=$1 FOR UPDATE",
+                payment_id,
+            )
+            if existing and (int(existing["user_id"]) != int(user["id"]) or existing["plan_id"] != plan_id):
+                raise HTTPException(409, "Payment was already applied to another account")
+            organization_id = existing["organization_id"] if existing else None
+            if not existing and plan_id == "firm":
+                organization_id = await conn.fetchval("""
+                    INSERT INTO mcp_organizations(owner_user_id,name)
+                    VALUES($1,$2) RETURNING id
+                """, int(user["id"]), f"LitigaForge Firm {user['id']}")
+            if not existing:
+                await conn.execute("""
+                    INSERT INTO mcp_paid_subscriptions(user_id,plan_id,organization_id,payment_id,expires_at)
+                    VALUES($1,$2,$3,$4,NOW()+INTERVAL '30 days')
+                """, int(user["id"]), plan_id, organization_id, payment_id)
+            if plan_id == "firm" and organization_id:
+                await conn.execute("""
+                    INSERT INTO mcp_organization_members(organization_id,user_id,role)
+                    VALUES($1,$2,'owner') ON CONFLICT DO NOTHING
+                """, int(organization_id), int(user["id"]))
+    return {"success": True, "plan_id": plan_id, "billing_period": "monthly",
+            "gst_percent": config.get("gst_percent", 18), "organization_id": organization_id}
+
+
+@router.post("/mcp/organization/members")
+async def add_mcp_organization_member(request: Request, user: dict = Depends(require_user)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    try:
+        email = str((await request.json()).get("email") or "").strip().lower()
+    except Exception as exc:
+        raise HTTPException(400, "Expected an email address") from exc
+    if not email:
+        raise HTTPException(422, "Email is required")
+    org = await fetchrow("""
+        SELECT o.id FROM mcp_organizations o
+        JOIN mcp_paid_subscriptions s ON s.organization_id=o.id
+        WHERE o.owner_user_id=$1 AND s.status='active' AND s.expires_at>NOW()
+        ORDER BY s.started_at DESC LIMIT 1
+    """, int(user["id"]))
+    if not org:
+        raise HTTPException(403, "An active Firm plan owner is required")
+    target = await fetchrow("SELECT id FROM users WHERE LOWER(email)=LOWER($1)", email)
+    if not target:
+        raise HTTPException(404, "Create the member's LitigaForge account before adding them")
+    config = (await get_plan_configs())["firm"]
+    used = await fetchrow("SELECT COUNT(*) AS seats FROM mcp_organization_members WHERE organization_id=$1",
+                          int(org["id"]))
+    if int(used["seats"] or 0) >= int(config.get("seats", 10)):
+        raise HTTPException(409, "Firm plan seat limit reached")
+    await execute("""
+        INSERT INTO mcp_organization_members(organization_id,user_id,role)
+        VALUES($1,$2,'member') ON CONFLICT DO NOTHING
+    """, int(org["id"]), int(target["id"]))
+    return {"organization_id": int(org["id"]), "member_added": True}
+
+
+@router.get("/admin/mcp-plans")
+async def admin_mcp_plans(user: dict = Depends(get_superuser)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    return {"plans": await get_plan_configs()}
+
+
+@router.post("/admin/mcp-reviewers/{user_id}")
+async def grant_reviewer(user_id: int, user: dict = Depends(get_superuser)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    plans = await get_plan_configs()
+    expires_days = max(1, min(int(plans["reviewer"].get("expires_days", 30)), 30))
+    target = await fetchrow("SELECT id FROM users WHERE id=$1", user_id)
+    if not target:
+        raise HTTPException(404, "Reviewer account not found")
+    await execute("""
+        INSERT INTO mcp_user_entitlements(user_id,plan_id,expires_at,invited_by)
+        VALUES($1,'reviewer',NOW()+($2 * INTERVAL '1 day'),$3)
+        ON CONFLICT(user_id,plan_id) DO UPDATE
+          SET expires_at=EXCLUDED.expires_at,invited_by=EXCLUDED.invited_by,created_at=NOW()
+    """, user_id, expires_days, int(user["id"]))
+    samples = [
+        ("DEMO-CNR-001", "Civil Appeal (sample)", "Demonstration High Court",
+         "Pending (fictional)", None, "Admission", "Sample order: matter listed for directions."),
+        ("DEMO-CNR-002", "Writ Petition (sample)", "Demonstration High Court",
+         "Disposed (fictional)", None, "Disposed", "Sample order: petition disposed on merits."),
+    ]
+    for sample in samples:
+        await execute("""
+            INSERT INTO mcp_reviewer_demo_cases(user_id,cnr,case_type,court_name,status,next_date,stage,sample_order)
+            VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+            ON CONFLICT(user_id,cnr) DO UPDATE SET case_type=EXCLUDED.case_type,
+                court_name=EXCLUDED.court_name,status=EXCLUDED.status,
+                next_date=EXCLUDED.next_date,stage=EXCLUDED.stage,sample_order=EXCLUDED.sample_order
+        """, user_id, *sample)
+    # Seed actual published authorities into the reviewer account's saved
+    # research portfolio. Demo matters above remain explicitly fictional.
+    authorities = await fetch("""
+        SELECT id FROM judgments WHERE status='published'
+        ORDER BY judgment_date DESC NULLS LAST,id DESC LIMIT 3
+    """)
+    for authority in authorities:
+        await execute("""
+            INSERT INTO judgment_bookmarks(user_id,judgment_id,notes)
+            VALUES($1,$2,'Reviewer sample authority — public judgment')
+            ON CONFLICT(user_id,judgment_id) DO NOTHING
+        """, user_id, int(authority["id"]))
+    return {
+        "user_id": user_id, "plan": "reviewer", "expires_in_days": expires_days,
+        "fictional_demo_cases": len(samples), "saved_public_authorities": len(authorities),
+        "access_note": "Reviewer entitlement is ready; account login still requires the configured OAuth flow.",
+    }
+
+
+@router.delete("/admin/mcp-reviewers/{user_id}")
+async def revoke_reviewer(user_id: int, user: dict = Depends(get_superuser)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    await execute("DELETE FROM mcp_user_entitlements WHERE user_id=$1 AND plan_id='reviewer'", user_id)
+    return {"user_id": user_id, "revoked": True}
+
+
+@router.put("/admin/mcp-plans/{plan_id}")
+async def update_mcp_plan(plan_id: str, request: Request, user: dict = Depends(get_superuser)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    if plan_id not in _PLAN_DEFAULTS:
+        raise HTTPException(404, "Unknown MCP plan")
+    try:
+        config = await request.json()
+    except Exception as exc:
+        raise HTTPException(400, "Invalid JSON") from exc
+    if not isinstance(config, dict):
+        raise HTTPException(400, "Expected a plan configuration object")
+    if plan_id == "data_api" and config.get("enabled") is True:
+        raise HTTPException(422, "Data API cannot be enabled until resale permission is confirmed")
+    if plan_id == "reviewer" and config.get("purchasable") is True:
+        raise HTTPException(422, "Reviewer access cannot be purchased")
+    for field in ("price_inr", "gst_percent", "daily_calls", "monthly_calls", "seats", "overage_inr", "expires_days"):
+        value = config.get(field)
+        if value is not None and (not isinstance(value, (int, float)) or value < 0):
+            raise HTTPException(422, f"{field} must be a non-negative number or null")
+    valid_tools = set(TOOLS)
+    if not isinstance(config.get("tools"), list) or not set(config["tools"]).issubset(valid_tools):
+        raise HTTPException(422, "tools must contain only supported MCP tool names")
+    caps = config.get("tool_daily_caps", {})
+    if not isinstance(caps, dict) or not set(caps).issubset(valid_tools) or any(
+        not isinstance(value, int) or value < 0 for value in caps.values()
+    ):
+        raise HTTPException(422, "tool_daily_caps must map supported tool names to non-negative integer limits")
+    await execute("""
+        UPDATE mcp_plan_settings SET config=$2::jsonb,updated_at=NOW() WHERE plan_id=$1
+    """, plan_id, json.dumps(config))
+    return {"plan_id": plan_id, "config": config}
+
+
+@router.get("/admin/mcp-usage")
+async def admin_mcp_usage(user: dict = Depends(get_superuser)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    rows = await fetch("""
+        SELECT a.user_id, COALESCE(u.email,'deleted user') AS email, a.tool_name,
+               m.organization_id,
+               COUNT(*) AS calls, COALESCE(SUM(a.cost_inr),0) AS cost_inr,
+               COALESCE(SUM(a.overage_inr),0) AS overage_inr
+        FROM mcp_call_audit a LEFT JOIN users u ON u.id=a.user_id
+        LEFT JOIN mcp_organization_members m ON m.user_id=a.user_id
+        WHERE a.outcome <> 'reserved' AND a.created_at >= date_trunc('month', NOW())
+        GROUP BY a.user_id,u.email,a.tool_name,m.organization_id ORDER BY calls DESC LIMIT 2500
+    """)
+    plans = await get_plan_configs()
+    users_by_id: dict[int, dict] = {}
+    for row in rows:
+        uid = int(row["user_id"]) if row["user_id"] is not None else -1
+        item = users_by_id.setdefault(uid, {
+            "user_id": None if uid == -1 else uid, "email": row["email"],
+            "organization_id": row["organization_id"],
+            "calls_this_month": 0, "cost_inr": 0.0, "overage_inr": 0.0, "by_tool": {},
+        })
+        item["calls_this_month"] += int(row["calls"] or 0)
+        item["cost_inr"] += float(row["cost_inr"] or 0)
+        item["overage_inr"] += float(row["overage_inr"] or 0)
+        item["by_tool"][row["tool_name"]] = int(row["calls"] or 0)
+    revenue = 0
+    for uid, item in users_by_id.items():
+        if uid == -1:
+            item["plan_id"] = "unknown"
+            item["revenue_estimate_inr"] = 0
+            continue
+        entitlement = await fetchrow("""
+            SELECT plan_id FROM mcp_user_entitlements
+            WHERE user_id=$1 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1
+        """, uid)
+        subscription = await fetchrow("""
+            SELECT s.plan_id,s.organization_id,s.user_id AS purchaser_id
+            FROM mcp_paid_subscriptions s
+            LEFT JOIN mcp_organization_members m ON m.organization_id=s.organization_id
+            WHERE (s.user_id=$1 OR m.user_id=$1) AND s.status='active' AND s.expires_at>NOW()
+            ORDER BY s.started_at DESC LIMIT 1
+        """, uid)
+        plan_id = entitlement["plan_id"] if entitlement else (
+            subscription["plan_id"] if subscription else "free")
+        item["plan_id"] = plan_id
+        item["revenue_estimate_inr"] = (
+            int(plans.get(plan_id, {}).get("price_inr", 0) or 0)
+            if not subscription or int(subscription["purchaser_id"]) == uid else 0
+        ) + int(item["overage_inr"])
+        revenue += item["revenue_estimate_inr"]
+    return {"users": list(users_by_id.values()), "estimated_revenue_inr": revenue}
 
 
 async def list_api_keys(user: dict) -> list[dict]:
@@ -260,8 +780,22 @@ TOOL_DEFS = [
     ("my_case", ["cnr"], {"cnr": {"type": "string"}}),
 ]
 TOOLS = [name for name, _, _ in TOOL_DEFS]
+_TOOL_TITLES = {
+    "ecourts_case_status": "Get eCourts Case Status",
+    "ecourts_cause_list": "Search eCourts Cause Lists",
+    "ecourts_order": "Get eCourts Order",
+    "judgment_search": "Search Judgments",
+    "judgment_passages": "Find Judgment Passages",
+    "citing_judgments": "Find Citing Judgments",
+    "bare_act_section": "Get Bare Act Section",
+    "old_to_new_section": "Map Old and New Code Sections",
+    "limitation_lookup": "Look Up Limitation Period",
+    "my_cases": "List My Tracked Cases",
+    "my_case": "Get My Tracked Case",
+}
 TOOL_LIST = [
-    {"name": name, "title": name.replace("_", " ").title(),
+    {"name": name, "title": _TOOL_TITLES[name],
+     "annotations": {"title": _TOOL_TITLES[name], "readOnlyHint": True},
      "description": "Read-only Indian legal research. Results are leads for advocate verification.",
      "inputSchema": {"type": "object", "required": required, "properties": properties,
                      "additionalProperties": False}}
@@ -313,6 +847,27 @@ async def call_tool(name: str, args: dict, user: dict) -> dict:
         cnr = str(args.get("cnr") or "").replace(" ", "").upper()
         if name in {"my_case", "ecourts_case_status", "ecourts_order"} and not cnr:
             raise ValueError("cnr is required")
+        if user.get("mcp_plan") == "reviewer":
+            if name == "my_cases":
+                rows = await fetch("""
+                    SELECT cnr,case_type,court_name,status,next_date,stage,sample_order
+                    FROM mcp_reviewer_demo_cases WHERE user_id=$1 ORDER BY cnr
+                """, user_id)
+                data = [dict(row) for row in rows]
+            else:
+                row = await fetchrow("""
+                    SELECT cnr,case_type,court_name,status,next_date,stage,sample_order
+                    FROM mcp_reviewer_demo_cases WHERE user_id=$1 AND cnr=$2
+                """, user_id, cnr)
+                if not row:
+                    raise ValueError("Reviewer access is limited to the supplied fictional demo matters")
+                data = dict(row)
+                if name == "ecourts_order":
+                    data = {"cnr": cnr, "orders": [{"order_date": str(args.get("order_date") or ""),
+                            "text": data["sample_order"], "fictional_demo": True}]}
+            return public_result(data, source="LitigaForge fictional reviewer demo data",
+                                 source_url=None, identifier=f"demo-cnr:{cnr or 'sample-matters'}",
+                                 untrusted_text=name == "ecourts_order")
         query = """
             SELECT id, cnr, case_type, court_name, added_at, last_refreshed,
                    refresh_status

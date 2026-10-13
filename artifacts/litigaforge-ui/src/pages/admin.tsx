@@ -40,7 +40,7 @@ interface AdminUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<"pending" | "advocates" | "questions" | "users" | "ecourts">("pending");
+  const [tab, setTab] = useState<"pending" | "advocates" | "questions" | "users" | "ecourts" | "mcp">("pending");
   const [rejectReason, setRejectReason] = useState<Record<number, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<number | null>(null);
   const queryClient = useQueryClient();
@@ -78,6 +78,7 @@ export default function AdminPage() {
         <TabButton active={tab === "questions"} onClick={() => setTab("questions")} icon={MessageSquare} label="Question Moderation" />
         <TabButton active={tab === "users"} onClick={() => setTab("users")} icon={Users} label="All Users" />
         <TabButton active={tab === "ecourts"} onClick={() => setTab("ecourts")} icon={Activity} label="eCourts Usage" />
+        <TabButton active={tab === "mcp"} onClick={() => setTab("mcp")} icon={Activity} label="MCP Plans & Usage" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -96,6 +97,8 @@ export default function AdminPage() {
           <QuestionModerationTab key="questions" queryClient={queryClient} />
         ) : tab === "users" ? (
           <UsersTab key="users" queryClient={queryClient} />
+        ) : tab === "mcp" ? (
+          <McpPlansUsageTab key="mcp" />
         ) : (
           <EcourtsUsageTab key="ecourts" />
         )}
@@ -511,5 +514,85 @@ function Badge({ label }: { label: string }) {
     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground border border-border">
       {label}
     </span>
+  );
+}
+
+function McpPlansUsageTab() {
+  const queryClient = useQueryClient();
+  const [drafts, setDrafts] = useState<Record<string, any>>({});
+  const [toolsText, setToolsText] = useState<Record<string, string>>({});
+  const [capsText, setCapsText] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState("");
+  const plansQuery = useQuery({ queryKey: ["admin-mcp-plans"], queryFn: () => apiFetch("/admin/mcp-plans"), retry: false });
+  const usageQuery = useQuery({ queryKey: ["admin-mcp-usage"], queryFn: () => apiFetch("/admin/mcp-usage"), retry: false });
+  const plans = plansQuery.data?.plans || {};
+  const update = (id: string, field: string, value: any) => {
+    setDrafts((current) => ({ ...current, [id]: { ...(current[id] || plans[id]), [field]: value } }));
+  };
+  const save = async (id: string) => {
+    try {
+      const config = { ...(drafts[id] || plans[id]) };
+      config.tools = (toolsText[id] ?? (config.tools || []).join(",")).split(",").map((x: string) => x.trim()).filter(Boolean);
+      config.tool_daily_caps = JSON.parse(capsText[id] ?? JSON.stringify(config.tool_daily_caps || {}));
+      await apiFetch(`/admin/mcp-plans/${id}`, { method: "PUT", body: config });
+      setNotice(`${id} settings saved.`);
+      setDrafts((current) => ({ ...current, [id]: config }));
+      await queryClient.invalidateQueries({ queryKey: ["admin-mcp-plans"] });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not save plan settings. Check the limits and JSON fields.");
+    }
+  };
+  const numericFields = ["price_inr", "gst_percent", "daily_calls", "monthly_calls", "seats", "overage_inr"];
+  return (
+    <div className="space-y-5">
+      <h2 className="text-xl font-semibold">MCP plan settings</h2>
+      {plansQuery.isError && <p className="text-sm text-muted-foreground">MCP v2 may be disabled, or admin settings are unavailable.</p>}
+      {Object.entries(plans).map(([id, original]: [string, any]) => {
+        const plan = drafts[id] || original;
+        return <section key={id} className="space-y-3 rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold capitalize">{id.replaceAll("_", " ")}</h3>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={!!plan.enabled} onChange={(e) => update(id, "enabled", e.target.checked)}
+                disabled={id === "data_api"} /> Enabled
+            </label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {numericFields.map((field) => <label key={field} className="text-xs text-muted-foreground">
+              {field.replaceAll("_", " ")}
+              <input type="number" min="0" value={plan[field] ?? ""} onChange={(e) =>
+                update(id, field, e.target.value === "" ? null : Number(e.target.value))}
+                className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground" />
+            </label>)}
+          </div>
+          <label className="block text-xs text-muted-foreground">Allowed tool names (comma-separated)
+            <input value={toolsText[id] ?? (plan.tools || []).join(",")} onChange={(e) =>
+              setToolsText((current) => ({ ...current, [id]: e.target.value }))}
+              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground" />
+          </label>
+          <label className="block text-xs text-muted-foreground">Per-tool daily caps (JSON)
+            <input value={capsText[id] ?? JSON.stringify(plan.tool_daily_caps || {})} onChange={(e) =>
+              setCapsText((current) => ({ ...current, [id]: e.target.value }))}
+              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground" />
+          </label>
+          <Button onClick={() => void save(id)}>Save {id} plan</Button>
+        </section>;
+      })}
+      {notice && <p role="status" className="text-sm">{notice}</p>}
+      <section className="space-y-3 rounded-xl border border-border p-4">
+        <h3 className="font-semibold">Usage, cost and estimated revenue (this month)</h3>
+        {usageQuery.isError && <p className="text-sm text-muted-foreground">Usage data is unavailable.</p>}
+        <p className="text-sm">Estimated plan revenue: ₹{Number(usageQuery.data?.estimated_revenue_inr || 0).toLocaleString("en-IN")}</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm"><thead><tr><th>User</th><th>Org</th><th>Plan</th><th>Calls</th><th>Cost</th><th>Revenue estimate</th><th>By tool</th></tr></thead>
+            <tbody>{(usageQuery.data?.users || []).map((entry: any) => <tr key={entry.user_id} className="border-t border-border">
+              <td className="py-2">{entry.email}</td><td>{entry.organization_id ?? "—"}</td><td>{entry.plan_id}</td><td>{entry.calls_this_month}</td>
+              <td>₹{Number(entry.cost_inr).toFixed(2)}</td><td>₹{Number(entry.revenue_estimate_inr).toLocaleString("en-IN")}</td>
+              <td>{Object.entries(entry.by_tool || {}).map(([tool, count]) => `${tool}: ${count}`).join(", ")}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   );
 }

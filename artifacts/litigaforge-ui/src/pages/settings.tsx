@@ -30,7 +30,7 @@ export default function AccountSettings() {
       <ProfileSection user={user} />
       <LanguagePreferenceSection user={user} />
       {user?.lawyer_status && <><AdvocateProfileSection /><CalendarSyncSection /></>}
-      {(user?.role === "advocate" || user?.role === "lawyer") && <McpKeysSection />}
+      {user && <McpKeysSection />}
       <PasswordSection />
       <PrivacySection />
       <DangerZone onDeleted={logout} />
@@ -48,6 +48,12 @@ function McpKeysSection() {
     queryKey: ["mcp-api-keys"],
     queryFn: () => apiFetch("/mcp/keys"),
     retry: false,
+  });
+  const { data: usage } = useQuery({
+    queryKey: ["mcp-usage"],
+    queryFn: () => apiFetch("/mcp/usage"),
+    retry: false,
+    staleTime: 30_000,
   });
   const create = async () => {
     setBusy(true); setNotice(""); setNewKey("");
@@ -75,9 +81,18 @@ function McpKeysSection() {
   return (
     <Card icon={<KeyRound className="h-4 w-4" />} title="MCP Connector">
       <p className="text-sm leading-6 text-muted-foreground">
-        Create a read-only key for Claude and other MCP clients. Keys are shown once.
+        Free accounts include 20 connector calls per day. Create a read-only key for Claude and other MCP clients. Keys are shown once.
         Do not paste them into public documents or shared chats.
       </p>
+      {!!usage && <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm">
+        <div><span className="text-muted-foreground">Calls today</span><p className="font-semibold">{usage.today}</p></div>
+        <div><span className="text-muted-foreground">Calls this month</span><p className="font-semibold">{usage.this_month}</p></div>
+        <div className="col-span-2"><span className="text-muted-foreground">By tool this month</span>
+          <div className="mt-1 flex flex-wrap gap-2">{(usage.by_tool || []).map((item: any) =>
+            <span key={item.tool_name} className="rounded-full border border-border px-2 py-1 text-xs">{item.tool_name}: {item.calls}</span>
+          )}</div>
+        </div>
+      </div>}
       {isLoading && <p className="text-sm text-muted-foreground">Loading connector access…</p>}
       {error && <p role="status" className="text-sm text-muted-foreground">MCP v2 is not enabled for this account or deployment.</p>}
       {newKey && <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">

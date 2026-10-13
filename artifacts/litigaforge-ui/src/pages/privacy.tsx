@@ -146,6 +146,25 @@ export default function PrivacyPolicy() {
           <li><strong>AI providers (Anthropic/Google/OpenAI)</strong> — legal text snippets sent for AI analysis; no PII is sent</li>
           <li><strong>Law enforcement</strong> — only when legally compelled by a court order</li>
         </ul>
+        <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4">
+          <h3 className="font-semibold">MCP connector data and third-party sources</h3>
+          <p className="mt-2 text-sm">
+            The LitigaForge MCP connector receives only the individual tool name and arguments needed to answer that tool call.
+            It does not collect or store Claude conversation history, prompts, or messages beyond those tool arguments, and it
+            does not store tool results. For security, quota enforcement, and billing, we store the account/key identifier,
+            tool name, outcome, timestamps, and a one-way hash of tool arguments—not the raw arguments. MCP call-audit records
+            and revoked-key metadata older than 90 days are purged on the next MCP call; active API keys remain until revoked or the account is deleted.
+          </p>
+          <p className="mt-2 text-sm">
+            When a selected tool needs external legal data, only the relevant search terms or case identifiers are sent to
+            <strong> Indian Kanoon</strong> or <strong>eCourtsIndia</strong>, respectively. These providers supply source data;
+            LitigaForge does not send them the surrounding Claude conversation. Their handling of requests is governed by
+            their own privacy terms.
+          </p>
+          <p className="mt-2 text-sm">
+            MCP connector support: <a href="mailto:info@litigaforge.com" className="text-primary underline">info@litigaforge.com</a>.
+          </p>
+        </div>
       </Section>
 
       <Section icon={<Cookie className="w-4 h-4" />} title="8. Cookies & Tracking Technologies">

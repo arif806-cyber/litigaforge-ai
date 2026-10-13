@@ -10,7 +10,7 @@ import json
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 
 from country_router import COUNTRY_CONFIG
@@ -155,6 +155,14 @@ _TOOLS = [
         },
     },
 ]
+
+# MCP annotations are advisory to clients; declare the safety contract on every
+# tool, including the legacy anonymous read-only tools.
+for _tool in _TOOLS:
+    _tool["annotations"] = {
+        "title": _tool["title"],
+        "readOnlyHint": True,
+    }
 
 
 async def _list_recent_judgments(arguments: dict) -> dict:
@@ -316,15 +324,26 @@ async def mcp_post(request: Request):
                 if not mcp_v2.enabled():
                     return _error(request_id, -32601, "Method not found")
                 try:
-                    user, key_id, audit_id = await mcp_v2.verify_bearer(request)
+                    user, key_id, audit_id = await mcp_v2.verify_bearer(request, name)
                 except Exception as exc:
                     detail = getattr(exc, "detail", "MCP authentication required")
+                    if isinstance(exc, HTTPException) and exc.status_code == 401:
+                        message = detail if isinstance(detail, str) else detail.get("message", "Authentication required")
+                        response = _error(request_id, -32001, message)
+                        response.status_code = 401
+                        response.headers["WWW-Authenticate"] = (
+                            'Bearer resource_metadata="https://litigaforge.com/.well-known/oauth-protected-resource"'
+                        )
+                        return response
+                    if isinstance(detail, dict):
+                        code = -32029 if getattr(exc, "status_code", 0) == 429 else -32003
+                        return _error(request_id, code, detail.get("message", "MCP request denied"), detail)
                     return _error(request_id, -32001, str(detail))
                 outcome = "ok"
                 cost_before = await mcp_v2.ik_spend_today() if name in {"judgment_search", "judgment_passages"} else 0
                 try:
                     data = await asyncio.wait_for(
-                        mcp_v2.call_tool(name, arguments, user), timeout=25
+                        mcp_v2.call_tool(name, arguments, user), timeout=10
                     )
                 except Exception:
                     outcome = "error"
