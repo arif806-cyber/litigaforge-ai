@@ -138,7 +138,7 @@ export default function Subscription() {
     }
   };
 
-  const { data: invoices } = useQuery<{ invoices: { id: number; tier: string; started_at: string; status: string; payment_ref: string }[] }>({
+  const { data: invoices } = useQuery<{ invoices: { id: number; tier: string; plan_name?: string; started_at: string; status: string; payment_ref: string }[] }>({
     queryKey: ["invoices"],
     enabled: !!user,
     queryFn: () => apiFetch("/subscription/invoices"),
@@ -254,7 +254,7 @@ export default function Subscription() {
     try {
       await startTrial.mutateAsync();
       await refreshUser();
-      setSuccess("Advocate Pro free trial");
+      setSuccess(`${TIER_LABELS.professional} free trial`);
     } catch (e: any) {
       setError(e.message || "Unable to start the free trial.");
     } finally {
@@ -281,8 +281,8 @@ export default function Subscription() {
 
   return (<>
       <SEOHelmet
-        title="Pricing Plans — Advocate Pro & Chamber | LitigaForge AI"
-        description="Compare LitigaForge AI plans: Free, Advocate Pro from ₹999/month, and Chamber from ₹2,499/month, plus 18% GST. Annual plans include 2 months free."
+        title={`Pricing Plans — ${TIER_LABELS.professional} & ${TIER_LABELS.advocate_pro} | LitigaForge AI`}
+        description={`Compare LitigaForge AI plans: ${TIER_LABELS.free}, ${TIER_LABELS.professional} from ₹999/month, and ${TIER_LABELS.advocate_pro} from ₹2,499/month, plus 18% GST. Annual plans include 2 months free.`}
         canonical="/subscription"
         keywords="litigaforge pricing, legal ai plans, lawyer matching subscription, legal ai free, professional legal help india"
       />
@@ -383,7 +383,7 @@ export default function Subscription() {
               {invoices.invoices.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
                   <div>
-                    <p className="text-sm font-medium capitalize">{(inv.tier ?? "").replace("_", " ")} Plan</p>
+                    <p className="text-sm font-medium">{inv.plan_name ?? TIER_LABELS[inv.tier] ?? `${(inv.tier ?? "").replace("_", " ")} Plan`}</p>
                     <p className="text-xs text-muted-foreground">{(inv.started_at ?? "").split("T")[0]} &middot; {inv.status ?? "—"}</p>
                   </div>
                   <div className="flex items-center gap-2">

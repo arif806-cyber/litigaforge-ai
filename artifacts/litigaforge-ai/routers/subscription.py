@@ -133,7 +133,7 @@ async def _activate_subscription(
 
 
 async def _start_advocate_pro_trial(user_id: int) -> None:
-    """Atomically grant one payment-free 30-day Advocate Pro trial per user."""
+    """Atomically grant one payment-free 30-day Professional trial per user."""
     pool = await get_pool()
     try:
         async with pool.acquire() as conn:
@@ -144,7 +144,9 @@ async def _start_advocate_pro_trial(user_id: int) -> None:
                     user_id,
                 )
                 if prior_trial:
-                    raise ValueError("Your Advocate Pro free trial has already been used")
+                    raise ValueError(
+                        f"Your {ADVOCATE_PLAN_NAMES['professional']} free trial has already been used"
+                    )
                 active = await conn.fetchrow(
                     """SELECT id FROM subscriptions
                        WHERE user_id=$1 AND status='active' AND expires_at > NOW()""",
@@ -169,7 +171,9 @@ async def _start_advocate_pro_trial(user_id: int) -> None:
         raise
     except Exception as exc:
         if "uq_subscriptions_user_trial" in str(exc) or "unique" in str(exc).lower():
-            raise ValueError("Your Advocate Pro free trial has already been used") from exc
+            raise ValueError(
+                f"Your {ADVOCATE_PLAN_NAMES['professional']} free trial has already been used"
+            ) from exc
         raise
 
 
