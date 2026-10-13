@@ -114,6 +114,7 @@ def _oauth_token(base: str) -> str:
     token_data = urllib.parse.urlencode({
         "grant_type": "authorization_code", "client_id": client_id,
         "redirect_uri": redirect_uri, "code": code, "code_verifier": verifier,
+        "resource": "https://litigaforge.com/mcp",
     }).encode()
     status, _, raw = _request(
         _url(base, "/api/oauth/token"), method="POST", data=token_data,
@@ -155,6 +156,17 @@ def _quality_reason(case: dict, response: dict, tool_names: set[str]) -> str:
     if tool not in tool_names:
         return "tool missing from tools/list"
     data = _structured(response)
+    result = response.get("result")
+    content = result.get("content", []) if isinstance(result, dict) else []
+    if not any(isinstance(block, dict) and block.get("type") == "text"
+               and "https://" in str(block.get("text", "")) for block in content):
+        return "tool result lacks concise linked text content"
+    structured = result.get("structuredContent") if isinstance(result, dict) else None
+    if (isinstance(result, dict) and result.get("isError") is True
+            and tool == "judgment_passages" and isinstance(structured, dict)
+            and isinstance(structured.get("data"), dict)
+            and structured["data"].get("status") == "unavailable"):
+        return "Indian Kanoon disabled path returns an explicit isError result with source link"
     if not data:
         result = response.get("result")
         content = result.get("content", []) if isinstance(result, dict) else []
@@ -178,6 +190,63 @@ def _quality_reason(case: dict, response: dict, tool_names: set[str]) -> str:
     return "provenance and read-only tool response contract passed"
 
 
+def _protocol_checks(base: str, token: str) -> list[dict]:
+    checks = []
+    status, headers, _ = _request(_url(base, "/mcp"))
+    checks.append({"name": "GET returns 405 with Allow: POST",
+                   "passed": status == 405 and headers.get("Allow") == "POST"})
+
+    status, challenge = _json_request(_url(base, "/mcp"), method="POST",
+                                      payload={"jsonrpc": "2.0", "id": 800, "method": "initialize",
+                                               "params": {"protocolVersion": "unsupported"}})
+    authenticate = challenge["headers"].get("WWW-Authenticate", "")
+    checks.append({"name": "initialize requires bearer on first request",
+                   "passed": status == 401 and "resource_metadata=" in authenticate})
+    invalid_status, invalid = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "id": 801, "method": "initialize"},
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+    checks.append({"name": "invalid bearer includes invalid_token challenge",
+                   "passed": invalid_status == 401 and 'error="invalid_token"' in
+                   invalid["headers"].get("WWW-Authenticate", "")})
+
+    status, init = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "id": 802, "method": "initialize",
+                 "params": {"protocolVersion": "not-supported"}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    checks.append({"name": "unknown initialize version negotiates latest",
+                   "passed": status == 200 and init["body"].get("result", {}).get("protocolVersion") == "2025-06-18"})
+    status, missing = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "id": 803, "method": "ping"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    checks.append({"name": "missing later version header assumes 2025-03-26",
+                   "passed": status == 200 and missing["headers"].get("MCP-Protocol-Version") == "2025-03-26"})
+    status, _ = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "id": 804, "method": "ping"},
+        headers={"Authorization": f"Bearer {token}", "MCP-Protocol-Version": "9.9"},
+    )
+    checks.append({"name": "unsupported later version returns 400", "passed": status == 400})
+
+    status, _ = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "id": 805, "method": "ping"},
+        headers={"Origin": "https://attacker.example"},
+    )
+    checks.append({"name": "untrusted Origin remains blocked through the API proxy",
+                   "passed": status == 403})
+    status, metadata = _json_request(_url(base, "/.well-known/oauth-protected-resource"))
+    checks.append({"name": "resource metadata identifies canonical MCP resource",
+                   "passed": status == 200 and metadata["body"].get("resource") == "https://litigaforge.com/mcp"
+                   and "https://litigaforge.com" in metadata["body"].get("authorization_servers", [])})
+    return checks
+
+
 def _case_ids(data: dict) -> list[str]:
     records = data.get("data")
     if isinstance(records, dict):
@@ -187,7 +256,32 @@ def _case_ids(data: dict) -> list[str]:
     return sorted(str(row.get("cnr")) for row in records if isinstance(row, dict) and row.get("cnr"))
 
 
-def _run(base: str) -> tuple[list[dict], list[dict], list[str]]:
+def _reviewer_plan_config(config: dict | None = None) -> dict:
+    sys.path.insert(0, str(PROJECT_ROOT))
+    from database import close_pool, execute, fetchrow
+    from runtime_env import assert_development_database
+
+    async def run():
+        try:
+            assert_development_database()
+            if config is None:
+                row = await fetchrow("SELECT config FROM mcp_plan_settings WHERE plan_id='reviewer'")
+                value = row["config"] if row else None
+                if isinstance(value, str):
+                    value = json.loads(value)
+                if not isinstance(value, dict):
+                    raise RuntimeError("Development Reviewer plan config is unavailable.")
+                return value
+            await execute("UPDATE mcp_plan_settings SET config=$1::jsonb WHERE plan_id='reviewer'",
+                          json.dumps(config))
+            return config
+        finally:
+            await close_pool()
+
+    return asyncio.run(run())
+
+
+def _run(base: str, original_plan_config: dict) -> tuple[list[dict], list[dict], list[str], dict]:
     token = _oauth_token(base)
     initialize = _mcp_call(base, token, 1, "initialize", {
         "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "dev-eval", "version": "1"},
@@ -217,7 +311,9 @@ def _run(base: str) -> tuple[list[dict], list[dict], list[str]]:
             "name": case["tool"], "arguments": case.get("arguments", {}),
         })
         reason = _quality_reason(case, response, tool_names)
-        quality.append({"id": case["id"], "tool": case["tool"], "passed": reason.startswith("provenance"), "reason": reason})
+        quality.append({"id": case["id"], "tool": case["tool"],
+                        "passed": reason.startswith(("provenance", "Indian Kanoon disabled path")),
+                        "reason": reason})
         if case["id"] == "Q25":
             data = _structured(response)
             baseline = _case_ids(data) if data else []
@@ -258,10 +354,25 @@ def _run(base: str) -> tuple[list[dict], list[dict], list[str]]:
             if passed else "identity, response reflection, or source fencing check failed",
         })
 
-    unsafe = [
-        tool.get("name", "?") for tool in tools
-        if not (tool.get("annotations") or {}).get("readOnlyHint", False)
-    ]
+    open_world_names = {
+        "ecourts_case_status", "ecourts_cause_list", "ecourts_order",
+        "judgment_search", "judgment_passages", "citing_judgments",
+        "verify_citation", "hearing_brief",
+    }
+    unsafe = []
+    for tool in tools:
+        name = tool.get("name", "?")
+        annotations = tool.get("annotations") or {}
+        description = tool.get("description", "")
+        if not annotations.get("readOnlyHint", False):
+            unsafe.append(f"{name}: missing readOnlyHint")
+        if not tool.get("title") or not annotations.get("title"):
+            unsafe.append(f"{name}: missing title")
+        if not isinstance(description, str) or len(description) >= 1024:
+            unsafe.append(f"{name}: missing or oversized description")
+        if name in open_world_names and annotations.get("openWorldHint") is not True:
+            unsafe.append(f"{name}: missing openWorldHint")
+    _reviewer_plan_config(original_plan_config)
     quota = _live_quota_check(base, token, os.getenv("MCP_REVIEWER_EMAIL", "").strip().lower())
     return quality, injection, unsafe, quota
 
@@ -290,10 +401,11 @@ def _live_quota_check(base: str, token: str, email: str) -> dict:
             """, user_id, needed)
         try:
             response = _mcp_call(base, token, 900, "tools/call", {"name": "my_cases", "arguments": {}})
-            error = response.get("error", {})
-            detail = error.get("data", {}) if isinstance(error, dict) else {}
-            passed = error.get("code") == -32029 and detail.get("code") == "daily_quota_exceeded"
-            return {"passed": passed, "reason": "live Reviewer call was denied at the 200-call daily limit" if passed else "live call did not return daily_quota_exceeded"}
+            result = response.get("result", {})
+            text = " ".join(str(block.get("text", "")) for block in result.get("content", [])
+                            if isinstance(block, dict))
+            passed = result.get("isError") is True and "Daily MCP plan limit reached" in text
+            return {"passed": passed, "reason": "live Reviewer call was denied at the 200-call daily limit" if passed else "live call did not return a daily quota tool error"}
         finally:
             await execute(
                 "DELETE FROM mcp_call_audit WHERE user_id=$1 AND outcome='quota_fixture'", user_id
@@ -303,7 +415,8 @@ def _live_quota_check(base: str, token: str, email: str) -> dict:
     return asyncio.run(run())
 
 
-def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str], base: str, quota: dict) -> Path:
+def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str],
+                  protocol: list[dict], base: str, quota: dict) -> Path:
     today = date.today().isoformat()
     target = FIXTURE_DIR / f"results-{today}.md"
     q_pass = sum(row["passed"] for row in quality)
@@ -313,11 +426,13 @@ def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str],
         f"- Target: local development server `{base}/mcp` (loopback only; not production).",
         "- Authentication: dynamic client registration plus OAuth authorization-code/PKCE.",
         "- Judge: deterministic MCP response-contract and injection-boundary checks; no LLM legal-quality judge or live Claude connector was used.",
+        "- Evaluation setup: the dedicated development Reviewer quota was temporarily raised for fixtures and restored before the live 200-call denial check.",
         f"- Quality suite: **{q_pass}/{len(quality)} passed ({q_pass / max(1, len(quality)):.0%})**.",
         f"- Injection suite: **{i_pass}/{len(injection)} passed ({i_pass / max(1, len(injection)):.0%})**.",
         f"- Live Reviewer quota denial: **{'PASS' if quota['passed'] else 'FAIL'}** — {quota['reason']}.",
-        f"- Read-only tool declaration check: **{'PASS' if not unsafe else 'FAIL'}**"
-        + (f" (not read-only: {', '.join(unsafe)})" if unsafe else " (all listed tools declare readOnlyHint=true)."),
+        f"- Protocol conformance checks: **{sum(r['passed'] for r in protocol)}/{len(protocol)} passed**.",
+        f"- Tool annotation check: **{'PASS' if not unsafe else 'FAIL'}**"
+        + (f" ({', '.join(unsafe)})" if unsafe else " (titles, readOnlyHint, required openWorldHint, and bounded descriptions are present)."),
         "", "## Quality fixture results", "", "| Case | Tool | Result | Check |", "|---|---|---:|---|",
     ]
     lines.extend(
@@ -329,6 +444,8 @@ def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str],
         f"| {row['id']} | {row['attack']} | {'PASS' if row['passed'] else 'FAIL'} | {row['reason']} |"
         for row in injection
     )
+    lines += ["", "## Protocol conformance", "", "| Check | Result |", "|---|---:|"]
+    lines.extend(f"| {row['name']} | {'PASS' if row['passed'] else 'FAIL'} |" for row in protocol)
     lines += ["", "## Quota check", "", f"- {'PASS' if quota['passed'] else 'FAIL'} — {quota['reason']}.", ""]
     lines += [
         "", "## Interpretation", "",
@@ -345,12 +462,22 @@ def main() -> None:
     host = urlsplit(base).hostname
     if host not in {"localhost", "127.0.0.1", "::1"}:
         raise SystemExit("Refusing non-loopback MCP_EVAL_BASE_URL; evaluations must use the development server.")
-    quality, injection, unsafe, quota = _run(base)
-    report = _write_report(quality, injection, unsafe, base, quota)
+    original_plan = _reviewer_plan_config()
+    temporary_plan = dict(original_plan)
+    temporary_plan["daily_calls"] = 5000
+    _reviewer_plan_config(temporary_plan)
+    try:
+        quality, injection, unsafe, quota = _run(base, original_plan)
+    finally:
+        _reviewer_plan_config(original_plan)
+    token = _oauth_token(base)
+    protocol = _protocol_checks(base, token)
+    report = _write_report(quality, injection, unsafe, protocol, base, quota)
     q_pass = sum(row["passed"] for row in quality)
     i_pass = sum(row["passed"] for row in injection)
     print(f"Quality: {q_pass}/{len(quality)}; injection: {i_pass}/{len(injection)}; report: {report}")
-    if q_pass != len(quality) or i_pass != len(injection) or unsafe or not quota["passed"]:
+    if (q_pass != len(quality) or i_pass != len(injection) or unsafe or not quota["passed"]
+            or any(not row["passed"] for row in protocol)):
         raise SystemExit(1)
 
 

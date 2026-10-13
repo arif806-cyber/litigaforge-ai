@@ -242,6 +242,9 @@ async def ensure_schema() -> None:
             )
         """)
         await conn.execute("""
+            ALTER TABLE mcp_oauth_access_tokens ADD COLUMN IF NOT EXISTS resource TEXT
+        """)
+        await conn.execute("""
             CREATE INDEX IF NOT EXISTS mcp_oauth_token_prefix_idx
             ON mcp_oauth_access_tokens(token_prefix) WHERE revoked_at IS NULL
         """)
@@ -399,7 +402,7 @@ async def verify_bearer(request: Request, tool_name: str, units: int = 1) -> tup
     oauth_token = raw.startswith("lfo_")
     if oauth_token:
         row = await fetchrow("""
-            SELECT NULL::bigint AS api_key_id,t.user_id,t.token_hash,'read' AS scope,
+            SELECT NULL::bigint AS api_key_id,t.user_id,t.token_hash,t.resource,'read' AS scope,
                    u.email,u.name,u.role,u.subscription_tier,
                    COALESCE((SELECT l.verified FROM lawyers l WHERE l.user_id=u.id LIMIT 1),FALSE) AS is_verified
             FROM mcp_oauth_access_tokens t JOIN users u ON u.id=t.user_id
@@ -415,7 +418,9 @@ async def verify_bearer(request: Request, tool_name: str, units: int = 1) -> tup
             WHERE k.key_prefix = $1 AND k.revoked_at IS NULL
             ORDER BY k.id DESC LIMIT 1
         """, raw[:12])
-    if not row or not hmac.compare_digest(str(row["key_hash"] if not oauth_token else row["token_hash"]), _hash(raw)):
+    if (not row
+            or oauth_token and row.get("resource") != "https://litigaforge.com/mcp"
+            or not hmac.compare_digest(str(row["key_hash"] if not oauth_token else row["token_hash"]), _hash(raw))):
         raise HTTPException(401, "Invalid or revoked MCP API key",
                             headers={"WWW-Authenticate": 'Bearer realm="LitigaForge MCP"'})
     if row["scope"] != "read":
@@ -490,6 +495,35 @@ async def verify_bearer(request: Request, tool_name: str, units: int = 1) -> tup
             user["_mcp_audit_ids"] = [int(value) for value in audit_ids]
     user["mcp_plan"] = plan_id
     return user, key_id, int(audit_id)
+
+
+async def authenticate_bearer(request: Request) -> dict:
+    """Validate credentials for MCP protocol methods without consuming call quota."""
+    authz = request.headers.get("authorization", "")
+    scheme, _, raw = authz.partition(" ")
+    if scheme.lower() != "bearer" or not raw.startswith((_PREFIX, "lfo_")):
+        raise HTTPException(401, "MCP bearer token required")
+    oauth_token = raw.startswith("lfo_")
+    if oauth_token:
+        row = await fetchrow("""
+            SELECT t.token_hash,t.resource,u.id,u.email,u.name,u.role
+            FROM mcp_oauth_access_tokens t JOIN users u ON u.id=t.user_id
+            WHERE t.token_prefix=$1 AND t.revoked_at IS NULL AND t.expires_at>NOW()
+            ORDER BY t.id DESC LIMIT 1
+        """, raw[:12])
+        valid = bool(row and row.get("resource") == "https://litigaforge.com/mcp"
+                     and hmac.compare_digest(str(row.get("token_hash") or ""), _hash(raw)))
+    else:
+        row = await fetchrow("""
+            SELECT k.key_hash,k.scope,u.id,u.email,u.name,u.role
+            FROM mcp_api_keys k JOIN users u ON u.id=k.user_id
+            WHERE k.key_prefix=$1 AND k.revoked_at IS NULL ORDER BY k.id DESC LIMIT 1
+        """, raw[:12])
+        valid = bool(row and row.get("scope") == "read"
+                     and hmac.compare_digest(str(row.get("key_hash") or ""), _hash(raw)))
+    if not valid:
+        raise HTTPException(401, "Invalid MCP bearer token")
+    return dict(row)
 
 
 async def audit_call(user: dict, key_id: int, audit_id: int, tool: str, args: dict,
@@ -1056,6 +1090,17 @@ _TOOL_TITLES = {
     "hearing_brief": "Prepare Hearing Brief",
 }
 _TOOL_DESCRIPTIONS = {
+    "ecourts_case_status": "Look up an Indian eCourts case by its CNR and return available status, parties, stage, and next hearing date.",
+    "ecourts_cause_list": "Search Indian eCourts cause lists by hearing date and optional court or advocate name; returns listed matters and source details.",
+    "ecourts_order": "Retrieve an available Indian eCourts order for a case CNR and order date, including the source link when provided.",
+    "judgment_search": "Search Indian court judgments by legal query, optional court, and year range. Indian Kanoon may be used when enabled; results are research leads, not legal advice.",
+    "judgment_passages": "Find relevant passages in an Indian judgment using its Indian Kanoon document ID and a search query; requires configured Indian Kanoon access.",
+    "citing_judgments": "Find Indian judgments that cite an Indian Kanoon document ID when citation data is available.",
+    "bare_act_section": "Retrieve a section of an Indian Act by Act title and section number from the available official-text index.",
+    "old_to_new_section": "Map an Indian IPC, CrPC, or Evidence Act section to the BNS, BNSS, or BSA crosswalk using the code name and section number.",
+    "limitation_lookup": "Look up an Indian Limitation Act article by article number or a short description; verify the applicable law and facts.",
+    "my_cases": "List only the authenticated user's tracked Indian eCourts matters, with CNRs, status, and available next dates.",
+    "my_case": "Retrieve one Indian eCourts matter already tracked by the authenticated user, identified by its CNR.",
     "verify_citation": (
         "Check one citation or up to 10 citations, searching LitigaForge's local "
         "judgment index first and then Indian Kanoon when enabled. An optional "
@@ -1072,6 +1117,11 @@ _TOOL_DESCRIPTIONS = {
         "user, using eCourts case details, the last three orders, saved notes, "
         "and a cached judge/bench view where available. No predictions or scoring."
     ),
+}
+_OPEN_WORLD_TOOLS = {
+    "ecourts_case_status", "ecourts_cause_list", "ecourts_order",
+    "judgment_search", "judgment_passages", "citing_judgments",
+    "verify_citation", "hearing_brief",
 }
 PROMPTS = [
     {"name": "check_my_citations", "title": "Check my citations",
@@ -1114,7 +1164,8 @@ def get_prompt(name: str, arguments: dict | None = None) -> dict | None:
 
 TOOL_LIST = [
     {"name": name, "title": _TOOL_TITLES[name],
-     "annotations": {"title": _TOOL_TITLES[name], "readOnlyHint": True},
+     "annotations": {"title": _TOOL_TITLES[name], "readOnlyHint": True,
+                     **({"openWorldHint": True} if name in _OPEN_WORLD_TOOLS else {})},
      "description": _TOOL_DESCRIPTIONS.get(
          name, "Read-only Indian legal research. Results are leads for advocate verification."
      ),

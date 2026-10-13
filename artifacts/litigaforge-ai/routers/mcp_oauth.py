@@ -17,6 +17,7 @@ from database import execute, fetchrow
 
 router = APIRouter(tags=["mcp-oauth"])
 API_PREFIX = "/api"
+MCP_RESOURCE_URL = "https://litigaforge.com/mcp"
 _S256 = re.compile(r"^[A-Za-z0-9_-]{43}$")
 _VERIFIER = re.compile(r"^[A-Za-z0-9._~-]{43,128}$")
 
@@ -67,10 +68,9 @@ def _require_enabled() -> None:
 
 @router.get("/.well-known/oauth-protected-resource")
 async def protected_resource_metadata(request: Request):
-    base = _public_base(request)
     return {
-        "resource": f"{base}/mcp",
-        "authorization_servers": [base],
+        "resource": MCP_RESOURCE_URL,
+        "authorization_servers": ["https://litigaforge.com"],
         "scopes_supported": ["mcp:read"],
         "bearer_methods_supported": ["header"],
     }
@@ -229,6 +229,9 @@ async def token_exchange(request: Request):
     code = str(form.get("code") or "")
     redirect_uri = str(form.get("redirect_uri") or "")
     verifier = str(form.get("code_verifier") or "")
+    requested_resource = form.get("resource")
+    if requested_resource is not None and str(requested_resource) != MCP_RESOURCE_URL:
+        raise HTTPException(400, "Invalid resource parameter")
     if not _VERIFIER.fullmatch(verifier):
         raise HTTPException(400, "Invalid PKCE code_verifier")
     row = await fetchrow(
@@ -253,9 +256,9 @@ async def token_exchange(request: Request):
         raise HTTPException(400, "Authorization code has already been used")
     token = "lfo_" + secrets.token_urlsafe(32)
     await execute(
-        """INSERT INTO mcp_oauth_access_tokens(token_hash,token_prefix,client_id,user_id,expires_at)
-           VALUES($1,$2,$3,$4,NOW()+INTERVAL '1 hour')""",
-        _digest(token), token[:12], client_id, int(row["user_id"]),
+        """INSERT INTO mcp_oauth_access_tokens(token_hash,token_prefix,client_id,user_id,resource,expires_at)
+           VALUES($1,$2,$3,$4,$5,NOW()+INTERVAL '1 hour')""",
+        _digest(token), token[:12], client_id, int(row["user_id"]), MCP_RESOURCE_URL,
     )
     return JSONResponse({
         "access_token": token, "token_type": "Bearer", "expires_in": 3600,

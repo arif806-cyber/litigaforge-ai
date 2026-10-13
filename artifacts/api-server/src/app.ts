@@ -339,6 +339,9 @@ const _mcpProxy = async (
     if (req.headers.authorization) {
       headers.authorization = req.headers.authorization;
     }
+    if (req.headers.origin) {
+      headers.origin = String(req.headers.origin);
+    }
     if (req.headers["mcp-protocol-version"]) {
       headers["mcp-protocol-version"] = String(
         req.headers["mcp-protocol-version"],

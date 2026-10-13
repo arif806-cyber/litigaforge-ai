@@ -22,19 +22,16 @@ from rate_limit import limiter
 router = APIRouter(tags=["mcp"])
 
 _PROTOCOL_VERSION = "2025-06-18"
+_SUPPORTED_PROTOCOL_VERSIONS = {"2025-06-18", "2025-03-26", "2024-11-05"}
+_TRUSTED_ORIGINS = {
+    "https://claude.ai", "https://claude.com",
+    "https://litigaforge.com", "https://www.litigaforge.com",
+}
 _SERVER_INFO = {"name": "litigaforge", "version": "1.0.0"}
 
 
 def _protected_resource_metadata_url(request: Request) -> str:
-    host = (
-        request.headers.get("x-forwarded-host")
-        or request.headers.get("host")
-        or "litigaforge.com"
-    ).split(",", 1)[0].strip()
-    scheme = request.headers.get("x-forwarded-proto", "https").split(",", 1)[0].strip().lower()
-    if not host or any(char in host for char in "\r\n/@") or scheme not in {"http", "https"}:
-        host, scheme = "litigaforge.com", "https"
-    return f'{scheme}://{host}/.well-known/oauth-protected-resource'
+    return "https://litigaforge.com/.well-known/oauth-protected-resource"
 
 
 def _json_safe(value: Any) -> Any:
@@ -49,25 +46,47 @@ def _json_safe(value: Any) -> Any:
 
 def _tool_result(data: Any, *, is_error: bool = False) -> dict:
     safe_data = _json_safe(data)
+    source = safe_data.get("source") if isinstance(safe_data, dict) else None
+    source_url = safe_data.get("source_url") if isinstance(safe_data, dict) else None
+    if not source_url and isinstance(safe_data, dict):
+        rows = safe_data.get("judgments") or []
+        if isinstance(rows, list):
+            source_url = next((row.get("url") for row in rows
+                               if isinstance(row, dict) and row.get("url")), None)
+    source_url = source_url or "https://litigaforge.com/mcp-docs"
+    if is_error:
+        nested = safe_data.get("data") if isinstance(safe_data, dict) else None
+        detail = (safe_data.get("error") or safe_data.get("reason") or safe_data.get("message")
+                  or (nested.get("reason") or nested.get("message") if isinstance(nested, dict) else None))
+        summary = str(detail or safe_data.get("status") or
+                      "The tool could not complete the request.")[:240]
+    elif isinstance(safe_data, dict):
+        detail = safe_data.get("data")
+        if isinstance(detail, dict):
+            count = detail.get("count")
+            summary = f"Returned {count} result(s)." if count is not None else str(
+                detail.get("status") or detail.get("message") or "Tool completed."
+            )
+        else:
+            summary = f"Returned {safe_data.get('count')} result(s)." if safe_data.get("count") is not None else "Tool completed."
+    else:
+        summary = "Tool completed."
+    text = f"{summary[:240]} Source: {source or 'LitigaForge'}. {source_url}"
     return {
-        "content": [
-            {
-                "type": "text",
-                "text": json.dumps(safe_data, ensure_ascii=False, default=str),
-            }
-        ],
+        "content": [{"type": "text", "text": text}],
         "structuredContent": safe_data,
         "isError": is_error,
     }
 
 
-def _error(request_id: Any, code: int, message: str, data: Any = None) -> JSONResponse:
+def _error(request_id: Any, code: int, message: str, data: Any = None,
+           protocol_version: str = _PROTOCOL_VERSION) -> JSONResponse:
     error: dict[str, Any] = {"code": code, "message": message}
     if data is not None:
         error["data"] = data
     return JSONResponse(
         {"jsonrpc": "2.0", "id": request_id, "error": error},
-        headers={"MCP-Protocol-Version": _PROTOCOL_VERSION},
+        headers={"MCP-Protocol-Version": protocol_version},
     )
 
 
@@ -174,7 +193,9 @@ for _tool in _TOOLS:
     _tool["annotations"] = {
         "title": _tool["title"],
         "readOnlyHint": True,
+        **({"openWorldHint": True} if _tool["name"] == "search_judgments" else {}),
     }
+    _tool["description"] = (_tool["description"] + " Jurisdiction: India.").strip()[:1023]
 
 
 async def _list_recent_judgments(arguments: dict) -> dict:
@@ -272,20 +293,16 @@ async def _call_tool(name: str, arguments: dict) -> dict:
 
 @router.get("/mcp")
 async def mcp_get():
-    return JSONResponse(
-        {
-            "name": "LitigaForge MCP",
-            "transport": "Streamable HTTP",
-            "endpoint": "https://litigaforge.com/mcp",
-            "message": "Connect with an MCP client using HTTP POST.",
-        },
-        headers={"Allow": "GET, POST", "MCP-Protocol-Version": _PROTOCOL_VERSION},
-    )
+    return JSONResponse({"error": "GET is not supported; use POST."}, status_code=405,
+                        headers={"Allow": "POST"})
 
 
 @router.post("/mcp")
 @limiter.limit("60/minute")
 async def mcp_post(request: Request):
+    origin = request.headers.get("origin")
+    if origin is not None and origin not in _TRUSTED_ORIGINS:
+        return JSONResponse({"error": "Untrusted Origin"}, status_code=403)
     try:
         payload = await request.json()
     except Exception:
@@ -296,7 +313,38 @@ async def mcp_post(request: Request):
 
     method = payload.get("method")
     request_id = payload.get("id")
-    params = payload.get("params") or {}
+    params = payload.get("params", {})
+    if params is None:
+        params = {}
+    if not isinstance(params, dict):
+        return _error(request_id, -32602, "Invalid params")
+
+    if method != "initialize":
+        header_version = request.headers.get("mcp-protocol-version")
+        protocol_version = header_version or "2025-03-26"
+        if protocol_version not in _SUPPORTED_PROTOCOL_VERSIONS:
+            return JSONResponse(
+                {"jsonrpc": "2.0", "id": request_id,
+                 "error": {"code": -32600, "message": "Unsupported MCP-Protocol-Version"}},
+                status_code=400,
+            )
+    else:
+        protocol_version = _PROTOCOL_VERSION
+
+    from routers import mcp_v2
+    protected = method in {"initialize", "tools/list", "tools/call", "prompts/list", "prompts/get"}
+    if mcp_v2.enabled() and protected:
+        try:
+            await mcp_v2.authenticate_bearer(request)
+        except HTTPException:
+            response = _error(request_id, -32001, "MCP authentication required",
+                               protocol_version=protocol_version)
+            response.status_code = 401
+            bearer = f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
+            if request.headers.get("authorization"):
+                bearer += ', error="invalid_token"'
+            response.headers["WWW-Authenticate"] = bearer
+            return response
 
     # JSON-RPC notifications intentionally have no response body.
     if method in {"notifications/initialized", "notifications/cancelled"}:
@@ -304,8 +352,8 @@ async def mcp_post(request: Request):
 
     if method == "initialize":
         requested_version = params.get("protocolVersion")
-        version = requested_version if isinstance(requested_version, str) else _PROTOCOL_VERSION
-        from routers import mcp_v2
+        version = requested_version if requested_version in _SUPPORTED_PROTOCOL_VERSIONS else _PROTOCOL_VERSION
+        protocol_version = version
         capabilities = {"tools": {"listChanged": False}}
         if mcp_v2.enabled():
             capabilities["prompts"] = {"listChanged": False}
@@ -322,54 +370,34 @@ async def mcp_post(request: Request):
     elif method == "ping":
         result = {}
     elif method == "tools/list":
-        from routers import mcp_v2
-        auth_header = request.headers.get("authorization", "").lower()
-        if mcp_v2.enabled() and not (
-            auth_header.startswith("bearer lfm_") or auth_header.startswith("bearer lfo_")
-        ):
-            response = _error(request_id, -32001, "MCP authentication required")
-            response.status_code = 401
-            response.headers["WWW-Authenticate"] = (
-                f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
-            )
-            return response
         if mcp_v2.enabled():
             result = {"tools": mcp_v2.TOOL_LIST}
         else:
             result = {"tools": _TOOLS}
     elif method in {"prompts/list", "prompts/get"}:
-        from routers import mcp_v2
         if not mcp_v2.enabled():
             return _error(request_id, -32601, f"Method not found: {method}")
-        auth_header = request.headers.get("authorization", "").lower()
-        if not (auth_header.startswith("bearer lfm_") or auth_header.startswith("bearer lfo_")):
-            response = _error(request_id, -32001, "MCP authentication required")
-            response.status_code = 401
-            response.headers["WWW-Authenticate"] = (
-                f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
-            )
-            return response
         if method == "prompts/list":
             result = {"prompts": mcp_v2.PROMPTS}
         else:
             if not isinstance(params, dict) or not isinstance(params.get("name"), str):
-                return _error(request_id, -32602, "Invalid params")
+                return _error(request_id, -32602, "Invalid params", protocol_version=protocol_version)
             prompt = mcp_v2.get_prompt(params["name"], params.get("arguments") or {})
             if prompt is None:
-                return _error(request_id, -32602, "Unknown prompt")
+                return _error(request_id, -32602, "Unknown prompt", protocol_version=protocol_version)
             result = prompt
     elif method == "tools/call":
         if not isinstance(params, dict):
-            return _error(request_id, -32602, "Invalid params")
+            return _error(request_id, -32602, "Invalid params", protocol_version=protocol_version)
         name = params.get("name")
         arguments = params.get("arguments") or {}
         if not isinstance(name, str) or not isinstance(arguments, dict):
-            return _error(request_id, -32602, "Invalid params")
+            return _error(request_id, -32602, "Invalid params", protocol_version=protocol_version)
         try:
             from routers import mcp_v2
             if name in mcp_v2.TOOLS:
                 if not mcp_v2.enabled():
-                    return _error(request_id, -32601, "Method not found")
+                    return _error(request_id, -32601, "Method not found", protocol_version=protocol_version)
                 try:
                     units = 1
                     if name == "verify_citation":
@@ -379,17 +407,18 @@ async def mcp_post(request: Request):
                 except Exception as exc:
                     detail = getattr(exc, "detail", "MCP authentication required")
                     if isinstance(exc, HTTPException) and exc.status_code == 401:
-                        message = detail if isinstance(detail, str) else detail.get("message", "Authentication required")
-                        response = _error(request_id, -32001, message)
+                        response = _error(request_id, -32001, "MCP authentication required",
+                                          protocol_version=protocol_version)
                         response.status_code = 401
-                        response.headers["WWW-Authenticate"] = (
-                            f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
-                        )
+                        bearer = f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
+                        if request.headers.get("authorization"):
+                            bearer += ', error="invalid_token"'
+                        response.headers["WWW-Authenticate"] = bearer
                         return response
-                    if isinstance(detail, dict):
-                        code = -32029 if getattr(exc, "status_code", 0) == 429 else -32003
-                        return _error(request_id, code, detail.get("message", "MCP request denied"), detail)
-                    return _error(request_id, -32001, str(detail))
+                    message = detail.get("message", "MCP request denied") if isinstance(detail, dict) else str(detail)
+                    result = _tool_result({"error": message, "code": detail.get("code") if isinstance(detail, dict) else None}, is_error=True)
+                    return JSONResponse({"jsonrpc": "2.0", "id": request_id, "result": result},
+                                        headers={"MCP-Protocol-Version": protocol_version})
                 outcome = "ok"
                 ik_metered_tools = {
                     "judgment_search", "judgment_passages", "verify_citation", "hearing_brief"
@@ -410,9 +439,14 @@ async def mcp_post(request: Request):
                                             outcome=outcome)
             else:
                 data = await _call_tool(name, arguments)
-            result = _tool_result(data)
+            unavailable = (isinstance(data, dict) and isinstance(data.get("data"), dict)
+                           and data["data"].get("status") == "unavailable")
+            result = _tool_result(data, is_error=unavailable)
         except LookupError as exc:
-            return _error(request_id, -32601, str(exc))
+            return _error(request_id, -32601, str(exc), protocol_version=protocol_version)
+        except (asyncio.TimeoutError, TimeoutError):
+            result = _tool_result({"error": "The upstream legal-data service timed out. Please retry shortly."},
+                                  is_error=True)
         except (TypeError, ValueError) as exc:
             result = _tool_result({"error": str(exc)}, is_error=True)
         except Exception:
@@ -421,9 +455,9 @@ async def mcp_post(request: Request):
                 is_error=True,
             )
     else:
-        return _error(request_id, -32601, f"Method not found: {method}")
+        return _error(request_id, -32601, f"Method not found: {method}", protocol_version=protocol_version)
 
     return JSONResponse(
         {"jsonrpc": "2.0", "id": request_id, "result": result},
-        headers={"MCP-Protocol-Version": _PROTOCOL_VERSION},
+        headers={"MCP-Protocol-Version": protocol_version},
     )

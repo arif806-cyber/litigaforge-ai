@@ -30,7 +30,8 @@ def test_discovery_metadata_uses_public_proxy_origin():
         "/.well-known/oauth-authorization-server",
         headers={"x-forwarded-host": "preview.example", "x-forwarded-proto": "https"},
     ).json()
-    assert resource["resource"] == "https://preview.example/mcp"
+    assert resource["resource"] == "https://litigaforge.com/mcp"
+    assert resource["authorization_servers"] == ["https://litigaforge.com"]
     assert server["issuer"] == "https://preview.example"
     assert server["code_challenge_methods_supported"] == ["S256"]
     assert server["registration_endpoint"] == "https://preview.example/api/oauth/register"
@@ -94,6 +95,20 @@ def test_token_exchange_verifies_pkce_and_issues_expiring_bearer(monkeypatch):
     assert response.json()["expires_in"] == 3600
     assert response.json()["access_token"].startswith("lfo_")
     assert len(stored) == 1
+    assert stored[0][-1] == oauth.MCP_RESOURCE_URL
+
+
+def test_token_exchange_rejects_other_resource(monkeypatch):
+    monkeypatch.setenv("MCP_V2_ENABLED", "true")
+    response = client.post(
+        "/oauth/token",
+        data={"grant_type": "authorization_code", "resource": "https://other.example/mcp",
+              "client_id": "public-client", "code": "code",
+              "redirect_uri": "https://client.example/callback",
+              "code_verifier": "V" * 43},
+    )
+    assert response.status_code == 400
+    assert "resource" in response.text
 
 
 def test_token_exchange_rejects_wrong_pkce_without_consuming_code(monkeypatch):
