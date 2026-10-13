@@ -281,10 +281,10 @@ export default function Subscription() {
 
   return (<>
       <SEOHelmet
-        title={`Pricing Plans — ${TIER_LABELS.professional} & ${TIER_LABELS.advocate_pro} | LitigaForge AI`}
-        description={`Compare LitigaForge AI plans: ${TIER_LABELS.free}, ${TIER_LABELS.professional} from ₹999/month, and ${TIER_LABELS.advocate_pro} from ₹2,499/month, plus 18% GST. Annual plans include 2 months free.`}
+        title="LitigaForge AI Plans — Free, Advocate Pro & Chamber"
+        description="Compare Free, Advocate Pro (₹999/month), and Chamber (₹2,499/month) plans for legal tools and advocate practice management."
         canonical="/subscription"
-        keywords="litigaforge pricing, legal ai plans, lawyer matching subscription, legal ai free, professional legal help india"
+        keywords="litigaforge pricing, legal ai plans, advocate tools, legal ai free, advocate legal practice India"
       />
     <PageShell title="Subscription Plans" subtitle="Choose the plan that fits your practice. Upgrade or downgrade anytime." icon={<Crown className="w-6 h-6 text-primary" />}>
       <div className="space-y-10">

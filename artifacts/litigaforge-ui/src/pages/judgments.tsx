@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
+import { loadAuthorityTrackerData, type AuthorityAlert, type AuthorityMonitor } from "@/lib/authority-tracker";
 import {
   BookOpen, Search, Loader2, ExternalLink, ChevronDown, Scale,
   Gavel, ArrowRight, CalendarDays, Landmark, Zap,
@@ -73,22 +74,6 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
-interface AuthorityMonitor {
-  id: number;
-  query?: string;
-  citation?: string;
-  last_checked_at?: string | null;
-}
-
-interface AuthorityAlert {
-  id: number;
-  case_name: string;
-  citation: string;
-  source_url: string;
-  source_name?: string;
-  created_at: string;
-}
-
 function AuthorityTrackerPanel() {
   const [searches, setSearches] = useState<AuthorityMonitor[]>([]);
   const [watches, setWatches] = useState<AuthorityMonitor[]>([]);
@@ -100,28 +85,12 @@ function AuthorityTrackerPanel() {
   const [message, setMessage] = useState("");
 
   async function reload() {
-    const [searchRes, watchRes, alertRes, referenceRes] = await Promise.all([
-      apiFetch("/authorities/saved-searches"),
-      apiFetch("/authorities/citation-watches"),
-      apiFetch("/authorities/alerts"),
-      apiFetch("/authorities"),
-    ]);
-    if (!searchRes.ok && !watchRes.ok && !alertRes.ok && !referenceRes.ok) {
-      throw new Error("Authority research tools could not be loaded.");
-    }
-    const read = async (response: Response) => response.ok
-      ? response.json().catch(() => null)
-      : null;
-    const [searchData, watchData, alertData, referenceData] = await Promise.all([
-      read(searchRes), read(watchRes), read(alertRes), read(referenceRes),
-    ]);
-    setSearches(searchData?.searches ?? []);
-    setWatches(watchData?.watches ?? []);
-    setAlerts(alertData?.alerts ?? []);
-    const authorities = Array.isArray(referenceData?.authorities)
-      ? referenceData.authorities
-      : Array.isArray(referenceData) ? referenceData : [];
-    setReferenceCount(authorities.length);
+    const data = await loadAuthorityTrackerData();
+    setSearches(data.searches);
+    setWatches(data.watches);
+    setAlerts(data.alerts);
+    setReferenceCount(data.referenceCount);
+    setMessage(data.error ?? "");
   }
 
   useEffect(() => {
@@ -142,19 +111,16 @@ function AuthorityTrackerPanel() {
     }
   }
 
-  async function post(path: string, body?: unknown) {
-    const res = await apiFetch(path, {
+  async function post(path: string, body?: unknown): Promise<{ new_count?: number }> {
+    return apiFetch<{ new_count?: number }>(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (!res.ok) throw new Error("Could not save or check this authority monitor.");
-    return res.json().catch(() => ({}));
   }
 
   async function remove(path: string) {
-    const res = await apiFetch(path, { method: "DELETE" });
-    if (!res.ok) throw new Error("Could not remove this monitor.");
+    await apiFetch<unknown>(path, { method: "DELETE" });
   }
 
   return (
@@ -219,8 +185,7 @@ function AuthorityTrackerPanel() {
             {alert.source_name === "Indian Kanoon" && <span className="ml-1 text-muted-foreground">(Indian Kanoon)</span>}
           </a>
           <button disabled={busy} onClick={() => void run(async () => {
-            const res = await apiFetch(`/authorities/alerts/${alert.id}/read`, { method: "PATCH" });
-            if (!res.ok) throw new Error("Could not mark this alert as read.");
+            await apiFetch<unknown>(`/authorities/alerts/${alert.id}/read`, { method: "PATCH" });
           })} className="text-muted-foreground hover:text-foreground">Read</button>
         </div>)}
       </div>}

@@ -293,7 +293,7 @@ export function ConnectCasePost() {
       if (files.some((item) => item.uploading || !item.objectPath)) {
         throw new Error("Wait for every selected file to finish uploading, or remove files that could not be uploaded.");
       }
-      return await apiFetch("/connect-v2/cases", {
+      return apiFetch<{ case: ConnectCase }>("/connect-v2/cases", {
         method: "POST",
         body: {
         problem_type: problemType,
@@ -308,7 +308,7 @@ export function ConnectCasePost() {
           voice_language: voiceLanguage,
         } : {}),
         },
-      }) as Promise<{ case: ConnectCase }>;
+      });
     },
     onSuccess: (result) => setLocation(`/my-cases/${result.case.id}`),
     onError: (failure: Error) => setError(failure.message || "Your case could not be posted. Please try again."),

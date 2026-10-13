@@ -29,7 +29,7 @@ export async function _tryRefresh(): Promise<boolean> {
 
 type ApiFetchInit = Omit<RequestInit, "body"> & { body?: object | BodyInit | null };
 
-export async function apiFetch(path: string, init?: ApiFetchInit) {
+export async function apiFetch<T = any>(path: string, init?: ApiFetchInit): Promise<T> {
   const rawBody = (init as any)?.body;
   const isPlainObject =
     rawBody !== undefined &&
@@ -65,17 +65,17 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
       if (!retry.ok) {
         if (retry.status === 401 && !PUBLIC_PATH.test(path)) {
           window.location.href = "/login";
-          return;
+          throw new ApiRequestError("Your session has expired. Please sign in again.", retry.status);
         }
         const detail = await _extractError(retry);
         throw new ApiRequestError(detail || `API error ${retry.status}`, retry.status);
       }
-      return retry.json();
+      return await retry.json() as T;
     }
     // Refresh failed — redirect only when the requested route requires auth.
     if (!PUBLIC_PATH.test(path)) {
       window.location.href = "/login";
-      return;
+      throw new ApiRequestError("Your session has expired. Please sign in again.", res.status);
     }
   }
 
@@ -84,7 +84,7 @@ export async function apiFetch(path: string, init?: ApiFetchInit) {
     throw new ApiRequestError(detail || `API error ${res.status}`, res.status);
   }
 
-  return res.json();
+  return await res.json() as T;
 }
 
 export type LongJobStatus<TResult> = {

@@ -18,6 +18,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { PublicPageFrame } from "@/components/public-site-header";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useConnectFlags } from "@/hooks/use-connect-v2";
+import { portalForRoute } from "@/lib/active-portal";
 import {
   getAppBase,
   getCountryFromPath,
@@ -483,6 +484,19 @@ function Analytics() {
   return null;
 }
 
+function RoutePortalSync() {
+  const [location] = useLocation();
+  const { user, activePortal, setActivePortal } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    const routePortal = portalForRoute(location, !!user.has_lawyer_profile);
+    if (routePortal && routePortal !== activePortal) setActivePortal(routePortal);
+  }, [location, user, activePortal, setActivePortal]);
+
+  return null;
+}
+
 function FirstVisitDisclaimer() {
   const [show, setShow] = useState(false);
 
@@ -543,6 +557,7 @@ function App() {
                   <KeyboardShortcuts />
                   <GlobalCommandPalette />
                   <Analytics />
+                  <RoutePortalSync />
                   <InstallPrompt />
                   {/* <FirstVisitDisclaimer /> */}
                   <Router />

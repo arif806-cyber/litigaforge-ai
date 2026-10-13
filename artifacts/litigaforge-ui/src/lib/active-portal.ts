@@ -29,3 +29,19 @@ export function postAuthDestination(
 export function clientNavigationActive(portal: ActivePortal, _path: string): boolean {
   return portal === "client";
 }
+
+function matchesRoute(path: string, route: string): boolean {
+  return path === route || path.startsWith(`${route}/`);
+}
+
+export function portalForRoute(path: string, hasAdvocateProfile: boolean): ActivePortal | null {
+  const pathname = path.split(/[?#]/, 1)[0].replace(/\/+$/, "") || "/";
+  const clientRoutes = ["/client-dashboard", "/post-case", "/my-cases", "/documents"];
+  if (clientRoutes.some((route) => matchesRoute(pathname, route))) return "client";
+
+  const advocateRoutes = ["/lawyer-dashboard", "/advocate-dashboard", "/advocate/cases", "/requests"];
+  if (hasAdvocateProfile && advocateRoutes.some((route) => matchesRoute(pathname, route))) {
+    return "advocate";
+  }
+  return null;
+}

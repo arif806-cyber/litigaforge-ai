@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { resolve } from "node:path";
 import { subscriptionPlanCopy } from "./subscriptionPlanCopy.ts";
@@ -60,4 +60,25 @@ test("subscription SEO uses the shared advocate plan names and prices", () => {
   );
   assert.match(uiMeta, /Advocate Pro/);
   assert.match(uiMeta, /Chamber/);
+});
+
+test("prerendered pricing metadata contains only the current plan names", () => {
+  const publicDir = resolve(root, "litigaforge-ui/dist/public");
+  const subscription = readFileSync(
+    resolve(publicDir, "subscription/index.html"),
+    "utf8",
+  );
+  assert.match(subscription, /<title>LitigaForge AI Plans — Free, Advocate Pro &amp; Chamber<\/title>/);
+  assert.match(subscription, /name="description" content="Compare Free, Advocate Pro \(₹999\/month\), and Chamber \(₹2,499\/month\)/);
+  assert.match(subscription, /property="og:description" content="Compare Free, Advocate Pro/);
+  assert.match(subscription, /name="twitter:description" content="Compare Free, Advocate Pro/);
+
+  const htmlFiles = (directory: string): string[] => readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => entry.isDirectory()
+      ? htmlFiles(resolve(directory, entry.name))
+      : entry.name.endsWith(".html") ? [resolve(directory, entry.name)] : []);
+  for (const file of htmlFiles(publicDir)) {
+    const html = readFileSync(file, "utf8");
+    assert.doesNotMatch(html, /Professional for unlimited AI|Compare plans: free legal tools/i, file);
+  }
 });

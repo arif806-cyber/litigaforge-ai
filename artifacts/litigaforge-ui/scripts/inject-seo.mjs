@@ -55,7 +55,7 @@ const ROUTES = {
   '/subscription': {
     title: 'LitigaForge AI Plans \u2014 Free, Advocate Pro &amp; Chamber',
     ogTitle: 'LitigaForge AI Pricing &amp; Plans',
-    desc: 'Compare Free, Advocate Pro ₹999/month, and Chamber ₹2,499/month plans for legal tools and advocate practice management.',
+    desc: 'Compare Free, Advocate Pro (₹999/month), and Chamber (₹2,499/month) plans for legal tools and advocate practice management.',
   },
   '/pricing': {
     title: 'Pricing | LitigaForge AI',
