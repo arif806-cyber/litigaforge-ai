@@ -3,7 +3,7 @@ python-multipart==0.0.20
 uvicorn[standard]==0.32.1
 pydantic==2.10.3
 python-dotenv==1.0.1
-setuptools==75.8.0
+setuptools<81
 requests==2.32.3
 langgraph==0.2.55
 langchain==0.3.13
@@ -30,6 +30,8 @@ Pillow==11.0.0
 litellm==1.89.1
 boto3==1.35.99
 fpdf2==2.8.3
+lxml==6.1.1
+replit.object_storage==1.0.2
 # opennyai + spacy: Indian legal NLP (statute extraction + NER).
 # opennyai 0.0.13 pulls spaCy transformer pipeline + BERT models (~500 MB);
 # llm/legal_nlp.py uses pure regex for statute extraction (equivalent accuracy,
