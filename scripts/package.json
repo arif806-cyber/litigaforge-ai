@@ -11,5 +11,9 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "tsx": "catalog:"
+  },
+  "dependencies": {
+    "stripe": "^23.0.0",
+    "stripe-replit-sync": "^1.0.0"
   }
 }

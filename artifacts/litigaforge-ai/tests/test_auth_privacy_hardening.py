@@ -376,7 +376,9 @@ async def test_apple_login_normalizes_email(monkeypatch):
         "name": "Person",
         "role": "client",
     })
+    profile_lookup = AsyncMock(return_value=None)
     monkeypatch.setattr(auth_router, "get_user_by_email", lookup)
+    monkeypatch.setattr(auth_router, "db_fetchrow", profile_lookup)
     monkeypatch.setattr(auth_router, "_issue_tokens", AsyncMock())
 
     await auth_router.apple_login(
@@ -385,6 +387,7 @@ async def test_apple_login_normalizes_email(monkeypatch):
         Response(),
     )
     lookup.assert_awaited_once_with("person@example.com")
+    profile_lookup.assert_awaited_once_with("SELECT id FROM lawyers WHERE user_id=$1", 9)
 
 
 def test_browser_auth_ignores_bearer_header():
