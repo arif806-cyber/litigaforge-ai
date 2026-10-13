@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { currentCnrErrorMessage, normalizeCnrRefreshState } from "@/lib/cnr-refresh-state";
 import { cn } from "@/lib/utils";
 import { MobileSearchbar } from "@/components/mobile-primitives";
+import { FeatureIcon } from "@/components/FeatureIcon";
 import { Link } from "wouter";
 
 const CASE_TYPES = [
@@ -582,9 +583,7 @@ export default function CnrTracker() {
             {!isLoading && !isError && cases.length === 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 className="rounded-2xl border border-dashed border-border bg-card p-10 flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <CalendarSearch className="w-8 h-8 text-primary" />
-                </div>
+                <FeatureIcon feature="cnrTracker" size="large" />
                 <div>
                   <p className="text-base font-bold text-foreground">No cases tracked yet</p>
                   <p className="text-sm text-muted-foreground mt-1 max-w-xs">

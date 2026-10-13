@@ -19,6 +19,8 @@ import { formatDate, caseTerms } from "@/lib/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import IncomingCaseFeed, { type CaseFeedItem } from "@/components/lawyer/IncomingCaseFeed";
 import { useToast, toast } from "@/hooks/use-toast";
+import { FeatureIcon } from "@/components/FeatureIcon";
+import { FEATURE_BY_HREF } from "@/lib/featureIcons";
 
 
 // ── Sidebar Nav ──────────────────────────────────────────────────────────────
@@ -84,6 +86,7 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
 
   const NavItem = ({ item }: { item: typeof lawyerPortalNav[0] & { badge?: string } }) => {
     const Icon = item.icon;
+    const feature = FEATURE_BY_HREF[item.href];
     const active = item.href === "/lawyer-dashboard"
       ? location === "/lawyer-dashboard"
       : location.startsWith(item.href);
@@ -96,7 +99,9 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
             : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
         )}
       >
-        <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary" : "text-sidebar-foreground/40")} />
+        {feature
+          ? <FeatureIcon feature={feature} size="small" />
+          : <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary" : "text-sidebar-foreground/40")} />}
         <span className="flex-1">{item.label}</span>
         {item.badge && (
           <span className={cn(
@@ -147,7 +152,7 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
           </div>
           <Link href="/settings" onClick={onNav}
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
-            <Shield className="w-3.5 h-3.5" /> Account &amp; Privacy
+            <FeatureIcon feature="accountPrivacy" size="small" /> Account &amp; Privacy
           </Link>
           <button onClick={handleLogout}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
@@ -680,13 +685,13 @@ export default function LawyerDashboard() {
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
               style={{ background: "#F5B754", color: "#0A0B10" }}
               data-testid="add-case-btn">
-              <Plus className="w-3.5 h-3.5" /> Add Case
+              <FeatureIcon feature="postCase" size="small" /> Add Case
             </button>
             <button onClick={() => { setActiveSection("documents"); setShowDocModal(true); }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all bg-card"
               style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}
               data-testid="upload-doc-btn">
-              <Upload className="w-3.5 h-3.5" /> Upload Doc
+              <FeatureIcon feature="documents" size="small" /> Upload Doc
             </button>
           </div>
         </div>
@@ -716,6 +721,21 @@ export default function LawyerDashboard() {
             );
           })}
         </div>
+
+        <section className="grid grid-cols-4 gap-2 lg:hidden" aria-label="Quick actions">
+          {[
+            { feature: "postCase" as const, label: "Add Case", action: () => { setActiveSection("cases"); setShowCaseModal(true); } },
+            { feature: "documents" as const, label: "Upload Doc", action: () => { setActiveSection("documents"); setShowDocModal(true); } },
+            { feature: "aiLegalDrafting" as const, label: "AI Drafting", action: () => setLocation("/legal-chat") },
+            { feature: "documentAnalyzer" as const, label: "Analyzer", action: () => setLocation("/review") },
+          ].map(item => (
+            <button key={item.feature} onClick={item.action} aria-label={item.label}
+              className="flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-card px-1 py-2 text-center active:scale-[0.98]">
+              <FeatureIcon feature={item.feature} size="large" />
+              <span className="w-full truncate text-[13px] font-medium text-foreground">{item.label}</span>
+            </button>
+          ))}
+        </section>
 
         {/* ── OVERVIEW ── */}
         {activeSection === "overview" && (
@@ -903,19 +923,16 @@ export default function LawyerDashboard() {
                   <p className="font-bold text-foreground text-sm mb-4">Quick Actions</p>
                   <div className="space-y-2">
                     {[
-                      { icon: Plus,       label: "Add Case",          sub: "Create a new case record",         action: () => { setActiveSection("cases"); setShowCaseModal(true); }, bg: "rgba(52,211,153,0.12)", color: "#34D399" },
-                      { icon: Upload,     label: "Upload Document",   sub: "Add docs to a case",               action: () => { setActiveSection("documents"); setShowDocModal(true); }, bg: "rgba(139,92,246,0.12)", color: "#8B5CF6" },
-                      { icon: Sparkles,   label: "AI Legal Chat",     sub: "Get instant legal insights",       action: () => setLocation("/legal-chat"), bg: "rgba(139,92,246,0.12)", color: "#4F46E5" },
-                      { icon: FileSearch, label: "Document Analyzer", sub: "Analyze contracts & FIRs",         action: () => setLocation("/review"), bg: "rgba(14,165,233,0.12)", color: "#38BDF8" },
+                      { feature: "postCase" as const, label: "Add Case", sub: "Create a new case record", action: () => { setActiveSection("cases"); setShowCaseModal(true); } },
+                      { feature: "documents" as const, label: "Upload Document", sub: "Add docs to a case", action: () => { setActiveSection("documents"); setShowDocModal(true); } },
+                      { feature: "aiLegalDrafting" as const, label: "AI Legal Chat", sub: "Get instant legal insights", action: () => setLocation("/legal-chat") },
+                      { feature: "documentAnalyzer" as const, label: "Document Analyzer", sub: "Analyze contracts & FIRs", action: () => setLocation("/review") },
                     ].map((item) => {
-                      const Icon = item.icon;
                       return (
                         <button key={item.label} onClick={item.action}
                           className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors text-left"
                           style={{ border: "1px solid hsl(var(--border))" }}>
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: item.bg }}>
-                            <Icon className="w-4 h-4" style={{ color: item.color }} />
-                          </div>
+                          <FeatureIcon feature={item.feature} size="medium" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-foreground leading-none">{item.label}</p>
                             <p className="text-[11px] text-muted-foreground/60 mt-0.5">{item.sub}</p>

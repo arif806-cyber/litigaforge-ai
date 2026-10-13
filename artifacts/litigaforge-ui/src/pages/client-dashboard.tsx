@@ -22,6 +22,7 @@ import CaseProgressRail from "@/components/CaseProgressRail";
 import { LawyerMatchCard } from "@/components/LawyerMatchCard";
 import { useLawyerPresence } from "@/hooks/useLawyerPresence";
 import { useToast } from "@/hooks/use-toast";
+import { FeatureIcon } from "@/components/FeatureIcon";
 
 interface MyRequirement {
   id: number; title: string; case_type: string; description: string;
@@ -242,10 +243,10 @@ export default function ClientDashboard() {
   const locale = localeFor(activeCode);
 
   const quickActions = [
-    { label: t.post_case,    icon: Plus,       iconColor: "text-amber-400",   iconBg: "bg-amber-500/20",   bgColor: "bg-amber-500/10 border-amber-500/25",   action: () => setLocation("/post-case") },
-    { label: t.doc_analyzer, icon: FileSearch, iconColor: "text-primary",  iconBg: "bg-primary/15",  bgColor: "bg-primary/10 border-primary/25", action: () => setLocation("/review") },
-    { label: t.legal_qa,     icon: Gavel,      iconColor: "text-emerald-400", iconBg: "bg-emerald-500/20", bgColor: "bg-emerald-500/10 border-emerald-500/25", action: () => setLocation("/ask") },
-    { label: t.free_aid,     icon: Heart,      iconColor: "text-rose-400",    iconBg: "bg-rose-500/20",    bgColor: "bg-rose-500/10 border-rose-500/25",    action: () => setLocation("/legal-aid") },
+    { label: t.post_case, feature: "postCase" as const, action: () => setLocation("/post-case") },
+    { label: t.doc_analyzer, feature: "documentAnalyzer" as const, action: () => setLocation("/review") },
+    { label: t.legal_qa, feature: "legalQa" as const, action: () => setLocation("/ask") },
+    { label: t.free_aid, feature: "freeLegalAid" as const, action: () => setLocation("/legal-aid") },
   ];
 
   const caseTabLabels: Record<string, string> = { active: "Active", pending: "Pending", closed: "Closed" };
@@ -380,14 +381,12 @@ export default function ClientDashboard() {
         {/* ── Quick Actions ────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {quickActions.map((a) => {
-            const Icon = a.icon;
             return (
               <motion.button key={a.label} onClick={a.action} whileTap={{ scale: 0.96 }}
-                className={`flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all text-center active:opacity-80 ${a.bgColor}`}>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${a.iconBg}`}>
-                  <Icon className={`w-6 h-6 ${a.iconColor}`} />
-                </div>
-                <span className={`text-xs font-semibold leading-snug ${a.iconColor}`}>{a.label}</span>
+                aria-label={a.label}
+                className="flex min-h-[100px] flex-col items-center gap-2 rounded-2xl border border-border bg-card p-3 text-center transition-all active:opacity-80">
+                <FeatureIcon feature={a.feature} size="large" />
+                <span className="line-clamp-1 w-full text-[13px] font-semibold leading-snug text-foreground">{a.label}</span>
               </motion.button>
             );
           })}

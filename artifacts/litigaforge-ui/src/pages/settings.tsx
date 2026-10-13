@@ -16,6 +16,7 @@ import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-conne
 import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
 import { canShowMcpConnector } from "@/lib/mcp-connector-visibility";
 import { GroupedList, GroupedRow } from "@/components/mobile-primitives";
+import { FeatureIcon } from "@/components/FeatureIcon";
 
 function scrollToSettingsSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -35,11 +36,11 @@ export default function AccountSettings() {
 
       <nav className="md:hidden" aria-label="Settings sections">
         <GroupedList label="Settings sections" title="Quick access">
-          <GroupedRow title="Profile" leading={<User />} onClick={() => scrollToSettingsSection("settings-profile")} accessory />
-          <GroupedRow title="Language" leading={<Languages />} onClick={() => scrollToSettingsSection("settings-language")} accessory />
-          {user?.lawyer_status && <GroupedRow title="Advocate profile" leading={<Shield />} onClick={() => scrollToSettingsSection("settings-advocate")} accessory />}
-          <GroupedRow title="Password" leading={<Lock />} onClick={() => scrollToSettingsSection("settings-password")} accessory />
-          <GroupedRow title="Privacy & data" leading={<Shield />} onClick={() => scrollToSettingsSection("settings-privacy")} accessory />
+          <GroupedRow title="Profile" leading={<FeatureIcon feature="accountPrivacy" size="small" />} trailing="Account" onClick={() => scrollToSettingsSection("settings-profile")} accessory />
+          <GroupedRow title="Language" leading={<FeatureIcon feature="settings" size="small" />} trailing="Preferences" onClick={() => scrollToSettingsSection("settings-language")} accessory />
+          {user?.lawyer_status && <GroupedRow title="Advocate profile" leading={<FeatureIcon feature="settings" size="small" />} trailing="Professional" onClick={() => scrollToSettingsSection("settings-advocate")} accessory />}
+          <GroupedRow title="Password" leading={<FeatureIcon feature="accountPrivacy" size="small" />} trailing="Security" onClick={() => scrollToSettingsSection("settings-password")} accessory />
+          <GroupedRow title="Privacy & data" leading={<FeatureIcon feature="accountPrivacy" size="small" />} trailing="Privacy" onClick={() => scrollToSettingsSection("settings-privacy")} accessory />
         </GroupedList>
       </nav>
       <div id="settings-profile" className="scroll-mt-6"><ProfileSection user={user} /></div>

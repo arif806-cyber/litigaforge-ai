@@ -14,6 +14,7 @@ import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { MobileSearchbar } from "@/components/mobile-primitives";
+import { FeatureIcon } from "@/components/FeatureIcon";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { JUDGMENTS_COPY } from "@/lib/country-copy";
@@ -359,7 +360,7 @@ export default function Judgments() {
 
           {!digest.isLoading && !digest.isError && digestItems.length === 0 && (
             <div className="text-center py-16 bg-card border border-border rounded-2xl">
-              <BookOpen className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+              <FeatureIcon feature="judgmentFinder" size="medium" className="mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">No judgments in this filter yet.</p>
             </div>
           )}
@@ -422,7 +423,7 @@ export default function Judgments() {
           <div className="flex items-center gap-3 pt-2">
             <div className="h-px flex-1 bg-border/60" />
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Search className="w-4 h-4" /> Search all case law with AI
+              <FeatureIcon feature="judgmentFinder" size="medium" /> Search all case law with AI
             </h2>
             <div className="h-px flex-1 bg-border/60" />
           </div>

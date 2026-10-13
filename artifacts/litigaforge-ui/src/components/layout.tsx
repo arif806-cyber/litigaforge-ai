@@ -23,6 +23,8 @@ import { useConnectFlags } from "@/hooks/use-connect-v2";
 import { connectV2Strings } from "@/i18n/connect-v2";
 import { clientNavigationActive } from "@/lib/active-portal";
 import { GroupedList, GroupedRow, NavBar, Sheet, TabBar } from "@/components/mobile-primitives";
+import { FeatureIcon } from "@/components/FeatureIcon";
+import { FEATURE_BY_HREF } from "@/lib/featureIcons";
 
 interface NavEntry {
   href: string;
@@ -133,6 +135,7 @@ function NavItem({
   href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string; highlight?: boolean; badge?: number;
 }) {
   const active = href === "/" ? location === "/" : location.startsWith(href);
+  const feature = FEATURE_BY_HREF[href];
   return (
     <Link
       href={href}
@@ -154,10 +157,12 @@ function NavItem({
             ? "font-bold hover:bg-secondary/10 active:bg-secondary/10"
             : "font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
       )}>
-      <Icon className={cn(
-        "w-4 h-4 flex-shrink-0",
-        active ? "text-sidebar-primary-foreground" : highlight ? "text-secondary" : "group-hover:text-sidebar-foreground"
-      )} />
+      {feature
+        ? <FeatureIcon feature={feature} size="small" />
+        : <Icon className={cn(
+            "w-4 h-4 flex-shrink-0",
+            active ? "text-sidebar-primary-foreground" : highlight ? "text-secondary" : "group-hover:text-sidebar-foreground"
+          )} />}
       <span className={cn("tracking-wide flex-1", highlight && !active ? "text-secondary" : "")}>{label}</span>
       {badge != null && badge > 0 && !active && (
         <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
@@ -209,7 +214,7 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
       <Link href="/settings" onClick={onNav}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}>
         <div className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-medium cursor-pointer text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground">
-          <Shield className="w-4 h-4" /> Account &amp; Privacy
+          <FeatureIcon feature="accountPrivacy" size="small" /> Account &amp; Privacy
         </div>
       </Link>
       <button onClick={handleLogout}
@@ -362,12 +367,24 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
 
   const extraNav: NavEntry[] = isLawyer
     ? [
+        { href: "/docket", label: "DocketView", icon: CalendarSearch },
+        { href: "/lawyer-dashboard/cases", label: "Cases & Hearings", icon: FileText },
+        { href: "/lawyer-dashboard/clients", label: "Clients", icon: Users },
         ...(connectFlags?.connect_v2 ? [{ href: "/advocate/cases", label: connectStrings.acceptedCases, icon: FileText }] : []),
         ...(connectFlags?.connect_v2 ? [] : [{ href: "/matches", label: "Client Requests", icon: Users, tKey: "client_requests" as const }]),
+        { href: "/lawyer-dashboard/earnings", label: "Earnings", icon: Briefcase },
         { href: "/review",       label: "Doc Analyzer",    icon: FileSearch, tKey: "doc_analyzer"  },
+        { href: "/messages", label: "Messages", icon: Inbox },
+        { href: "/settings", label: "Settings", icon: UserIcon },
         { href: "/subscription", label: "Profile & Plans", icon: Crown,      tKey: "profile_plans" },
       ]
     : [
+        { href: "/my-cases", label: "Cases & Hearings", icon: FileText },
+        { href: "/post-case", label: "Post a Case", icon: Plus },
+        { href: "/lawyers", label: "Find a Lawyer", icon: Users },
+        { href: "/messages", label: "Messages", icon: Inbox },
+        { href: "/settings", label: "Settings", icon: UserIcon },
+        { href: "/subscription", label: "Subscription / Plans", icon: Crown },
         { href: "/matches",   label: "Match Proposals", icon: Sparkles,  tKey: "match_proposals" },
         { href: "/documents", label: "Documents",        icon: FileCheck, tKey: "documents"       },
       ];
@@ -390,6 +407,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
     }] : []),
     { id: "more", label: "More", icon: <Menu aria-hidden="true" />, onSelect: openDrawer },
   ];
+  const moreItems = [...extraNav, ...commonNav].filter((item, index, all) => all.findIndex(candidate => candidate.href === item.href) === index);
   const selectedTab = msgsActive
     ? "messages"
     : primaryTabActive
@@ -402,26 +420,36 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
     <>
       <TabBar items={tabItems} value={selectedTab} label="Main navigation" className="lf-mobile-bottom-nav md:hidden" />
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen} title="More" size="medium">
-        <GroupedList label="More tools">
-          {[...extraNav, ...commonNav].map(({ href, icon: Icon, label }) => (
-            <GroupedRow
-              key={href}
-              title={label}
-              leading={<Icon />}
-              href={href}
-              accessory
-              testId={`more-${label.toLowerCase().replace(/\s+/g, "-")}`}
-            />
-          ))}
-        </GroupedList>
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen} title="More" size="large">
+        <nav aria-label="More tools" className="grid grid-cols-4 gap-x-2 gap-y-3 px-1 pb-4">
+          {moreItems.map(({ href, icon: Icon, label }) => {
+            const feature = FEATURE_BY_HREF[href];
+            return (
+              <Link key={href} href={href}
+                data-testid={`more-${label.toLowerCase().replace(/\s+/g, "-")}`}
+                className="flex min-h-[88px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-xl px-1 py-1 text-center active:bg-muted/70">
+                {feature
+                  ? <FeatureIcon feature={feature} size="large" />
+                  : <span className="flex h-[60px] w-[60px] items-center justify-center rounded-[22.5%] bg-slate-600"><Icon className="h-9 w-9 text-white" strokeWidth={2} /></span>}
+                <span className="w-full truncate text-[13px] leading-4 text-foreground">{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
         {user?.is_superuser && (
           <GroupedList title="Admin" label="Admin tools">
-            <GroupedRow title="Admin panel" leading={<Shield />} href="/admin" accessory />
-            <GroupedRow title="ForgeOS" leading={<Cpu />} href="/forgeos" accessory />
+            <GroupedRow title="Admin panel" leading={<FeatureIcon feature="admin" size="small" />} href="/admin" accessory />
+            <GroupedRow title="ForgeOS" leading={<FeatureIcon feature="forgeOs" size="small" />} href="/forgeos" accessory />
           </GroupedList>
         )}
         <GroupedList label="Account">
+          <GroupedRow
+            title="Account & Privacy"
+            leading={<FeatureIcon feature="accountPrivacy" size="small" />}
+            href="/settings"
+            accessory
+            testId="more-account-privacy"
+          />
           <GroupedRow
             title="Sign out"
             leading={<LogOut />}
