@@ -70,6 +70,8 @@ FORGEOS_MAX_TOKENS_PER_MISSION = "1000"
 FORGEOS_ENABLED = "true"
 CONNECT_V2_ENABLED = "true"
 MULTILANG_ENABLED = "true"
+CALENDAR_SYNC_ENABLED = "true"
+IK_ENABLED = "true"
 
 [nix]
 channel = "stable-25_05"
