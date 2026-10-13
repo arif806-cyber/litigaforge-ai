@@ -24,6 +24,11 @@ def retrieved_authority_block(judgments: list[dict]) -> str:
             text = str(paragraph.get("text") or "").strip()
             if text:
                 lines.append(f"   [{label}] {text[:1600]}")
+        if not paragraphs:
+            full_text = str(item.get("full_text") or "").strip()
+            fallback = full_text or str(item.get("summary_en") or "").strip()
+            if fallback:
+                lines.append(f"   [verified judgment text] {fallback[:5000]}")
     if len(lines) == 1:
         return retrieved_authority_block([])
     lines.append("Do not cite any judgment outside this retrieved list.")

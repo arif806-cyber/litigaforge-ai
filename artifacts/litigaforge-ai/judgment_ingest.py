@@ -583,7 +583,7 @@ def _new_stats() -> dict:
     return {
         "status": "pending", "source_configured": False, "fetched": 0,
         "inserted": 0, "skipped_existing": 0, "skipped_out_of_scope": 0,
-        "skipped_no_summary": 0, "queries": [],
+        "skipped_no_summary": 0, "queries": [], "all_queries_complete": False,
     }
 
 
@@ -607,8 +607,11 @@ async def _do_run(
         return
 
     remaining = max_docs
-    for label, form_input in (queries or _queries()):
+    query_list = queries or _queries()
+    all_queries_complete = True
+    for label, form_input in query_list:
         if remaining <= 0:
+            all_queries_complete = False
             break
         qstat = {"query": label, "found": 0, "inserted": 0}
         try:
@@ -630,10 +633,14 @@ async def _do_run(
         qstat["found"] = len(docs)
         qstat["cache_hit"] = cache_hit
         stats["fetched"] += len(docs)
-        for d in docs:
+        for doc_index, d in enumerate(docs):
             if remaining <= 0:
+                if doc_index < len(docs):
+                    all_queries_complete = False
                 break
             if per_query_max is not None and qstat["inserted"] >= per_query_max:
+                if doc_index < len(docs):
+                    all_queries_complete = False
                 break
             tid = d.get("tid")
             if tid is None:
@@ -708,6 +715,22 @@ async def _do_run(
             else:
                 stats["skipped_existing"] += 1
         stats["queries"].append(qstat)
+    stats["all_queries_complete"] = (
+        all_queries_complete and len(stats["queries"]) == len(query_list)
+    )
+
+
+async def _persist_ingest_success(pool, stats: dict, completed_date: date) -> bool:
+    """Advance the date watermark only after every query and result batch completed."""
+    if not stats.get("all_queries_complete"):
+        return False
+    async with pool.acquire() as state_conn:
+        await state_conn.execute(
+            """INSERT INTO ik_ingest_state(id,last_successful_date) VALUES(1,$1)
+               ON CONFLICT(id) DO UPDATE SET last_successful_date=EXCLUDED.last_successful_date""",
+            completed_date,
+        )
+    return True
 
 
 async def run_ingestion(
@@ -751,13 +774,11 @@ async def run_ingestion(
             )
             try:
                 await _do_run(stats, cap, queries=queries, per_query_max=per_query_max)
-                async with pool.acquire() as state_conn:
-                    await state_conn.execute(
-                        """INSERT INTO ik_ingest_state(id,last_successful_date) VALUES(1,$1)
-                           ON CONFLICT(id) DO UPDATE SET last_successful_date=EXCLUDED.last_successful_date""",
-                        datetime.now(timezone.utc).date(),
+                if stats["status"] != "already_current":
+                    saved = await _persist_ingest_success(
+                        pool, stats, datetime.now(timezone.utc).date()
                     )
-                stats["status"] = "ok"
+                    stats["status"] = "ok" if saved else "partial"
             except Exception as exc:
                 from case_law_search import IKDailyCostCapExceeded
                 if not isinstance(exc, IKDailyCostCapExceeded):

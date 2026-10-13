@@ -3,6 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import judgment_ingest
 from judgment_ingest import _build_summary_prompt, _html_to_text, _valid_summary
 
 
@@ -38,3 +39,15 @@ def test_text_extraction_can_verify_and_store_long_source_separately():
     extracted = _html_to_text(text, cap=None)
     assert len(extracted) > 200
     assert _html_to_text(text, cap=100) == extracted[:100]
+
+
+def test_partial_ingestion_does_not_advance_success_date():
+    class Pool:
+        def acquire(self):
+            raise AssertionError("state table must not be updated for an incomplete run")
+
+    import asyncio
+    saved = asyncio.run(judgment_ingest._persist_ingest_success(
+        Pool(), {"all_queries_complete": False}, __import__("datetime").date(2026, 10, 13)
+    ))
+    assert saved is False

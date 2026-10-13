@@ -51,6 +51,35 @@ def _ik_cache_week(day):
     anchor = datetime(1970, 1, 5, tzinfo=timezone.utc).date()
     return day - timedelta(days=(day - anchor).days % 7)
 
+
+_HEARING_TOPIC_TERMS = {
+    "appeal", "arbitration", "bail", "bankruptcy", "cheque", "civil", "constitutional",
+    "contract", "consumer", "criminal", "custody", "damages", "defamation", "divorce",
+    "domestic", "eviction", "family", "fraud", "injunction", "insolvency", "labour",
+    "landlord", "maintenance", "motor", "negligence", "property", "rent", "service",
+    "tenant", "termination", "tort", "writ",
+}
+
+
+def _safe_hearing_topic(value: str) -> str:
+    """Keep only generic legal topic keywords; never forward case facts."""
+    words = _re.findall(r"[a-z]+", (value or "").casefold())
+    return " ".join(dict.fromkeys(word for word in words if word in _HEARING_TOPIC_TERMS))[:80]
+
+
+def _hearing_search_params(judge: str, bench: str, topic: str, cache_date):
+    """Construct the only case-specific fields allowed in a hearing-prep search."""
+    return {
+        "formInput": _safe_hearing_topic(topic) or "judgment",
+        "author": judge[:120],
+        "bench": bench[:160],
+        "doctypes": "telangana,andhra",
+        "fromdate": (cache_date - timedelta(days=365 * 7)).strftime("%-d-%-m-%Y"),
+        "todate": cache_date.strftime("%-d-%-m-%Y"),
+        "maxpages": "2",
+    }
+
+
 @router.post("/workspace/demo/reset")
 async def reset_demo_workspace(request: Request, user=Depends(require_user)):
     """Restore only the explicitly tagged fictional fixture for a demo account."""
@@ -599,15 +628,8 @@ async def hearing_prep_judge_view(
         raise HTTPException(422, "A judge name is required")
     today = datetime.now(timezone.utc).date()
     cache_date = _ik_cache_week(today)
-    params = {
-        "formInput": topic or "judgment",
-        "author": judge,
-        "bench": bench,
-        "doctypes": "andhra",
-        "fromdate": (cache_date - timedelta(days=365 * 7)).strftime("%-d-%-m-%Y"),
-        "todate": cache_date.strftime("%-d-%-m-%Y"),
-        "maxpages": "2",
-    }
+    params = _hearing_search_params(judge, bench, topic, cache_date)
+    topic = params["formInput"]
     pool = await get_pool()
     async with pool.acquire() as conn:
         result, _ = await ik_cached_search(
@@ -1115,15 +1137,12 @@ async def _stream_analysis(
                 cache_date = _ik_cache_week(today)
                 judge = judge_match.group(1).strip()
                 bench = bench_match.group(1).strip() if bench_match else ""
-                params = {
-                    "formInput": (context or case_description or "judgment")[:180],
-                    "author": judge[:120],
-                    "bench": bench[:160],
-                    "doctypes": "andhra",
-                    "fromdate": (cache_date - timedelta(days=365 * 7)).strftime("%-d-%-m-%Y"),
-                    "todate": cache_date.strftime("%-d-%-m-%Y"),
-                    "maxpages": "2",
-                }
+                topic_match = _re.search(
+                    r"(?im)^(?:topic|case[- ]type|matter[- ]type)\s*[:=-]\s*([^\n;]{2,160})$",
+                    case_description or "",
+                )
+                topic = topic_match.group(1) if topic_match else ""
+                params = _hearing_search_params(judge, bench, topic, cache_date)
                 pool = await get_pool()
                 async with pool.acquire() as conn:
                     result, _ = await ik_cached_search(

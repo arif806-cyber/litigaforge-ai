@@ -85,16 +85,41 @@ async def _check_citation_watch(conn, user_id: int, monitor_id: int, citation: s
             "UPDATE citation_watches SET last_checked_at=NOW() WHERE id=$1 AND user_id=$2",
             monitor_id, user_id,
         )
-        return {"new_count": 0, "new_alerts": [], "status": "not_in_local_index"}
-    document = await get_ik_document(conn, tid_match.group(1), feature="citation_watch")
-    citing = document.get("citedbyList") or document.get("citedby") or []
+        return {
+            "new_count": 0, "new_alerts": [], "status": "not_in_local_index",
+            "message": "This citation is not linked to an Indian Kanoon document in the local index.",
+        }
+    document = await get_ik_document(
+        conn, tid_match.group(1), feature="citation_watch"
+    )
+    citing_payload = document.get("citedbyList")
+    if citing_payload is None:
+        citing_payload = document.get("citedby")
+    citing = citing_payload if isinstance(citing_payload, list) else []
     new_alerts = []
     for later in citing[:50] if isinstance(citing, list) else []:
-        treatment = str(later.get("treatment") or later.get("treatments") or "").casefold()
-        if not any(term in treatment for term in (
-            "negative", "overruled", "overturned", "disapproved", "distinguished", "not followed",
-        )):
+        if not isinstance(later, dict):
             continue
+        treatment_values = []
+
+        def collect_treatment(value, key=""):
+            if "treat" in key.casefold():
+                if isinstance(value, (str, int, float)):
+                    treatment_values.append(str(value))
+                elif isinstance(value, (dict, list)):
+                    children = value.values() if isinstance(value, dict) else value
+                    for child in children:
+                        collect_treatment(child, key)
+            elif isinstance(value, dict):
+                for child_key, child in value.items():
+                    collect_treatment(child, str(child_key))
+
+        collect_treatment(later)
+        treatment = " ".join(treatment_values).casefold()
+        negative_treatment = any(term in treatment for term in (
+            "negative treatment", "overruled", "overturned", "disapproved",
+            "not followed", "reversed",
+        ))
         tid = str(later.get("tid") or later.get("docid") or "")
         title = str(later.get("title") or later.get("case_name") or "").strip()[:500]
         if not title or not tid.isdigit():
@@ -102,7 +127,8 @@ async def _check_citation_watch(conn, user_id: int, monitor_id: int, citation: s
         court = str(later.get("docsource") or later.get("court") or "Court").strip()[:160]
         date = str(later.get("publishdate") or later.get("date") or "").strip()[:40]
         url = f"https://indiankanoon.org/doc/{tid}/"
-        label = f"Negative treatment — {court}" + (f", {date}" if date else "")
+        prefix = "Negative treatment" if negative_treatment else "Newly cited by"
+        label = f"{prefix} — {court}" + (f", {date}" if date else "")
         key = hashlib.sha256(f"{user_id}|citation_watch|{monitor_id}|{url}".encode()).hexdigest()
         inserted = await conn.fetchrow(
             """INSERT INTO authority_alerts
@@ -118,7 +144,19 @@ async def _check_citation_watch(conn, user_id: int, monitor_id: int, citation: s
         "UPDATE citation_watches SET last_checked_at=NOW() WHERE id=$1 AND user_id=$2",
         monitor_id, user_id,
     )
-    return {"new_count": len(new_alerts), "new_alerts": new_alerts, "source": "Indian Kanoon"}
+    if new_alerts:
+        status = "alerts_created"
+        message = f"{len(new_alerts)} new citing judgment(s) found."
+    elif citing_payload is None:
+        status = "citedby_unavailable"
+        message = "The returned Indian Kanoon document did not include a cited-by list, so no citing entries could be created."
+    else:
+        status = "no_new_citing_judgments"
+        message = "No new citing judgments were returned by Indian Kanoon."
+    return {
+        "new_count": len(new_alerts), "new_alerts": new_alerts,
+        "source": "Indian Kanoon", "status": status, "message": message,
+    }
 
 
 @router.get("/authorities")

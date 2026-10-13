@@ -139,9 +139,14 @@ async def _ik_call(conn, path: str, data: dict | None = None, *, feature: str = 
 
 
 _PARAGRAPH_LABELS = {
-    "facts", "issue", "issues", "petitioner's arguments", "petitioners arguments",
-    "respondent's arguments", "respondents arguments", "section", "precedent",
-    "court's reasoning", "courts reasoning", "reasoning", "conclusion",
+    "facts": "facts",
+    "issue": "issue",
+    "petarg": "petitioner's arguments",
+    "resparg": "respondent's arguments",
+    "section": "section",
+    "precedent": "precedent",
+    "cdiscource": "court's reasoning",
+    "conclusion": "conclusion",
 }
 
 
@@ -154,16 +159,12 @@ def parse_ik_paragraphs(document_html: str) -> list[dict[str, str]]:
         return []
     blocks = []
     for element in root.iter():
-        raw_label = " ".join(str(element.get(key) or "") for key in
-                             ("data-label", "data-section", "data-structure", "class", "id"))
-        label = re.sub(r"[_-]+", " ", raw_label).strip().lower()
-        label = re.sub(r"\s+", " ", label)
-        matched = "court's reasoning" if "court" in label and "reasoning" in label else \
-            next((known for known in _PARAGRAPH_LABELS if known in label), None)
+        raw_label = str(element.get("data-structure") or "").strip().casefold()
+        matched = _PARAGRAPH_LABELS.get(raw_label)
         if not matched:
             continue
         text = " ".join(" ".join(element.itertext()).split())
-        text = re.sub(r"^(facts|issues?|petitioners?['’]?s? arguments|respondents?['’]?s? arguments|section|precedent|court.?s reasoning|conclusion)\s*:?\s*", "", text, flags=re.I)
+        text = re.sub(r"^(facts|issue|petarg|resparg|section|precedent|cdiscource|conclusion)\s*:?\s*", "", text, flags=re.I)
         if text:
             blocks.append({"label": matched, "text": html.unescape(text)[:12000]})
     # Avoid nested duplicate captures while preserving paragraph-level text.
@@ -178,7 +179,7 @@ def parse_ik_paragraphs(document_html: str) -> list[dict[str, str]]:
 
 
 async def get_ik_document(conn, tid: str, *, feature: str = "document") -> dict:
-    """Get one official document with cited-by/cites lists; never fetch a cached tid twice."""
+    """Get an official document; citation watches refresh cached records weekly."""
     if not _ik_enabled():
         raise RuntimeError("Indian Kanoon integration is disabled")
     tid = re.sub(r"[^0-9]", "", str(tid))[:40]
@@ -188,11 +189,16 @@ async def get_ik_document(conn, tid: str, *, feature: str = "document") -> dict:
     await conn.execute("SELECT pg_advisory_lock($1)", lock_key)
     try:
         cached = await conn.fetchrow(
-            "SELECT document_json FROM ik_document_cache WHERE doc_id=$1", tid
+            "SELECT document_json,fetched_at FROM ik_document_cache WHERE doc_id=$1", tid
         )
         if cached and cached.get("document_json"):
-            value = cached["document_json"]
-            return json.loads(value) if isinstance(value, str) else dict(value)
+            fetched_at = cached.get("fetched_at")
+            stale_watch = feature == "citation_watch" and (
+                not fetched_at or datetime.now(timezone.utc) - fetched_at >= timedelta(days=7)
+            )
+            if not stale_watch:
+                value = cached["document_json"]
+                return json.loads(value) if isinstance(value, str) else dict(value)
         data = await _ik_call(
             conn, f"/doc/{tid}/", {"maxcites": "50", "maxcitedby": "50"}, feature=feature
         )
@@ -200,7 +206,8 @@ async def get_ik_document(conn, tid: str, *, feature: str = "document") -> dict:
         await conn.execute(
             """INSERT INTO ik_document_cache(doc_id,document_json,metadata_json)
                VALUES($1,$2::jsonb,$3::jsonb)
-               ON CONFLICT(doc_id) DO NOTHING""",
+               ON CONFLICT(doc_id) DO UPDATE SET document_json=EXCLUDED.document_json,
+                 metadata_json=EXCLUDED.metadata_json,fetched_at=NOW()""",
             tid, json.dumps(data), json.dumps({"paragraphs": data["_paragraphs"]}),
         )
         return data
@@ -261,7 +268,7 @@ async def add_ik_grounding(conn, judgments: list[dict], *, feature: str) -> list
             try:
                 document = await get_ik_document(conn, tid, feature=feature)
                 paragraphs = document.get("_paragraphs") or parse_ik_paragraphs(str(document.get("doc") or ""))
-                preferred = [p for p in paragraphs if p["label"] in {"court's reasoning", "courts reasoning", "reasoning", "conclusion"}]
+                preferred = [p for p in paragraphs if p["label"] in {"court's reasoning", "conclusion"}]
                 selected = preferred
                 if selected:
                     item["grounding_paragraphs"] = selected[:8]
