@@ -297,6 +297,54 @@
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .cfos-scan::after { animation: none !important; opacity: 0; }
 }
+@media (max-width: 767px) {
+  html, body, #root { max-width: 100%; overflow-x: clip; }
+  body { font-size: 15px; }
+  body :is(button, [role="button"], input, select, textarea) { min-height: 44px; }
+  body :is(input, select, textarea) { font-size: 16px; }
+  .lf-dialog-content[role="dialog"][data-state="open"] {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 100 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+  .lf-dialog-content[role="dialog"][data-state="open"] > button:first-child {
+    position: sticky !important;
+    top: 0 !important;
+    align-self: flex-end;
+    z-index: 2;
+    min-width: 44px;
+    min-height: 44px;
+    margin-bottom: -44px;
+  }
+  .lf-dialog-header { flex: 0 0 auto; text-align: left !important; }
+  .lf-dialog-footer {
+    position: sticky;
+    bottom: calc(-1 * env(safe-area-inset-bottom));
+    z-index: 2;
+    flex: 0 0 auto;
+    margin-top: auto;
+    padding-top: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+  }
+  body:has(.lf-dialog-content[role="dialog"][data-state="open"]) .lf-mobile-bottom-nav,
+  body:has([data-mobile-sheet="true"]) .lf-mobile-bottom-nav { display: none !important; }
+  [data-practice-chip="true"] { position: relative; min-height: 36px !important; }
+  [data-practice-chip="true"]::before { content: ""; position: absolute; inset: -4px 0; }
+}
 @container (max-width: 520px) {
   .container-responsive { padding-inline: 1rem; }
 }

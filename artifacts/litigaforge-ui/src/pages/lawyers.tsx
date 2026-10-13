@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { getCountryFromPath } from "@/lib/country";
 import { useAuth, safeAuthNext } from "@/lib/auth-context";
 import { useCountry } from "@/hooks/useCountry";
 import { LAWYERS_COPY } from "@/lib/country-copy";
-import { Users, Phone, Mail, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle, Globe2 } from "lucide-react";
+import { Users, Phone, Mail, BadgeCheck, Search, Plus, X, Loader2, ChevronDown, MapPin, Briefcase, AlertTriangle, Globe2, Check, MailCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SEOHelmet } from "@/components/SEOHelmet";
@@ -106,6 +107,14 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
     country: countryCode.toLowerCase(),
   });
   const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState(1);
+  const [verificationMessage, setVerificationMessage] = useState("");
+
+  const resendVerification = useMutation({
+    mutationFn: () => apiFetch("/auth/resend-verification", { method: "POST" }),
+    onSuccess: (result: { message?: string }) => setVerificationMessage(result?.message ?? "Verification email sent."),
+    onError: (error: Error) => setVerificationMessage(error.message || "Could not resend the verification email."),
+  });
 
   const register = useMutation({
     mutationFn: (data: typeof form) =>
@@ -133,15 +142,15 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
         : [...f.practice_areas, area],
     }));
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div data-mobile-sheet="true" className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-0 sm:p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 20 }}
-        className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+        className="bg-card rounded-none sm:rounded-2xl border border-border shadow-2xl w-full max-w-2xl h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col"
       >
-        <div className="flex items-center justify-between px-8 py-6 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 sm:px-8 sm:py-6 border-b border-border pt-[max(.75rem,env(safe-area-inset-top))]">
           <div>
             <h3 className="text-xl font-bold text-foreground tracking-tight">Register as Advocate</h3>
             <p className="text-sm text-muted-foreground mt-1 font-medium">Join the LitigaForge directory — {dir.name}</p>
@@ -162,10 +171,50 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
             </p>
             <Button onClick={onClose} size="lg" className="px-8">Close</Button>
           </div>
+        ) : !user?.email_verified ? (
+          <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8" data-testid="advocate-email-verification">
+            <div className="mx-auto max-w-md py-4 text-center">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <MailCheck className="h-8 w-8" aria-hidden="true" />
+              </div>
+              <h4 className="text-xl font-bold text-foreground">Verify your email first</h4>
+              <p className="mt-2 break-all text-sm text-muted-foreground">{user?.email}</p>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                We’ll confirm your email before you enter your advocate profile details.
+                Check your inbox and Spam/Junk folder for the verification link.
+              </p>
+              {verificationMessage && (
+                <p role="status" className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground">
+                  {verificationMessage}
+                </p>
+              )}
+              <div className="mt-6 flex flex-col gap-3">
+                <Button data-testid="button-resend-verification" onClick={() => resendVerification.mutate()} disabled={resendVerification.isPending} className="min-h-11 w-full">
+                  {resendVerification.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending…</> : "Resend verification email"}
+                </Button>
+                <Button data-testid="button-check-verification" variant="outline" onClick={() => refreshUser()} className="min-h-11 w-full">
+                  I’ve verified — check again
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-8 py-6">
+          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-8 sm:py-6">
+            <div className="mb-5 flex items-center gap-2" aria-label={`Step ${step} of 3`}>
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="flex flex-1 items-center gap-2">
+                  <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold", step >= item ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                    {step > item ? <Check className="h-4 w-4" /> : item}
+                  </div>
+                  <span className={cn("hidden text-xs font-medium sm:block", step === item ? "text-foreground" : "text-muted-foreground")}>
+                    {item === 1 ? "Contact" : item === 2 ? "Practice" : "Review"}
+                  </span>
+                  {item < 3 && <div className="h-px flex-1 bg-border" />}
+                </div>
+              ))}
+            </div>
             <form onSubmit={e => { e.preventDefault(); register.mutate(form); }} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {step === 1 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {[
                   { label: "Full Name", key: "name", placeholder: "Adv. Full Name", type: "text", required: true },
                   { label: "Phone Number", key: "phone", placeholder: "Phone number", type: "text", required: true },
@@ -186,9 +235,9 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
                     />
                   </div>
                 ))}
-              </div>
+              </div>}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {step === 2 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">Region *</label>
                   <div className="relative">
@@ -212,22 +261,24 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
                     className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
                   />
                 </div>
-              </div>
+              </div>}
 
-              <div className="bg-muted/30 p-6 rounded-2xl border border-border">
+              {step === 3 && <><div className="bg-muted/30 p-4 sm:p-6 rounded-2xl border border-border">
                 <label className="block text-sm font-semibold text-foreground mb-3">Practice Areas *</label>
                 <div className="flex flex-wrap gap-2">
                   {dir.practiceAreas.map(area => (
                     <button
                       key={area} type="button"
+                      aria-pressed={form.practice_areas.includes(area)}
+                      data-practice-chip="true"
                       onClick={() => toggleArea(area)}
                       className={cn(
-                        "text-sm font-medium px-4 py-2 rounded-full border transition-all",
+                        "min-h-9 text-[13px] font-medium px-3 py-1 rounded-full border transition-all",
                         form.practice_areas.includes(area)
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          ? "bg-primary/10 text-primary border-primary/35 shadow-sm"
                           : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
                       )}
-                    >{area}</button>
+                    >{form.practice_areas.includes(area) && <Check className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />}{area}</button>
                   ))}
                 </div>
               </div>
@@ -242,6 +293,7 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
                   className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm resize-none"
                 />
               </div>
+              </>}
 
               {register.isError && (
                 <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3">
@@ -253,20 +305,25 @@ function RegisterModal({ onClose, dir, countryCode }: { onClose: () => void; dir
           </div>
         )}
 
-        {!success && (
-          <div className="px-8 py-5 border-t border-border bg-muted/20 rounded-b-2xl flex justify-end gap-3">
-             <Button variant="outline" onClick={onClose}>Cancel</Button>
-             <Button
-                onClick={() => register.mutate(form)}
-                disabled={!form.name || !form.phone || form.practice_areas.length === 0 || register.isPending}
-                className="px-8"
-             >
-                {register.isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</> : "Submit Profile for Review"}
+        {!success && user?.email_verified && (
+          <div className="sticky bottom-0 px-4 py-3 sm:px-8 sm:py-5 border-t border-border bg-card flex items-center justify-between gap-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
+             <Button variant="outline" className="min-h-11" onClick={() => step === 1 ? onClose() : setStep(current => current - 1)}>
+               {step === 1 ? "Cancel" : "Back"}
              </Button>
+             {step < 3 ? (
+               <Button data-testid="button-registration-next" className="min-h-11 flex-1 sm:flex-none sm:px-8" onClick={() => setStep(current => current + 1)} disabled={step === 1 ? (!form.name || !form.phone) : false}>
+                 Continue
+               </Button>
+             ) : (
+               <Button data-testid="button-submit-advocate-profile" onClick={() => register.mutate(form)} disabled={!form.name || !form.phone || form.practice_areas.length === 0 || register.isPending} className="min-h-11 flex-1 sm:flex-none sm:px-8">
+                 {register.isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</> : "Submit Profile for Review"}
+               </Button>
+             )}
           </div>
         )}
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -281,7 +338,7 @@ export default function LawyersPage() {
   const [district, setDistrict] = useState(allRegions);
   const [practiceArea, setPracticeArea] = useState(allAreas);
   const [searchText, setSearchText] = useState("");
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [showRegister, setShowRegister] = useState(location.startsWith("/lawyers/register"));
 
   const { data, isLoading } = useQuery({
@@ -408,7 +465,10 @@ export default function LawyersPage() {
       </div>
 
       <AnimatePresence>
-        {showRegister && <RegisterModal onClose={() => setShowRegister(false)} dir={dir} countryCode={cc} />}
+        {showRegister && <RegisterModal onClose={() => {
+          setShowRegister(false);
+          if (location.startsWith("/lawyers/register")) setLocation("/lawyers");
+        }} dir={dir} countryCode={cc} />}
       </AnimatePresence>
     </PageShell>
   );

@@ -10,16 +10,16 @@ interface PageShellProps {
 
 export function PageShell({ title, subtitle, icon, children, action }: PageShellProps) {
   return (
-    <div className="space-y-6 px-4 md:px-6 py-5 max-w-7xl mx-auto">
+    <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-4 sm:space-y-6 sm:py-5 md:px-6">
       <div className="flex items-start justify-between gap-3 flex-wrap border-b border-border/60 pb-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="flex min-w-0 flex-wrap items-center gap-2 text-xl font-bold leading-tight text-foreground md:gap-3 md:text-2xl">
             {icon}
-            {title}
+            <span className="min-w-0 break-words">{title}</span>
           </h1>
           {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
-        {action && <div>{action}</div>}
+        {action && <div className="w-full md:w-auto [&_button]:w-full md:[&_button]:w-auto">{action}</div>}
       </div>
       {children}
     </div>

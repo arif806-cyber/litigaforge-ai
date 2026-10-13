@@ -68,6 +68,7 @@ export interface User {
   has_lawyer_profile?: boolean;
   created_at: string;
   is_verified?: boolean;
+  email_verified?: boolean;
   lawyer_status?: string | null;
   lawyer_rejection_reason?: string | null;
   username?: string | null;

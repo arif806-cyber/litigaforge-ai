@@ -349,7 +349,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   return (
     <>
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 h-[68px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-2 z-30"
+        className="lf-mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 h-[calc(68px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-2 z-30"
         style={{ boxShadow: "0 -1px 0 color-mix(in oklch, hsl(var(--foreground)) 8%, transparent), 0 -8px 32px color-mix(in oklch, hsl(var(--background)) 90%, transparent)" }}
       >
         {/* Left 2 primary tabs */}
@@ -592,7 +592,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom tab bar */}
-      {user && !isWorkspace && <BottomTabBar location={location} user={user} />}
+      {user && !isWorkspace && !["/lawyers/register", "/post-case", "/settings"].some(path => location === path || location.startsWith(`${path}/`)) && <BottomTabBar location={location} user={user} />}
     </div>
   );
 }
