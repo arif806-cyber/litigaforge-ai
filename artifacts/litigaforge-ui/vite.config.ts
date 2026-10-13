@@ -5,6 +5,7 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import compression from "vite-plugin-compression2";
 import { VitePWA } from "vite-plugin-pwa";
+import { execFileSync } from "node:child_process";
 
 const rawPort = process.env.PORT;
 
@@ -22,6 +23,8 @@ if (Number.isNaN(port) || port <= 0) {
 
 const basePath = process.env.BASE_PATH;
 const buildVersion = Date.now().toString(36);
+let gitCommit = process.env.GIT_COMMIT ?? "unknown";
+try { gitCommit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(); } catch {}
 
 if (!basePath) {
   throw new Error(
@@ -33,6 +36,8 @@ export default defineConfig({
   base: basePath,
   define: {
     __LITIGAFORGE_BUILD_VERSION__: JSON.stringify(buildVersion),
+    __LITIGAFORGE_RELEASE__: JSON.stringify(gitCommit),
+    __LITIGAFORGE_SENTRY_DSN__: JSON.stringify(process.env.VITE_SENTRY_DSN ?? ""),
   },
   plugins: [
     react(),

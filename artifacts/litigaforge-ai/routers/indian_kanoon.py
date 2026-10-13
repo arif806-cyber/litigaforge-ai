@@ -56,15 +56,31 @@ async def get_ik_document(request: Request, tid: str, user=Depends(get_current_u
 
 @router.get("/ik/admin/costs")
 async def ik_costs_by_feature(user=Depends(get_current_user)):
-    if not user or user.get("role") != "admin":
+    if not user or not (user.get("is_superuser") or user.get("role") == "admin"):
         raise HTTPException(403, "Admin access required")
     from database import fetch
+    from case_law_search import ik_daily_cap_inr
     rows = await fetch(
-        """SELECT feature,endpoint,COUNT(*) AS calls,COALESCE(SUM(cost_inr),0) AS cost_inr
-           FROM indian_kanoon_api_metrics WHERE created_at >= CURRENT_DATE
-           GROUP BY feature,endpoint ORDER BY feature,endpoint"""
+        """SELECT feature, COUNT(*) AS calls,
+                  COALESCE(SUM(cost_inr) FILTER (WHERE created_at >= CURRENT_DATE),0) AS today_cost_inr,
+                  COALESCE(SUM(cost_inr),0) AS month_cost_inr
+           FROM indian_kanoon_api_metrics
+           WHERE created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+           GROUP BY feature ORDER BY feature"""
     )
-    return {"date": "today", "costs": [dict(row) for row in rows], "currency": "INR"}
+    costs = [{
+        "feature": row["feature"], "calls": int(row["calls"] or 0),
+        "today_cost_inr": float(row["today_cost_inr"] or 0),
+        "month_cost_inr": float(row["month_cost_inr"] or 0),
+    } for row in rows]
+    today = sum(item["today_cost_inr"] for item in costs)
+    month = sum(item["month_cost_inr"] for item in costs)
+    cap = float(ik_daily_cap_inr())
+    return {
+        "costs": costs, "today_total_inr": today, "month_total_inr": month,
+        "daily_cap_inr": cap, "remaining_today_inr": max(0, cap - today),
+        "currency": "INR",
+    }
 
 
 @router.get("/ik/documents/{tid}/fragments")

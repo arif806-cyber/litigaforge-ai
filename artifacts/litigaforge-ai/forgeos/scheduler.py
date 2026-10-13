@@ -271,9 +271,13 @@ async def _scheduler_loop() -> None:
             raise
         try:
             await _run_due_schedules()
+            from monitoring import heartbeat
+            await heartbeat("HC_PING_FORGEOS")
         except asyncio.CancelledError:
             raise
         except Exception as e:
+            from monitoring import heartbeat
+            await heartbeat("HC_PING_FORGEOS", failed=True)
             logger.error("forgeos: scheduler poll failed: %s", e, exc_info=True)
         try:
             await _reassign_stuck_missions()

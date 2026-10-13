@@ -11,6 +11,64 @@ import { BLOG_REDIRECTS } from "./lib/blogRedirects";
 import { isTrustedBrowserOrigin } from "./lib/origins";
 import { judgmentRedirectTarget } from "./lib/judgmentRedirect";
 import { subscriptionPlanCopy } from "./lib/subscriptionPlanCopy";
+import * as Sentry from "@sentry/node";
+
+declare const __LITIGAFORGE_RELEASE__: string;
+
+if (process.env["SENTRY_DSN"]) {
+  const exceptionOnly = (event: Sentry.ErrorEvent): Sentry.ErrorEvent | null => {
+    const values = event.exception?.values;
+    if (!values?.length) return null;
+    const cleanValues = values.map((value) => ({
+      type: value.type ?? "Error",
+      ...(value.stacktrace ? { stacktrace: { frames: value.stacktrace.frames?.map((frame) => ({
+        filename: frame.filename, lineno: frame.lineno, function: frame.function, in_app: frame.in_app,
+      })) } } : {}),
+    }));
+    const routeParts = String(event.transaction ?? "unmatched").split("/");
+    const safeSegments = new Set(["api", "auth", "login", "register", "health", "admin", "users", "cases", "judgments", "documents", "workspace", "messages", "digest", "ik", "client-dashboard", "lawyer-dashboard"]);
+    const route = routeParts.map((part) => !part || part.startsWith(":") || safeSegments.has(part) ? part : ":param").join("/");
+    return {
+      type: undefined,
+      event_id: event.event_id,
+      timestamp: event.timestamp,
+      platform: event.platform,
+      level: event.level,
+      environment: process.env["NODE_ENV"] === "production" ? "production" : "development",
+      release: sentryRelease,
+      exception: { values: cleanValues },
+      tags: { route: route.slice(0, 200) },
+    };
+  };
+  const sentryRelease = process.env["GIT_COMMIT"] ?? __LITIGAFORGE_RELEASE__;
+  const sentryOptions = {
+    dsn: process.env["SENTRY_DSN"],
+    environment: process.env["NODE_ENV"] === "production" ? "production" : "development",
+    release: sentryRelease,
+    tracesSampleRate: 0.05,
+    beforeSend: exceptionOnly,
+    beforeSendTransaction(event: any) {
+      event.request = undefined;
+      event.user = undefined;
+      event.extra = undefined;
+      event.breadcrumbs = undefined;
+      event.transaction = routeForSentry(String(event.transaction ?? "unmatched"));
+      event.tags = { route: event.transaction };
+      for (const span of event.spans ?? []) {
+        span.description = undefined;
+        span.data = {};
+        span.tags = undefined;
+      }
+      return event;
+    },
+  } as unknown as Parameters<typeof Sentry.init>[0];
+  Sentry.init(sentryOptions);
+}
+
+function routeForSentry(value: string): string {
+  const safe = new Set(["api", "auth", "login", "register", "health", "admin", "users", "cases", "judgments", "documents", "workspace", "messages", "digest", "ik", "client-dashboard", "lawyer-dashboard"]);
+  return value.split("/").map((part) => !part || part.startsWith(":") || safe.has(part) ? part : ":param").join("/").slice(0, 200);
+}
 
 const app: Express = express();
 app.disable("x-powered-by");

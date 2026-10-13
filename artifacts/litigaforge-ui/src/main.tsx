@@ -3,8 +3,58 @@ import { useEffect, useState } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./index.css";
+import * as Sentry from "@sentry/react";
 
 declare const __LITIGAFORGE_BUILD_VERSION__: string;
+declare const __LITIGAFORGE_RELEASE__: string;
+declare const __LITIGAFORGE_SENTRY_DSN__: string;
+
+function safeRoute(pathname: string): string {
+  const fixed = new Set(["in", "us", "uk", "au", "ca", "login", "register", "signup", "admin", "client-dashboard", "lawyer-dashboard", "post-case", "my-cases", "matches", "messages", "documents", "workspace", "settings", "subscription", "judgments", "review", "ask", "legal-chat", "docket", "requests", "advocate", "cases", "clients", "earnings", "cnr-tracker"]);
+  return pathname.split("/").map((part) => !part ? "" : fixed.has(part) ? part : ":param").join("/").slice(0, 200);
+}
+
+if (__LITIGAFORGE_SENTRY_DSN__) {
+  Sentry.init({
+    dsn: __LITIGAFORGE_SENTRY_DSN__,
+    environment: import.meta.env.PROD ? "production" : "development",
+    release: __LITIGAFORGE_RELEASE__,
+    tracesSampleRate: 0.05,
+    beforeSend(event) {
+      const values = event.exception?.values;
+      if (!values?.length) return null;
+      return {
+        type: undefined,
+        event_id: event.event_id,
+        timestamp: event.timestamp,
+        platform: event.platform,
+        level: event.level,
+        environment: import.meta.env.PROD ? "production" : "development",
+        release: __LITIGAFORGE_RELEASE__,
+        exception: { values: values.map((value) => ({
+          type: value.type ?? "Error",
+          ...(value.stacktrace ? { stacktrace: { frames: value.stacktrace.frames?.map((frame) => ({
+            filename: frame.filename, lineno: frame.lineno, function: frame.function,
+          })) } } : {}),
+        })) },
+        tags: { route: safeRoute(window.location.pathname) },
+      };
+    },
+    beforeSendTransaction(event) {
+      event.request = undefined;
+      event.user = undefined;
+      event.extra = undefined;
+      event.breadcrumbs = undefined;
+      event.transaction = safeRoute(event.transaction ?? "");
+      event.tags = { route: event.transaction };
+      for (const span of event.spans ?? []) {
+        span.description = undefined;
+        span.data = {};
+      }
+      return event;
+    },
+  });
+}
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   const serviceWorkers = navigator.serviceWorker;

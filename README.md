@@ -488,6 +488,19 @@ CREATE TABLE chat_messages (
 | `DATABASE_URL` | auto | Replit-managed PostgreSQL |
 | `SESSION_SECRET` | Secret | JWT signing key |
 
+### Monitoring (optional)
+
+| Variable | Description |
+|---|---|
+| `SENTRY_DSN` | Enables privacy-filtered Sentry error reporting for the Python backend and Express API server |
+| `VITE_SENTRY_DSN` | Enables privacy-filtered Sentry error reporting in the React UI |
+| `HC_PING_BLOG` | Healthchecks ping URL for successful blog pipeline dispatches |
+| `HC_PING_INGEST` | Healthchecks ping URL for nightly judgment ingestion |
+| `HC_PING_DIGEST` | Healthchecks ping URL for the daily digest |
+| `HC_PING_AUTHORITY` | Healthchecks ping URL for the authority monitor |
+| `HC_PING_ECOURTS_WATCH` | Healthchecks ping URL for nightly eCourts case refresh |
+| `HC_PING_FORGEOS` | Healthchecks ping URL for the enabled ForgeOS scheduler |
+
 ### AI (auto-injected by Replit — no keys needed)
 
 | Variable | Provider |

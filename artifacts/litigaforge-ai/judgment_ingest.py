@@ -823,9 +823,13 @@ async def _scheduler_loop() -> None:
             raise
         try:
             await run_ingestion(trigger="scheduler")
+            from monitoring import heartbeat
+            await heartbeat("HC_PING_INGEST")
         except asyncio.CancelledError:
             raise
         except Exception as e:
+            from monitoring import heartbeat
+            await heartbeat("HC_PING_INGEST", failed=True)
             # Fail LOUD (error log) but keep the daily loop alive.
             logger.error("judgment-ingest: scheduled run failed: %s", e, exc_info=True)
 

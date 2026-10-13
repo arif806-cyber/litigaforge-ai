@@ -58,9 +58,13 @@ async def _scheduler_loop() -> None:
         await asyncio.sleep((next_run - now).total_seconds())
         try:
             await run_authority_monitoring()
+            from monitoring import heartbeat
+            await heartbeat("HC_PING_AUTHORITY")
         except asyncio.CancelledError:
             raise
         except Exception:
+            from monitoring import heartbeat
+            await heartbeat("HC_PING_AUTHORITY", failed=True)
             logger.exception("authority monitor nightly refresh crashed")
 
 

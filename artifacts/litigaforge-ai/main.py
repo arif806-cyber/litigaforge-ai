@@ -7,6 +7,7 @@ import os
 import re as _re
 import sys
 import time
+import subprocess
 from contextlib import asynccontextmanager
 
 # Ensure imports work when run from project root (production) or script dir (dev)
@@ -71,43 +72,48 @@ _sentry_dsn = os.environ.get("SENTRY_DSN")
 if _sentry_dsn:
     import sentry_sdk
     from sentry_sdk.integrations.fastapi import FastApiIntegration
-    from sentry_sdk.integrations.celery import CeleryIntegration
 
-    _sensitive_keys = {
-        "password", "password_hash", "token", "authorization",
-        "lf_token", "session_secret", "pan", "gstin",
-        "aadhaar", "phone", "email", "name",
-        "razorpay_key_secret", "twilio_auth_token",
-    }
+    def _git_release():
+        try:
+            return subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=_script_dir, text=True,
+                stderr=subprocess.DEVNULL, timeout=2,
+            ).strip()
+        except Exception:
+            return os.environ.get("GIT_COMMIT", "unknown")
 
-    def _scrub(obj):
-        if isinstance(obj, dict):
-            return {k: "[REDACTED]" if k.lower() in _sensitive_keys else _scrub(v)
-                    for k, v in obj.items()}
-        if isinstance(obj, list):
-            return [_scrub(i) for i in obj]
-        return obj
-
-    def _scrub_sensitive_data(event, hint):
-        if "request" in event:
-            if "data" in event["request"]:
-                event["request"]["data"] = _scrub(event["request"]["data"])
-            if "headers" in event["request"]:
-                event["request"]["headers"] = _scrub(event["request"]["headers"])
-        return event
+    def _safe_event(event, hint):
+        exception = event.get("exception")
+        if not exception:
+            return None
+        values = []
+        for item in exception.get("values", []):
+            clean = {"type": item.get("type", "Error")}
+            trace = item.get("stacktrace", {})
+            frames = trace.get("frames", [])
+            if frames:
+                clean["stacktrace"] = {"frames": [
+                    {key: frame[key] for key in ("filename", "lineno", "function", "module", "in_app")
+                     if key in frame}
+                    for frame in frames
+                ]}
+            values.append(clean)
+        route = event.get("transaction") or "unmatched"
+        return {
+            "event_id": event.get("event_id"), "timestamp": event.get("timestamp"),
+            "platform": event.get("platform", "python"), "level": event.get("level", "error"),
+            "environment": event.get("environment"), "release": event.get("release"),
+            "exception": {"values": values}, "tags": {"route": str(route)[:200]},
+        }
 
     sentry_sdk.init(
         dsn=_sentry_dsn,
-        environment=os.environ.get("ENVIRONMENT", "development"),
-        release=os.environ.get("APP_VERSION", "1.0.0"),
-        integrations=[
-            FastApiIntegration(transaction_style="endpoint"),
-            CeleryIntegration(),
-        ],
-        traces_sample_rate=0.2,
-        profiles_sample_rate=0.1,
+        environment="production" if os.environ.get("ENVIRONMENT", os.environ.get("APP_ENV", "")).lower() in {"prod", "production"} else "development",
+        release=_git_release(),
+        integrations=[FastApiIntegration(transaction_style="endpoint")],
+        traces_sample_rate=0.05,
         send_default_pii=False,
-        before_send=_scrub_sensitive_data,
+        before_send=_safe_event,
     )
     logger.info("Sentry error tracking initialised")
 else:
@@ -1668,10 +1674,14 @@ async def lifespan(app: FastAPI):
                 logger.info("court-intel: starting nightly case refresh")
                 from workers.case_refresh_worker import run_refresh
                 summary = await run_refresh()
+                from monitoring import heartbeat
+                await heartbeat("HC_PING_ECOURTS_WATCH")
                 logger.info("court-intel: nightly refresh done: %s", summary)
             except _aio.CancelledError:
                 break
             except Exception as _e:
+                from monitoring import heartbeat
+                await heartbeat("HC_PING_ECOURTS_WATCH", failed=True)
                 logger.exception("court-intel: nightly refresh error: %s", _e)
                 await _aio.sleep(3600)  # back off 1h on error
 

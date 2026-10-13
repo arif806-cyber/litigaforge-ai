@@ -6,6 +6,18 @@ const BLOG_REPO = "arif806-cyber/litigaforge-blog";
 const WORKFLOW = "pipeline.yml";
 const DISPATCH_URL = `https://api.github.com/repos/${BLOG_REPO}/actions/workflows/${WORKFLOW}/dispatches`;
 
+async function pingBlog(failed = false): Promise<void> {
+  const url = process.env["HC_PING_BLOG"];
+  if (!url) return;
+  try {
+    await fetch(`${url.replace(/\/+$/, "")}${failed ? "/fail" : ""}`, {
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch {
+    // Heartbeats are best-effort and must not change scheduler behavior.
+  }
+}
+
 /** Return tomorrow's daily dispatch slot (00:45 UTC / 06:15 IST). */
 export function nextSlot(now: Date): Date {
   const next = new Date(now);
@@ -58,10 +70,13 @@ async function triggerBlogPipeline(token: string): Promise<void> {
     if (res.status === 204) {
       lastDispatchDay = day;
       logger.info("blog-scheduler: India-focused pipeline triggered (HTTP 204)");
+      await pingBlog();
     } else {
+      await pingBlog(true);
       logger.error({ status: res.status, body: await res.text().catch(() => "") }, "blog-scheduler: trigger failed");
     }
   } catch (err) {
+    await pingBlog(true);
     logger.error({ err }, "blog-scheduler: trigger error");
   } finally {
     clearTimeout(timeout);

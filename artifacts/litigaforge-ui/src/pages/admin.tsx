@@ -40,7 +40,7 @@ interface AdminUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<"pending" | "advocates" | "questions" | "users" | "ecourts" | "mcp">("pending");
+  const [tab, setTab] = useState<"pending" | "advocates" | "questions" | "users" | "ecourts" | "ik" | "mcp">("pending");
   const [rejectReason, setRejectReason] = useState<Record<number, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<number | null>(null);
   const queryClient = useQueryClient();
@@ -78,6 +78,7 @@ export default function AdminPage() {
         <TabButton active={tab === "questions"} onClick={() => setTab("questions")} icon={MessageSquare} label="Question Moderation" />
         <TabButton active={tab === "users"} onClick={() => setTab("users")} icon={Users} label="All Users" />
         <TabButton active={tab === "ecourts"} onClick={() => setTab("ecourts")} icon={Activity} label="eCourts Usage" />
+        <TabButton active={tab === "ik"} onClick={() => setTab("ik")} icon={Activity} label="Indian Kanoon Usage" />
         <TabButton active={tab === "mcp"} onClick={() => setTab("mcp")} icon={Activity} label="MCP Plans & Usage" />
       </div>
 
@@ -99,12 +100,40 @@ export default function AdminPage() {
           <UsersTab key="users" queryClient={queryClient} />
         ) : tab === "mcp" ? (
           <McpPlansUsageTab key="mcp" />
+        ) : tab === "ik" ? (
+          <IndianKanoonUsageTab key="ik" />
         ) : (
           <EcourtsUsageTab key="ecourts" />
         )}
       </AnimatePresence>
     </div>
   );
+}
+
+function IndianKanoonUsageTab() {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["admin-indian-kanoon-usage"],
+    queryFn: () => apiFetch("/ik/admin/costs").then((value) => value as {
+      costs: Array<{ feature: string; calls: number; today_cost_inr: number; month_cost_inr: number }>;
+      today_total_inr: number; month_total_inr: number; daily_cap_inr: number; remaining_today_inr: number;
+    }),
+    refetchInterval: 60_000,
+  });
+  const inr = (value: number) => `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading Indian Kanoon usage…</div>;
+  if (isError || !data) return <div className="space-y-3 p-6"><p className="text-sm text-destructive">Could not load Indian Kanoon usage.</p><Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>;
+  return <section className="space-y-4">
+    <div className="grid gap-3 sm:grid-cols-3">
+      <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">Today</div><div className="text-xl font-semibold">{inr(data.today_total_inr)}</div></article>
+      <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">This month</div><div className="text-xl font-semibold">{inr(data.month_total_inr)}</div></article>
+      <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">Daily cap / remaining</div><div className="text-xl font-semibold">{inr(data.daily_cap_inr)} / {inr(data.remaining_today_inr)}</div></article>
+    </div>
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm"><thead><tr className="border-b border-border text-left"><th className="p-3">Feature</th><th className="p-3">Calls this month</th><th className="p-3">Today</th><th className="p-3">This month</th></tr></thead>
+      <tbody>{data.costs.map((row) => <tr key={row.feature} className="border-b border-border last:border-0"><td className="p-3">{row.feature}</td><td className="p-3">{row.calls}</td><td className="p-3">{inr(row.today_cost_inr)}</td><td className="p-3">{inr(row.month_cost_inr)}</td></tr>)}</tbody></table>
+      {!data.costs.length && <p className="p-4 text-sm text-muted-foreground">No Indian Kanoon API usage recorded this month.</p>}
+    </div>
+  </section>;
 }
 
 function EcourtsUsageTab() {
