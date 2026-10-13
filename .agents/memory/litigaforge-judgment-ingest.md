@@ -10,8 +10,11 @@ IndianKanoon's **official paid API** (`api.indiankanoon.org`), gated on the
 `INDIANKANOON_API_TOKEN` secret. It NEVER scrapes the website and NEVER fabricates
 data — fail-closed: no token = benign no-op; token set + API failure = raises loud.
 
-**As of 2026-06-16 the token IS configured** (a valid 40-char token), so ingestion
-is live.
+Use the spelling `INDIANKANOON_API_TOKEN` (no underscore between “India” and
+“Kanoon”); the user explicitly requested this key. The code accepts this and
+`INDIAN_KANOON_API_TOKEN`. Check both the Secrets inventory and the running
+backend's effective environment when diagnosing availability, and never print
+the value.
 
 ## Operational model (the non-obvious part)
 - **Daily scheduler is PRODUCTION-ONLY.** `start_scheduler()` is gated on `_is_prod()`

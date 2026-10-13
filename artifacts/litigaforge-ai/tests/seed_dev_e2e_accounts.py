@@ -1,7 +1,7 @@
 """Create or remove the two isolated Connect V2 browser-test accounts.
 
 This script refuses production signals and only touches the fixed *.local
-fixture identities. Passwords live in tests/fixtures/e2e_accounts.json.
+fixture identities. Passwords must be provided through E2E_* environment vars.
 """
 from __future__ import annotations
 
@@ -38,10 +38,19 @@ def _assert_development_only() -> None:
         raise RuntimeError("Fixture identity allowlist is invalid.")
 
 
+def _password(kind: str) -> str:
+    key = "E2E_CLIENT_PASSWORD" if kind == "client" else "E2E_ADVOCATE_PASSWORD"
+    value = os.getenv(key, "").strip()
+    if not value:
+        raise RuntimeError(f"{key} is required to seed development E2E accounts.")
+    return value
+
+
 async def seed() -> None:
     _assert_development_only()
     from auth import hash_password
 
+    passwords = {kind: _password(kind) for kind in ("client", "advocate")}
     conn = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
         async with conn.transaction():
@@ -55,7 +64,7 @@ async def seed() -> None:
                          name=EXCLUDED.name, password_hash=EXCLUDED.password_hash,
                          role=EXCLUDED.role, email_verified=TRUE, is_superuser=FALSE
                        RETURNING id""",
-                    user["email"], user["name"], hash_password(user["password"]),
+                    user["email"], user["name"], hash_password(passwords[kind]),
                     "client" if kind == "client" else "advocate",
                 )
                 ids[kind] = int(row["id"])

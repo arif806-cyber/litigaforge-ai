@@ -14,6 +14,11 @@ out-tsc
 
 # dependencies
 node_modules
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # IDEs and editors
 /.idea
@@ -55,3 +60,28 @@ Thumbs.db
 # Runtime data
 forge_memory_store.json
 /artifacts/litigaforge-ai/data/bare_acts_upload/*.pdf
+
+# Local environment files and credentials (keep only placeholder templates)
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local databases, backups, and user-uploaded files
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+*.bak
+/artifacts/litigaforge-ai/uploads/
+/artifacts/litigaforge-ai/data/uploads/
+/artifacts/litigaforge-ai/data/user_uploads/
