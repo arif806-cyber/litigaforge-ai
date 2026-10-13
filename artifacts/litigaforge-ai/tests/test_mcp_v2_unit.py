@@ -340,6 +340,12 @@ def test_citation_match_reports_differences_and_rejects_unrelated_titles():
     assert _compare_citation(
         "2020 1 SCC 1", title="An unrelated case", citation="2020 1 SCC 10"
     )[0] == "no_match"
+    status, differences = _compare_citation(
+        "A v B AIR 2017 SC 1", title="A v B AIR 2017 SC 1",
+        citation="AIR 2017 SC 1", court="Delhi High Court",
+    )
+    assert status == "likely"
+    assert "court differs" in differences
 
 
 def test_hearing_brief_is_owner_scoped_and_uses_mocked_court_sources(monkeypatch):

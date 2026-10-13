@@ -83,6 +83,8 @@ def _compare_citation(query: str, *, title: Any = "", citation: Any = "",
     if input_tokens and candidate_tokens and input_tokens == candidate_tokens and not differences:
         return "exact", []
     if name_matches:
+        if differences:
+            return "likely", differences
         if input_tokens and candidate_tokens and input_tokens != candidate_tokens:
             return "likely", differences
         if input_tokens and not candidate_tokens:
