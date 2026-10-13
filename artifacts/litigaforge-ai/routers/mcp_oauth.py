@@ -196,13 +196,19 @@ async def authorize_submit(request: Request):
     from database import fetchrow as db_fetchrow
     from auth import verify_password
     user = await db_fetchrow(
-        "SELECT id,email,password_hash,must_change_password FROM users WHERE LOWER(email)=LOWER($1)",
+        "SELECT id,email,password_hash,must_change_password,is_demo,role FROM users WHERE LOWER(email)=LOWER($1)",
         str(form.get("email") or "").strip(),
     )
     if not user or user.get("must_change_password") or not verify_password(
         str(form.get("password") or ""), str(user["password_hash"])
     ):
         raise HTTPException(401, "Invalid account credentials")
+    from runtime_env import is_production, is_seed_advocate_email
+    if is_production() and (
+        user.get("is_demo")
+        or user.get("role") in ("advocate", "lawyer") and is_seed_advocate_email(user.get("email", ""))
+    ):
+        raise HTTPException(403, "Demo advocate accounts are disabled in production")
     code = secrets.token_urlsafe(32)
     await execute(
         """INSERT INTO mcp_oauth_codes(code_hash,client_id,user_id,redirect_uri,code_challenge,expires_at)
