@@ -637,7 +637,7 @@ async def grant_reviewer(user_id: int, user: dict = Depends(get_superuser)):
     return {
         "user_id": user_id, "plan": "reviewer", "expires_in_days": expires_days,
         "fictional_demo_cases": len(samples), "saved_public_authorities": len(authorities),
-        "access_note": "Reviewer entitlement is ready; account login still requires the configured OAuth flow.",
+        "access_note": "Sign in with the provisioned account using OAuth 2.0 authorization code with PKCE.",
     }
 
 

@@ -71,8 +71,8 @@ export default function McpDocs() {
       <section className="space-y-4 rounded-xl border border-amber-300 bg-amber-50/50 p-5">
         <h2 className="text-xl font-semibold">Reviewer access instructions</h2>
         <ol className="list-decimal space-y-2 pl-5 text-sm leading-6">
-          <li>For isolated development testing, use the reviewer email and password configured through Replit Secrets; do not put credentials in source control.</li>
-          <li>The development seed grants the non-purchasable Reviewer entitlement, creates fictional CNR demo matters and saved public judgments, and expires within 30 days.</li>
+          <li>Configure <code>MCP_REVIEWER_EMAIL</code> and <code>MCP_REVIEWER_PASSWORD</code> in Replit Secrets. Keep both out of source control.</li>
+          <li>In the development environment, run <code>python tests/seed_dev_mcp_reviewer.py seed</code>. It refuses production, grants the non-purchasable Reviewer entitlement, and seeds fictional CNR demo matters plus saved public judgments for up to 30 days.</li>
           <li>Add <code>https://litigaforge.com/mcp</code> as a custom connector in your MCP client, sign in with the reviewer account, and approve read-only access.</li>
           <li>Check that tracked-case tools return only the reviewer’s demo records. Public case-law tools return public legal sources.</li>
         </ol>
