@@ -55,8 +55,12 @@ def test_client_ip_prefers_proxy_headers():
 @pytest.mark.asyncio
 async def test_anonymous_ask_reserves_only_two_daily_calls_per_hashed_ip():
     request = _Request({"x-forwarded-for": "198.51.100.2, 10.0.0.1"})
-    with patch("auth._fetchrow", AsyncMock(return_value={"call_count": 1})) as fetchrow:
+    with (
+        patch("auth._fetchrow", AsyncMock(return_value={"call_count": 1})) as fetchrow,
+        patch("ai_budget.reserve_global_ai_capacity", AsyncMock()) as global_capacity,
+    ):
         assert await require_ask_access(request, None) is None
+    global_capacity.assert_awaited_once()
     args = fetchrow.await_args.args
     assert args[-1] == ANONYMOUS_ASK_DAILY_LIMIT
     assert args[0] != "198.51.100.2"
