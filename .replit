@@ -76,6 +76,7 @@ MCP_V2_ENABLED = "true"
 
 [nix]
 channel = "stable-25_05"
+packages = ["freetype", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "tcl", "tk", "zlib"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-039c89e9-7260-46d0-8471-cf39f1d50b06"

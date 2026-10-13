@@ -941,9 +941,9 @@ Document text to analyze:
 # ── File Upload Analyzer ──────────────────────────────────────────────────────────────────
 
 def _extract_text_from_pdf(data: bytes) -> str:
-    """Extract text from PDF bytes using PyPDF2."""
+    """Extract text from PDF bytes using pypdf."""
     try:
-        from PyPDF2 import PdfReader
+        from pypdf import PdfReader
         from io import BytesIO
         reader = PdfReader(BytesIO(data))
         text = ""

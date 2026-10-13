@@ -98,9 +98,27 @@ def test_all_user_facing_paid_ai_routes_have_metering_dependency():
         "ask_about_case": require_livetrack_ai,
         "opponent_scan": require_livetrack_ai,
     }
+    expanded_routes = []
+
+    def collect_routes(route):
+        included_router = getattr(route, "original_router", None)
+        if included_router is not None:
+            for child in included_router.routes:
+                collect_routes(child)
+            return
+        nested_routes = getattr(route, "routes", None)
+        if nested_routes is not None:
+            for child in nested_routes:
+                collect_routes(child)
+            return
+        expanded_routes.append(route)
+
+    for route in app.routes:
+        collect_routes(route)
+
     post_routes = {
         route.name: route
-        for route in app.routes
+        for route in expanded_routes
         if "POST" in getattr(route, "methods", set())
     }
     for name, dependency in expected.items():

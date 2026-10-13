@@ -11,8 +11,9 @@ import hashlib
 from datetime import datetime, timedelta
 
 import bcrypt
+import jwt
 from fastapi import Depends, HTTPException, Request, Response
-from jose import jwt, JWTError
+from jwt.exceptions import PyJWTError
 
 from database import get_user_by_id, fetchrow as _fetchrow
 from rate_limit import get_client_ip
@@ -130,7 +131,7 @@ def decode_token(token: str) -> int:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return int(payload["sub"])
-    except JWTError:
+    except PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 

@@ -340,7 +340,7 @@ def test_account_email_links_target_frontend_root(monkeypatch):
 @pytest.mark.asyncio
 async def test_apple_login_normalizes_email(monkeypatch):
     import httpx
-    from jose import jwt
+    import jwt
     import routers.auth as auth_router
 
     class FakeResponse:
@@ -360,6 +360,11 @@ async def test_apple_login_normalizes_email(monkeypatch):
     monkeypatch.setenv("APPLE_CLIENT_ID", "com.example.app")
     monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: FakeClient())
     monkeypatch.setattr(jwt, "get_unverified_header", lambda _token: {"kid": "key-1"})
+    monkeypatch.setattr(
+        jwt.PyJWK,
+        "from_dict",
+        lambda _jwk: type("FakeJWK", (), {"key": "public-key"})(),
+    )
     monkeypatch.setattr(
         jwt,
         "decode",

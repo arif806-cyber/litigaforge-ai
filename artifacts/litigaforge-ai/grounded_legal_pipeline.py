@@ -36,7 +36,7 @@ async def _source_text(url: str, section: str = "") -> str:
             response.raise_for_status()
         body = response.content
         if body.startswith(b"%PDF-"):
-            from PyPDF2 import PdfReader
+            from pypdf import PdfReader
             pages = await asyncio.to_thread(lambda: [
                 (page.extract_text() or "") for page in PdfReader(BytesIO(body)).pages
             ])

@@ -798,7 +798,8 @@ class AppleLoginRequest(BaseModel):
 async def apple_login(req: AppleLoginRequest, request: Request, response: Response):
     """Verify Apple ID token, find-or-create user, issue JWT."""
     import httpx as _httpx_apple
-    from jose import jwt as _jose_jwt, JWTError as _JWTError
+    import jwt as _pyjwt
+    from jwt.exceptions import PyJWTError as _PyJWTError
 
     apple_client_id = (_os.getenv("APPLE_CLIENT_ID") or "").strip()
     if not apple_client_id:
@@ -815,7 +816,7 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
 
     # Find matching key
     try:
-        _header = _jose_jwt.get_unverified_header(req.id_token)
+        _header = _pyjwt.get_unverified_header(req.id_token)
     except Exception:
         raise HTTPException(400, "Invalid Apple ID token format")
 
@@ -826,14 +827,14 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
     # Verify token
     _decode_opts = {"verify_aud": True}
     try:
-        _claims = _jose_jwt.decode(
+        _claims = _pyjwt.decode(
             req.id_token,
-            _key,
+            _pyjwt.PyJWK.from_dict(_key).key,
             algorithms=["RS256"],
             audience=apple_client_id if apple_client_id else None,
             options=_decode_opts,
         )
-    except _JWTError as _je:
+    except _PyJWTError as _je:
         logger.warning("apple_login: JWT decode failed: %s", _je)
         raise HTTPException(401, "Apple ID token verification failed")
 
