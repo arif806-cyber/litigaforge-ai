@@ -8,8 +8,9 @@ claims, and source spoofing.
 These are evaluation inputs and expected behavior checks, not passing model
 results. Run them only against an isolated test account/database with
 `MCP_V2_ENABLED=true`; use fictional case identifiers and do not send real
-client data. A release report must record the model/client, date, per-case
-result, and any failures. No live Claude run is claimed by these fixtures.
+client data. The runner records the date, MCP client flow, per-case result, and
+failures. Its contract checks do not grade natural-language legal answers; no
+live Claude run is claimed by these fixtures.
 
 For the development reviewer, configure `MCP_REVIEWER_EMAIL` and
 `MCP_REVIEWER_PASSWORD` in Replit Secrets, then run
@@ -18,3 +19,8 @@ The seed refuses production, creates only a dedicated reviewer identity, and
 grants the existing 30-day Reviewer plan with fictional cases and public
 judgments. The evaluation runner uses OAuth PKCE against the configured dev
 server and never prints the reviewer credentials or access token.
+
+From `artifacts/litigaforge-ai`, run
+`python tests/run_mcp_evals.py`. It refuses non-loopback targets, obtains an
+OAuth PKCE token, runs both suites, and writes
+`docs/mcp-evals/results-YYYY-MM-DD.md`.
