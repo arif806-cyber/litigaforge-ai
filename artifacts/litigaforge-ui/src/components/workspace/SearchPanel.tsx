@@ -215,10 +215,12 @@ export default function SearchPanel({
         signal: ctrl.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json() as { nodes: SearchResultNode[]; source: string };
+      const data = await res.json() as { nodes: SearchResultNode[]; source: string; status_message?: string | null };
       setResults(data.nodes ?? []);
       setPhase(
-        data.nodes.length
+        data.status_message
+          ? data.status_message
+          : data.nodes.length
           ? `${data.nodes.length} judgments found${data.source === "local_db" ? " (local database)" : " from Indian Kanoon"}`
           : "No matching judgments found."
       );

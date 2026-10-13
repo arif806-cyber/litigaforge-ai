@@ -567,7 +567,11 @@ async def search_judgments(
         }
         for i, row in enumerate(search["results"])
     ]
-    return {"nodes": nodes, "source": search["source"], "total": len(nodes)}
+    return {
+        "nodes": nodes, "source": search["source"], "total": len(nodes),
+        "cached_due_to_cap": search.get("cached_due_to_cap", False),
+        "status_message": search.get("status_message"),
+    }
 
 
 # ─── Indian Kanoon — Smart Search (SSE) ───────────────────────────────────────

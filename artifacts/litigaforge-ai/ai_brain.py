@@ -14,6 +14,7 @@ Replit AI Integrations (Claude, Gemini, GPT-5) are free — no user keys needed.
 Groq requires a user-provided GROQ_API_KEY (secret).
 """
 import asyncio
+import base64
 import os
 import re
 import json
@@ -246,6 +247,51 @@ async def _call_gemini_async(system: str, user: str, temperature: float = 0.2,
     except Exception as e:
         logger.warning("[GEMINI] async call failed: %s", e)
         return None
+
+
+def _transcribe_audio_gemini(mime: str, audio: bytes) -> str | None:
+    """Multimodal audio transcription through the shared provider registry."""
+    _init_providers()
+    provider = _providers.get("gemini", {})
+    if not provider.get("ready"):
+        return None
+    url = f"{provider['base']}/models/gemini-2.5-flash:generateContent"
+    body = {
+        "contents": [{"role": "user", "parts": [
+            {"text": "Transcribe this legal voice note verbatim in the speaker's language. Do not translate, summarize, infer, or add words. Return only the transcript."},
+            {"inline_data": {"mime_type": mime, "data": base64.b64encode(audio).decode("ascii")}},
+        ]}],
+        "generationConfig": {"maxOutputTokens": 8192},
+    }
+    try:
+        response = _req.post(
+            url, json=body,
+            headers={"x-goog-api-key": provider["key"], "Content-Type": "application/json"},
+            timeout=90,
+        )
+        response.raise_for_status()
+        return "".join(
+            part.get("text", "") for part in
+            response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        ).strip() or None
+    except Exception as exc:
+        logger.warning("[GEMINI] audio transcription failed: %s", type(exc).__name__)
+        return None
+
+
+async def transcribe_audio_async(mime: str, audio: bytes) -> str | None:
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(_transcribe_audio_gemini, mime, audio), timeout=95)
+    except asyncio.TimeoutError:
+        logger.warning("[GEMINI] audio transcription timed out")
+        return None
+
+
+async def translation_fallback_async(system: str, user: str) -> str | None:
+    text = await _call_gemini_async(system, user, 0.2, 8192)
+    if text:
+        return text
+    return await _call_openai_async(system, user, 0.2, 8192)
 
 
 async def _call_openai_async(system: str, user: str, temperature: float = 0.3,

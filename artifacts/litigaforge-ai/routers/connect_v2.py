@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import hashlib
 import json
 import mimetypes
@@ -16,7 +15,6 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-import httpx
 
 from auth import get_current_user
 from database import execute, fetch, fetchrow, get_pool
@@ -230,47 +228,12 @@ async def transcribe_connect_voice(file: UploadFile = File(...), user=Depends(ge
     audio = await file.read(8 * 1024 * 1024 + 1)
     if not audio or len(audio) > 8 * 1024 * 1024:
         raise HTTPException(413, "Voice recordings must be under 8 MB")
-    base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
-    key = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "").strip()
-    if not base or not key:
-        raise HTTPException(503, "Voice transcription is unavailable in this environment")
-    url = f"{base}/models/gemini-2.5-flash:generateContent"
-    payload = {
-        "contents": [{"role": "user", "parts": [
-            {"text": "Transcribe this legal voice note verbatim in the speaker's language. Do not translate, summarize, infer, or add words. Return only the transcript."},
-            {"inline_data": {"mime_type": mime, "data": base64.b64encode(audio).decode("ascii")}},
-        ]}],
-        "generationConfig": {"maxOutputTokens": 8192},
-    }
+    import ai_brain
     async with _voice_semaphore:
-        failure = None
-        for attempt in range(3):
-            try:
-                async with httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=10.0)) as client:
-                    response = await client.post(url, json=payload, headers={
-                        "x-goog-api-key": key, "Content-Type": "application/json",
-                    })
-                if response.status_code == 429 or response.status_code >= 500:
-                    failure = response.status_code
-                    if attempt < 2:
-                        await asyncio.sleep(0.5 * (attempt + 1))
-                        continue
-                response.raise_for_status()
-                data = response.json()
-                transcript = "".join(
-                    part.get("text", "") for part in
-                    data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-                ).strip()
-                if not transcript:
-                    raise HTTPException(502, "No transcript was returned")
-                return {"transcript": transcript[:5000], "language": detect_language(transcript)}
-            except HTTPException:
-                raise
-            except Exception as exc:
-                failure = type(exc).__name__
-                if attempt < 2:
-                    await asyncio.sleep(0.5 * (attempt + 1))
-    raise HTTPException(502, "Voice transcription failed; keep the original recording and enter a transcript manually")
+        transcript = await ai_brain.transcribe_audio_async(mime, audio)
+    if not transcript:
+        raise HTTPException(503, "Voice transcription is unavailable; keep the original recording and enter a transcript manually")
+    return {"transcript": transcript[:5000], "language": detect_language(transcript)}
 
 
 @router.get("/connect-v2/cases/{case_id}/files/{object_path:path}")
@@ -664,9 +627,7 @@ async def translate_text(body: TranslateBody, user=Depends(get_current_user)):
                 raise RuntimeError("Claude returned an empty translation")
         except Exception:
             import ai_brain
-            translated = await ai_brain._call_gemini_async(system, prompt, 0.2, 8192)
-            if not translated:
-                translated = await ai_brain._call_openai_async(system, prompt, 0.2, 8192)
+            translated = await ai_brain.translation_fallback_async(system, prompt)
             if not translated:
                 raise RuntimeError("Configured LLM providers unavailable")
         for token, original in protected.items():

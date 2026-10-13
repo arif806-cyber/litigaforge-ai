@@ -1360,7 +1360,8 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
             "source_name": prov_name,
             "search_source": "indian_kanoon" if ik_cap_fallback else "keyword",
             "judgments": [],
-            "hint": (
+            "status_message": "live search paused for today" if ik_cap_fallback else None,
+            "hint": "live search paused for today" if ik_cap_fallback else (
                 "No matching judgments found in the database. "
                 "Run the admin embed-backfill to index judgments for semantic search, "
                 "or ingest more judgments via the IndianKanoon source."
@@ -1378,7 +1379,7 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
             "holding": r.get("summary_en") or r.get("outcome") or "",
             "relevance": r.get("outcome") or "",
             "search_query": safe_query[:50],
-            "ik_link": caselaw_link(req.country, r.get("case_name") or safe_query),
+            "ik_link": r.get("ik_link") or r.get("source_url") or caselaw_link(req.country, r.get("case_name") or safe_query),
             "source_name": r.get("source_name") or prov_name,
             "search_source": r.get("search_source", search_source),
             "source_url": r.get("source_url"),
@@ -1388,6 +1389,7 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
             "url": r.get("url"),
             "og_image_url": r.get("og_image_url"),
             "similarity": r.get("similarity"),
+            "relevance_note": r.get("relevance"),
         }
         judgments.append(j)
 
@@ -1397,6 +1399,7 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
         "source_name": prov_name,
         "search_source": search_source,
         "cached_due_to_cap": ik_cap_fallback,
+        "status_message": "live search paused for today" if ik_cap_fallback else None,
         "judgments": judgments,
     }
 

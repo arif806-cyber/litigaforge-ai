@@ -7,6 +7,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import httpx
@@ -14,9 +15,58 @@ import httpx
 logger = logging.getLogger("litigaforge.case_law_search")
 IK_BASE = "https://api.indiankanoon.org"
 _KEY_RE = re.compile(r"[^a-z0-9]+")
-_IK_ESTIMATED_CALL_USD = float(os.getenv("IK_ESTIMATED_CALL_USD", "0.02"))
-_IK_DAILY_COST_CAP_USD = float(os.getenv("IK_DAILY_COST_CAP_USD", "5.00"))
 _IK_MIN_REQUEST_INTERVAL_SECONDS = 2.5
+_IK_ENDPOINT_PRICE_DEFAULTS_INR = {
+    "search": Decimal("0.50"),
+    "document": Decimal("0.20"),
+    "fragment": Decimal("0.05"),
+    "metadata": Decimal("0.02"),
+    "original": Decimal("0.50"),
+}
+_IK_ENDPOINT_PRICE_ENV = {
+    "search": "IK_PRICE_SEARCH_INR",
+    "document": "IK_PRICE_DOCUMENT_INR",
+    "fragment": "IK_PRICE_FRAGMENT_INR",
+    "metadata": "IK_PRICE_METADATA_INR",
+    "original": "IK_PRICE_ORIGINAL_INR",
+}
+
+
+def _ik_endpoint_kind(endpoint: str) -> str:
+    path = endpoint.split("?", 1)[0].rstrip("/")
+    if path == "/search" or path.startswith("/search/"):
+        return "search"
+    if path.startswith("/docfragment/"):
+        return "fragment"
+    if path.startswith("/docmeta/"):
+        return "metadata"
+    if path.startswith("/origdoc/"):
+        return "original"
+    if path.startswith("/doc/"):
+        return "document"
+    raise ValueError(f"Unpriced Indian Kanoon endpoint: {path}")
+
+
+def ik_endpoint_price_inr(endpoint: str) -> Decimal:
+    kind = _ik_endpoint_kind(endpoint)
+    raw = os.getenv(_IK_ENDPOINT_PRICE_ENV[kind], str(_IK_ENDPOINT_PRICE_DEFAULTS_INR[kind]))
+    try:
+        price = Decimal(raw)
+    except (InvalidOperation, TypeError):
+        raise ValueError(f"{_IK_ENDPOINT_PRICE_ENV[kind]} must be a decimal rupee amount")
+    if not price.is_finite() or price < 0:
+        raise ValueError(f"{_IK_ENDPOINT_PRICE_ENV[kind]} must be a non-negative rupee amount")
+    return price
+
+
+def ik_daily_cap_inr() -> Decimal:
+    try:
+        cap = Decimal(os.getenv("IK_DAILY_COST_CAP_INR", "300"))
+    except InvalidOperation:
+        raise ValueError("IK_DAILY_COST_CAP_INR must be a decimal rupee amount")
+    if not cap.is_finite() or cap < 0:
+        raise ValueError("IK_DAILY_COST_CAP_INR must be a non-negative rupee amount")
+    return cap
 
 
 def _ik_enabled() -> bool:
@@ -28,12 +78,12 @@ def _ik_token() -> str:
     return (os.getenv("INDIAN_KANOON_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
 
 
-async def _ik_spend_today(conn) -> float:
+async def _ik_spend_today(conn) -> Decimal:
     row = await conn.fetchrow(
-        """SELECT COALESCE(SUM(estimated_cost_usd),0) AS total FROM indian_kanoon_api_metrics
+        """SELECT COALESCE(SUM(cost_inr),0) AS total FROM indian_kanoon_api_metrics
            WHERE created_at >= CURRENT_DATE"""
     )
-    return float(row["total"] or 0) if row else 0.0
+    return Decimal(str(row["total"] or 0)) if row else Decimal("0")
 
 
 class IKDailyCostCapExceeded(RuntimeError):
@@ -41,8 +91,7 @@ class IKDailyCostCapExceeded(RuntimeError):
 
 
 async def reserve_ik_budget(conn, endpoint: str) -> None:
-    """Atomically reserve one estimated API call so concurrent requests can't
-    all pass a stale spend check. Reservations count even if the provider fails."""
+    """Atomically reserve the configured official per-endpoint rupee price."""
     async with conn.transaction():
         await conn.execute("SELECT pg_advisory_xact_lock(734239111)")
         last = await conn.fetchval(
@@ -52,14 +101,15 @@ async def reserve_ik_budget(conn, endpoint: str) -> None:
             wait = _IK_MIN_REQUEST_INTERVAL_SECONDS - (datetime.now(timezone.utc) - last).total_seconds()
             if wait > 0:
                 await conn.execute("SELECT pg_sleep($1)", wait)
+        price = ik_endpoint_price_inr(endpoint)
         spent = await _ik_spend_today(conn)
-        if spent + _IK_ESTIMATED_CALL_USD > _IK_DAILY_COST_CAP_USD:
+        if spent + price > ik_daily_cap_inr():
             raise IKDailyCostCapExceeded("Indian Kanoon daily cost cap reached")
         await conn.execute(
-            """INSERT INTO indian_kanoon_api_metrics(endpoint,estimated_cost_usd)
+            """INSERT INTO indian_kanoon_api_metrics(endpoint,cost_inr)
                VALUES($1,$2)""",
             endpoint.split("?")[0],
-            _IK_ESTIMATED_CALL_USD,
+            price,
         )
 
 
@@ -110,10 +160,10 @@ async def _ik_search(
         data = await _ik_call(conn, "/search/", {"formInput": query, "pagenum": "0"})
         docs = list(data.get("docs") or [])[:10]
     except Exception as exc:
-        if cached and "cost cap" in str(exc).lower():
+        if isinstance(exc, IKDailyCostCapExceeded):
             return list(cached["results_json"])[:limit], True
         logger.warning("Indian Kanoon search failed (%s)", type(exc).__name__)
-        return (list(cached["results_json"])[:limit], True) if cached else ([], False)
+        return (list(cached["results_json"])[:limit], False) if cached else ([], False)
     if cache_writes:
         try:
             await conn.execute(
@@ -222,4 +272,5 @@ async def search_case_law(
     return {
         "query": query, "count": len(results), "source": source,
         "results": results[:limit], "cached_due_to_cap": cached_due_to_cap,
+        "status_message": "live search paused for today" if cached_due_to_cap else None,
     }
