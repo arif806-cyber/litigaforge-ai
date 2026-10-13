@@ -113,7 +113,7 @@ async def retrieve_grounding(conn, question: str, profile: dict | None = None) -
             grounds = await add_ik_grounding(conn, found["results"], feature="authorities")
             for item in grounds:
                 text = "\n\n".join(p["text"] for p in item.get("grounding_paragraphs", []))
-                text = text or item.get("summary_en") or ""
+                text = text or item.get("full_text") or item.get("summary_en") or ""
                 if text:
                     judgments.append({
                         "kind": "judgment", "citation": item.get("citation") or "",
