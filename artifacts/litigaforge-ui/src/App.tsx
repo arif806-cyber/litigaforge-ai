@@ -148,10 +148,10 @@ function WorkspaceRoute() {
 }
 
 function AdvocateDashboardGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, activePortal } = useAuth();
   if (loading) return <PageLoader />;
-  if (user && user.role === "client" && !user.has_lawyer_profile) {
-    return <Redirect to="/lawyers/register" />;
+  if (user && activePortal === "advocate" && !user.has_lawyer_profile) {
+    return <Redirect to="/lawyers/register?setup=advocate" />;
   }
   return <LawyerDashboard />;
 }
@@ -227,14 +227,14 @@ function ForLawyersRoute() {
 // The public root is location-neutral. Signed-in users continue to their
 // role-specific dashboard.
 function CountryRoot() {
-  const { user, loading } = useAuth();
+  const { user, loading, activePortal } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!loading && user) {
-      setLocation((user.role === "lawyer" || user.role === "advocate") ? "/lawyer-dashboard" : "/client-dashboard");
+      setLocation(activePortal === "advocate" ? "/lawyer-dashboard" : "/client-dashboard");
     }
-  }, [user, loading, setLocation]);
+  }, [user, activePortal, loading, setLocation]);
 
   if (loading || user) {
     return (

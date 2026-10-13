@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from pydantic import BaseModel
 
 from auth import require_user
-from routers.auth import _issue_tokens
+from routers.auth import _issue_tokens, _sync_advocate_profile
 from database import (
     fetchrow as db_fetchrow,
     fetch as db_fetch,
@@ -231,6 +231,7 @@ async def passkey_login_verify(body: _LoginBody, request: Request, response: Res
     if not user:
         raise HTTPException(404, "User account not found")
 
+    user = await _sync_advocate_profile(dict(user))
     await _issue_tokens(user["id"], response)
     logger.info("passkey login user_id=%s", user["id"])
     return {
@@ -242,6 +243,7 @@ async def passkey_login_verify(body: _LoginBody, request: Request, response: Res
             "cases_this_month": user["cases_this_month"],
             "is_superuser": user["is_superuser"],
             "role": user["role"],
+            "has_lawyer_profile": user["has_lawyer_profile"],
             "created_at": str(user["created_at"]),
         },
     }

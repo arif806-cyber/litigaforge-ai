@@ -164,17 +164,18 @@ async def login(req: LoginRequest, request: Request, response: Response):
         raise HTTPException(status_code=403, detail="Demo advocate accounts are disabled in production.")
     if req.role not in ("client", "advocate", "lawyer"):
         raise HTTPException(status_code=422, detail="Role must be client or advocate")
-    profile = await db_fetchrow("SELECT id FROM lawyers WHERE user_id=$1", user["id"])
-    # A submitted advocate profile is stronger evidence of advocate access than
-    # the account's legacy single-role field (which may predate the profile).
-    if profile and user.get("role") not in ("lawyer", "advocate"):
-        await db_execute("UPDATE users SET role='advocate' WHERE id=$1", user["id"])
-        user["role"] = "advocate"
+    user = await _sync_advocate_profile(user)
     user.pop("password_hash", None)
-    user["has_lawyer_profile"] = bool(profile)
     await _issue_tokens(user["id"], response)
     return {"user": user}
 
+async def _sync_advocate_profile(user: dict) -> dict:
+    profile = await db_fetchrow("SELECT id FROM lawyers WHERE user_id=$1", user["id"])
+    if profile and user.get("role") not in ("lawyer", "advocate"):
+        await db_execute("UPDATE users SET role='advocate' WHERE id=$1", user["id"])
+        user["role"] = "advocate"
+    user["has_lawyer_profile"] = bool(profile)
+    return user
 
 @router.post("/auth/google")
 @limiter.limit("10/minute")
@@ -246,6 +247,7 @@ async def google_oauth(request: Request, response: Response):
     else:
         user.pop("password_hash", None)
 
+    user = await _sync_advocate_profile(user)
     await _issue_tokens(user["id"], response)
     logger.info(f"Google OAuth: user {user['id']} ({email})")
     return {"user": user}
@@ -871,6 +873,7 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
             if not user:
                 raise HTTPException(500, "Account creation failed")
 
+    user = await _sync_advocate_profile(user)
     await _issue_tokens(user["id"], response)
     logger.info("apple_login: user_id=%s email_hidden=%s", user["id"], email_hidden)
     return {
@@ -882,5 +885,6 @@ async def apple_login(req: AppleLoginRequest, request: Request, response: Respon
             "cases_this_month": user.get("cases_this_month", 0),
             "is_superuser": user.get("is_superuser", False),
             "role": user.get("role", "client"),
+            "has_lawyer_profile": user.get("has_lawyer_profile", False),
         },
     }

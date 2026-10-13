@@ -118,6 +118,30 @@ async def test_login_normalizes_email_before_lookup(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_client_tab_login_keeps_advocate_account_role_and_exposes_profile(monkeypatch):
+    import routers.auth as auth_router
+
+    user = {
+        "id": 31, "email": "advocate@example.com", "role": "advocate",
+        "password_hash": "hash", "has_lawyer_profile": False,
+    }
+    monkeypatch.setattr(auth_router, "get_user_by_email", AsyncMock(return_value=user))
+    monkeypatch.setattr(auth_router, "db_fetchrow", AsyncMock(return_value={"id": 9}))
+    monkeypatch.setattr(auth_router, "db_execute", AsyncMock())
+    monkeypatch.setattr(auth_router, "verify_password", lambda *_: True)
+    monkeypatch.setattr(auth_router, "_issue_tokens", AsyncMock())
+
+    result = await auth_router.login(
+        auth_router.LoginRequest(email="advocate@example.com", password="password", role="client"),
+        _request(),
+        Response(),
+    )
+
+    assert result["user"]["role"] == "advocate"
+    assert result["user"]["has_lawyer_profile"] is True
+
+
+@pytest.mark.asyncio
 async def test_social_login_fails_closed_without_provider_ids(monkeypatch):
     import routers.auth as auth_router
 

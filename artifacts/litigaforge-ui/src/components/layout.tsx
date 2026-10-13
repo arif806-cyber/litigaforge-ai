@@ -23,6 +23,7 @@ import { useMessageNotifications } from "@/hooks/use-message-notifications";
 import { PublicSiteHeader } from "@/components/public-site-header";
 import { useConnectFlags } from "@/hooks/use-connect-v2";
 import { connectV2Strings } from "@/i18n/connect-v2";
+import { clientNavigationActive } from "@/lib/active-portal";
 
 interface NavEntry {
   href: string;
@@ -203,12 +204,13 @@ function SidebarContent({
   user: User | null;
 }) {
   const { t, lang } = useLanguage();
+  const { activePortal, setActivePortal } = useAuth();
   const connectStrings = connectV2Strings(lang);
   const { data: connectFlags } = useConnectFlags();
   const unreadCount = useUnreadCount();
-  const isAdvocate = user?.role === "lawyer" || user?.role === "advocate";
-  const viewingClientWorkspace = location.startsWith("/client");
-  const isClient = !!user && (!isAdvocate || viewingClientWorkspace);
+  const isAdvocateAccount = user?.role === "lawyer" || user?.role === "advocate";
+  const isClient = !!user && clientNavigationActive(activePortal, location);
+  const isAdvocate = !!user && !isClient;
   const roleNav = !user ? publicNav : isClient ? clientNav : lawyerNav;
   const activeRoleNav = isAdvocate && !isClient && connectFlags?.connect_v2
     ? [
@@ -217,11 +219,11 @@ function SidebarContent({
         { href: "/advocate/cases", label: connectStrings.acceptedCases, icon: FileText },
       ]
     : roleNav;
-  const roleLabel = !user ? "Public tools" : isClient ? "Client" : "Advocate";
-  const showRoleSwitch = !!user && (isAdvocate || !!user.lawyer_status);
+  const roleLabel = !user ? "Public tools" : isClient ? "CLIENT" : "ADVOCATE";
+  const showRoleSwitch = !!user && (isAdvocateAccount || !!user.has_lawyer_profile || !!user.lawyer_status);
   const roleSwitch: NavEntry | null = showRoleSwitch
     ? isClient
-      ? { href: "/lawyer-dashboard", label: "Switch to Advocate", icon: Scale }
+      ? { href: user?.has_lawyer_profile ? "/lawyer-dashboard" : "/lawyers/register?setup=advocate", label: "Switch to Advocate", icon: Scale }
       : { href: "/client-dashboard", label: "Switch to Client", icon: UserIcon }
     : null;
   const legalTools = isAdvocate
@@ -270,7 +272,10 @@ function SidebarContent({
             label={roleSwitch.label}
             testId="nav-role-switch"
             location={location}
-            onClick={onNav}
+            onClick={() => {
+              setActivePortal(isClient ? "advocate" : "client");
+              onNav?.();
+            }}
           />
         )}
 
@@ -308,7 +313,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   const { t, lang } = useLanguage();
   const connectStrings = connectV2Strings(lang);
   const { data: connectFlags } = useConnectFlags();
-  const { logout } = useAuth();
+  const { logout, activePortal } = useAuth();
   const [, setLocation] = useLocation();
   const unreadCount = useUnreadCount();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -316,7 +321,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   useEffect(() => { closeDrawer(); }, [location, closeDrawer]);
 
-  const isLawyer  = user?.role === "lawyer" || user?.role === "advocate";
+  const isLawyer  = !!user && activePortal === "advocate";
   const mobileNav = isLawyer
     ? connectFlags?.connect_v2
       ? [{ href: "/lawyer-dashboard", label: "Dashboard", icon: Star }, { href: "/requests", label: connectStrings.requests, icon: Inbox }]
@@ -489,7 +494,7 @@ function DesktopLogoutButton() {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const isWorkspace = location.startsWith("/workspace");
-  const { user } = useAuth();
+  const { user, activePortal } = useAuth();
   const { theme, setTheme } = useTheme();
   useMessageNotifications();
   const publicSurface = !user && !isWorkspace && /^(\/ask|\/review|\/judgments(?:\/|$)|\/lawyers(?:\/|$)|\/legal-aid|\/free-documents)/.test(location);
@@ -516,7 +521,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-bold text-sm tracking-tight">LitigaForge</span>
             {user && (
               <span className="ml-2 px-1.5 py-0.5 rounded bg-accent/20 text-[9px] font-bold text-accent-foreground uppercase tracking-wide">
-                {user.role !== "lawyer" && user.role !== "advocate" ? "Client" : "Advocate"}
+                {activePortal === "client" ? "CLIENT" : "ADVOCATE"}
               </span>
             )}
           </div>

@@ -110,8 +110,8 @@ export default function Login() {
     setError("");
     try {
       const data = await authenticatePasskey();
-      passkeyLogin(data.user as unknown as Parameters<typeof passkeyLogin>[0]);
-      trackEvent("login_success", { provider: "passkey" });
+      passkeyLogin(data.user as unknown as Parameters<typeof passkeyLogin>[0], roleRef.current === "lawyer" ? "advocate" : "client");
+      trackEvent("login_success", { provider: "passkey", role: roleRef.current });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Passkey authentication failed");
     } finally {

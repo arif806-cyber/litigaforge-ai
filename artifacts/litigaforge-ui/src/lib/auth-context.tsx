@@ -2,19 +2,19 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { getCountryFromPath, buildCountryUrl } from "./country";
 import { _tryRefresh } from "./api";
+import { portalDashboardPath, postAuthDestination, portalFromRole, portalStorageKey, validPortal, type ActivePortal } from "./active-portal";
 import planPrices from "../../../../shared-plan-prices.json";
 
 function isAdvocate(role: string): boolean {
   return role === "lawyer" || role === "advocate";
 }
 
-function dashboardUrl(role: string): string {
+function dashboardUrl(portal: ActivePortal): string {
   const country =
     getCountryFromPath() ??
     localStorage.getItem("country_override")?.toLowerCase() ??
     "in";
-  const page = isAdvocate(role) ? "lawyer-dashboard" : "client-dashboard";
-  return buildCountryUrl(country, page);
+  return buildCountryUrl(country, portalDashboardPath(portal).slice(1));
 }
 
 // Only accept app-relative destinations. Auth links are public input, so never
@@ -30,21 +30,26 @@ export function safeAuthNext(value: string | null | undefined): string | null {
   }
 }
 
+function authReturnTo(): string | null {
+  try { return safeAuthNext(sessionStorage.getItem("lf_return_to")); } catch { return null; }
+}
+
 // Navigate after a successful auth — honors any pre-login saved destination.
-function navigateAfterAuth(role: string, isDemo = false) {
+function navigateAfterAuth(portal: ActivePortal, isDemo = false, destination?: string) {
   if (isDemo) {
     window.location.href = "/workspace";
     return;
   }
   try {
-    const returnTo = safeAuthNext(sessionStorage.getItem("lf_return_to"));
-    if (returnTo && returnTo !== "/login" && returnTo !== "/register" && returnTo !== "/signup") {
-      sessionStorage.removeItem("lf_return_to");
+    const returnTo = destination ?? authReturnTo();
+    if (returnTo && returnTo !== portalDashboardPath(portal)
+      && returnTo !== "/login" && returnTo !== "/register" && returnTo !== "/signup") {
+      try { sessionStorage.removeItem("lf_return_to"); } catch { /* storage unavailable */ }
       window.location.href = returnTo;
       return;
     }
   } catch { /* sessionStorage unavailable (private browsing edge case) */ }
-  window.location.href = dashboardUrl(role);
+  window.location.href = dashboardUrl(portal);
 }
 
 const BASE = "/litigaforge";
@@ -72,12 +77,14 @@ export interface User {
 
 interface AuthCtx {
   user: User | null;
+  activePortal: ActivePortal;
+  setActivePortal: (portal: ActivePortal) => void;
   loading: boolean;
   login: (email: string, password: string, role?: string) => Promise<void>;
   register: (name: string, email: string, password: string, role?: string, recaptchaToken?: string) => Promise<void>;
   googleLogin: (credential: string, role?: string) => Promise<void>;
   appleLogin: (idToken: string, firstName?: string, lastName?: string, role?: string) => Promise<void>;
-  passkeyLogin: (user: User) => void;
+  passkeyLogin: (user: User, role?: string) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -105,7 +112,20 @@ async function authFetch(path: string, init?: RequestInit) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [activePortal, setActivePortalState] = useState<ActivePortal>("client");
   const [loading, setLoading] = useState(true);
+
+  const persistPortal = useCallback((targetUser: User, portal: ActivePortal) => {
+    setActivePortalState(portal);
+    try { localStorage.setItem(portalStorageKey(targetUser.id), portal); } catch { /* storage can be unavailable */ }
+  }, []);
+
+  const setActivePortal = useCallback((portal: ActivePortal) => {
+    setActivePortalState(portal);
+    if (user) {
+      try { localStorage.setItem(portalStorageKey(user.id), portal); } catch { /* storage can be unavailable */ }
+    }
+  }, [user]);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -124,16 +144,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
       if (res.ok) {
-        setUser(await res.json());
+        const freshUser: User = await res.json();
+        setUser(freshUser);
+        let stored: string | null = null;
+        try { stored = localStorage.getItem(portalStorageKey(freshUser.id)); } catch { /* storage can be unavailable */ }
+        persistPortal(freshUser, validPortal(stored) ? stored : portalFromRole(freshUser.role));
       } else {
         setUser(null);
+        setActivePortalState("client");
       }
     } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [persistPortal]);
 
   useEffect(() => { refreshUser(); }, [refreshUser]);
 
@@ -142,12 +167,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify({ email, password, role }),
     });
+    const portal = portalFromRole(role);
     setUser(data.user);
-    if ((role === "advocate" || role === "lawyer") && !data.user?.has_lawyer_profile) {
-      window.location.href = buildCountryUrl(getCountryFromPath() ?? "in", "lawyers/register?setup=advocate");
+    persistPortal(data.user, portal);
+    const destination = postAuthDestination(portal, !!data.user?.has_lawyer_profile, authReturnTo());
+    if (destination.startsWith("/lawyers/register")) {
+      window.location.href = buildCountryUrl(getCountryFromPath() ?? "in", destination.slice(1));
       return;
     }
-    navigateAfterAuth(data.user?.role ?? "client", !!data.user?.is_demo);
+    navigateAfterAuth(portal, !!data.user?.is_demo, destination);
   };
 
   const register = async (name: string, email: string, password: string, role: string = "client", recaptchaToken?: string) => {
@@ -156,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ name, email, password, role, recaptcha_token: recaptchaToken ?? null }),
     });
     setUser(data.user);
+    persistPortal(data.user, portalFromRole(role));
     if (isAdvocate(data.user?.role ?? role)) {
       // Keep a requested destination (notably Workspace) until the mandatory
       // advocate profile has been submitted.
@@ -172,7 +201,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ credential, role }),
     });
     setUser(data.user);
-    navigateAfterAuth(data.user?.role ?? "client", !!data.user?.is_demo);
+    const portal = portalFromRole(role);
+    persistPortal(data.user, portal);
+    const destination = postAuthDestination(portal, !!data.user?.has_lawyer_profile, authReturnTo());
+    if (destination.startsWith("/lawyers/register")) {
+      window.location.href = buildCountryUrl(getCountryFromPath() ?? "in", destination.slice(1));
+      return;
+    }
+    navigateAfterAuth(portal, !!data.user?.is_demo, destination);
   };
 
   const appleLogin = async (idToken: string, firstName?: string, lastName?: string, role: string = "client") => {
@@ -181,12 +217,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ id_token: idToken, first_name: firstName ?? null, last_name: lastName ?? null, role }),
     });
     setUser(data.user);
-    navigateAfterAuth(data.user?.role ?? "client", !!data.user?.is_demo);
+    const portal = portalFromRole(role);
+    persistPortal(data.user, portal);
+    const destination = postAuthDestination(portal, !!data.user?.has_lawyer_profile, authReturnTo());
+    if (destination.startsWith("/lawyers/register")) {
+      window.location.href = buildCountryUrl(getCountryFromPath() ?? "in", destination.slice(1));
+      return;
+    }
+    navigateAfterAuth(portal, !!data.user?.is_demo, destination);
   };
 
-  const passkeyLogin = (userData: User) => {
+  const passkeyLogin = (userData: User, role: string = "client") => {
     setUser(userData);
-    navigateAfterAuth(userData.role ?? "client", !!userData.is_demo);
+    const portal = portalFromRole(role);
+    persistPortal(userData, portal);
+    const destination = postAuthDestination(portal, !!userData.has_lawyer_profile, authReturnTo());
+    if (destination.startsWith("/lawyers/register")) {
+      window.location.href = buildCountryUrl(getCountryFromPath() ?? "in", destination.slice(1));
+      return;
+    }
+    navigateAfterAuth(portal, !!userData.is_demo, destination);
   };
 
   const logout = async () => {
@@ -195,7 +245,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore server errors during logout
     }
+    if (user) {
+      try { localStorage.removeItem(portalStorageKey(user.id)); } catch { /* storage can be unavailable */ }
+    }
     setUser(null);
+    setActivePortalState("client");
   };
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
@@ -222,7 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, appleLogin, passkeyLogin, logout, refreshUser, changePassword }}>
+    <AuthContext.Provider value={{ user, activePortal, setActivePortal, loading, login, register, googleLogin, appleLogin, passkeyLogin, logout, refreshUser, changePassword }}>
       {user?.must_change_password ? (
         <ForcedPasswordChange onSubmit={changePassword} onLogout={logout} email={user.email} />
       ) : children}

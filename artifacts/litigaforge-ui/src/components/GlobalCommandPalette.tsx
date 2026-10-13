@@ -50,7 +50,7 @@ export function GlobalCommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, activePortal } = useAuth();
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -88,7 +88,7 @@ export function GlobalCommandPalette() {
     setLocation(`/ask?q=${encodeURIComponent(q)}&category=general`);
   }
 
-  const dashboardPath = user?.role === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+  const dashboardPath = activePortal === "advocate" ? "/lawyer-dashboard" : "/client-dashboard";
   const commands = NAV_COMMANDS.filter((c) => !c.requiresAuth || Boolean(user));
   const trimmed = query.trim();
 
