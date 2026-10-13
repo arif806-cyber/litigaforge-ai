@@ -98,13 +98,20 @@ class WatchModeManager:
                 logger.error(f"Watch alert failed for {watch.get('id')}: {e}")
 
     def _fire_alert(self, watch: Dict):
+        import asyncio
         from alerts.whatsapp import send_watch_trigger
-        send_watch_trigger(
+        coro = send_watch_trigger(
             watch_id=watch["id"],
             trigger_reason="Scheduled hearing reminder",
             details=f"Case: {watch.get('case_number') or watch.get('party_name', 'N/A')} — Please check the court website for the latest hearing date.",
             to=watch.get("alert_phone"),
         )
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(coro)
+        else:
+            loop.create_task(coro)
 
     @property
     def is_running(self) -> bool:

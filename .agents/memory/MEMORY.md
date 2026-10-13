@@ -40,3 +40,4 @@
 - [Forge Workspace access](litigaforge-workspace-access.md) — Forge Workspace is an advocate feature; retain prior client access, while ForgeOS stays admin-only.
 - [LitigaForge visual tokens](litigaforge-visual-tokens.md) — shared gold/teal semantic tokens govern the UI; keep blue/violet only for Forge Workspace node types and leave Astro /blog independent.
 - [LitigaForge Connect V2 boundary](litigaforge-connect-v2.md) — keep cases and matches explicitly tagged, opt-in, private until acceptance, and outside every legacy fee or ranking path.
+- [India Code Act downloads](indiacode-source-access.md) — workspace PDF fetches timed out while web search returned excerpts; never treat search snippets as complete official Act text.

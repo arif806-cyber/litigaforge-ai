@@ -146,6 +146,16 @@ async def ensure_reference_tables(conn) -> None:
             read_at TIMESTAMPTZ
         )
     """)
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS whatsapp_opt_outs (
+            phone_e164 TEXT PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            opted_out_at TIMESTAMPTZ,
+            opted_in_at TIMESTAMPTZ,
+            source TEXT NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
     await conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_authority_alerts_user_unread "
         "ON authority_alerts(user_id, created_at DESC) WHERE read_at IS NULL"

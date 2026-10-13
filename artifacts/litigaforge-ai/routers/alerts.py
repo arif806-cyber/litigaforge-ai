@@ -36,12 +36,12 @@ class HearingReminderRequest(BaseModel):
 
 @router.post("/alert")
 async def send_alert(request: AlertRequest):
-    return send_whatsapp_alert(message=request.message, to=request.phone, alert_type=request.alert_type)
+    return await send_whatsapp_alert(message=request.message, to=request.phone, alert_type=request.alert_type)
 
 
 @router.post("/alert/hearing")
 async def hearing_reminder(request: HearingReminderRequest):
-    return send_hearing_reminder(
+    return await send_hearing_reminder(
         case_number=request.case_number, court=request.court,
         date=request.date, party=request.party, to=request.phone,
     )

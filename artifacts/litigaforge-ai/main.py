@@ -1538,6 +1538,9 @@ async def lifespan(app: FastAPI):
     from digest import start_scheduler as _start_digest_scheduler
     app.state.digest_scheduler = _start_digest_scheduler()
 
+    from authority_scheduler import start_scheduler as _start_authority_scheduler
+    app.state.authority_monitor_scheduler = _start_authority_scheduler()
+
     # Daily subscription expiry sweep. This is intentionally cancellable so
     # reloads/shutdowns never leave a task running against a closed pool.
     from routers.subscription import expire_subscriptions as _expire_subscriptions
@@ -1737,6 +1740,15 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             logger.warning("judgment-ingest: scheduler shutdown error: %s", e)
+    _authority_sched = getattr(app.state, "authority_monitor_scheduler", None)
+    if _authority_sched is not None:
+        _authority_sched.cancel()
+        try:
+            await _authority_sched
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("authority monitor scheduler shutdown error: %s", e)
     _ci_sched2 = getattr(app.state, "court_intel_scheduler", None)
     if _ci_sched2 is not None:
         _ci_sched2.cancel()
@@ -2113,6 +2125,7 @@ from routers.connect_v2 import router as connect_v2_router
 from routers.indian_kanoon import router as indian_kanoon_router
 from routers.calendar_sync import router as calendar_sync_router
 from routers.authorities import router as authorities_router
+from routers.whatsapp import router as whatsapp_router
 
 # ForgeOS router is imported ONLY when FORGEOS_ENABLED is set — keeps the
 # subsystem fully inert (no import, no routes) when disabled/unset.
@@ -2155,6 +2168,7 @@ app.include_router(connect_v2_router,       prefix=BASE_PATH)
 app.include_router(indian_kanoon_router,    prefix=BASE_PATH)
 app.include_router(calendar_sync_router,    prefix=BASE_PATH)
 app.include_router(authorities_router,       prefix=BASE_PATH)
+app.include_router(whatsapp_router,          prefix=BASE_PATH)
 if forgeos_router is not None:
     app.include_router(forgeos_router, prefix=BASE_PATH)
 

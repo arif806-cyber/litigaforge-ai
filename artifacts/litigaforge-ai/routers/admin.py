@@ -82,7 +82,7 @@ async def admin_reject_question(
     return {"success": True, "question_id": question_id, "status": "rejected"}
 
 
-def _notify_approved(name: str, email: str, phone: str) -> None:
+async def _notify_approved(name: str, email: str, phone: str) -> None:
     """Fire-and-forget: WhatsApp + email to the newly approved advocate."""
     wa_msg = (
         f"🎉 Congratulations, Advocate {name}!\n\n"
@@ -91,15 +91,15 @@ def _notify_approved(name: str, email: str, phone: str) -> None:
         "👉 https://litiga-forge-ai.replit.app/litigaforge/login"
     )
     if phone:
-        send_whatsapp_alert(wa_msg, to=phone, alert_type="info")
+        await send_whatsapp_alert(wa_msg, to=phone, alert_type="info")
     else:
-        send_whatsapp_alert(wa_msg, alert_type="info")
+        await send_whatsapp_alert(wa_msg, alert_type="info")
 
     if email:
         send_verification_email(email, name)
 
 
-def _notify_rejected(name: str, email: str, phone: str, reason: str) -> None:
+async def _notify_rejected(name: str, email: str, phone: str, reason: str) -> None:
     """Fire-and-forget: WhatsApp + email to the rejected advocate."""
     wa_msg = (
         f"Hi Advocate {name},\n\n"
@@ -108,7 +108,7 @@ def _notify_rejected(name: str, email: str, phone: str, reason: str) -> None:
         + "\n\nPlease re-register with updated credentials or contact support."
     )
     if phone:
-        send_whatsapp_alert(wa_msg, to=phone, alert_type="info")
+        await send_whatsapp_alert(wa_msg, to=phone, alert_type="info")
 
     if email:
         send_rejection_email(email, name, reason)
