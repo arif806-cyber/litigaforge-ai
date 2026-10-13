@@ -90,6 +90,21 @@ def _error(request_id: Any, code: int, message: str, data: Any = None,
     )
 
 
+def _authentication_error(
+    request: Request, *, invalid_token: bool, request_id: Any = None,
+    protocol_version: str = _PROTOCOL_VERSION,
+) -> JSONResponse:
+    response = _error(request_id, -32001, "MCP authentication required",
+                       protocol_version=protocol_version)
+    response.status_code = 401
+    challenge = "Bearer"
+    if invalid_token:
+        challenge += ' error="invalid_token"'
+    challenge += f', resource_metadata="{_protected_resource_metadata_url(request)}"'
+    response.headers["WWW-Authenticate"] = challenge
+    return response
+
+
 _TOOLS = [
     {
         "name": "list_recent_judgments",
@@ -303,6 +318,13 @@ async def mcp_post(request: Request):
     origin = request.headers.get("origin")
     if origin is not None and origin not in _TRUSTED_ORIGINS:
         return JSONResponse({"error": "Untrusted Origin"}, status_code=403)
+    from routers import mcp_v2
+    authorization = request.headers.get("authorization")
+    if authorization is not None:
+        try:
+            await mcp_v2.authenticate_bearer(request)
+        except HTTPException:
+            return _authentication_error(request, invalid_token=True)
     try:
         payload = await request.json()
     except Exception:
@@ -331,20 +353,10 @@ async def mcp_post(request: Request):
     else:
         protocol_version = _PROTOCOL_VERSION
 
-    from routers import mcp_v2
     protected = method in {"initialize", "tools/list", "tools/call", "prompts/list", "prompts/get"}
-    if mcp_v2.enabled() and protected:
-        try:
-            await mcp_v2.authenticate_bearer(request)
-        except HTTPException:
-            response = _error(request_id, -32001, "MCP authentication required",
-                               protocol_version=protocol_version)
-            response.status_code = 401
-            bearer = f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
-            if request.headers.get("authorization"):
-                bearer += ', error="invalid_token"'
-            response.headers["WWW-Authenticate"] = bearer
-            return response
+    if (method == "initialize" or mcp_v2.enabled() and protected) and authorization is None:
+        return _authentication_error(request, invalid_token=False,
+                                     request_id=request_id, protocol_version=protocol_version)
 
     # JSON-RPC notifications intentionally have no response body.
     if method in {"notifications/initialized", "notifications/cancelled"}:
@@ -407,14 +419,9 @@ async def mcp_post(request: Request):
                 except Exception as exc:
                     detail = getattr(exc, "detail", "MCP authentication required")
                     if isinstance(exc, HTTPException) and exc.status_code == 401:
-                        response = _error(request_id, -32001, "MCP authentication required",
-                                          protocol_version=protocol_version)
-                        response.status_code = 401
-                        bearer = f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
-                        if request.headers.get("authorization"):
-                            bearer += ', error="invalid_token"'
-                        response.headers["WWW-Authenticate"] = bearer
-                        return response
+                        return _authentication_error(request, invalid_token=True,
+                                                     request_id=request_id,
+                                                     protocol_version=protocol_version)
                     message = detail.get("message", "MCP request denied") if isinstance(detail, dict) else str(detail)
                     result = _tool_result({"error": message, "code": detail.get("code") if isinstance(detail, dict) else None}, is_error=True)
                     return JSONResponse({"jsonrpc": "2.0", "id": request_id, "result": result},

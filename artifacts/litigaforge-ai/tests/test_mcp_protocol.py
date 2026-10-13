@@ -27,14 +27,17 @@ def test_get_endpoint_is_method_not_allowed():
 
 def test_initialize_negotiates_only_supported_versions(monkeypatch):
     monkeypatch.setattr(mcp_v2, "enabled", lambda: False)
+    monkeypatch.setattr(mcp_v2, "authenticate_bearer", lambda _r: asyncio.sleep(0, result={}))
     for requested, expected in [
         ("2025-06-18", "2025-06-18"),
         ("2025-03-26", "2025-03-26"),
         ("2024-11-05", "2024-11-05"),
+        ("2099-01-01", "2025-06-18"),
         ("future-version", "2025-06-18"),
         (None, "2025-06-18"),
     ]:
-        response = client.post("/mcp", json=_rpc("initialize", {"protocolVersion": requested}))
+        response = client.post("/mcp", json=_rpc("initialize", {"protocolVersion": requested}),
+                               headers={"Authorization": "Bearer lfm_valid"})
         assert response.status_code == 200
         assert response.json()["result"]["protocolVersion"] == expected
         assert response.headers["mcp-protocol-version"] == expected
@@ -79,6 +82,47 @@ def test_v2_requires_bearer_from_initialize_and_advertises_oauth_challenge(monke
                       headers={"Authorization": "Bearer bad"})
     assert bad.status_code == 401
     assert 'error="invalid_token"' in bad.headers["www-authenticate"]
+
+
+def test_invalid_credentials_are_rejected_even_for_anonymous_methods_with_v2_disabled(monkeypatch):
+    monkeypatch.setattr(mcp_v2, "enabled", lambda: False)
+    async def no_match(*_args):
+        return None
+    monkeypatch.setattr(mcp_v2, "fetchrow", no_match)
+    methods = [
+        ("ping", _rpc("ping")),
+        ("tools/list", _rpc("tools/list")),
+        ("initialize", _rpc("initialize")),
+        ("notification", {"jsonrpc": "2.0", "method": "notifications/initialized"}),
+    ]
+    credentials = ["lfm_invalid-key", "lfo_expired-token", "lfo_revoked-token"]
+    for _label, payload in methods:
+        for credential in credentials:
+            response = client.post(
+                "/mcp", json=payload,
+                headers={"Authorization": f"Bearer {credential}"},
+            )
+            assert response.status_code == 401
+            challenge = response.headers["www-authenticate"]
+            assert 'error="invalid_token"' in challenge
+            assert 'resource_metadata="https://litigaforge.com/.well-known/oauth-protected-resource"' in challenge
+
+    # V1 public methods remain anonymously accessible when v2 is disabled.
+    assert client.post("/mcp", json=_rpc("ping")).status_code == 200
+    assert client.post("/mcp", json=_rpc("tools/list")).status_code == 200
+    assert client.post("/mcp", json=_rpc("initialize")).status_code == 401
+
+
+def test_unknown_method_and_notifications_keep_jsonrpc_http_contract(monkeypatch):
+    monkeypatch.setattr(mcp_v2, "enabled", lambda: False)
+    unknown = client.post("/mcp", json=_rpc("not/a/method"))
+    assert unknown.status_code == 200
+    assert unknown.json()["error"]["code"] == -32601
+    notification = client.post(
+        "/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"}
+    )
+    assert notification.status_code == 202
+    assert notification.content == b""
 
 
 def test_valid_v2_bearer_audience_mismatch_is_rejected(monkeypatch):

@@ -214,11 +214,21 @@ def _protocol_checks(base: str, token: str) -> list[dict]:
     status, init = _json_request(
         _url(base, "/mcp"), method="POST",
         payload={"jsonrpc": "2.0", "id": 802, "method": "initialize",
-                 "params": {"protocolVersion": "not-supported"}},
+                 "params": {"protocolVersion": "2099-01-01"}},
         headers={"Authorization": f"Bearer {token}"},
     )
-    checks.append({"name": "unknown initialize version negotiates latest",
+    checks.append({"name": "2099 initialize version negotiates a supported version",
                    "passed": status == 200 and init["body"].get("result", {}).get("protocolVersion") == "2025-06-18"})
+    public_invalid_status, public_invalid = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "id": 806, "method": "ping"},
+        headers={"Authorization": "Bearer lfm_invalid_blackbox"},
+    )
+    public_challenge = public_invalid["headers"].get("WWW-Authenticate", "")
+    checks.append({"name": "invalid bearer is rejected on public ping",
+                   "passed": public_invalid_status == 401
+                   and 'error="invalid_token"' in public_challenge
+                   and "resource_metadata=" in public_challenge})
     status, missing = _json_request(
         _url(base, "/mcp"), method="POST",
         payload={"jsonrpc": "2.0", "id": 803, "method": "ping"},
@@ -240,6 +250,18 @@ def _protocol_checks(base: str, token: str) -> list[dict]:
     )
     checks.append({"name": "untrusted Origin remains blocked through the API proxy",
                    "passed": status == 403})
+    unknown_status, unknown = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "id": 807, "method": "not/a/method"},
+    )
+    checks.append({"name": "unknown method returns JSON-RPC -32601",
+                   "passed": unknown_status == 200 and unknown["body"].get("error", {}).get("code") == -32601})
+    notification_status, notification = _json_request(
+        _url(base, "/mcp"), method="POST",
+        payload={"jsonrpc": "2.0", "method": "notifications/initialized"},
+    )
+    checks.append({"name": "initialized notification returns empty 202",
+                   "passed": notification_status == 202 and notification["body"] in (None, {})})
     status, metadata = _json_request(_url(base, "/.well-known/oauth-protected-resource"))
     checks.append({"name": "resource metadata identifies canonical MCP resource",
                    "passed": status == 200 and metadata["body"].get("resource") == "https://litigaforge.com/mcp"
