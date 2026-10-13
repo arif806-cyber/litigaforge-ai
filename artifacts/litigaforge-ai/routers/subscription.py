@@ -545,7 +545,7 @@ body {{ font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 40px; ba
   </table>
   <div class="footer">
     <p>This is a computer-generated invoice. No signature required.</p>
-    <p>For questions, contact info@litigaforge.com</p>
+    <p>For questions, contact support@litigaforge.com</p>
     <p style="margin-top: 8px; font-size: 10px; color: #94a3b8;">
       LitigaForge AI — Client-Lawyer Matching Platform | litigaforge.com
     </p>

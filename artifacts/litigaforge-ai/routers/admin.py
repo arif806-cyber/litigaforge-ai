@@ -12,12 +12,24 @@ from database import fetch, fetchrow, execute
 from logger import get_logger
 from sanitizer import sanitize_text
 from alerts.whatsapp import send_whatsapp_alert
-from alerts.email import send_verification_email, send_rejection_email
+from alerts.email import send_test_email, send_verification_email, send_rejection_email
 from services import court_data_client
 
 logger = get_logger("litigaforge.admin")
 
 router = APIRouter(tags=["admin"])
+
+
+@router.post("/admin/email/test")
+async def admin_send_test_email(current_user: dict = Depends(get_superuser)):
+    """Send a short SMTP connectivity check to the authenticated administrator."""
+    email = (current_user.get("email") or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="The admin account has no email address")
+    result = await asyncio.to_thread(send_test_email, email)
+    if not result.get("success"):
+        raise HTTPException(status_code=503, detail=result.get("error", "SMTP delivery failed"))
+    return {"success": True, "sent_to": email}
 
 
 @router.get("/admin/ecourts/usage")

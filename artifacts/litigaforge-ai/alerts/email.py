@@ -1,20 +1,22 @@
 """
 LitigaForge AI — Email notification helper.
 Uses stdlib smtplib (no extra packages needed).
-If SMTP_HOST is not set, logs a mock instead of failing.
+Returns a clear configuration error instead of pretending an email was sent.
 
 Required env vars for live sending:
-  SMTP_HOST     — e.g. smtp.gmail.com
-  SMTP_PORT     — 587 (STARTTLS) or 465 (SSL); defaults to 587
+  SMTP_HOST     — smtp.office365.com
+  SMTP_PORT     — 587 (STARTTLS)
   SMTP_USER     — sender login
-  SMTP_PASSWORD — sender password / app-password
-  SMTP_FROM     — display From address; falls back to SMTP_USER
+  SMTP_PASSWORD — Replit Secret
+  SMTP_FROM     — display From address
+  SMTP_REPLY_TO — reply address
 """
 import html as _html
 import logging
 import os
 import smtplib
 import ssl
+import time
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -22,11 +24,12 @@ from urllib.parse import urlsplit
 
 logger = logging.getLogger("litigaforge.email")
 
-SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.office365.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_USER = os.getenv("SMTP_USER", "support@litigaforge.com")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("SMTP_FROM", "") or SMTP_USER
+SMTP_FROM = os.getenv("SMTP_FROM", "LitigaForge <support@litigaforge.com>")
+SMTP_REPLY_TO = os.getenv("SMTP_REPLY_TO", "support@litigaforge.com")
 
 _VERIFIED_HTML = """\
 <!DOCTYPE html>
@@ -123,41 +126,73 @@ _REJECTED_HTML = """\
 """
 
 
-def _send(to_email: str, subject: str, html: str, text: str, reply_to: str = "") -> dict:
-    if not SMTP_HOST:
-        logger.info("[Email MOCK] To %s | %s | %s", to_email, subject, text[:80])
-        return {"success": True, "mode": "mock",
-                "note": "Set SMTP_HOST/SMTP_USER/SMTP_PASSWORD for live email"}
+def _response_error(exc: Exception) -> tuple[int | None, str]:
+    if isinstance(exc, smtplib.SMTPRecipientsRefused) and exc.recipients:
+        code, message = next(iter(exc.recipients.values()))
+    elif isinstance(exc, smtplib.SMTPResponseException):
+        code, message = exc.smtp_code, exc.smtp_error
+    else:
+        return None, str(exc)
+    if isinstance(message, bytes):
+        message = message.decode("utf-8", errors="replace")
+    return int(code), str(message)
 
-    try:
-        msg = MIMEMultipart("alternative")
-        # UTF-8 throughout so emoji subjects (e.g. "⚖️ Top 5 Judgments Today")
-        # and non-ASCII summaries (… ellipsis, accented case names) send cleanly.
-        msg["Subject"] = Header(subject, "utf-8")
-        msg["From"] = SMTP_FROM
-        msg["To"] = to_email
-        if reply_to:
-            msg["Reply-To"] = reply_to
-        msg.attach(MIMEText(text, "plain", "utf-8"))
+
+def _safe_error_message(message: str) -> str:
+    return message.replace(SMTP_PASSWORD, "[redacted]") if SMTP_PASSWORD else message
+
+
+def _send(to_email: str, subject: str, html: str, text: str) -> dict:
+    if not smtp_configured():
+        return {"success": False, "error": "SMTP is not configured. Add SMTP_PASSWORD as a Replit Secret."}
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = Header(subject, "utf-8")
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+    msg["Reply-To"] = SMTP_REPLY_TO
+    msg.attach(MIMEText(text, "plain", "utf-8"))
+    if html:
         msg.attach(MIMEText(html, "html", "utf-8"))
 
-        ctx = ssl.create_default_context()
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=ctx) as s:
-                s.login(SMTP_USER, SMTP_PASSWORD)
-                s.send_message(msg)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
-                s.ehlo()
-                s.starttls(context=ctx)
-                s.login(SMTP_USER, SMTP_PASSWORD)
-                s.send_message(msg)
+    context = ssl.create_default_context()
+    for attempt in range(2):
+        try:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+            logger.info("[Email] Sent '%s' to %s", subject, to_email)
+            return {"success": True, "mode": "live", "to": to_email}
+        except Exception as exc:
+            code, message = _response_error(exc)
+            message = _safe_error_message(message)
+            if "5.7.139" in message and "SmtpClientAuthentication is disabled" in message:
+                message = (
+                    "SMTP AUTH must be enabled for this mailbox in Microsoft 365. "
+                    f"Server response: {message}"
+                )
+            if attempt == 0 and code is not None and 400 <= code < 500:
+                logger.warning("[Email] SMTP temporary failure code=%s message=%s; retrying once", code, message)
+                time.sleep(0.25)
+                continue
+            logger.error("[Email] Failed to send to %s: SMTP code=%s message=%s", to_email, code, message)
+            return {"success": False, "error": f"SMTP {code}: {message}" if code else message}
 
-        logger.info("[Email] Sent '%s' → %s", subject, to_email)
-        return {"success": True, "mode": "live", "to": to_email}
-    except Exception as e:
-        logger.warning("[Email] Failed to send to %s: %s", to_email, e)
-        return {"success": False, "error": str(e)}
+
+def send_message(to_email: str, subject: str, text: str, html: str = "") -> dict:
+    """Send a plain-text or multipart message through the shared SMTP transport."""
+    return _send(to_email, subject, html, text)
+
+
+def send_test_email(to_email: str) -> dict:
+    return send_message(
+        to_email,
+        "LitigaForge SMTP test",
+        "This is a test email from LitigaForge. Microsoft 365 SMTP is working.",
+    )
 
 
 def send_verification_email(to_email: str, name: str) -> dict:
@@ -519,7 +554,7 @@ def send_founder_alert(subject: str, message: str) -> list[dict]:
     """Fire-and-forget ops alert to whoever is in ADMIN_EMAILS (comma-separated,
     same env var main.py already uses for admin bootstrap). Used by ForgeOS to
     surface blocked missions that need a human. Mocks/logs if ADMIN_EMAILS or
-    SMTP isn't configured — never raises, callers shouldn't have to handle it."""
+    SMTP isn't configured — delivery failures are returned to the caller."""
     admin_emails = [e.strip() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()]
     if not admin_emails:
         logger.info("[Founder alert MOCK — no ADMIN_EMAILS set] %s: %s", subject, message[:200])
@@ -554,9 +589,8 @@ def send_contact_form_email(name: str, reply_email: str, subject: str, message: 
         "</body></html>"
     )
     return _send(
-        "info@litigaforge.com",
+        "support@litigaforge.com",
         f"LitigaForge contact: {subject}",
         body_html,
         text,
-        reply_to=reply_email,
     )

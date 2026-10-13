@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, CheckCircle, XCircle, RotateCcw, Users, Briefcase,
-  Search, Loader2, AlertTriangle, Clock, MessageSquare, Activity
+  Search, Loader2, AlertTriangle, Clock, MessageSquare, Activity, Mail
 } from "lucide-react";
 import { SEOHelmet } from "@/components/SEOHelmet";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,8 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold">Admin Panel</h1>
       </div>
 
+      <EmailTestPanel />
+
       <div className="flex gap-2 border-b border-border">
         <TabButton active={tab === "pending"} onClick={() => setTab("pending")} icon={Briefcase} label="Pending Lawyers" />
         <TabButton active={tab === "advocates"} onClick={() => setTab("advocates")} icon={Users} label="All Advocates" />
@@ -107,6 +109,35 @@ export default function AdminPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function EmailTestPanel() {
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const sendTest = useMutation({
+    mutationFn: () => apiFetch("/admin/email/test", { method: "POST" }),
+    onSuccess: (result: any) => {
+      setNotice({ ok: true, text: `Test email sent to ${result.sent_to}.` });
+    },
+    onError: (error: unknown) => {
+      setNotice({ ok: false, text: error instanceof Error ? error.message : "Email test failed." });
+    },
+  });
+  return (
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-4">
+      <div>
+        <h2 className="font-semibold">Outgoing email</h2>
+        <p className="text-sm text-muted-foreground">Send a test message to your admin email address.</p>
+        {notice && <p role={notice.ok ? "status" : "alert"} className={`mt-2 text-sm ${notice.ok ? "text-emerald-600" : "text-destructive"}`}>{notice.text}</p>}
+      </div>
+      <Button type="button" variant="outline" disabled={sendTest.isPending} onClick={() => {
+        setNotice(null);
+        sendTest.mutate();
+      }}>
+        {sendTest.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+        {sendTest.isPending ? "Sending…" : "Send test email"}
+      </Button>
+    </section>
   );
 }
 

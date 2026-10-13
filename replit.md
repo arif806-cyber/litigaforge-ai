@@ -205,7 +205,8 @@ Optional secrets (enable extra features):
 | Secret | Enables |
 |---|---|
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (`whatsapp:+14155238886`), `ADVOCATE_WHATSAPP` | WhatsApp alerts |
-| `SMTP_HOST`, `SMTP_PORT` (587/465), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email notifications (defaults: port 587, FROM = SMTP_USER) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_REPLY_TO` | Microsoft 365 outgoing email over STARTTLS (shared dev/production settings) |
+| `SMTP_PASSWORD` | Mailbox password; Replit Secret only, never code or git |
 | `FORGEOS_ENABLED` (`true`/`false`, default off) | Turns on the ForgeOS multi-agent subsystem (schema init, seed agents, scheduler, `/forgeos/*` routes) AND the `/forgeos` Command Center page in litigaforge-ui (backend 404s when off, page shows a load-failure message; sidebar link is separately gated by `is_superuser` client-side). Backend is inert (no tables/routes/scheduler) when unset. |
 | `FORGEOS_DEFAULT_MODEL`, `FORGEOS_MAX_CONCURRENT_MISSIONS` (default 2), `FORGEOS_SCHEDULER_POLL_SECONDS` (default 60), `FORGEOS_MAX_INPUT_CHARS` (default 8000), `FORGEOS_MAX_EVENT_PAYLOAD_CHARS` (default 20000) | ForgeOS tuning — only read when `FORGEOS_ENABLED=true` |
 | `FORGEOS_GOAL_MONTHLY_SIGNUPS`, `FORGEOS_GOAL_MRR_RUPEES`, `FORGEOS_GOAL_VERIFIED_LAWYERS` (each default `0` = disabled) | Optional targets shown in Business Pulse's "progress vs. configured goals" section; a goal with value `0` is omitted from the memo, not shown as 0% |

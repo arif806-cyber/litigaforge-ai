@@ -162,7 +162,7 @@ export default function PrivacyPolicy() {
             their own privacy terms.
           </p>
           <p className="mt-2 text-sm">
-            MCP connector support: <a href="mailto:info@litigaforge.com" className="text-primary underline">info@litigaforge.com</a>.
+            MCP connector support: <a href="mailto:support@litigaforge.com" className="text-primary underline">support@litigaforge.com</a>.
           </p>
         </div>
       </Section>

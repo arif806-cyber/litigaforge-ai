@@ -148,9 +148,9 @@ const ROUTE_META = {
   },
 
   "/contact": {
-    title: "Contact LitigaForge AI | info@litigaforge.com",
+    title: "Contact LitigaForge AI | support@litigaforge.com",
     description:
-      "Contact the LitigaForge AI team for partnership, press, or support enquiries. Email info@litigaforge.com.",
+      "Contact the LitigaForge AI team for partnership, press, or support enquiries. Email support@litigaforge.com.",
     canonical: "/contact",
   },
 

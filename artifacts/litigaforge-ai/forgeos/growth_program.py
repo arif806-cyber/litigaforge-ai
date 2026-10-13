@@ -253,7 +253,7 @@ async def _kpi_context_lines() -> list[str]:
                 AND LOWER(email) NOT LIKE '%@%.test' AND LOWER(email) NOT LIKE '%@%.local'
                 AND LOWER(email) NOT LIKE '%@example.com'
                 AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
-                AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS signups_7d
+                AND LOWER(email) NOT IN ('support@litigaforge.com','demo@litigaforge.com')) AS signups_7d
         """
     )
     counts = dict(rows[0]) if rows else {}

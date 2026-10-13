@@ -105,7 +105,7 @@ export default function RefundPolicy() {
             (optional). We will process it promptly.
           </p>
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-            <p className="text-sm font-medium text-foreground">info@litigaforge.com</p>
+            <p className="text-sm font-medium text-foreground">support@litigaforge.com</p>
             <p className="text-xs text-muted-foreground mt-1">Subject: Refund Request</p>
           </div>
         </motion.div>

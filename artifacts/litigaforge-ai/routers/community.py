@@ -241,12 +241,12 @@ async def submit_contact(req: ContactRequest, request: Request):
         name.strip(), email, subject, message.strip(),
     )
     if not smtp_configured():
-        raise HTTPException(status_code=503, detail="Contact email is temporarily unavailable. Please email info@litigaforge.com directly.")
+        raise HTTPException(status_code=503, detail="Contact email is temporarily unavailable. Please email support@litigaforge.com directly.")
     result = await asyncio.to_thread(
         send_contact_form_email, name.strip(), email, subject, message.strip()
     )
     if not result.get("success"):
-        raise HTTPException(status_code=502, detail="We could not deliver your message. Please try again or email info@litigaforge.com.")
+        raise HTTPException(status_code=502, detail="We could not deliver your message. Please try again or email support@litigaforge.com.")
     return {"ok": True, "message": "Thank you! We will get back to you within 24 hours."}
 
 
@@ -1498,12 +1498,12 @@ async def list_lawyers(
         "COALESCE(l.is_test, FALSE) = FALSE",
         "COALESCE(l.admin_hidden, FALSE) = FALSE",
         "COALESCE(u.is_demo, FALSE) = FALSE",
-        "NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id=l.user_id AND (COALESCE(tu.is_demo,FALSE)=TRUE OR LOWER(tu.email) LIKE '%@%.test' OR LOWER(tu.email) LIKE '%@%.local' OR LOWER(tu.email) LIKE '%@example.com' OR LOWER(tu.email) LIKE 'jane\\_%@test.com' ESCAPE '\\' OR LOWER(tu.email) IN ('info@litigaforge.com','demo@litigaforge.com')))",
+        "NOT EXISTS (SELECT 1 FROM users tu WHERE tu.id=l.user_id AND (COALESCE(tu.is_demo,FALSE)=TRUE OR LOWER(tu.email) LIKE '%@%.test' OR LOWER(tu.email) LIKE '%@%.local' OR LOWER(tu.email) LIKE '%@example.com' OR LOWER(tu.email) LIKE 'jane\\_%@test.com' ESCAPE '\\' OR LOWER(tu.email) IN ('support@litigaforge.com','demo@litigaforge.com')))",
         "LOWER(COALESCE(u.email, '')) NOT LIKE '%@%.test'",
         "LOWER(COALESCE(u.email, '')) NOT LIKE '%@%.local'",
         "LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.com'",
         "LOWER(COALESCE(u.email, '')) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'",
-        "LOWER(COALESCE(u.email, '')) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')",
+        "LOWER(COALESCE(u.email, '')) NOT IN ('support@litigaforge.com', 'demo@litigaforge.com')",
         "l.verification_status = 'verified'",
     ], []
     if country:
@@ -1559,7 +1559,7 @@ async def get_public_lawyer(lawyer_id: int):
                  AND (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
                    OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
                    OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
-                   OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com'))
+                   OR LOWER(u.email) IN ('support@litigaforge.com','demo@litigaforge.com'))
              )""",
         lawyer_id,
     )

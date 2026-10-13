@@ -135,7 +135,7 @@ All at `/litigaforge/court-intel/*` — Bearer auth required.
 | Payments | Razorpay (create-order + verify) |
 | Blog | Astro → Cloudflare Workers static; auto-generation pipeline via GitHub Actions |
 | Mobile | Expo, React Native, NativeWind |
-| Alerts | Twilio WhatsApp + SMTP (Gmail app-password) |
+| Alerts | Twilio WhatsApp + Microsoft 365 SMTP (STARTTLS) |
 | Fonts | Space Grotesk, JetBrains Mono |
 
 ---
@@ -535,11 +535,12 @@ Override provider with `LLM_MODEL` (e.g. `gemini/gemini-2.5-flash`). Override ba
 
 | Variable | Default | Description |
 |---|---|---|
-| `SMTP_HOST` | — | e.g. `smtp.gmail.com` |
-| `SMTP_PORT` | `587` | TLS port |
-| `SMTP_USER` | — | Sender address |
-| `SMTP_PASSWORD` | Secret | App-password for Gmail |
-| `SMTP_FROM` | `SMTP_USER` | From address (optional override) |
+| `SMTP_HOST` | `smtp.office365.com` | Microsoft 365 SMTP endpoint |
+| `SMTP_PORT` | `587` | STARTTLS port |
+| `SMTP_USER` | `support@litigaforge.com` | Mailbox login |
+| `SMTP_PASSWORD` | Replit Secret | Mailbox password; never store in code or `.env` |
+| `SMTP_FROM` | `LitigaForge <support@litigaforge.com>` | Sender display address |
+| `SMTP_REPLY_TO` | `support@litigaforge.com` | Reply address |
 
 ### WhatsApp (Twilio)
 

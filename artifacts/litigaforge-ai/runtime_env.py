@@ -51,7 +51,7 @@ def is_test_account_email(email: str) -> bool:
         domain == "litigaforge.test"
         or domain.endswith(".litigaforge.local")
         or (domain == "test.com" and normalized.startswith("jane_"))
-        or normalized in {"info@litigaforge.com", "demo@litigaforge.com"}
+        or normalized in {"support@litigaforge.com", "demo@litigaforge.com"}
         or normalized == (os.getenv("DEMO_ADVOCATE_EMAIL") or "").strip().lower()
     )
 

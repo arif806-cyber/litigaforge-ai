@@ -25,7 +25,7 @@ SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com").rstrip("/")
 ORG_NAME = "Arivex AI Private Limited"
 PRODUCT_NAME = "LitigaForge"
 LOGO_URL = f"{SITE_URL}/logo.png"
-CONTACT_EMAIL = "info@litigaforge.com"
+CONTACT_EMAIL = "support@litigaforge.com"
 
 
 # ── Shared org fragment ───────────────────────────────────────────────────────

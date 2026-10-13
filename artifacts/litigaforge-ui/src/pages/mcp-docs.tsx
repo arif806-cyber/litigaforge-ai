@@ -46,7 +46,7 @@ export default function McpDocs() {
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <a className="text-primary underline" href="https://litigaforge.com/mcp-icon.png">Square connector icon (PNG)</a>
           <a className="text-primary underline" href="https://litigaforge.com/privacy">Privacy policy</a>
-          <a className="text-primary underline" href="mailto:info@litigaforge.com">Support: info@litigaforge.com</a>
+          <a className="text-primary underline" href="mailto:support@litigaforge.com">Support: support@litigaforge.com</a>
         </div>
       </header>
       <section className="space-y-4">

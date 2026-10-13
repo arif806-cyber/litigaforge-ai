@@ -18,7 +18,7 @@ logger = get_logger("litigaforge.push")
 router = APIRouter(tags=["push"])
 
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
-VAPID_CLAIMS_SUB = os.getenv("VAPID_CLAIMS_SUB", "mailto:info@litigaforge.com")
+VAPID_CLAIMS_SUB = os.getenv("VAPID_CLAIMS_SUB", "mailto:support@litigaforge.com")
 
 
 def _push_available() -> bool:

@@ -31,8 +31,6 @@ from logger import get_logger
 import re as _re
 import os as _os
 import pathlib as _pathlib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 logger = get_logger("litigaforge.auth")
 
@@ -397,15 +395,9 @@ def _frontend_account_url(path: str, token: str) -> str:
 
 
 def _send_verification_email_sync(email: str, token: str) -> bool:
-    """Send verification email via SMTP. Returns True on success, False if SMTP not configured."""
-    import smtplib
-    smtp_host = _os.getenv("SMTP_HOST")
-    if not smtp_host:
-        return False
-    smtp_port = int(_os.getenv("SMTP_PORT", "587"))
-    smtp_user = _os.getenv("SMTP_USER", "")
-    smtp_pass = _os.getenv("SMTP_PASSWORD", "")
-    smtp_from = _os.getenv("SMTP_FROM", smtp_user)
+    """Send through the shared, verified STARTTLS transport."""
+    from alerts.email import send_message
+
     verify_url = _frontend_account_url("/verify-email", token)
     body = (
         f"Welcome to LitigaForge AI!\n\n"
@@ -414,26 +406,8 @@ def _send_verification_email_sync(email: str, token: str) -> bool:
         f"This link expires in 24 hours.\n\n"
         f"— LitigaForge AI Team"
     )
-    msg = MIMEText(body)
-    msg["Subject"] = "Verify your LitigaForge AI email"
-    msg["From"] = smtp_from
-    msg["To"] = email
-    try:
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
-                if smtp_user:
-                    server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_from, [email], msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-                server.starttls()
-                if smtp_user:
-                    server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_from, [email], msg.as_string())
-        return True
-    except Exception as exc:
-        logger.warning("SMTP send failed for %s: %s", email, exc)
-        return False
+    result = send_message(email, "Verify your LitigaForge AI email", body)
+    return bool(result.get("success"))
 
 
 async def _send_verification_email(email: str, token: str) -> bool:
@@ -663,15 +637,9 @@ async def _create_password_reset_token(user_id: int) -> str:
 
 
 def _send_password_reset_email_sync(email: str, token: str) -> bool:
-    """Send password reset email via SMTP."""
-    import smtplib
-    smtp_host = _os.getenv("SMTP_HOST")
-    if not smtp_host:
-        return False
-    smtp_port = int(_os.getenv("SMTP_PORT", "587"))
-    smtp_user = _os.getenv("SMTP_USER", "")
-    smtp_pass = _os.getenv("SMTP_PASSWORD", "")
-    smtp_from = _os.getenv("SMTP_FROM", smtp_user)
+    """Send password reset email through the shared SMTP transport."""
+    from alerts.email import send_message
+
     reset_url = _frontend_account_url("/reset-password", token)
     body = (
         f"LitigaForge AI — Password Reset\n\n"
@@ -718,28 +686,8 @@ def _send_password_reset_email_sync(email: str, token: str) -> bool:
 </body>
 </html>"""
     )
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "LitigaForge AI — Password Reset"
-    msg["From"] = smtp_from
-    msg["To"] = email
-    msg.attach(MIMEText(body, "plain"))
-    msg.attach(MIMEText(html, "html"))
-    try:
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
-                if smtp_user:
-                    server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_from, [email], msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
-                if smtp_user:
-                    server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_from, [email], msg.as_string())
-        return True
-    except Exception as exc:
-        logger.warning("Password reset email failed for %s: %s", email, exc)
-        return False
+    result = send_message(email, "LitigaForge AI — Password Reset", body, html)
+    return bool(result.get("success"))
 
 
 async def _send_password_reset_email(email: str, token: str) -> bool:

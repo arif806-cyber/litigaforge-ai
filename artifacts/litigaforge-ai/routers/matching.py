@@ -618,12 +618,12 @@ async def client_matches(current_user: Optional[dict] = Depends(get_current_user
                AND lower(COALESCE(lu.email, '')) NOT LIKE '%@%.local'
                AND lower(COALESCE(lu.email, '')) NOT LIKE '%@example.com'
                AND lower(COALESCE(lu.email, '')) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
-               AND lower(COALESCE(lu.email, '')) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')
+               AND lower(COALESCE(lu.email, '')) NOT IN ('support@litigaforge.com', 'demo@litigaforge.com')
                AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE '%@%.test'
                AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE '%@%.local'
                AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE '%@example.com'
                AND lower(COALESCE(lu.email, l.email, '')) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
-               AND lower(COALESCE(lu.email, l.email, '')) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')
+               AND lower(COALESCE(lu.email, l.email, '')) NOT IN ('support@litigaforge.com', 'demo@litigaforge.com')
            ORDER BY m.created_at DESC""",
         current_user["id"],
     )
@@ -671,7 +671,7 @@ async def lawyer_matches(current_user: Optional[dict] = Depends(get_current_user
                AND lower(cu.email) NOT LIKE '%@litigaforge.test'
                AND lower(cu.email) NOT LIKE '%@%.litigaforge.local'
                AND lower(cu.email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
-               AND lower(cu.email) NOT IN ('info@litigaforge.com', 'demo@litigaforge.com')
+               AND lower(cu.email) NOT IN ('support@litigaforge.com', 'demo@litigaforge.com')
            ORDER BY m.created_at DESC""",
         lawyer_id,
     )

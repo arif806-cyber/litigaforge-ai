@@ -54,7 +54,7 @@ async def _revenue_summary() -> dict:
              AND LOWER(email) NOT LIKE '%@%.local'
              AND LOWER(email) NOT LIKE '%@example.com'
              AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
-             AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')
+             AND LOWER(email) NOT IN ('support@litigaforge.com','demo@litigaforge.com')
            GROUP BY subscription_tier"""
     )
     by_tier = {}
@@ -73,7 +73,7 @@ async def _revenue_summary() -> dict:
            AND LOWER(email) NOT LIKE '%@%.local'
            AND LOWER(email) NOT LIKE '%@example.com'
            AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
-           AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')"""
+           AND LOWER(email) NOT IN ('support@litigaforge.com','demo@litigaforge.com')"""
     )
     return {
         "mrr_rupees": mrr_paise / 100,
