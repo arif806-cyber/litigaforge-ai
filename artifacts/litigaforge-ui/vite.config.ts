@@ -111,8 +111,8 @@ export default defineConfig({
         short_name: "LitigaForge",
         description:
           "AI-assisted legal information, research, and advocate tools for Telangana and Andhra Pradesh.",
-        theme_color: "#1a2744",
-        background_color: "#ffffff",
+        theme_color: "#93620d",
+        background_color: "#f5f3ed",
         display: "standalone",
         orientation: "portrait-primary",
         start_url: "/",
@@ -121,15 +121,22 @@ export default defineConfig({
         categories: ["legal", "productivity", "utilities"],
         icons: [
           {
-            src: "favicon.svg",
-            sizes: "any",
-            type: "image/svg+xml",
+            src: "mcp-icon.png",
+            sizes: "512x512",
+            type: "image/png",
             purpose: "any maskable",
           },
           {
-            src: "opengraph.jpg",
+            src: "mcp-icon.png",
             sizes: "192x192",
-            type: "image/jpeg",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "favicon.svg",
+            sizes: "any",
+            type: "image/svg+xml",
+            purpose: "any",
           },
         ],
         shortcuts: [

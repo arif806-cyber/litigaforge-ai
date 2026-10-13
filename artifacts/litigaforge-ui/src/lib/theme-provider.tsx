@@ -44,6 +44,10 @@ export function ThemeProvider({
       root.classList.add(resolved)
       root.dataset.theme = resolved
       root.style.colorScheme = resolved
+      const themeColor = getComputedStyle(root).getPropertyValue("--background-oklch").trim()
+      document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+        if (themeColor) meta.content = themeColor
+      })
     }
     applyTheme()
     if (theme === "system") {

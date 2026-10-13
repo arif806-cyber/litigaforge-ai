@@ -369,12 +369,18 @@ importers:
 
   artifacts/litigaforge-ui:
     dependencies:
+      '@fontsource-variable/inter':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@sentry/react':
         specifier: ^11.6.0
         version: 11.6.0(react@19.1.0)
       '@xyflow/react':
         specifier: ^12.11.0
         version: 12.11.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(immer@11.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      konsta:
+        specifier: ^5.5.0
+        version: 5.5.0
       react-helmet-async:
         specifier: ^3.0.0
         version: 3.0.0(react@19.1.0)
@@ -1391,6 +1397,9 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontsource-variable/inter@5.3.0':
+    resolution: {integrity: sha512-OupL48va4JNofb97w6NYeF9S7W/kHNKM0Er8Dem5nqi4jeOLrVJDoE8tZEpnMJmtkvNbB1EIPPwHcdkF6b1oUA==}
 
   '@gerrit0/mini-shiki@3.23.0':
     resolution: {integrity: sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg==}
@@ -3945,6 +3954,10 @@ packages:
     resolution: {integrity: sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ==}
     engines: {node: '>=0.10.0'}
 
+  konsta@5.5.0:
+    resolution: {integrity: sha512-YMhVJeDLgGZS+34eeiiRD0Xc8zoKRyvgStYbFBUYBWGhafB9U5Q8Q9JYTZF17oe7N6znE1zAuQypLCJ5moFa6Q==}
+    engines: {node: '>= 4.7.0'}
+
   leven@3.1.0:
     resolution: {integrity: sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==}
     engines: {node: '>=6'}
@@ -6173,6 +6186,8 @@ snapshots:
       react-dom: 19.1.0(react@19.1.0)
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontsource-variable/inter@5.3.0': {}
 
   '@gerrit0/mini-shiki@3.23.0':
     dependencies:
@@ -8814,6 +8829,10 @@ snapshots:
       graceful-fs: 4.2.11
 
   jsonpointer@5.0.1: {}
+
+  konsta@5.5.0:
+    dependencies:
+      tailwind-merge: 3.5.0
 
   leven@3.1.0: {}
 

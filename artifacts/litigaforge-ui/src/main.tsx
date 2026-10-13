@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
+import "@fontsource-variable/inter";
 import "./index.css";
 import * as Sentry from "@sentry/react";
 

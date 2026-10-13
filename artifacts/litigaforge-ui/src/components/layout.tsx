@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Scale, FileText, Menu, X,
+  Scale, FileText, Menu, ChevronLeft,
   Crown, LogOut, User as UserIcon,
   Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper,
   Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users, Zap, Inbox,
@@ -11,7 +10,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
@@ -24,6 +22,7 @@ import { PublicSiteHeader } from "@/components/public-site-header";
 import { useConnectFlags } from "@/hooks/use-connect-v2";
 import { connectV2Strings } from "@/i18n/connect-v2";
 import { clientNavigationActive } from "@/lib/active-portal";
+import { GroupedList, GroupedRow, NavBar, Sheet, TabBar } from "@/components/mobile-primitives";
 
 interface NavEntry {
   href: string;
@@ -85,6 +84,33 @@ const publicNav: NavEntry[] = [
 // stable data-testid generation.
 function navLabel(item: NavEntry, t: Translation): string {
   return item.tKey && t[item.tKey] ? t[item.tKey] : item.label;
+}
+
+function mobileTitleForPath(path: string): string {
+  if (path.startsWith("/client-dashboard")) return "Dashboard";
+  if (path.startsWith("/lawyer-dashboard")) return "Advocate dashboard";
+  if (path.startsWith("/post-case")) return "Post a case";
+  if (path.startsWith("/my-cases/")) return "Case details";
+  if (path.startsWith("/my-cases")) return "My cases";
+  if (path.startsWith("/advocate/cases/")) return "Case details";
+  if (path.startsWith("/requests") || path.startsWith("/matches")) return "Client requests";
+  if (path.startsWith("/messages")) return "Messages";
+  if (path.startsWith("/judgments/")) return "Judgment details";
+  if (path.startsWith("/judgments")) return "Judgment finder";
+  if (path.startsWith("/legal-chat")) return "AI drafting";
+  if (path.startsWith("/ask")) return "Legal Q&A";
+  if (path.startsWith("/review")) return "Document analyzer";
+  if (path.startsWith("/cnr-tracker")) return "CNR tracker";
+  if (path.startsWith("/free-documents/") || path.startsWith("/document-template/")) return "Document";
+  if (path.startsWith("/free-documents")) return "Free documents";
+  if (path.startsWith("/settings")) return "Settings";
+  if (path.startsWith("/subscription")) return "Subscription";
+  if (path.startsWith("/admin")) return "Admin";
+  if (path.startsWith("/lawyers/register")) return "Advocate registration";
+  if (path.startsWith("/lawyers")) return "Find a lawyer";
+  if (path.startsWith("/documents")) return "Documents";
+  if (path.startsWith("/docket")) return "Docket";
+  return "LitigaForge";
 }
 
 /* ─── Unread messages hook ─── */
@@ -327,7 +353,12 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
       ? [{ href: "/lawyer-dashboard", label: "Dashboard", icon: Star }, { href: "/requests", label: connectStrings.requests, icon: Inbox }]
       : lawyerMobileNav
     : clientMobileNav;
-  const fabHref   = isLawyer ? "/lawyer-dashboard" : "/post-case";
+  const primaryAction = isLawyer
+    ? { href: "/legal-chat", label: "Draft", icon: MessageSquareText }
+    : { href: "/post-case", label: "Post", icon: Plus };
+  const PrimaryActionIcon = primaryAction.icon;
+  const mainTab = mobileNav[0];
+  const casesTab = mobileNav[1];
 
   const extraNav: NavEntry[] = isLawyer
     ? [
@@ -343,135 +374,64 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
 
   const msgsActive = location.startsWith("/messages");
   const primaryTabActive = mobileNav.some(({ href }) => location.startsWith(href));
-  const moreActive = !primaryTabActive && !msgsActive
-    && [...extraNav, ...commonNav].some(s => location.startsWith(s.href));
+  const tabItems = [
+    ...(mainTab ? [{
+      id: mainTab.href, href: mainTab.href, label: mainTab.tKey && t[mainTab.tKey] ? t[mainTab.tKey] : mainTab.label,
+      icon: <mainTab.icon aria-hidden="true" />,
+    }] : []),
+    { id: "messages", href: "/messages", label: "Messages", icon: <Inbox aria-hidden="true" />, badge: unreadCount > 0 ? unreadCount : undefined },
+    {
+      id: "primary-action", href: primaryAction.href, label: primaryAction.label,
+      icon: <PrimaryActionIcon aria-hidden="true" />,
+    },
+    ...(casesTab ? [{
+      id: casesTab.href, href: casesTab.href, label: casesTab.tKey && t[casesTab.tKey] ? t[casesTab.tKey] : casesTab.label,
+      icon: <casesTab.icon aria-hidden="true" />,
+    }] : []),
+    { id: "more", label: "More", icon: <Menu aria-hidden="true" />, onSelect: openDrawer },
+  ];
+  const selectedTab = msgsActive
+    ? "messages"
+    : primaryTabActive
+      ? (mobileNav.find(({ href }) => location.startsWith(href))?.href ?? mobileNav[0]?.href ?? "more")
+      : location.startsWith(primaryAction.href)
+        ? "primary-action"
+        : "more";
 
   return (
     <>
-      <nav
-        className="lf-mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 h-[calc(68px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-2 z-30"
-        style={{ boxShadow: "0 -1px 0 color-mix(in oklch, hsl(var(--foreground)) 8%, transparent), 0 -8px 32px color-mix(in oklch, hsl(var(--background)) 90%, transparent)" }}
-      >
-        {/* Left 2 primary tabs */}
-        {mobileNav.map(({ href, icon: Icon, tKey, label }) => {
-          const active = href === "/" ? location === "/" : location.startsWith(href);
-          return (
-            <Link key={href} href={href}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full active:scale-95 transition-all duration-150"
-            >
-              <div className={cn("flex items-center justify-center w-9 h-9 rounded-xl transition-all", active ? "bg-primary/15" : "")}>
-                <Icon className={cn("w-5 h-5 transition-colors", active ? "text-primary" : "text-muted-foreground")} />
-              </div>
-              <span className={cn("text-[10px] font-medium leading-none transition-colors", active ? "text-primary font-semibold" : "text-muted-foreground")}>
-                {(tKey && t[tKey]) ? t[tKey] : label}
-              </span>
-            </Link>
-          );
-        })}
+      <TabBar items={tabItems} value={selectedTab} label="Main navigation" className="lf-mobile-bottom-nav md:hidden" />
 
-        {/* Centre FAB */}
-        <Link href={fabHref}
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full -mt-3 active:scale-90 transition-all duration-150"
-        >
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, hsl(var(--primary)), color-mix(in oklch, hsl(var(--primary)) 72%, hsl(var(--foreground))))", boxShadow: "0 4px 16px color-mix(in oklch, hsl(var(--primary)) 40%, transparent)" }}
-          >
-            <Plus className="w-6 h-6 text-primary-foreground" strokeWidth={2.5} />
-          </div>
-          <span className="text-[10px] font-semibold text-primary leading-none mt-0.5">
-            {isLawyer ? "Add" : "Post"}
-          </span>
-        </Link>
-
-        {/* Messages */}
-        <Link href="/messages"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full active:scale-95 transition-all duration-150"
-        >
-          <div className={cn("flex items-center justify-center w-9 h-9 rounded-xl transition-all relative", msgsActive ? "bg-primary/15" : "")}>
-            <Inbox className={cn("w-5 h-5 transition-colors", msgsActive ? "text-primary" : "text-muted-foreground")} />
-            {unreadCount > 0 && !msgsActive && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </div>
-          <span className={cn("text-[10px] font-medium leading-none transition-colors", msgsActive ? "text-primary font-semibold" : "text-muted-foreground")}>
-            Messages
-          </span>
-        </Link>
-
-        {/* More */}
-        <button
-          onPointerDown={openDrawer}
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full active:scale-95 transition-all duration-150"
-        >
-          <div className={cn("flex items-center justify-center w-9 h-9 rounded-xl transition-all", moreActive ? "bg-primary/15" : "")}>
-            <Menu className={cn("w-5 h-5 transition-colors", moreActive ? "text-primary" : "text-muted-foreground")} />
-          </div>
-          <span className={cn("text-[10px] font-medium leading-none transition-colors", moreActive ? "text-primary font-semibold" : "text-muted-foreground")}>
-            More
-          </span>
-        </button>
-      </nav>
-
-      {typeof document !== "undefined" && createPortal(
-        <AnimatePresence>
-          {drawerOpen && (
-            <>
-              <motion.div key="btm-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 9996 }}
-                onPointerDown={closeDrawer}
-              />
-              <motion.div key="btm-drawer" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-                transition={{ type: "spring", stiffness: 380, damping: 36 }}
-                style={{ zIndex: 9997 }}
-                className="fixed bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-2xl shadow-2xl pb-safe"
-              >
-                <div className="flex items-center justify-between px-5 pt-4 pb-2">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Menu</p>
-                  <button onPointerDown={closeDrawer} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center">
-                    <X className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </div>
-                <div className="px-3 grid grid-cols-3 gap-2">
-                  {[...extraNav, ...commonNav].map((item) => {
-                    const { href, icon: Icon, label } = item;
-                    const active = location.startsWith(href);
-                    return (
-                      <Link key={href} href={href} onClick={closeDrawer}
-                        style={{ touchAction: "manipulation" }}
-                        className={cn(
-                          "flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-colors active:scale-95",
-                          active ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground",
-                          item.highlight && !active ? "border border-secondary/20" : ""
-                        )}
-                      >
-                        <Icon className={cn("w-5 h-5", active ? "text-primary" : item.highlight ? "text-secondary" : "text-muted-foreground")} />
-                        <span className={cn("text-[11px] font-medium leading-tight", item.highlight && !active ? "text-secondary" : "")}>{label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-                <div className="px-4 pt-3 pb-6 border-t border-border mt-3">
-                  <button
-                    onPointerDown={() => { closeDrawer(); logout(); setLocation("/login"); }}
-                    style={{ touchAction: "manipulation" }}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-95 transition-all text-sm font-semibold"
-                  >
-                    <LogOut className="w-4 h-4" /> Sign Out
-                  </button>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen} title="More" size="medium">
+        <GroupedList label="More tools">
+          {[...extraNav, ...commonNav].map(({ href, icon: Icon, label }) => (
+            <GroupedRow
+              key={href}
+              title={label}
+              leading={<Icon />}
+              href={href}
+              accessory
+              testId={`more-${label.toLowerCase().replace(/\s+/g, "-")}`}
+            />
+          ))}
+        </GroupedList>
+        {user?.is_superuser && (
+          <GroupedList title="Admin" label="Admin tools">
+            <GroupedRow title="Admin panel" leading={<Shield />} href="/admin" accessory />
+            <GroupedRow title="ForgeOS" leading={<Cpu />} href="/forgeos" accessory />
+          </GroupedList>
+        )}
+        <GroupedList label="Account">
+          <GroupedRow
+            title="Sign out"
+            leading={<LogOut />}
+            onClick={() => { closeDrawer(); logout(); setLocation("/login"); }}
+            className="lfm-row-destructive"
+            accessory={false}
+            testId="button-sign-out"
+          />
+        </GroupedList>
+      </Sheet>
     </>
   );
 }
@@ -498,6 +458,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isWorkspace = location.startsWith("/workspace");
   const { user, activePortal } = useAuth();
   const { theme, setTheme } = useTheme();
+  const [, setLocation] = useLocation();
+  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
+  const mobileTitle = mobileTitleForPath(location);
+  const isMobileDetail = /^\/(my-cases\/[^/]+|judgments\/[^/]+|advocate\/cases\/[^/]+|free-documents\/[^/]+|document-template\/[^/]+)$/.test(location);
+  const backHref = location.startsWith("/judgments/")
+    ? "/judgments"
+    : location.startsWith("/advocate/cases/")
+      ? "/advocate/cases"
+      : location.startsWith("/free-documents/") || location.startsWith("/document-template/")
+        ? "/free-documents"
+        : "/my-cases";
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const handleBack = () => {
+    if (window.history.length > 1) window.history.back();
+    else setLocation(backHref);
+  };
   useMessageNotifications();
   const publicSurface = !user && !isWorkspace && /^(\/ask|\/review|\/judgments(?:\/|$)|\/lawyers(?:\/|$)|\/legal-aid|\/free-documents)/.test(location);
 
@@ -512,34 +488,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="lf-app-layout flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
+      <div className="lf-app-layout flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* Mobile top header */}
-      <header className="flex-shrink-0 border-b border-border bg-card z-20 flex items-center justify-between px-4 h-14 shadow-sm md:hidden">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Scale className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <span className="font-bold text-sm tracking-tight">LitigaForge</span>
-            {user && (
-              <span className="ml-2 px-1.5 py-0.5 rounded bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-200 text-[9px] font-bold uppercase tracking-wide">
-                {activePortal === "client" ? "CLIENT" : "ADVOCATE"}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+      <NavBar
+        className="lf-mobile-topbar md:hidden"
+        title={mobileTitle}
+        large={!isMobileDetail}
+        scrollEl={scrollElement}
+        leading={isMobileDetail
+          ? <button type="button" onClick={handleBack} className="inline-flex min-h-11 items-center gap-0.5 text-primary" aria-label="Go back">
+              <ChevronLeft className="h-6 w-6" /><span className="text-sm">{backHref === "/judgments" ? "Judgments" : backHref === "/free-documents" ? "Documents" : "Cases"}</span>
+            </button>
+          : <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><Scale className="h-4 w-4" /></div>}
+        trailing={<div className="flex items-center gap-1">
           <CountrySwitcher />
           <LanguageSwitcher />
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-10 h-10 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-95"
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-        </div>
-      </header>
+        </div>}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
@@ -548,7 +520,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main className={cn(
+        <main
+          ref={(node) => setScrollElement(node)}
+          onTouchStart={isMobileDetail ? (event) => {
+            const touch = event.touches[0];
+            if (touch.clientX < 20) swipeStart.current = { x: touch.clientX, y: touch.clientY };
+          } : undefined}
+          onTouchEnd={isMobileDetail ? (event) => {
+            const start = swipeStart.current;
+            swipeStart.current = null;
+            const touch = event.changedTouches[0];
+            if (start && touch.clientX - start.x > 88 && Math.abs(touch.clientY - start.y) < 60) handleBack();
+          } : undefined}
+          className={cn(
           "flex-1 overflow-y-auto overflow-x-hidden relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background",
           isWorkspace && "min-h-0 overflow-hidden pb-0",
         )}>
@@ -592,7 +576,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom tab bar */}
-      {user && !isWorkspace && !["/lawyers/register", "/post-case", "/settings"].some(path => location === path || location.startsWith(`${path}/`)) && <BottomTabBar location={location} user={user} />}
+      {user && !isWorkspace && !["/lawyers/register", "/post-case", "/settings", "/verify-email", "/forgot-password", "/reset-password"].some(path => location === path || location.startsWith(`${path}/`)) && <BottomTabBar location={location} user={user} />}
     </div>
   );
 }

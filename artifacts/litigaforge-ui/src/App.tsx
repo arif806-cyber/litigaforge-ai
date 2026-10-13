@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { ThemeProvider } from "@/lib/theme-provider";
+import { ThemeProvider, useTheme as useAppTheme } from "@/lib/theme-provider";
+import { KonstaProvider } from "konsta/react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { trackPageView } from "@/lib/analytics";
 import { initRecaptcha } from "@/lib/recaptcha";
@@ -95,6 +96,23 @@ const queryClient = new QueryClient({
     queries: { retry: 2, staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false },
   },
 });
+
+function KonstaAppTheme({ children }: { children: React.ReactNode }) {
+  const { theme } = useAppTheme();
+  const [systemDark, setSystemDark] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemDark(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return (
+    <KonstaProvider theme="ios" dark={theme === "dark" || (theme === "system" && systemDark)} iosHoverHighlight>
+      {children}
+    </KonstaProvider>
+  );
+}
 
 function PageLoader() {
   return (
@@ -546,28 +564,30 @@ function FirstVisitDisclaimer() {
 function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <AuthProvider>
-            <CountryGate>
-              {(country) => (
-                <WouterRouter base={`${getAppBase()}/${country}`} aroundNav={viewTransitionAroundNav}>
-                  <SEOHelmet />
-                  <SkipLink />
-                  <KeyboardShortcuts />
-                  <GlobalCommandPalette />
-                  <Analytics />
-                  <RoutePortalSync />
-                  <InstallPrompt />
-                  {/* <FirstVisitDisclaimer /> */}
-                  <Router />
-                </WouterRouter>
-              )}
-            </CountryGate>
-          </AuthProvider>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
+      <KonstaAppTheme>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <AuthProvider>
+              <CountryGate>
+                {(country) => (
+                  <WouterRouter base={`${getAppBase()}/${country}`} aroundNav={viewTransitionAroundNav}>
+                    <SEOHelmet />
+                    <SkipLink />
+                    <KeyboardShortcuts />
+                    <GlobalCommandPalette />
+                    <Analytics />
+                    <RoutePortalSync />
+                    <InstallPrompt />
+                    {/* <FirstVisitDisclaimer /> */}
+                    <Router />
+                  </WouterRouter>
+                )}
+              </CountryGate>
+            </AuthProvider>
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </KonstaAppTheme>
     </ThemeProvider>
   );
 }

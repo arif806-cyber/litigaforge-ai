@@ -15,6 +15,7 @@ import { safeAuthNext } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-connect-v2";
 import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
+import { SegmentedControl } from "@/components/mobile-primitives";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
   IN: { badge: "Legal tools for advocates", heading: "Legal tools\nbuilt for your practice.", sub: "Track cases, research Indian judgments, analyze documents, and manage advocate work in one platform.", trust: "Bar enrolment checked by LitigaForge where an advocate is admin-verified" },
@@ -296,29 +297,19 @@ export default function Login() {
           className="w-full max-w-md"
         >
           {/* Role Tabs */}
-          <div className="grid grid-cols-2 gap-2 mb-6">
-            <button
-              type="button"
-              onClick={() => setRole("client")}
-              className={`flex items-center gap-2 justify-center px-4 py-3 rounded-xl border font-semibold text-sm transition-all ${
-                isClient
-                  ? "border-primary bg-primary text-primary-foreground shadow"
-                  : "border-border bg-card text-muted-foreground hover:border-border/80"
-              }`}
-            >
-              <User className="w-4 h-4" /> Client
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("lawyer")}
-              className={`flex items-center gap-2 justify-center px-4 py-3 rounded-xl border font-semibold text-sm transition-all ${
-                !isClient
-                  ? "border-primary bg-primary text-primary-foreground shadow"
-                  : "border-border bg-card text-muted-foreground hover:border-border/80"
-              }`}
-            >
-              <Briefcase className="w-4 h-4" /> Advocate
-            </button>
+          <SegmentedControl
+            className="mb-6 md:hidden"
+            label="Account type"
+            value={role}
+            onValueChange={(next) => setRole(next as Role)}
+            options={[
+              { value: "client", label: <><User className="mr-2 inline h-4 w-4" />Client</> },
+              { value: "lawyer", label: <><Briefcase className="mr-2 inline h-4 w-4" />Advocate</> },
+            ]}
+          />
+          <div className="mb-6 hidden grid-cols-2 gap-2 md:grid">
+            <button type="button" onClick={() => setRole("client")} className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${isClient ? "border-primary bg-primary text-primary-foreground shadow" : "border-border bg-card text-muted-foreground hover:border-border/80"}`}><User className="h-4 w-4" />Client</button>
+            <button type="button" onClick={() => setRole("lawyer")} className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${!isClient ? "border-primary bg-primary text-primary-foreground shadow" : "border-border bg-card text-muted-foreground hover:border-border/80"}`}><Briefcase className="h-4 w-4" />Advocate</button>
           </div>
 
           {/* Mode Toggle */}
