@@ -27,6 +27,23 @@ const config = `{
   }
 }`;
 
+const examples: [string, string][] = [
+  ["ecourts_case_status", "“Get the current eCourts status and next hearing for DEMO-CNR-001.”"],
+  ["ecourts_cause_list", "“Check the cause list for [court] on 2026-10-20.”"],
+  ["ecourts_order", "“Show the order dated 2026-10-01 for DEMO-CNR-001.”"],
+  ["judgment_search", "“Find Indian judgments about interim relief in civil appeals, 2020–2025.”"],
+  ["judgment_passages", "“Find passages about natural justice in judgment [doc_id].”"],
+  ["citing_judgments", "“Check which indexed judgments cite [doc_id].”"],
+  ["bare_act_section", "“Retrieve section 1 of the Bharatiya Nyaya Sanhita, if its official text is loaded.”"],
+  ["old_to_new_section", "“Map CrPC section 154 to its BNSS counterpart.”"],
+  ["limitation_lookup", "“Look up the Limitation Act period for an appeal from a decree.”"],
+  ["my_cases", "“List the cases I have tracked in LitigaForge.”"],
+  ["my_case", "“Show my tracked case DEMO-CNR-001.”"],
+  ["verify_citation", "“Verify the citation (2021) 5 SCC 1. Do not use client facts.”"],
+  ["update_draft_sections", "“Suggest current-code mappings for ‘Section 154 CrPC’ in this short draft: [draft text].”"],
+  ["hearing_brief", "“Prepare a factual hearing brief for my tracked case DEMO-CNR-001; focus on the next listing.”"],
+];
+
 export default function McpDocs() {
   const { data: planData } = useQuery({
     queryKey: ["mcp-public-plans"],
@@ -58,6 +75,16 @@ export default function McpDocs() {
           Settings → MCP Connector is also supported for clients that cannot use OAuth.
         </p>
         <pre className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 text-xs"><code>{config}</code></pre>
+        <div className="rounded-xl border border-border p-4 text-sm leading-6">
+          <h3 className="font-semibold">Connect from Claude</h3>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
+            <li>In Claude, open <strong>Settings → Connectors</strong> and choose the option to add a custom connector.</li>
+            <li>Name it <strong>LitigaForge India</strong> and enter <code>https://litigaforge.com/mcp</code> as the remote MCP URL.</li>
+            <li>Choose <strong>Connect</strong>, sign in to the LitigaForge account invited for review, and approve read-only access.</li>
+            <li>In a new Claude chat, enable the connector and ask a question using one of the examples below. The Reviewer account is limited to 200 calls/day for 30 days.</li>
+          </ol>
+          <p className="mt-2 text-xs text-muted-foreground">Claude may label these controls differently by plan or interface version. If custom connectors are unavailable, use another MCP client that supports remote Streamable HTTP and OAuth 2.0 PKCE.</p>
+        </div>
       </section>
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Prompts</h2>
@@ -78,17 +105,24 @@ export default function McpDocs() {
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>)}
         </div>
+        <details className="rounded-xl border border-border p-4">
+          <summary className="cursor-pointer font-semibold">Example prompts for every tool</summary>
+          <div className="mt-3 divide-y divide-border">
+            {examples.map(([name, prompt]) => <p key={name} className="py-2 text-sm"><code className="text-primary">{name}</code><span className="ml-2 text-muted-foreground">{prompt}</span></p>)}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">DEMO-CNR-001 is fictional and available only to Reviewer accounts. Replace bracketed values only with data you are authorized to access.</p>
+        </details>
       </section>
       <section className="space-y-4 rounded-xl border border-amber-300 bg-amber-50/50 p-5">
         <h2 className="text-xl font-semibold">Reviewer access instructions</h2>
         <ol className="list-decimal space-y-2 pl-5 text-sm leading-6">
-          <li>Configure <code>MCP_REVIEWER_EMAIL</code> and <code>MCP_REVIEWER_PASSWORD</code> in Replit Secrets. Keep both out of source control.</li>
-          <li>In the development environment, run <code>python tests/seed_dev_mcp_reviewer.py seed</code>. It refuses production, grants the non-purchasable Reviewer entitlement, and seeds fictional CNR demo matters plus saved public judgments for up to 30 days.</li>
-          <li>Add <code>https://litigaforge.com/mcp</code> as a custom connector in your MCP client, sign in with the reviewer account, and approve read-only access.</li>
-          <li>Check that tracked-case tools return only the reviewer’s demo records. Public case-law tools return public legal sources.</li>
+          <li>An administrator provisions or upgrades the reviewer’s real LitigaForge account in <strong>Admin Panel → MCP Plans &amp; Usage → Invite or upgrade a Reviewer</strong>.</li>
+          <li>The administrator shares the one-time password setup link directly with the reviewer through a trusted channel. It expires after one hour and can be used once.</li>
+          <li>After setting a password, connect using Claude steps above. Reviewer access is invite-only, includes all listed tools, and expires after 30 days.</li>
+          <li>Tracked-case tools return only the reviewer’s fictional demo matters. Public research tools use public legal sources where available.</li>
         </ol>
         <p className="text-sm font-medium text-amber-900">
-          Reviewer fixtures and credentials are development-only. This page does not claim that a live Claude connector test has been run.
+          Do not send client facts or confidential draft text to public legal research tools. Review source citations before relying on returned material.
         </p>
       </section>
       <section className="space-y-3">
@@ -108,7 +142,7 @@ export default function McpDocs() {
         </div>
         <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
           <li>Tools are read-only. Signed-in accounts can create read-only keys; tool access and quotas depend on the selected plan.</li>
-          <li>Free accounts receive 3 citation checks/day and 20 local draft-section updates/day. Hearing briefs require the Advocate MCP add-on or Firm plan.</li>
+          <li>Free accounts receive 3 citation checks/day and 20 local draft-section updates/day. Hearing briefs require Reviewer, Advocate MCP add-on, or Firm access.</li>
           <li>Indian Kanoon features require <code>IK_ENABLED</code>; if disabled, citation checks can use local matches only and the judge/bench view is omitted.</li>
           <li>Criminal-code crosswalks are suggestions, not legal advice. Old codes may remain applicable to offences before 1 July 2024.</li>
           <li>Free accounts get 20 calls per day; Acts, section mappings, and limitation lookups are included, while judgment search tools are capped at three calls each per day.</li>

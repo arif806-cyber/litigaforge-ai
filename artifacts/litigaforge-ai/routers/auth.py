@@ -725,7 +725,11 @@ async def reset_password(req: ResetPasswordRequest, request: Request):
         raise HTTPException(400, "Reset link has expired — please request a new one")
     from auth import hash_password
     new_hash = hash_password(req.new_password)
-    await db_execute("UPDATE users SET password_hash = $1 WHERE id = $2", new_hash, row["user_id"])
+    await db_execute(
+        """UPDATE users SET password_hash=$1,must_change_password=FALSE,email_verified=TRUE
+           WHERE id=$2""",
+        new_hash, row["user_id"],
+    )
     await db_execute("DELETE FROM password_reset_tokens WHERE token = $1", req.token)
     # Revoke all existing sessions for security
     await delete_all_user_refresh_tokens(row["user_id"])

@@ -36,7 +36,7 @@ _PLAN_DEFAULTS = {
                                   "update_draft_sections": 20}},
     "reviewer": {"enabled": True, "price_inr": 0, "gst_percent": 0, "daily_calls": 200,
                  "monthly_calls": None, "seats": 1, "overage_inr": 0, "expires_days": 30,
-                 "purchasable": False, "tools": _BASE_MCP_TOOLS + _FREE_NEW_TOOLS},
+                 "purchasable": False, "tools": _ALL_MCP_TOOLS},
     "advocate_addon": {"enabled": True, "price_inr": 499, "gst_percent": 18, "daily_calls": 300,
                        "monthly_calls": None, "seats": 1, "overage_inr": 0, "verified_advocate_only": True,
                        "tools": _ALL_MCP_TOOLS},
@@ -199,6 +199,16 @@ async def ensure_schema() -> None:
             )
         """)
         await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mcp_admin_audit (
+                id BIGSERIAL PRIMARY KEY,
+                actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                reviewer_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                reviewer_email TEXT NOT NULL,
+                action TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS mcp_oauth_clients (
                 client_id TEXT PRIMARY KEY,
                 client_name TEXT NOT NULL,
@@ -268,6 +278,18 @@ async def ensure_schema() -> None:
                         updated_at=NOW()
                     WHERE plan_id=$1
                 """, plan_id, json.dumps(tools), json.dumps(caps))
+        reviewer_tools_migration = await conn.fetchval("""
+            INSERT INTO mcp_config_migrations(migration_id)
+            VALUES('mcp_reviewer_all_tools_v1')
+            ON CONFLICT(migration_id) DO NOTHING
+            RETURNING migration_id
+        """)
+        if reviewer_tools_migration:
+            await conn.execute("""
+                UPDATE mcp_plan_settings
+                SET config=jsonb_set(config,'{tools}',$1::jsonb,TRUE),updated_at=NOW()
+                WHERE plan_id='reviewer'
+            """, json.dumps(_ALL_MCP_TOOLS))
         async with conn.transaction():
             price_migration = await conn.fetchval("""
                 INSERT INTO mcp_config_migrations(migration_id)
@@ -747,6 +769,67 @@ async def grant_reviewer(user_id: int, user: dict = Depends(get_superuser)):
     }
 
 
+@router.post("/admin/mcp-reviewers")
+async def invite_mcp_reviewer(request: Request, user: dict = Depends(get_superuser)):
+    """Create or upgrade a real account, grant Reviewer access, and return a one-time setup URL."""
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    try:
+        body = await request.json()
+        email = str(body.get("email", "")).strip().lower()
+    except Exception as exc:
+        raise HTTPException(400, "A reviewer email is required") from exc
+    import re
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise HTTPException(422, "Enter a valid reviewer email address")
+
+    await ensure_schema()
+    target = await fetchrow(
+        "SELECT id,is_superuser,is_demo FROM users WHERE LOWER(email)=LOWER($1)", email
+    )
+    if target and (target.get("is_superuser") or target.get("is_demo")):
+        raise HTTPException(409, "Reviewer access cannot be granted to administrator or demo accounts")
+    created = not target
+    if target:
+        user_id = int(target["id"])
+        await execute("UPDATE users SET must_change_password=TRUE WHERE id=$1", user_id)
+    else:
+        from auth import hash_password
+        temporary_hash = hash_password(secrets.token_urlsafe(48))
+        target = await fetchrow("""
+            INSERT INTO users(email,name,password_hash,role,email_verified,is_superuser,is_profile_public,must_change_password)
+            VALUES($1,$2,$3,'client',FALSE,FALSE,FALSE,TRUE) RETURNING id
+        """, email, email.split("@", 1)[0][:120] or "Reviewer", temporary_hash)
+        user_id = int(target["id"])
+
+    grant = await grant_reviewer(user_id, user)
+    from auth import _create_password_reset_token, _frontend_account_url
+    token = await _create_password_reset_token(user_id)
+    setup_url = _frontend_account_url("/reset-password", token)
+    await execute("""
+        INSERT INTO mcp_admin_audit(actor_user_id,reviewer_user_id,reviewer_email,action)
+        VALUES($1,$2,$3,$4)
+    """, int(user["id"]), user_id, email, "created" if created else "upgraded")
+    return {
+        "user_id": user_id, "email": email, "created": created,
+        "plan": "reviewer", "daily_calls": 200, "expires_in_days": grant["expires_in_days"],
+        "tools": _ALL_MCP_TOOLS, "setup_url": setup_url,
+        "message": "Share this one-time password setup link with the reviewer through a trusted channel. It expires in one hour.",
+    }
+
+
+@router.get("/admin/mcp-reviewer-audit")
+async def mcp_reviewer_audit(user: dict = Depends(get_superuser)):
+    if not enabled():
+        raise HTTPException(404, "MCP v2 is disabled")
+    rows = await fetch("""
+        SELECT a.id,a.reviewer_email,a.action,a.created_at,u.email AS admin_email
+        FROM mcp_admin_audit a LEFT JOIN users u ON u.id=a.actor_user_id
+        ORDER BY a.created_at DESC LIMIT 50
+    """)
+    return {"entries": [dict(row) for row in rows]}
+
+
 @router.delete("/admin/mcp-reviewers/{user_id}")
 async def revoke_reviewer(user_id: int, user: dict = Depends(get_superuser)):
     if not enabled():
@@ -1204,6 +1287,13 @@ async def call_tool(name: str, args: dict, user: dict) -> dict:
         query = str(args.get("query") or "").strip()[:160]
         if not doc_id.isdigit() or len(query) < 2:
             raise ValueError("doc_id and a query of at least 2 characters are required")
+        if (os.getenv("IK_ENABLED", "").strip().lower() not in {"1", "true", "yes", "on"}
+                or not os.getenv("INDIANKANOON_API_TOKEN", "").strip()):
+            return public_result(
+                {"status": "unavailable", "reason": "Indian Kanoon document-fragment access is not configured"},
+                source="Indian Kanoon document fragments", source_url=None,
+                identifier=f"ik-doc:{doc_id}",
+            )
         pool = await get_pool()
         async with pool.acquire() as conn:
             from case_law_search import ik_cached_request

@@ -5,6 +5,7 @@ The runner is restricted to loopback so it cannot target production.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -170,6 +171,10 @@ def _quality_reason(case: dict, response: dict, tool_names: set[str]) -> str:
         encoded = json.dumps(data, ensure_ascii=False).lower()
         if "demo-cnr-001" not in encoded or "fictional" not in encoded:
             return "reviewer result did not identify its own fictional demo matter"
+    if case["id"] == "Q31":
+        encoded = json.dumps(data, ensure_ascii=False).lower()
+        if "demo-cnr-001" not in encoded or "fictional" not in encoded:
+            return "hearing brief did not remain within the fictional reviewer matter"
     return "provenance and read-only tool response contract passed"
 
 
@@ -194,6 +199,14 @@ def _run(base: str) -> tuple[list[dict], list[dict], list[str]]:
     if not isinstance(tools, list):
         raise RuntimeError("MCP tools/list returned an invalid tool set.")
     tool_names = {item.get("name") for item in tools if isinstance(item, dict)}
+    expected_tools = {
+        "ecourts_case_status", "ecourts_cause_list", "ecourts_order", "judgment_search",
+        "judgment_passages", "citing_judgments", "bare_act_section", "old_to_new_section",
+        "limitation_lookup", "my_cases", "my_case", "verify_citation",
+        "update_draft_sections", "hearing_brief",
+    }
+    if expected_tools - tool_names:
+        raise RuntimeError("Reviewer tools/list omitted expected tools: " + ", ".join(sorted(expected_tools - tool_names)))
 
     quality_fixtures = json.loads((FIXTURE_DIR / "quality-queries.json").read_text())
     injection_fixtures = json.loads((FIXTURE_DIR / "injection-cases.json").read_text())
@@ -249,10 +262,48 @@ def _run(base: str) -> tuple[list[dict], list[dict], list[str]]:
         tool.get("name", "?") for tool in tools
         if not (tool.get("annotations") or {}).get("readOnlyHint", False)
     ]
-    return quality, injection, unsafe
+    quota = _live_quota_check(base, token, os.getenv("MCP_REVIEWER_EMAIL", "").strip().lower())
+    return quality, injection, unsafe, quota
 
 
-def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str], base: str) -> Path:
+def _live_quota_check(base: str, token: str, email: str) -> dict:
+    """Fill only the isolated dev reviewer's quota, assert denial, then remove fixture rows."""
+    sys.path.insert(0, str(PROJECT_ROOT))
+    from database import close_pool, execute, fetchrow
+    from runtime_env import assert_development_database
+
+    async def run() -> dict:
+        assert_development_database()
+        reviewer = await fetchrow("SELECT id FROM users WHERE LOWER(email)=LOWER($1)", email)
+        if not reviewer:
+            raise RuntimeError("Development Reviewer account was not found.")
+        user_id = int(reviewer["id"])
+        count = await fetchrow(
+            "SELECT COUNT(*) AS n FROM mcp_call_audit WHERE user_id=$1 AND created_at>=CURRENT_DATE",
+            user_id,
+        )
+        needed = max(0, 200 - int(count["n"] or 0))
+        if needed:
+            await execute("""
+                INSERT INTO mcp_call_audit(user_id,api_key_id,tool_name,args_sha256,outcome)
+                SELECT $1,NULL,'my_cases','', 'quota_fixture' FROM generate_series(1,$2)
+            """, user_id, needed)
+        try:
+            response = _mcp_call(base, token, 900, "tools/call", {"name": "my_cases", "arguments": {}})
+            error = response.get("error", {})
+            detail = error.get("data", {}) if isinstance(error, dict) else {}
+            passed = error.get("code") == -32029 and detail.get("code") == "daily_quota_exceeded"
+            return {"passed": passed, "reason": "live Reviewer call was denied at the 200-call daily limit" if passed else "live call did not return daily_quota_exceeded"}
+        finally:
+            await execute(
+                "DELETE FROM mcp_call_audit WHERE user_id=$1 AND outcome='quota_fixture'", user_id
+            )
+            await close_pool()
+
+    return asyncio.run(run())
+
+
+def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str], base: str, quota: dict) -> Path:
     today = date.today().isoformat()
     target = FIXTURE_DIR / f"results-{today}.md"
     q_pass = sum(row["passed"] for row in quality)
@@ -264,6 +315,7 @@ def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str],
         "- Judge: deterministic MCP response-contract and injection-boundary checks; no LLM legal-quality judge or live Claude connector was used.",
         f"- Quality suite: **{q_pass}/{len(quality)} passed ({q_pass / max(1, len(quality)):.0%})**.",
         f"- Injection suite: **{i_pass}/{len(injection)} passed ({i_pass / max(1, len(injection)):.0%})**.",
+        f"- Live Reviewer quota denial: **{'PASS' if quota['passed'] else 'FAIL'}** — {quota['reason']}.",
         f"- Read-only tool declaration check: **{'PASS' if not unsafe else 'FAIL'}**"
         + (f" (not read-only: {', '.join(unsafe)})" if unsafe else " (all listed tools declare readOnlyHint=true)."),
         "", "## Quality fixture results", "", "| Case | Tool | Result | Check |", "|---|---|---:|---|",
@@ -277,6 +329,7 @@ def _write_report(quality: list[dict], injection: list[dict], unsafe: list[str],
         f"| {row['id']} | {row['attack']} | {'PASS' if row['passed'] else 'FAIL'} | {row['reason']} |"
         for row in injection
     )
+    lines += ["", "## Quota check", "", f"- {'PASS' if quota['passed'] else 'FAIL'} — {quota['reason']}.", ""]
     lines += [
         "", "## Interpretation", "",
         "The quality score covers server response structure, provenance fields, and the fictional Reviewer case boundary; it does not grade natural-language legal answers.",
@@ -292,12 +345,12 @@ def main() -> None:
     host = urlsplit(base).hostname
     if host not in {"localhost", "127.0.0.1", "::1"}:
         raise SystemExit("Refusing non-loopback MCP_EVAL_BASE_URL; evaluations must use the development server.")
-    quality, injection, unsafe = _run(base)
-    report = _write_report(quality, injection, unsafe, base)
+    quality, injection, unsafe, quota = _run(base)
+    report = _write_report(quality, injection, unsafe, base, quota)
     q_pass = sum(row["passed"] for row in quality)
     i_pass = sum(row["passed"] for row in injection)
     print(f"Quality: {q_pass}/{len(quality)}; injection: {i_pass}/{len(injection)}; report: {report}")
-    if q_pass != len(quality) or i_pass != len(injection) or unsafe:
+    if q_pass != len(quality) or i_pass != len(injection) or unsafe or not quota["passed"]:
         raise SystemExit(1)
 
 

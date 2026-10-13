@@ -219,7 +219,7 @@ def test_new_tools_have_prompt_and_schema_contracts():
     assert verify["annotations"]["readOnlyHint"] is True
     update = next(item for item in mcp_v2.TOOL_LIST if item["name"] == "update_draft_sections")
     assert "references" not in update["inputSchema"]["required"]
-    assert "hearing_brief" not in mcp_v2._PLAN_DEFAULTS["reviewer"]["tools"]
+    assert set(mcp_v2._PLAN_DEFAULTS["reviewer"]["tools"]) == set(mcp_v2.TOOLS)
     assert "hearing_brief" in mcp_v2._PLAN_DEFAULTS["firm"]["tools"]
 
 

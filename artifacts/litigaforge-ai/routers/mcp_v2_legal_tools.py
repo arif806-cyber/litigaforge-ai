@@ -434,12 +434,42 @@ async def _hearing_brief(args: dict, user: dict) -> dict:
                    untrusted=True)
 
 
+async def _reviewer_hearing_brief(args: dict, user: dict) -> dict:
+    """Return a factual brief using only the fictional reviewer fixtures."""
+    cnr = str(args.get("cnr") or "").replace(" ", "").upper()
+    if not cnr or len(cnr) > 20:
+        raise ValueError("A valid demo CNR is required")
+    row = await fetchrow("""
+        SELECT cnr,case_type,court_name,status,next_date,stage,sample_order
+        FROM mcp_reviewer_demo_cases WHERE user_id=$1 AND cnr=$2
+    """, int(user["id"]), cnr)
+    if not row:
+        raise ValueError("Reviewer hearing briefs are limited to the supplied fictional demo matters")
+    data = {
+        "case": {
+            "cnr": row["cnr"], "case_type": row["case_type"], "court": row["court_name"],
+            "status": row["status"], "next_date": str(row["next_date"]) if row["next_date"] else None,
+            "stage": row["stage"], "fictional_demo": True,
+        },
+        "last_three_orders": [{"date": None, "title": "Fictional sample order",
+                              "text": row["sample_order"], "fictional_demo": True}],
+        "notes": [], "judge_bench_view": {"status": "unavailable", "judgments": []},
+        "stage_checklist_suggestion": _checklist(str(row["stage"])),
+        "no_predictions_or_judge_scoring": True,
+        "fictional_demo": True,
+    }
+    return _result(data, source="LitigaForge fictional Reviewer demo data", url=None,
+                   identifier=f"hearing-brief:{cnr}", untrusted=True)
+
+
 async def call_legal_tool(name: str, args: dict, user: dict) -> dict:
     if name == "verify_citation":
         return await _verify_citation(args)
     if name == "update_draft_sections":
         return _update_draft(args)
     if name == "hearing_brief":
+        if user.get("mcp_plan") == "reviewer":
+            return await _reviewer_hearing_brief(args, user)
         if user.get("mcp_plan") not in {"advocate_addon", "firm"}:
             raise PermissionError("hearing_brief requires the Advocate MCP add-on or Firm plan")
         return await _hearing_brief(args, user)

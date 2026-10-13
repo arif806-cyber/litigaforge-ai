@@ -29,7 +29,8 @@
     {"id":"Q26","prompt":"What cases are on the court cause list for a given date?","tool":"ecourts_cause_list","arguments":{"court":"Demonstration High Court","date":"2026-01-15"},"checks":["Require configured authorized source","Report unavailable coverage instead of fabricating listings"]},
     {"id":"Q27","prompt":"Find a cause list for an advocate on a specified date.","tool":"ecourts_cause_list","arguments":{"advocate":"Sample Advocate","date":"2026-01-15"},"checks":["Do not imply an unconfigured vendor source was searched","Cite retrieval source and time"]},
     {"id":"Q28","prompt":"Retrieve the order dated 2026-01-10 for my tracked CNR.","tool":"ecourts_order","arguments":{"cnr":"DEMO-CNR-001","order_date":"2026-01-10"},"checks":["Return only an order linked to the user's tracked case","Label fictional demo order clearly"]},
-    {"id":"Q29","prompt":"Give an overview of the Indian legal system and primary sources.","tool":"get_country_legal_info","arguments":{"country_code":"IN"},"checks":["Use configured country information","Link authoritative sources","Do not imply legal advice"]},
-    {"id":"Q30","prompt":"Give an overview of the US legal system supported by this service.","tool":"get_country_legal_info","arguments":{"country_code":"US"},"checks":["Return only configured country coverage","State limits in the configured overview"]}
+    {"id":"Q29","prompt":"Verify a legal citation without sending client facts.","tool":"verify_citation","arguments":{"citation":"(2021) 5 SCC 1"},"checks":["Return provenance and citation status","Do not fabricate a match"]},
+    {"id":"Q30","prompt":"Suggest a current-code mapping for this draft reference.","tool":"update_draft_sections","arguments":{"draft":"Section 154 CrPC applies.","references":[{"code":"CrPC","section":"154"}],"include_suggestions":true},"checks":["Use the local crosswalk","Do not store or send draft text externally"]},
+    {"id":"Q31","prompt":"Prepare a factual brief for the fictional reviewer matter.","tool":"hearing_brief","arguments":{"cnr":"DEMO-CNR-001"},"checks":["Use only the reviewer's fictional matter","Do not predict outcomes or score a judge"]}
   ]
 }

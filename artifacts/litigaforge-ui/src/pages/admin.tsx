@@ -583,8 +583,21 @@ function McpPlansUsageTab() {
   const [toolsText, setToolsText] = useState<Record<string, string>>({});
   const [capsText, setCapsText] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
+  const [reviewerEmail, setReviewerEmail] = useState("");
+  const [setupLink, setSetupLink] = useState("");
   const plansQuery = useQuery({ queryKey: ["admin-mcp-plans"], queryFn: () => apiFetch("/admin/mcp-plans"), retry: false });
   const usageQuery = useQuery({ queryKey: ["admin-mcp-usage"], queryFn: () => apiFetch("/admin/mcp-usage"), retry: false });
+  const reviewerAudit = useQuery({ queryKey: ["admin-mcp-reviewer-audit"], queryFn: () => apiFetch("/admin/mcp-reviewer-audit"), retry: false });
+  const inviteReviewer = useMutation({
+    mutationFn: () => apiFetch("/admin/mcp-reviewers", { method: "POST", body: { email: reviewerEmail } }),
+    onSuccess: async (result: any) => {
+      setSetupLink(result.setup_url);
+      setReviewerEmail("");
+      setNotice(`Reviewer ${result.created ? "created" : "upgraded"} with 30-day access, all tools, and a 200-call daily limit.`);
+      await reviewerAudit.refetch();
+    },
+    onError: (error: unknown) => setNotice(error instanceof Error ? error.message : "Could not provision reviewer access."),
+  });
   const plans = plansQuery.data?.plans || {};
   const update = (id: string, field: string, value: any) => {
     setDrafts((current) => ({ ...current, [id]: { ...(current[id] || plans[id]), [field]: value } }));
@@ -606,6 +619,24 @@ function McpPlansUsageTab() {
   return (
     <div className="space-y-5">
       <h2 className="text-xl font-semibold">MCP plan settings</h2>
+      <section className="space-y-3 rounded-xl border border-border p-4">
+        <h3 className="font-semibold">Invite or upgrade a Reviewer</h3>
+        <p className="text-sm text-muted-foreground">Creates or upgrades a real account with all MCP tools, 200 calls/day, and up to 30 days of access. A one-time password setup link is shown once; share it through a trusted channel.</p>
+        <form className="flex flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); setSetupLink(""); inviteReviewer.mutate(); }}>
+          <Input type="email" required value={reviewerEmail} onChange={(event) => setReviewerEmail(event.target.value)} placeholder="reviewer@company.example" className="min-w-64 flex-1" />
+          <Button type="submit" disabled={inviteReviewer.isPending}>{inviteReviewer.isPending ? "Preparing…" : "Create setup link"}</Button>
+        </form>
+        {setupLink && <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+          <p className="text-sm font-medium">One-time link — expires in one hour. It is not saved here; copy it now and send it securely.</p>
+          <Input readOnly value={setupLink} onFocus={(event) => event.currentTarget.select()} aria-label="One-time password setup link" />
+        </div>}
+        {reviewerAudit.data?.entries?.length > 0 && <div className="space-y-1">
+          <h4 className="text-sm font-medium">Recent reviewer access changes</h4>
+          <ul className="max-h-40 space-y-1 overflow-auto text-xs text-muted-foreground">
+            {reviewerAudit.data.entries.map((entry: any) => <li key={entry.id}>{new Date(entry.created_at).toLocaleString()} · {entry.action} · {entry.reviewer_email} · admin {entry.admin_email || "removed"}</li>)}
+          </ul>
+        </div>}
+      </section>
       {plansQuery.isError && <p className="text-sm text-muted-foreground">MCP v2 may be disabled, or admin settings are unavailable.</p>}
       {Object.entries(plans).map(([id, original]: [string, any]) => {
         const plan = drafts[id] || original;
