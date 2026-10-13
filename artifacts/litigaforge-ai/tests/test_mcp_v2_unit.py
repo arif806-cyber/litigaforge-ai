@@ -1,5 +1,6 @@
 import asyncio
 import importlib.util
+import json
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -95,6 +96,17 @@ def test_reviewer_entitlement_expires_at_thirty_days():
     assert mcp_v2.reviewer_entitlement_active(now + timedelta(days=30), now)
     assert not mcp_v2.reviewer_entitlement_active(now, now)
     assert not mcp_v2.reviewer_entitlement_active(None, now)
+
+
+def test_plan_config_loader_accepts_asyncpg_jsonb_text(monkeypatch):
+    monkeypatch.setenv("MCP_V2_ENABLED", "true")
+    config = {"enabled": True, "tools": ["my_cases"]}
+
+    async def fake_fetch(_query):
+        return [{"plan_id": "reviewer", "config": json.dumps(config)}]
+
+    monkeypatch.setattr(mcp_v2, "fetch", fake_fetch)
+    assert asyncio.run(mcp_v2.get_plan_configs()) == {"reviewer": config}
 
 
 def test_every_mcp_tool_declares_read_only_title_annotations():

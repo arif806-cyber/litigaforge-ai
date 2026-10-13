@@ -219,6 +219,7 @@ const _oauthProxy = async (
         : req.is("application/x-www-form-urlencoded")
           ? new URLSearchParams(req.body as Record<string, string>).toString()
           : JSON.stringify(req.body ?? {}),
+      redirect: "manual",
       signal: AbortSignal.timeout(30_000),
     });
     res.status(upstream.status);

@@ -420,7 +420,15 @@ async def get_plan_configs() -> dict:
     if not enabled():
         return _PLAN_DEFAULTS
     rows = await fetch("SELECT plan_id,config FROM mcp_plan_settings")
-    return {row["plan_id"]: dict(row["config"]) for row in rows}
+    configs = {}
+    for row in rows:
+        config = row["config"]
+        if isinstance(config, str):
+            config = json.loads(config)
+        if not isinstance(config, dict):
+            raise ValueError(f"Invalid MCP plan configuration for {row['plan_id']}")
+        configs[row["plan_id"]] = config
+    return configs
 
 
 @router.get("/mcp/plans")
