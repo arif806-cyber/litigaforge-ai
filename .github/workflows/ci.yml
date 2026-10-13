@@ -26,8 +26,9 @@ jobs:
       - run: pnpm run typecheck:libs
       - run: pnpm -r --filter "./artifacts/**" --if-present run typecheck
       - run: pip install -r artifacts/litigaforge-ai/requirements.txt
-      - run: pip install pytest
-      - run: pytest -q tests
+      - run: pip install pytest pytest-asyncio
+      # Live-server endpoint checks run separately; CI has no disposable DB/server.
+      - run: pytest -q tests --ignore=tests/test_endpoints.py
         working-directory: artifacts/litigaforge-ai
         env:
           PYTHONPATH: .
