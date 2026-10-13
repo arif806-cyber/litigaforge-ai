@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from auth import require_non_demo_user
 from database import get_pool, SUBSCRIPTION_PLANS
-from plan_prices import ADVOCATE_PLAN_PRICES
+from plan_prices import ADVOCATE_PLAN_NAMES, ADVOCATE_PLAN_PRICES
 from payments import (
     create_order,
     verify_payment,
@@ -311,6 +311,7 @@ async def subscription_create_order(req: CreateOrderRequest, current_user: dict 
         "currency": order["currency"],
         "key_id": __import__("os").environ.get("RAZORPAY_KEY_ID", ""),
         "billing_period": req.billing_period,
+        "plan_name": ADVOCATE_PLAN_NAMES[req.tier],
     }
 
 
@@ -374,7 +375,7 @@ async def subscription_start_trial(current_user: dict = Depends(require_non_demo
         "success": True,
         "tier": "professional",
         "trial_days": 30,
-        "message": "Your 30-day Advocate Pro trial has started.",
+        "message": f"Your 30-day {ADVOCATE_PLAN_NAMES['professional']} trial has started.",
     }
 
 
@@ -451,6 +452,7 @@ async def subscription_invoices(current_user: dict = Depends(require_non_demo_us
     )
     for r in rows:
         r["started_at"] = str(r["started_at"])
+        r["plan_name"] = ADVOCATE_PLAN_NAMES.get(r["tier"], "Free")
     return {"invoices": rows}
 
 
@@ -468,7 +470,7 @@ async def download_invoice(subscription_id: int, current_user: dict = Depends(re
     if not row:
         raise HTTPException(404, "Invoice not found")
 
-    tier_name = row["tier"].replace("_", " ").title()
+    tier_name = ADVOCATE_PLAN_NAMES.get(row["tier"], "Free")
     price_map = {
         "professional": f"₹{ADVOCATE_PLAN_PRICES['professional']['monthly']:,}",
         "advocate_pro": f"₹{ADVOCATE_PLAN_PRICES['advocate_pro']['monthly']:,}",

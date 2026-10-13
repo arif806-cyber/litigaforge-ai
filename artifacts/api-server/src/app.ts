@@ -643,6 +643,13 @@ if (true) { // serve frontend in both dev and production when dist exists
         intro:
           "Compare the current plans and included features. Applicable GST is shown before checkout.",
       },
+      "/mcp-docs": {
+        title: "LitigaForge MCP Connector",
+        ogTitle: "LitigaForge MCP Connector",
+        description: "Connect an MCP client to Indian court records, judgments, and legal reference data.",
+        h1: "LitigaForge MCP Connector",
+        intro: "Connect an MCP client to LitigaForge legal research tools and court records.",
+      },
       "/about": {
         title: "About LitigaForge",
         ogTitle: "About LitigaForge",
@@ -1372,7 +1379,7 @@ if (true) { // serve frontend in both dev and production when dist exists
           "/settings", "/subscription", "/ask", "/review", "/judgments",
           "/for-lawyers", "/lawyers/register", "/lawyers", "/legal-aid",
           "/post-case", "/my-cases", "/matches", "/documents", "/legal-chat",
-          "/free-documents", "/blog", "/admin", "/forgeos", "/workspace",
+          "/free-documents", "/blog", "/admin", "/forgeos", "/workspace", "/mcp-docs",
           "/messages", "/cnr-tracker", "/docket", "/cnr",
         ]);
         const knownDynamicPaths = [

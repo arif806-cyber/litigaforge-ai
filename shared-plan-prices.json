@@ -10,8 +10,8 @@
     "SG": { "free": 0, "basic": 12, "pro": 35, "per_doc": 15 }
   },
   "advocate": {
-    "free": { "monthly": 0, "annual": 0 },
-    "professional": { "monthly": 999, "annual": 9999 },
-    "advocate_pro": { "monthly": 2499, "annual": 24999 }
+    "free": { "name": "Free", "monthly": 0, "annual": 0 },
+    "professional": { "name": "Advocate Pro", "monthly": 999, "annual": 9999 },
+    "advocate_pro": { "name": "Chamber", "monthly": 2499, "annual": 24999 }
   }
 }

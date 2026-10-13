@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import { appEnvironment } from "./environment";
+import { fetchRollingArticleQuota } from "./blogQuota";
 
 const BLOG_REPO = "arif806-cyber/litigaforge-blog";
 const WORKFLOW = "pipeline.yml";
@@ -25,9 +26,9 @@ let lastDispatchDay: string | null = null;
 
 async function triggerBlogPipeline(token: string): Promise<void> {
   if (dispatchInFlight) return;
-  const quota = rollingArticleQuota(process.env["BLOG_ARTICLES_LAST_7_DAYS"]);
+  const quota = await fetchRollingArticleQuota(token);
   if (quota === null || quota >= 3) {
-    logger.warn("blog-scheduler: missing or exhausted rolling 7-day quota — not dispatching");
+    logger.warn("blog-scheduler: unavailable or exhausted rolling 7-day quota — not dispatching");
     return;
   }
   const day = new Date().toISOString().slice(0, 10);

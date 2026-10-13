@@ -7,7 +7,7 @@ import logging
 import razorpay
 
 logger = logging.getLogger("litigaforge.payments")
-from plan_prices import ADVOCATE_PLAN_PRICES
+from plan_prices import ADVOCATE_PLAN_NAMES, ADVOCATE_PLAN_PRICES
 
 GST_RATE_PERCENT = 18
 BILLING_PERIOD_DAYS = {"monthly": 30, "annual": 365}
@@ -94,6 +94,7 @@ def create_order(tier: str, user_id: int, billing_period: str = "monthly") -> di
         "notes": {
             "user_id": str(user_id),
             "tier": tier,
+            "plan_name": ADVOCATE_PLAN_NAMES[tier],
             "billing_period": billing_period,
         },
     })

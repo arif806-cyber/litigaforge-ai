@@ -21,18 +21,48 @@ CANONICAL = {
 @pytest.mark.asyncio
 async def test_canonical_slug_is_exact_and_cannot_redirect(monkeypatch):
     async def fake_fetchrow(_query, *args):
-        assert args == (
+        if args == (
             CANONICAL["court_slug"],
             CANONICAL["year"],
             CANONICAL["slug"],
-        )
-        return CANONICAL
+        ):
+            return {
+                **CANONICAL, "id": 1, "case_name": "Kesavananda Bharati v State",
+                "citation": None, "judgment_date": None, "source_url": None,
+            }
+        return None
 
     monkeypatch.setattr(judgments, "fetchrow", fake_fetchrow)
 
     result = await judgments._resolve_canonical(**CANONICAL)
 
     assert result == {**CANONICAL, "exact": True}
+
+
+@pytest.mark.asyncio
+async def test_exact_duplicate_slug_redirects_to_oldest_case(monkeypatch):
+    row = {
+        **CANONICAL, "id": 2, "case_name": "Same case", "citation": "AIR 1973 SC 1461",
+        "judgment_date": None, "source_url": "https://example.test/doc/2",
+    }
+    calls = 0
+
+    async def fake_fetchrow(*_args):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return row
+        return {
+            "court_slug": CANONICAL["court_slug"], "year": CANONICAL["year"],
+            "slug": "older-existing-slug",
+        }
+
+    monkeypatch.setattr(judgments, "fetchrow", fake_fetchrow)
+    result = await judgments._resolve_canonical(**CANONICAL)
+    assert result == {
+        "court_slug": CANONICAL["court_slug"], "year": CANONICAL["year"],
+        "slug": "older-existing-slug", "exact": False,
+    }
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { getCountryFromPath, buildCountryUrl } from "./country";
 import { _tryRefresh } from "./api";
+import planPrices from "../../../../shared-plan-prices.json";
 
 function isAdvocate(role: string): boolean {
   return role === "lawyer" || role === "advocate";
@@ -275,9 +276,9 @@ export function useAuth() {
 }
 
 export const TIER_LABELS: Record<string, string> = {
-  free: "Free",
-  professional: "Advocate Pro",
-  advocate_pro: "Chamber",
+  ...Object.fromEntries(
+    Object.entries(planPrices.advocate).map(([tier, plan]) => [tier, plan.name]),
+  ),
 };
 
 export const TIER_LIMITS: Record<string, number> = {

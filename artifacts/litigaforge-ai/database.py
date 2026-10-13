@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 import asyncpg
-from plan_prices import ADVOCATE_PLAN_PRICES
+from plan_prices import ADVOCATE_PLAN_NAMES, ADVOCATE_PLAN_PRICES
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 _pool: asyncpg.Pool | None = None
@@ -76,7 +76,7 @@ TIER_LIMITS = {
 SUBSCRIPTION_PLANS = [
     {
         "id": "free",
-        "name": "Free",
+        "name": ADVOCATE_PLAN_NAMES["free"],
         "price_inr": ADVOCATE_PLAN_PRICES["free"]["monthly"],
         "monthly_price_inr": ADVOCATE_PLAN_PRICES["free"]["monthly"],
         "annual_price_inr": ADVOCATE_PLAN_PRICES["free"]["annual"],
@@ -94,7 +94,7 @@ SUBSCRIPTION_PLANS = [
     },
     {
         "id": "professional",
-        "name": "Advocate Pro",
+        "name": ADVOCATE_PLAN_NAMES["professional"],
         "price_inr": ADVOCATE_PLAN_PRICES["professional"]["monthly"],
         "monthly_price_inr": ADVOCATE_PLAN_PRICES["professional"]["monthly"],
         "annual_price_inr": ADVOCATE_PLAN_PRICES["professional"]["annual"],
@@ -115,7 +115,7 @@ SUBSCRIPTION_PLANS = [
     },
     {
         "id": "advocate_pro",
-        "name": "Chamber",
+        "name": ADVOCATE_PLAN_NAMES["advocate_pro"],
         "price_inr": ADVOCATE_PLAN_PRICES["advocate_pro"]["monthly"],
         "monthly_price_inr": ADVOCATE_PLAN_PRICES["advocate_pro"]["monthly"],
         "annual_price_inr": ADVOCATE_PLAN_PRICES["advocate_pro"]["annual"],

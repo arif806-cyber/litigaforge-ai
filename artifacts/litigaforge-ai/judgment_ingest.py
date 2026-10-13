@@ -440,21 +440,29 @@ async def _already_have(source_url: str) -> bool:
     return bool(found)
 
 
-async def _near_duplicate(year: int, case_name: str) -> bool:
-    """Avoid a second canonical case when a source changes punctuation/title tails.
-
-    This deliberately mirrors the tolerant redirect convention: party slugs are
-    normalized and a truncated canonical slug only resolves when it is unique.
-    """
+async def _near_duplicate(
+    year: int, case_name: str, court_slug: str, judgment_date, source_url: str
+) -> bool:
+    """Avoid re-ingesting the same source document or same dated case."""
+    if await _already_have(source_url):
+        return True
     wanted = _case_slug(case_name)
     if len(wanted) < 8:
         return False
     rows = await fetch(
-        "SELECT slug FROM judgments WHERE status='published' AND year=$1", year
+        """SELECT slug, source_url FROM judgments
+           WHERE status='published' AND year=$1 AND court_slug=$2
+             AND judgment_date=$3""",
+        year, court_slug, judgment_date,
     )
     for row in rows:
         candidate = _case_slug(str(row["slug"]))
-        if wanted == candidate or wanted.startswith(candidate + "-") or candidate.startswith(wanted + "-"):
+        if (
+            row.get("source_url") == source_url
+            or wanted == candidate
+            or wanted.startswith(candidate + "-")
+            or candidate.startswith(wanted + "-")
+        ):
             return True
     return False
 
@@ -626,7 +634,7 @@ async def _do_run(
             if not case_name or not year or len(source_full_text) < 200:
                 stats["skipped_no_summary"] += 1
                 continue
-            if await _near_duplicate(year, case_name):
+            if await _near_duplicate(year, case_name, court_slug, jdate, source_url):
                 stats["skipped_existing"] += 1
                 continue
 

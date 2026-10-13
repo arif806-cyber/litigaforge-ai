@@ -39,11 +39,13 @@ def test_plan_catalog_exposes_market_pricing_gst_and_trial():
     plans = {plan["id"]: plan for plan in SUBSCRIPTION_PLANS}
     assert plans["free"]["price_inr"] == 0
     assert plans["professional"]["name"] == "Advocate Pro"
+    assert plans["professional"]["name"] == payments.ADVOCATE_PLAN_NAMES["professional"]
     assert plans["professional"]["monthly_price_inr"] == 999
     assert plans["professional"]["annual_price_inr"] == 9999
     assert plans["professional"]["trial_days"] == 30
     assert plans["professional"]["gst_label"] == "+ 18% GST"
     assert plans["advocate_pro"]["name"] == "Chamber"
+    assert plans["advocate_pro"]["name"] == payments.ADVOCATE_PLAN_NAMES["advocate_pro"]
     assert plans["advocate_pro"]["monthly_price_inr"] == 2499
     assert plans["advocate_pro"]["annual_price_inr"] == 24999
     assert plans["advocate_pro"]["chamber_advocates"] == 5
@@ -69,6 +71,7 @@ def test_create_order_enforces_server_price(monkeypatch):
     assert captured["notes"] == {
         "user_id": "42",
         "tier": "professional",
+        "plan_name": "Advocate Pro",
         "billing_period": "monthly",
     }
 

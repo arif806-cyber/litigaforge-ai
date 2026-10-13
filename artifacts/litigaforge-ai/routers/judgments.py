@@ -92,11 +92,34 @@ async def _resolve_canonical(court_slug: str, year: int, slug: str) -> Optional[
     canonical ``supreme-court-of-india``); year is preferred but not required.
     """
     exact = await fetchrow(
-        """SELECT court_slug, year, slug FROM judgments
+        """SELECT id, court_slug, year, slug, case_name, citation,
+                  judgment_date, source_url FROM judgments
            WHERE court_slug = $1 AND year = $2 AND slug = $3 AND status = 'published'""",
         court_slug, year, slug,
     )
     if exact:
+        duplicate = await fetchrow(
+            """SELECT d.court_slug, d.year, d.slug
+               FROM judgments d
+               WHERE d.status = 'published' AND d.id < $1 AND (
+                 (NULLIF($2, '') IS NOT NULL AND d.source_url = $2)
+                 OR (
+                   d.court_slug = $3 AND d.judgment_date = $4 AND (
+                     (NULLIF($5, '') IS NOT NULL AND d.citation = $5)
+                     OR regexp_replace(lower(coalesce(d.case_name, '')), '[^a-z0-9]+', '', 'g')
+                        = regexp_replace(lower(coalesce($6, '')), '[^a-z0-9]+', '', 'g')
+                   )
+                 )
+               )
+               ORDER BY d.id LIMIT 1""",
+            exact["id"], exact.get("source_url") or "", court_slug,
+            exact.get("judgment_date"), exact.get("citation") or "", exact.get("case_name") or "",
+        )
+        if duplicate:
+            return {
+                "court_slug": duplicate["court_slug"], "year": duplicate["year"],
+                "slug": duplicate["slug"], "exact": False,
+            }
         return {"court_slug": exact["court_slug"], "year": exact["year"],
                 "slug": exact["slug"], "exact": True}
 
@@ -172,9 +195,24 @@ async def list_judgments(
 @router.get("/judgments/sitemap-data")
 async def judgments_sitemap_data():
     rows = await fetch(
-        """SELECT court_slug, year, slug, COALESCE(updated_at, created_at) AS lastmod
-           FROM judgments WHERE status = 'published'
-           ORDER BY judgment_date DESC NULLS LAST"""
+        """SELECT j.court_slug, j.year, j.slug,
+                  COALESCE(j.updated_at, j.created_at) AS lastmod
+           FROM judgments j
+           WHERE j.status = 'published'
+             AND NOT EXISTS (
+               SELECT 1 FROM judgments d
+               WHERE d.status = 'published' AND d.id < j.id AND (
+                 (NULLIF(j.source_url, '') IS NOT NULL AND d.source_url = j.source_url)
+                 OR (
+                   d.court_slug = j.court_slug AND d.judgment_date = j.judgment_date AND (
+                     (NULLIF(j.citation, '') IS NOT NULL AND d.citation = j.citation)
+                     OR regexp_replace(lower(coalesce(d.case_name, '')), '[^a-z0-9]+', '', 'g')
+                        = regexp_replace(lower(coalesce(j.case_name, '')), '[^a-z0-9]+', '', 'g')
+                   )
+                 )
+               )
+             )
+           ORDER BY j.judgment_date DESC NULLS LAST"""
     )
     items = []
     for r in rows:

@@ -7,9 +7,9 @@ const root = resolve(import.meta.dirname, "../../..");
 
 test("bot homepage has current positioning and indexable metadata", () => {
   const html = readFileSync(resolve(root, "litigaforge-ui/public/index-static.html"), "utf8");
-  assert.match(html, /<title>LitigaForge — case tracking and legal tools for Telangana &amp; Andhra Pradesh advocates<\/title>/);
+  assert.match(html, /<title>LitigaForge — AI legal tools for advocates and clients<\/title>/);
   assert.match(html, /<meta name="robots" content="index, follow"\/>/);
-  assert.match(html, /<h1>LitigaForge — case tracking and legal tools for Telangana and Andhra Pradesh advocates<\/h1>/);
+  assert.match(html, /<h1>LitigaForge — AI legal tools for advocates and clients<\/h1>/);
 });
 
 test("static sitemap excludes authentication and US-only routes", () => {
@@ -27,4 +27,5 @@ test("API SEO manifest marks only account/private routes noindex", () => {
   assert.match(source, /\/ask/);
   assert.match(source, /\/review/);
   assert.match(source, /CNR Case Status Tracker/);
+  assert.match(source, /"\/mcp-docs":\s*\{\s*title: "LitigaForge MCP Connector"/);
 });
