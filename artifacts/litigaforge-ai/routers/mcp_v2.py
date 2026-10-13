@@ -17,21 +17,26 @@ from database import execute, fetch, fetchrow, get_pool
 router = APIRouter(tags=["mcp-v2"])
 _PREFIX = "lfm_"
 _DISCLAIMER = "Lead for advocate verification, not legal advice."
-_ALL_MCP_TOOLS = [
+_BASE_MCP_TOOLS = [
     "ecourts_case_status", "ecourts_cause_list", "ecourts_order",
     "judgment_search", "judgment_passages", "citing_judgments",
     "bare_act_section", "old_to_new_section", "limitation_lookup",
     "my_cases", "my_case",
 ]
+_FREE_NEW_TOOLS = ["verify_citation", "update_draft_sections"]
+_ALL_MCP_TOOLS = _BASE_MCP_TOOLS + _FREE_NEW_TOOLS + ["hearing_brief"]
 _PLAN_DEFAULTS = {
     "free": {"enabled": True, "price_inr": 0, "gst_percent": 0, "daily_calls": 20,
              "monthly_calls": None, "seats": 1, "overage_inr": 0,
-             "tools": ["bare_act_section", "old_to_new_section", "limitation_lookup",
-                       "judgment_search", "judgment_passages", "citing_judgments"],
-             "tool_daily_caps": {"judgment_search": 3, "judgment_passages": 3, "citing_judgments": 3}},
+              "tools": ["bare_act_section", "old_to_new_section", "limitation_lookup",
+                        "judgment_search", "judgment_passages", "citing_judgments",
+                        "verify_citation", "update_draft_sections"],
+              "tool_daily_caps": {"judgment_search": 3, "judgment_passages": 3,
+                                  "citing_judgments": 3, "verify_citation": 3,
+                                  "update_draft_sections": 20}},
     "reviewer": {"enabled": True, "price_inr": 0, "gst_percent": 0, "daily_calls": 200,
                  "monthly_calls": None, "seats": 1, "overage_inr": 0, "expires_days": 30,
-                 "purchasable": False, "tools": _ALL_MCP_TOOLS},
+                 "purchasable": False, "tools": _BASE_MCP_TOOLS + _FREE_NEW_TOOLS},
     "advocate_addon": {"enabled": True, "price_inr": 499, "gst_percent": 18, "daily_calls": 300,
                        "monthly_calls": None, "seats": 1, "overage_inr": 0, "verified_advocate_only": True,
                        "tools": _ALL_MCP_TOOLS},
@@ -234,6 +239,34 @@ async def ensure_schema() -> None:
                 INSERT INTO mcp_plan_settings(plan_id,config) VALUES($1,$2::jsonb)
                 ON CONFLICT(plan_id) DO NOTHING
             """, plan_id, json.dumps(config))
+        tool_migration = await conn.fetchval("""
+            INSERT INTO mcp_config_migrations(migration_id)
+            VALUES('mcp_legal_tools_v1')
+            ON CONFLICT(migration_id) DO NOTHING
+            RETURNING migration_id
+        """)
+        if tool_migration:
+            additions = {
+                "free": (_FREE_NEW_TOOLS, {"verify_citation": 3, "update_draft_sections": 20}),
+                "reviewer": (_FREE_NEW_TOOLS, {}),
+                "advocate_addon": (_FREE_NEW_TOOLS + ["hearing_brief"], {}),
+                "firm": (_FREE_NEW_TOOLS + ["hearing_brief"], {}),
+            }
+            for plan_id, (tools, caps) in additions.items():
+                await conn.execute("""
+                    UPDATE mcp_plan_settings
+                    SET config = jsonb_set(
+                        jsonb_set(config, '{tools}',
+                            (SELECT jsonb_agg(value ORDER BY value)
+                             FROM (SELECT DISTINCT value
+                                   FROM jsonb_array_elements_text(COALESCE(config->'tools','[]'::jsonb) || $2::jsonb) AS value) merged),
+                            TRUE),
+                        '{tool_daily_caps}',
+                        COALESCE(config->'tool_daily_caps','{}'::jsonb) || $3::jsonb,
+                        TRUE),
+                        updated_at=NOW()
+                    WHERE plan_id=$1
+                """, plan_id, json.dumps(tools), json.dumps(caps))
         async with conn.transaction():
             price_migration = await conn.fetchval("""
                 INSERT INTO mcp_config_migrations(migration_id)
@@ -393,7 +426,18 @@ async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int | N
 
 async def audit_call(user: dict, key_id: int, audit_id: int, tool: str, args: dict,
                      *, cost_inr: float = 0, outcome: str = "ok") -> None:
-    canonical = json.dumps(args, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    # Draft bodies must never be persisted, including in audit hashes. Keep only
+    # bounded counts so the call remains auditable without retaining its text.
+    audit_args = args
+    if tool == "update_draft_sections":
+        draft = args.get("draft", "")
+        audit_args = {
+            "draft_char_count": len(draft) if isinstance(draft, str) else 0,
+            "reference_count": len(args.get("references", []))
+            if isinstance(args.get("references"), list) else 0,
+            "include_suggestions": bool(args.get("include_suggestions", False)),
+        }
+    canonical = json.dumps(audit_args, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     await execute("DELETE FROM mcp_call_audit WHERE created_at < NOW() - INTERVAL '90 days'")
     await execute("""
         DELETE FROM mcp_api_keys
@@ -838,6 +882,24 @@ TOOL_DEFS = [
     ("limitation_lookup", [], {"article": {"type": "string"}, "description": {"type": "string"}}),
     ("my_cases", [], {}),
     ("my_case", ["cnr"], {"cnr": {"type": "string"}}),
+    ("verify_citation", [], {
+        "citation": {"type": "string", "maxLength": 240},
+        "citations": {"type": "array", "items": {"type": "string", "maxLength": 240},
+                      "minItems": 1, "maxItems": 10},
+        "proposition": {"type": "string", "maxLength": 500},
+        "include_fragments": {"type": "boolean", "default": False},
+    }),
+    ("update_draft_sections", ["draft", "references"], {
+        "draft": {"type": "string", "maxLength": 30000},
+        "references": {"type": "array", "minItems": 1, "maxItems": 100,
+                       "items": {"type": "object", "required": ["code", "section"],
+                                 "properties": {"code": {"type": "string"},
+                                                "section": {"type": "string"}},
+                                 "additionalProperties": False}},
+        "include_suggestions": {"type": "boolean", "default": False},
+    }),
+    ("hearing_brief", ["cnr"], {"cnr": {"type": "string", "maxLength": 20},
+                                  "topic": {"type": "string", "maxLength": 80}}),
 ]
 TOOLS = [name for name, _, _ in TOOL_DEFS]
 _TOOL_TITLES = {
@@ -852,15 +914,80 @@ _TOOL_TITLES = {
     "limitation_lookup": "Look Up Limitation Period",
     "my_cases": "List My Tracked Cases",
     "my_case": "Get My Tracked Case",
+    "verify_citation": "Verify Legal Citations",
+    "update_draft_sections": "Update Draft Code Sections",
+    "hearing_brief": "Prepare Hearing Brief",
 }
+_TOOL_DESCRIPTIONS = {
+    "verify_citation": (
+        "Check one citation or up to 10 citations, searching LitigaForge's local "
+        "judgment index first and then Indian Kanoon when enabled. An optional "
+        "short legal proposition can retrieve up to three relevant fragments. "
+        "Do not include client facts; missing authorities are explicitly marked."
+    ),
+    "update_draft_sections": (
+        "Locally map supplied IPC, CrPC, or Evidence Act section references to "
+        "BNS, BNSS, or BSA using the existing crosswalk. Draft text is not sent "
+        "to external services, stored, or logged; only counts are audited."
+    ),
+    "hearing_brief": (
+        "Prepare a read-only brief for a CNR already tracked by the authenticated "
+        "user, using eCourts case details, the last three orders, saved notes, "
+        "and a cached judge/bench view where available. No predictions or scoring."
+    ),
+}
+PROMPTS = [
+    {"name": "check_my_citations", "title": "Check my citations",
+     "description": "Verify supplied legal citations and, optionally, retrieve short relevant fragments.",
+     "arguments": []},
+    {"name": "update_draft_sections", "title": "Update my draft to BNS/BNSS/BSA",
+     "description": "Map supplied IPC, CrPC, or Evidence Act section references using the local crosswalk.",
+     "arguments": []},
+    {"name": "prepare_hearing_brief", "title": "Prepare my hearing brief",
+     "description": "Prepare a factual brief for one of the user's tracked CNRs.",
+     "arguments": []},
+]
+_PROMPT_TEXT = {
+    "check_my_citations": (
+        "Ask the user for one or more citations (up to 10) and, optionally, a short legal "
+        "proposition. Do not include client facts. Call verify_citation. Report exact "
+        "matches cautiously, preserve NOT FOUND — do not cite without checking the original, "
+        "and tell the advocate to verify the original source."
+    ),
+    "update_draft_sections": (
+        "Ask for draft text (up to 30,000 characters) and explicit code/section references. "
+        "Call update_draft_sections. Explain split, merged, changed, or unavailable mappings; "
+        "present replacements only as suggestions for advocate review. Do not claim old codes "
+        "are inapplicable to pre-1 July 2024 offences."
+    ),
+    "prepare_hearing_brief": (
+        "Ask for a CNR already tracked by the user and an optional generic legal topic. Call "
+        "hearing_brief. Summarize only returned case metadata, the last three orders, saved "
+        "notes, and the factual judge/bench view. Do not predict outcomes or score a judge."
+    ),
+}
+
+
+def get_prompt(name: str, arguments: dict | None = None) -> dict | None:
+    if name not in _PROMPT_TEXT or arguments not in ({}, None):
+        return None
+    return {"description": next(p["description"] for p in PROMPTS if p["name"] == name),
+            "messages": [{"role": "user", "content": {"type": "text", "text": _PROMPT_TEXT[name]}}]}
+
+
 TOOL_LIST = [
     {"name": name, "title": _TOOL_TITLES[name],
      "annotations": {"title": _TOOL_TITLES[name], "readOnlyHint": True},
-     "description": "Read-only Indian legal research. Results are leads for advocate verification.",
+     "description": _TOOL_DESCRIPTIONS.get(
+         name, "Read-only Indian legal research. Results are leads for advocate verification."
+     ),
      "inputSchema": {"type": "object", "required": required, "properties": properties,
                      "additionalProperties": False}}
     for name, required, properties in TOOL_DEFS
 ]
+for _item in TOOL_LIST:
+    if _item["name"] == "verify_citation":
+        _item["inputSchema"]["oneOf"] = [{"required": ["citation"]}, {"required": ["citations"]}]
 
 
 def _section_excerpt(text: str, section: str) -> str | None:
@@ -903,6 +1030,9 @@ async def _official_section(act: str, section: str) -> dict:
 async def call_tool(name: str, args: dict, user: dict) -> dict:
     """Dispatch only owner-scoped reads; unavailable source material fails explicitly."""
     user_id = int(user["id"])
+    if name in {"verify_citation", "update_draft_sections", "hearing_brief"}:
+        from routers.mcp_v2_legal_tools import call_legal_tool
+        return await call_legal_tool(name, args, user)
     if name in {"my_cases", "my_case", "ecourts_case_status", "ecourts_order"}:
         cnr = str(args.get("cnr") or "").replace(" ", "").upper()
         if name in {"my_case", "ecourts_case_status", "ecourts_order"} and not cnr:

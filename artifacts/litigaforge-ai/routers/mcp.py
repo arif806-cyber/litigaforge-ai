@@ -305,9 +305,13 @@ async def mcp_post(request: Request):
     if method == "initialize":
         requested_version = params.get("protocolVersion")
         version = requested_version if isinstance(requested_version, str) else _PROTOCOL_VERSION
+        from routers import mcp_v2
+        capabilities = {"tools": {"listChanged": False}}
+        if mcp_v2.enabled():
+            capabilities["prompts"] = {"listChanged": False}
         result = {
             "protocolVersion": version,
-            "capabilities": {"tools": {"listChanged": False}},
+            "capabilities": capabilities,
             "serverInfo": _SERVER_INFO,
             "instructions": (
                 "Use LitigaForge for read-only legal research. Results are legal "
@@ -333,6 +337,27 @@ async def mcp_post(request: Request):
             result = {"tools": mcp_v2.TOOL_LIST}
         else:
             result = {"tools": _TOOLS}
+    elif method in {"prompts/list", "prompts/get"}:
+        from routers import mcp_v2
+        if not mcp_v2.enabled():
+            return _error(request_id, -32601, f"Method not found: {method}")
+        auth_header = request.headers.get("authorization", "").lower()
+        if not (auth_header.startswith("bearer lfm_") or auth_header.startswith("bearer lfo_")):
+            response = _error(request_id, -32001, "MCP authentication required")
+            response.status_code = 401
+            response.headers["WWW-Authenticate"] = (
+                f'Bearer resource_metadata="{_protected_resource_metadata_url(request)}"'
+            )
+            return response
+        if method == "prompts/list":
+            result = {"prompts": mcp_v2.PROMPTS}
+        else:
+            if not isinstance(params, dict) or not isinstance(params.get("name"), str):
+                return _error(request_id, -32602, "Invalid params")
+            prompt = mcp_v2.get_prompt(params["name"], params.get("arguments") or {})
+            if prompt is None:
+                return _error(request_id, -32602, "Unknown prompt")
+            result = prompt
     elif method == "tools/call":
         if not isinstance(params, dict):
             return _error(request_id, -32602, "Invalid params")
@@ -362,16 +387,20 @@ async def mcp_post(request: Request):
                         return _error(request_id, code, detail.get("message", "MCP request denied"), detail)
                     return _error(request_id, -32001, str(detail))
                 outcome = "ok"
-                cost_before = await mcp_v2.ik_spend_today() if name in {"judgment_search", "judgment_passages"} else 0
+                ik_metered_tools = {
+                    "judgment_search", "judgment_passages", "verify_citation", "hearing_brief"
+                }
+                cost_before = await mcp_v2.ik_spend_today() if name in ik_metered_tools else 0
                 try:
                     data = await asyncio.wait_for(
-                        mcp_v2.call_tool(name, arguments, user), timeout=10
+                        mcp_v2.call_tool(name, arguments, user),
+                        timeout=90 if name == "verify_citation" else 60 if name == "hearing_brief" else 10,
                     )
                 except Exception:
                     outcome = "error"
                     raise
                 finally:
-                    cost_after = await mcp_v2.ik_spend_today() if name in {"judgment_search", "judgment_passages"} else cost_before
+                    cost_after = await mcp_v2.ik_spend_today() if name in ik_metered_tools else cost_before
                     await mcp_v2.audit_call(user, key_id, audit_id, name, arguments,
                                             cost_inr=max(0, cost_after - cost_before),
                                             outcome=outcome)

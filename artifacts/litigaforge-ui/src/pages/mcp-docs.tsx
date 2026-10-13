@@ -13,6 +13,9 @@ const tools = [
   ["old_to_new_section(code, section)", "Look up explicit IPC→BNS, CrPC→BNSS, and Evidence Act→BSA mappings."],
   ["limitation_lookup(article or description)", "Find an indexed Limitation Act article and period, marked “lead, verify”."],
   ["my_cases / my_case(cnr)", "Read only your own tracked cases; another advocate’s cases are never returned."],
+  ["verify_citation(citation | citations, proposition?, include_fragments?)", "Check 1–10 citations against the local index first and Indian Kanoon when enabled. Missing authorities return exactly: NOT FOUND — do not cite without checking the original. Never send client facts."],
+  ["update_draft_sections(draft, references, include_suggestions?)", "Locally map IPC/CrPC/Evidence Act references to BNS/BNSS/BSA. Draft text is limited to 30,000 characters, is not stored or sent externally, and audit logs retain counts only."],
+  ["hearing_brief(cnr, topic?)", "Prepare a factual brief only for your own tracked CNR: case metadata, last three orders, your saved notes, stage checklist, and a weekly-cached judge/bench view when available. No predictions or scoring."],
 ];
 
 const config = `{
@@ -20,7 +23,7 @@ const config = `{
     "type": "http",
     "url": "https://litigaforge.com/mcp",
     "title": "LitigaForge (India)",
-    "description": "Indian courts: eCourts case status, cause lists and orders; grounded Indian judgments (via Indian Kanoon); bare acts and IPC→BNS mappings."
+    "description": "Read-only Indian legal research: eCourts, citation verification, BNS/BNSS/BSA draft mapping, hearing briefs, judgments and bare acts."
   }
 }`;
 
@@ -55,6 +58,14 @@ export default function McpDocs() {
           Settings → MCP Connector is also supported for clients that cannot use OAuth.
         </p>
         <pre className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-4 text-xs"><code>{config}</code></pre>
+      </section>
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Prompts</h2>
+        <p className="text-sm leading-6 text-muted-foreground">
+          MCP clients may offer “Check my citations”, “Update my draft to BNS/BNSS/BSA”,
+          and “Prepare my hearing brief”. Prompts guide the client to the matching read-only tool;
+          they do not themselves access case data.
+        </p>
       </section>
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Tools</h2>
@@ -97,6 +108,9 @@ export default function McpDocs() {
         </div>
         <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
           <li>Tools are read-only. Signed-in accounts can create read-only keys; tool access and quotas depend on the selected plan.</li>
+          <li>Free accounts receive 3 citation checks/day and 20 local draft-section updates/day. Hearing briefs require the Advocate MCP add-on or Firm plan.</li>
+          <li>Indian Kanoon features require <code>IK_ENABLED</code>; if disabled, citation checks can use local matches only and the judge/bench view is omitted.</li>
+          <li>Criminal-code crosswalks are suggestions, not legal advice. Old codes may remain applicable to offences before 1 July 2024.</li>
           <li>Free accounts get 20 calls per day; Acts, section mappings, and limitation lookups are included, while judgment search tools are capped at three calls each per day.</li>
           <li>Reviewer access is invite-only, lasts up to 30 days, and uses fictional demo matters. Firm plans pool monthly calls across up to 10 seats; excess calls accrue per-call overage.</li>
           <li>Advocate add-on access requires advocate verification. Case tools only read the account’s tracked cases; reviewer case tools use seeded demo records only.</li>
