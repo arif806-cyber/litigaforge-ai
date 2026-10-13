@@ -236,3 +236,7 @@ async def test_paid_documents_webhook_fails_closed_with_merchant_of_record_secre
         )
     assert exc.value.status_code == 400
     assert "Paid-documents webhook rejected" in caplog.text
+    if configured:
+        assert "signature verification failed" in caplog.text
+    else:
+        assert "LEMONSQUEEZY_WEBHOOK_SECRET is not configured" in caplog.text

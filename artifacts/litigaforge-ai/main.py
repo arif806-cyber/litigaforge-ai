@@ -24,9 +24,8 @@ from dotenv import load_dotenv
 
 
 async def _mark_test_lawyers(conn, demo_email: str = "") -> None:
-    await conn.execute("""
-        UPDATE lawyers SET is_test = TRUE, verified = FALSE, verification_status = 'rejected'
-        WHERE (email IS NOT NULL AND (
+    predicate = """
+        email IS NOT NULL AND (
             lower(email) LIKE '%@%.test'
             OR lower(email) LIKE '%@%.local'
             OR lower(email) LIKE '%@example.com'
@@ -37,8 +36,24 @@ async def _mark_test_lawyers(conn, demo_email: str = "") -> None:
                 'grok.qa.advocate.20260905@litigaforge.com',
                 'grok.qa.client.20260905@litigaforge.com'
             ])
-        ))
+        )
+    """
+    changed = await conn.fetchval(f"""
+        SELECT COUNT(*) FROM lawyers
+        WHERE {predicate}
+          AND (is_test IS DISTINCT FROM TRUE OR verified IS DISTINCT FROM FALSE
+               OR verification_status IS DISTINCT FROM 'rejected')
     """, demo_email)
+    if not changed:
+        return
+    rows = await conn.fetch(f"""
+        UPDATE lawyers SET is_test = TRUE, verified = FALSE, verification_status = 'rejected'
+        WHERE {predicate}
+          AND (is_test IS DISTINCT FROM TRUE OR verified IS DISTINCT FROM FALSE
+               OR verification_status IS DISTINCT FROM 'rejected')
+        RETURNING id
+    """, demo_email)
+    logger.info("Test/seed lawyer quarantine changed %d rows.", len(rows))
 
 load_dotenv()
 
@@ -367,9 +382,10 @@ async def _ensure_sample_judgments(conn) -> None:
         },
     ]
 
+    inserted_count = 0
     for s in samples:
         try:
-            await conn.execute(
+            inserted = await conn.fetch(
                 """
                 INSERT INTO judgments
                     (case_name, court, court_slug, bench, judgment_date, year, slug,
@@ -377,12 +393,14 @@ async def _ensure_sample_judgments(conn) -> None:
                      source_url, source_name, citation, status)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9,$10,$11,$12,$13,$14,$15,'published')
                 ON CONFLICT (court_slug, year, slug) DO NOTHING
+                RETURNING id
                 """,
                 s["case_name"], s["court"], s["court_slug"], s["bench"],
                 s["judgment_date"], s["year"], s["slug"], s["full_text"],
                 s["summary_en"], s["summary_hi"], s["acts_cited"], s["outcome"],
                 s["source_url"], s["source_name"], s["citation"],
             )
+            inserted_count += len(inserted)
         except _UniqueViolation:
             # The (court_slug, year, slug) conflict is handled by ON CONFLICT, but a
             # row may collide on the partial unique source_url index (e.g. prod
@@ -390,7 +408,8 @@ async def _ensure_sample_judgments(conn) -> None:
             # present — never let one row abort the ensure pass or startup.
             logger.info("Curated judgment already present (source_url) — skipping: %s",
                         s.get("source_url"))
-    logger.info("Ensured %d curated landmark judgments present", len(samples))
+    if inserted_count:
+        logger.info("Curated judgment startup seed inserted %d rows.", inserted_count)
 
 
 @asynccontextmanager
@@ -443,22 +462,6 @@ async def lifespan(app: FastAPI):
             WHERE is_trial = TRUE
         """)
         await conn.execute("""
-            WITH duplicates AS (
-                SELECT id, ROW_NUMBER() OVER (
-                    PARTITION BY payment_ref ORDER BY id
-                ) AS rn
-                FROM subscriptions
-                WHERE payment_ref IS NOT NULL
-            )
-            UPDATE subscriptions SET payment_ref = NULL
-            WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
-        """)
-        await conn.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS uq_subscriptions_payment_ref
-            ON subscriptions (payment_ref)
-            WHERE payment_ref IS NOT NULL
-        """)
-        await conn.execute("""
             CREATE TABLE IF NOT EXISTS legal_questions (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
@@ -491,15 +494,20 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS moderation_status TEXT")
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMP")
         await conn.execute("ALTER TABLE legal_questions ADD COLUMN IF NOT EXISTS moderated_by INTEGER REFERENCES users(id)")
-        await conn.execute("""
+        legacy_questions = await conn.fetchval(
+            "SELECT COUNT(*) FROM legal_questions WHERE moderation_status IS NULL"
+        )
+        if legacy_questions:
+            changed_questions = await conn.fetch("""
             UPDATE legal_questions
             SET share_anonymously = FALSE,
                 moderation_status = 'private',
                 public_question = NULL,
                 public_answer = NULL,
                 normalized_question = NULL
-            WHERE moderation_status IS NULL
-        """)
+            WHERE moderation_status IS NULL RETURNING id
+            """)
+            logger.info("Question privacy backfill set %d legacy rows private.", len(changed_questions))
         await conn.execute("ALTER TABLE legal_questions ALTER COLUMN moderation_status SET DEFAULT 'private'")
         await conn.execute("ALTER TABLE legal_questions ALTER COLUMN moderation_status SET NOT NULL")
         await conn.execute("""
@@ -614,7 +622,12 @@ async def lifespan(app: FastAPI):
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT FALSE")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT FALSE")
         await conn.execute("ALTER TABLE lawyers ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'in'")
-        await conn.execute("UPDATE lawyers SET country = 'in' WHERE country IS NULL")
+        country_rows = await conn.fetchval("SELECT COUNT(*) FROM lawyers WHERE country IS NULL")
+        if country_rows:
+            changed_countries = await conn.fetch(
+                "UPDATE lawyers SET country = 'in' WHERE country IS NULL RETURNING id"
+            )
+            logger.info("Lawyer country default backfill changed %d rows.", len(changed_countries))
         # Narrow quarantine by explicit seed emails and reserved test domains.
         await _mark_test_lawyers(conn, os.getenv("DEMO_ADVOCATE_EMAIL", ""))
         await conn.execute("""
@@ -718,30 +731,6 @@ async def lifespan(app: FastAPI):
         """)
         await conn.execute("ALTER TABLE match_refund_retries ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'")
         await conn.execute("ALTER TABLE match_refund_retries ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP")
-        # Idempotency and race-safety for match payments/threads. Clean up any
-        # legacy duplicates before adding the constraints so startup remains
-        # safe on databases created by older versions.
-        await conn.execute("""
-            WITH duplicates AS (
-                SELECT id, ROW_NUMBER() OVER (
-                    PARTITION BY commission_payment_id ORDER BY id
-                ) AS rn
-                FROM matches
-                WHERE commission_payment_id IS NOT NULL
-                  AND commission_payment_id <> 'DEMO_PAID'
-            )
-            UPDATE matches SET commission_payment_id = NULL
-            WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
-        """)
-        # Recreate this partial index so older deployments that indexed the
-        # shared demo marker receive the corrected predicate as well.
-        await conn.execute("DROP INDEX IF EXISTS uq_matches_commission_payment_id")
-        await conn.execute("""
-            CREATE UNIQUE INDEX uq_matches_commission_payment_id
-            ON matches (commission_payment_id)
-            WHERE commission_payment_id IS NOT NULL
-              AND commission_payment_id <> 'DEMO_PAID'
-        """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_threads (
                 id SERIAL PRIMARY KEY,
@@ -749,22 +738,6 @@ async def lifespan(app: FastAPI):
                 title TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
-        await conn.execute("""
-            WITH duplicates AS (
-                SELECT id, ROW_NUMBER() OVER (
-                    PARTITION BY match_id ORDER BY id
-                ) AS rn
-                FROM chat_threads
-                WHERE match_id IS NOT NULL
-            )
-            DELETE FROM chat_threads
-            WHERE id IN (SELECT id FROM duplicates WHERE rn > 1)
-        """)
-        await conn.execute("DROP INDEX IF EXISTS uq_chat_threads_match_id")
-        await conn.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS uq_chat_threads_match_id
-            ON chat_threads (match_id)
         """)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_messages (
@@ -781,6 +754,9 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        from startup_data_migrations import run_duplicate_cleanups, ensure_unique_indexes
+        await run_duplicate_cleanups(conn)
+        await ensure_unique_indexes(conn)
         await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'text'")
         await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_url TEXT")
         await conn.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS filename TEXT")
@@ -947,12 +923,19 @@ async def lifespan(app: FastAPI):
             # Accounts created before email verification launched could never
             # have completed the flow. Grandfather only that legacy cohort;
             # registrations from the launch onward remain unverified by default.
-            legacy_verified = await conn.execute("""
-                UPDATE users
-                SET email_verified = TRUE
+            legacy_count = await conn.fetchval("""
+                SELECT COUNT(*) FROM users
                 WHERE email_verified IS NOT TRUE
                   AND created_at < TIMESTAMPTZ '2026-06-06 06:33:35+00'
             """)
+            legacy_verified = []
+            if legacy_count:
+                legacy_verified = await conn.fetch("""
+                    UPDATE users SET email_verified = TRUE
+                    WHERE email_verified IS NOT TRUE
+                      AND created_at < TIMESTAMPTZ '2026-06-06 06:33:35+00'
+                    RETURNING id
+                """)
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS email_verification_tokens (
                     id SERIAL PRIMARY KEY,
@@ -962,10 +945,8 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
-            logger.info(
-                "Migration: email verification ready; legacy accounts grandfathered: %s",
-                legacy_verified,
-            )
+            if legacy_verified:
+                logger.info("Email verification migration grandfathered %d legacy accounts.", len(legacy_verified))
         except Exception as me:
             logger.warning("Migration email_verify: %s", me)
 
@@ -1077,9 +1058,6 @@ async def lifespan(app: FastAPI):
                 await conn.execute(
                     "ALTER TABLE judgments ADD COLUMN IF NOT EXISTS embedding vector(1024)"
                 )
-                # Drop any pre-existing hnsw index so we can use ivfflat (task spec).
-                # Both DROP and CREATE are idempotent across restarts.
-                await conn.execute("DROP INDEX IF EXISTS idx_judgments_embedding")
                 await conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_judgments_embedding "
                     "ON judgments USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
@@ -1180,23 +1158,9 @@ async def lifespan(app: FastAPI):
                     "ALTER TABLE workspace_sessions "
                     "ADD COLUMN IF NOT EXISTS embedding vector(2048)"
                 )
-                await conn.execute("DROP INDEX IF EXISTS idx_workspace_sessions_embedding")
-                await conn.execute("""
-                    DO $$
-                    BEGIN
-                        IF EXISTS (
-                            SELECT 1
-                            FROM pg_attribute a
-                            JOIN pg_class c ON c.oid = a.attrelid
-                            WHERE c.relname = 'workspace_sessions'
-                              AND a.attname = 'embedding'
-                              AND format_type(a.atttypid, a.atttypmod) <> 'vector(2048)'
-                        ) THEN
-                            ALTER TABLE workspace_sessions
-                            ALTER COLUMN embedding TYPE vector(2048) USING NULL;
-                        END IF;
-                    END $$;
-                """)
+                from startup_data_migrations import migrate_workspace_embedding
+                from runtime_env import is_production_or_deployed
+                await migrate_workspace_embedding(conn, production=is_production_or_deployed())
                 logger.info("workspace session embedding column ready")
             except Exception as ve:
                 logger.warning("workspace session embeddings unavailable: %s", ve)
@@ -1348,13 +1312,18 @@ async def lifespan(app: FastAPI):
                 if e.strip()
             ]
             if _admin_emails:
-                _promoted = await conn.fetch(
-                    "UPDATE users SET is_superuser = TRUE "
-                    "WHERE lower(email) = ANY($1::text[]) "
-                    "AND is_superuser IS DISTINCT FROM TRUE "
-                    "RETURNING email",
-                    _admin_emails,
+                promotable = await conn.fetchval(
+                    "SELECT COUNT(*) FROM users WHERE lower(email)=ANY($1::text[]) "
+                    "AND is_superuser IS DISTINCT FROM TRUE", _admin_emails
                 )
+                _promoted = []
+                if promotable:
+                    _promoted = await conn.fetch(
+                        "UPDATE users SET is_superuser = TRUE "
+                        "WHERE lower(email) = ANY($1::text[]) "
+                        "AND is_superuser IS DISTINCT FROM TRUE RETURNING id",
+                        _admin_emails,
+                    )
                 if _promoted:
                     logger.info(
                         "Admin bootstrap: promoted %d account(s) to superuser",
@@ -1381,15 +1350,21 @@ async def lifespan(app: FastAPI):
                 if e.strip()
             ]
             if _reset_emails and _reset_pw:
-                from auth import hash_password
+                from auth import hash_password, verify_password
                 _hashed = hash_password(_reset_pw)
-                _reset = await conn.fetch(
-                    "UPDATE users SET password_hash = $2 "
-                    "WHERE lower(email) = ANY($1::text[]) "
-                    "RETURNING email",
+                _candidates = await conn.fetch(
+                    "SELECT id,password_hash FROM users WHERE lower(email)=ANY($1::text[])",
                     _reset_emails,
-                    _hashed,
                 )
+                _reset = []
+                for _candidate in _candidates:
+                    if verify_password(_reset_pw, _candidate["password_hash"]):
+                        continue
+                    _reset.extend(await conn.fetch(
+                        "UPDATE users SET password_hash=$2 WHERE id=$1 "
+                        "AND password_hash=$3 RETURNING id",
+                        _candidate["id"], _hashed, _candidate["password_hash"],
+                    ))
                 if _reset:
                     logger.info(
                         "Admin password reset applied to %d account(s); "
@@ -1428,16 +1403,16 @@ async def lifespan(app: FastAPI):
             await conn.execute(
                 "ALTER TABLE tracked_cases ADD COLUMN IF NOT EXISTS refresh_error TEXT"
             )
-            await conn.execute(
-                """
-                UPDATE tracked_cases
-                SET refresh_status = CASE
-                    WHEN last_refreshed IS NOT NULL THEN 'succeeded'
-                    ELSE 'pending'
-                END
-                WHERE refresh_status IS NULL
-                """
+            refresh_nulls = await conn.fetchval(
+                "SELECT COUNT(*) FROM tracked_cases WHERE refresh_status IS NULL"
             )
+            if refresh_nulls:
+                changed_cases = await conn.fetch("""
+                    UPDATE tracked_cases
+                    SET refresh_status=CASE WHEN last_refreshed IS NOT NULL THEN 'succeeded' ELSE 'pending' END
+                    WHERE refresh_status IS NULL RETURNING id
+                """)
+                logger.info("Tracked-case status backfill changed %d rows.", len(changed_cases))
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS case_snapshots (
                     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

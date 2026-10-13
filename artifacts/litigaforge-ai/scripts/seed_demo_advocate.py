@@ -9,7 +9,7 @@ import re
 import sys
 
 import asyncpg
-from runtime_env import is_production
+from runtime_env import is_production_or_deployed
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from auth import hash_password
@@ -17,7 +17,7 @@ from demo_workspace import create_demo_fixture
 
 
 async def main():
-    if is_production():
+    if is_production_or_deployed():
         raise SystemExit("Demo advocate seeding is development-only; refusing production.")
     dsn = os.getenv("DATABASE_URL", "").strip()
     email = os.getenv("DEMO_ADVOCATE_EMAIL", "").strip().lower()

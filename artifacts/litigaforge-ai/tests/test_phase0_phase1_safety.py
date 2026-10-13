@@ -65,8 +65,13 @@ async def test_startup_quarantines_only_explicit_seed_addresses_and_reserved_dom
     captured = {}
 
     class FakeConnection:
-        async def execute(self, query, *args):
+        async def fetchval(self, query, *args):
+            captured["count_query"] = query
+            return 1
+
+        async def fetch(self, query, *args):
             captured.update(query=query, args=args)
+            return [{"id": 1}]
 
     await _mark_test_lawyers(FakeConnection(), "seed@litigaforge.test")
     query = captured["query"].lower()

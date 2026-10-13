@@ -125,8 +125,8 @@ def _is_prod() -> bool:
     """Fail-closed production detection: ANY production signal counts. This way
     an unset ENVIRONMENT in a real deployment can never accidentally enable the
     no-payment demo unlock path."""
-    from runtime_env import is_production
-    return is_production()
+    from runtime_env import is_production_or_deployed
+    return is_production_or_deployed()
 
 
 def _demo_available() -> bool:

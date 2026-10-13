@@ -89,8 +89,8 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     # `lawyer` remains readable for legacy accounts; new registrations use advocate.
     if req.role not in ("client", "advocate", "lawyer"):
         raise HTTPException(status_code=422, detail="Role must be client or advocate")
-    from runtime_env import is_production, is_seed_advocate_email
-    if is_production() and req.role in ("advocate", "lawyer") and is_seed_advocate_email(normalized_email):
+    from runtime_env import is_production_or_deployed, is_seed_advocate_email
+    if is_production_or_deployed() and req.role in ("advocate", "lawyer") and is_seed_advocate_email(normalized_email):
         raise HTTPException(status_code=403, detail="Seed advocate accounts are disabled in production.")
     safe_role = req.role
     preferred_language = "en"
@@ -153,8 +153,8 @@ async def login(req: LoginRequest, request: Request, response: Response):
     user = await get_user_by_email(req.email.strip().lower())
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    from runtime_env import is_production, is_seed_advocate_email
-    if is_production() and (
+    from runtime_env import is_production_or_deployed, is_seed_advocate_email
+    if is_production_or_deployed() and (
         user.get("is_demo")
         or user.get("role") in ("advocate", "lawyer") and is_seed_advocate_email(user.get("email", ""))
     ):

@@ -134,12 +134,11 @@ async def test_reused_payment_id_is_rejected(monkeypatch):
 def test_match_payment_id_has_database_uniqueness_except_demo_and_null():
     from pathlib import Path
 
-    source = (Path(__file__).parents[1] / "main.py").read_text()
-    migration = source[source.index("DROP INDEX IF EXISTS uq_matches_commission_payment_id"):]
-    migration = migration[:migration.index("CREATE TABLE IF NOT EXISTS chat_threads")]
-    assert "CREATE UNIQUE INDEX uq_matches_commission_payment_id" in migration
+    migration = (Path(__file__).parents[1] / "startup_data_migrations.py").read_text()
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_matches_commission_payment_id" in migration
     assert "commission_payment_id IS NOT NULL" in migration
     assert "commission_payment_id <> 'DEMO_PAID'" in migration
+    assert "RUN_DATA_MIGRATIONS" in migration
 
 
 @pytest.mark.asyncio

@@ -203,8 +203,8 @@ async def authorize_submit(request: Request):
         str(form.get("password") or ""), str(user["password_hash"])
     ):
         raise HTTPException(401, "Invalid account credentials")
-    from runtime_env import is_production, is_seed_advocate_email
-    if is_production() and (
+    from runtime_env import is_production_or_deployed, is_seed_advocate_email
+    if is_production_or_deployed() and (
         user.get("is_demo")
         or user.get("role") in ("advocate", "lawyer") and is_seed_advocate_email(user.get("email", ""))
     ):
