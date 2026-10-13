@@ -51,7 +51,10 @@ def test_created_advocate_key_is_returned_once_and_only_hash_is_persisted(monkey
     monkeypatch.setenv("MCP_V2_ENABLED", "true")
     captured = {}
 
-    async def fake_fetchrow(_query, user_id, key_hash, prefix, label):
+    async def fake_fetchrow(_query, *args):
+        if "SELECT verified FROM lawyers" in _query:
+            return {"verified": True}
+        user_id, key_hash, prefix, label = args
         captured.update(user_id=user_id, key_hash=key_hash, prefix=prefix, label=label)
         return {"id": 7, "key_prefix": prefix, "label": label, "scope": "read"}
 
@@ -64,6 +67,86 @@ def test_created_advocate_key_is_returned_once_and_only_hash_is_persisted(monkey
     assert captured["key_hash"] == mcp_v2._hash(result["key"])
     assert result["key"] != captured["key_hash"]
     assert captured["label"] == "research key"
+
+
+def test_client_cannot_create_mcp_key(monkeypatch):
+    monkeypatch.setenv("MCP_V2_ENABLED", "true")
+    try:
+        asyncio.run(mcp_v2.create_api_key({"id": 42, "role": "client"}, "client key"))
+    except mcp_v2.HTTPException as exc:
+        assert exc.status_code == 403
+    else:
+        raise AssertionError("client key creation should be forbidden")
+
+
+def test_advocate_without_profile_cannot_create_mcp_key(monkeypatch):
+    monkeypatch.setenv("MCP_V2_ENABLED", "true")
+
+    async def no_profile(*_args):
+        return None
+
+    monkeypatch.setattr(mcp_v2, "fetchrow", no_profile)
+    try:
+        asyncio.run(mcp_v2.create_api_key({"id": 42, "role": "advocate"}, "no profile"))
+    except mcp_v2.HTTPException as exc:
+        assert exc.status_code == 403
+        assert "profile" in exc.detail.lower()
+    else:
+        raise AssertionError("advocate without profile should be forbidden")
+
+
+def test_admin_can_create_mcp_key_without_advocate_profile(monkeypatch):
+    monkeypatch.setenv("MCP_V2_ENABLED", "true")
+    captured = {}
+
+    async def insert_key(_query, user_id, key_hash, prefix, label):
+        captured.update(user_id=user_id, label=label)
+        return {"id": 8, "key_prefix": prefix, "label": label, "scope": "read"}
+
+    monkeypatch.setattr(mcp_v2, "fetchrow", insert_key)
+    result = asyncio.run(mcp_v2.create_api_key(
+        {"id": 8, "role": "client", "is_superuser": True}, "admin key"
+    ))
+    assert result["key"].startswith("lfm_")
+    assert captured == {"user_id": 8, "label": "admin key"}
+
+
+def test_unverified_advocate_always_uses_free_mcp_plan(monkeypatch):
+    calls = []
+
+    async def should_not_load_entitlements(query, *_args):
+        calls.append(query)
+        return {"plan_id": "reviewer"}
+
+    monkeypatch.setattr(mcp_v2, "fetchrow", should_not_load_entitlements)
+    plan_id, organization_id = asyncio.run(mcp_v2._resolve_user_mcp_plan(
+        {"id": 42, "role": "advocate", "is_verified": False}
+    ))
+    assert (plan_id, organization_id) == ("free", None)
+    assert calls == []
+
+
+def test_usage_includes_daily_limit_from_resolved_plan(monkeypatch):
+    monkeypatch.setenv("MCP_V2_ENABLED", "true")
+    monkeypatch.setattr(mcp_v2, "_resolve_user_mcp_plan",
+                        lambda _user: asyncio.sleep(0, result=("advocate_addon", None)))
+    monkeypatch.setattr(mcp_v2, "get_plan_configs", lambda: asyncio.sleep(0, result={
+        "free": {"daily_calls": 20},
+        "advocate_addon": {"daily_calls": 300, "monthly_calls": None},
+    }))
+
+    async def fake_fetchrow(_query, *_args):
+        return {"today": 4, "this_month": 12, "cost_inr": 0, "overage_inr": 0}
+
+    async def fake_fetch(_query, *_args):
+        return []
+
+    monkeypatch.setattr(mcp_v2, "fetchrow", fake_fetchrow)
+    monkeypatch.setattr(mcp_v2, "fetch", fake_fetch)
+    result = asyncio.run(mcp_v2.mcp_usage({"id": 42, "role": "advocate"}))
+    assert result["plan_id"] == "advocate_addon"
+    assert result["daily_limit"] == 300
+    assert result["monthly_limit"] is None
 
 
 def test_free_plan_tool_gating_daily_quota_and_judgment_caps():

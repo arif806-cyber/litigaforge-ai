@@ -296,9 +296,63 @@ async def _paid_advocate(user: dict) -> bool:
     return bool(row)
 
 
+async def _resolve_user_mcp_plan(user: dict) -> tuple[str, int | None]:
+    """Resolve one user's connector plan using the same rules for usage and calls."""
+    user_id = int(user["id"])
+    is_advocate = user.get("role") in {"advocate", "lawyer"}
+    verified = user.get("is_verified")
+    if is_advocate and verified is None:
+        profile = await fetchrow(
+            "SELECT verified FROM lawyers WHERE user_id=$1 LIMIT 1", user_id
+        )
+        verified = bool(profile and profile["verified"])
+    # Unverified advocates are restricted to Free regardless of stale grants or
+    # subscriptions. This is deliberately checked before every other entitlement.
+    if is_advocate and not verified:
+        return "free", None
+
+    entitlement = await fetchrow("""
+        SELECT plan_id,expires_at FROM mcp_user_entitlements
+        WHERE user_id=$1
+        ORDER BY CASE plan_id WHEN 'reviewer' THEN 0 ELSE 1 END,created_at DESC LIMIT 1
+    """, user_id)
+    if entitlement and (
+        entitlement["plan_id"] != "reviewer"
+        or reviewer_entitlement_active(entitlement["expires_at"])
+    ):
+        return entitlement["plan_id"], None
+
+    active_tier = await fetchrow("""
+        SELECT s.plan_id,s.organization_id FROM mcp_paid_subscriptions s
+        LEFT JOIN mcp_organization_members m ON m.organization_id=s.organization_id
+        WHERE (s.user_id=$1 OR m.user_id=$1)
+          AND s.plan_id IN ('advocate_addon','firm') AND s.status='active'
+          AND s.expires_at > NOW()
+        ORDER BY s.started_at DESC LIMIT 1
+    """, user_id)
+    if active_tier and active_tier["plan_id"] == "firm":
+        return "firm", int(active_tier["organization_id"])
+    if active_tier and active_tier["plan_id"] == "advocate_addon" and is_advocate and verified:
+        return "advocate_addon", None
+    return "free", None
+
+
+async def _require_mcp_key_creator(user: dict) -> None:
+    if user.get("is_superuser") or user.get("role") == "admin":
+        return
+    if user.get("role") not in {"advocate", "lawyer"}:
+        raise HTTPException(403, "Only advocates with a profile or admins can create MCP keys")
+    profile = await fetchrow(
+        "SELECT verified FROM lawyers WHERE user_id=$1 LIMIT 1", int(user["id"])
+    )
+    if not profile:
+        raise HTTPException(403, "An advocate profile is required to create an MCP key")
+
+
 async def create_api_key(user: dict, label: str) -> dict:
     if not enabled():
         raise HTTPException(404, "MCP v2 is disabled")
+    await _require_mcp_key_creator(user)
     cleaned = " ".join(label.split())[:64]
     if not cleaned:
         raise HTTPException(422, "Key label is required")
@@ -352,29 +406,9 @@ async def verify_bearer(request: Request, tool_name: str) -> tuple[dict, int | N
     else:
         await execute("UPDATE mcp_api_keys SET last_used_at=NOW() WHERE id=$1", key_id)
     user_id = int(row["user_id"])
-    entitlement = await fetchrow("""
-        SELECT plan_id,expires_at FROM mcp_user_entitlements
-        WHERE user_id=$1
-        ORDER BY CASE plan_id WHEN 'reviewer' THEN 0 ELSE 1 END,created_at DESC LIMIT 1
-    """, user_id)
-    if entitlement and (entitlement["plan_id"] != "reviewer" or reviewer_entitlement_active(entitlement["expires_at"])):
-        plan_id = entitlement["plan_id"]
-    else:
-        active_tier = await fetchrow("""
-            SELECT s.plan_id,s.organization_id FROM mcp_paid_subscriptions s
-            LEFT JOIN mcp_organization_members m ON m.organization_id=s.organization_id
-            WHERE (s.user_id=$1 OR m.user_id=$1)
-              AND s.plan_id IN ('advocate_addon','firm') AND s.status='active'
-              AND s.expires_at > NOW()
-            ORDER BY s.started_at DESC LIMIT 1
-        """, user_id)
-        if active_tier and active_tier["plan_id"] == "firm":
-            user["mcp_org_id"] = int(active_tier["organization_id"])
-        plan_id = (
-            "firm" if active_tier and active_tier["plan_id"] == "firm" else
-            "advocate_addon" if active_tier and user.get("is_verified") and user.get("role") in {"advocate", "lawyer"} else
-            "free"
-        )
+    plan_id, organization_id = await _resolve_user_mcp_plan(user)
+    if organization_id:
+        user["mcp_org_id"] = organization_id
     plans = await get_plan_configs()
     config = plans.get(plan_id, plans["free"])
     pool = await get_pool()
@@ -493,6 +527,9 @@ async def mcp_health():
 async def mcp_usage(user: dict = Depends(require_user)):
     if not enabled():
         raise HTTPException(404, "MCP v2 is disabled")
+    plan_id, _organization_id = await _resolve_user_mcp_plan(user)
+    plans = await get_plan_configs()
+    plan = plans.get(plan_id, plans["free"])
     row = await fetchrow("""
         SELECT COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) AS today,
                COUNT(*) FILTER (WHERE created_at >= date_trunc('month', NOW())) AS this_month,
@@ -509,7 +546,10 @@ async def mcp_usage(user: dict = Depends(require_user)):
     return {"today": int(row["today"] or 0), "this_month": int(row["this_month"] or 0),
             "cost_inr": float(row["cost_inr"] or 0),
             "overage_inr": float(row["overage_inr"] or 0),
-            "by_tool": [dict(item) for item in by_tool]}
+            "by_tool": [dict(item) for item in by_tool],
+            "plan_id": plan_id,
+            "daily_limit": plan.get("daily_calls"),
+            "monthly_limit": plan.get("monthly_calls")}
 
 
 @router.post("/mcp/checkout/{plan_id}")

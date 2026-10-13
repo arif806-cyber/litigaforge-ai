@@ -14,9 +14,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Languages } from "lucide-react";
 import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-connect-v2";
 import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
+import { canShowMcpConnector } from "@/lib/mcp-connector-visibility";
 
 export default function AccountSettings() {
-  const { user, logout } = useAuth();
+  const { user, logout, activePortal } = useAuth();
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -30,7 +31,8 @@ export default function AccountSettings() {
       <ProfileSection user={user} />
       <LanguagePreferenceSection user={user} />
       {user?.lawyer_status && <><AdvocateProfileSection /><CalendarSyncSection /></>}
-      {user && <McpKeysSection />}
+      {user && <McpKeysSection userId={user.id} role={user.role} hasAdvocateProfile={!!user.has_lawyer_profile}
+        isAdmin={user.is_superuser} activePortal={activePortal} />}
       <PasswordSection />
       <PrivacySection />
       <DangerZone onDeleted={logout} />
@@ -38,22 +40,31 @@ export default function AccountSettings() {
   );
 }
 
-function McpKeysSection() {
+function McpKeysSection({ userId, role, hasAdvocateProfile, isAdmin, activePortal }: {
+  userId: number;
+  role: string;
+  hasAdvocateProfile: boolean;
+  isAdmin: boolean;
+  activePortal: "client" | "advocate";
+}) {
   const queryClient = useQueryClient();
   const [label, setLabel] = useState("Claude");
   const [newKey, setNewKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const eligible = canShowMcpConnector({ enabled: true, role, hasAdvocateProfile, isAdmin, activePortal });
   const { data, isLoading, error } = useQuery({
-    queryKey: ["mcp-api-keys"],
+    queryKey: ["mcp-api-keys", userId],
     queryFn: () => apiFetch("/mcp/keys"),
     retry: false,
+    enabled: eligible,
   });
-  const { data: usage } = useQuery({
-    queryKey: ["mcp-usage"],
+  const { data: usage, error: usageError } = useQuery({
+    queryKey: ["mcp-usage", userId],
     queryFn: () => apiFetch("/mcp/usage"),
     retry: false,
     staleTime: 30_000,
+    enabled: eligible,
   });
   const create = async () => {
     setBusy(true); setNotice(""); setNewKey("");
@@ -78,13 +89,18 @@ function McpKeysSection() {
     } finally { setBusy(false); }
   };
   const keys = (data as any)?.keys ?? [];
+  const enabled = !error && !usageError && !isLoading && data != null && usage != null
+    && (data as any)?.status !== "disabled" && (usage as any)?.status !== "disabled"
+    && (data as any)?.mcp_v2_enabled !== false && (usage as any)?.mcp_v2_enabled !== false;
+  if (!canShowMcpConnector({ enabled, role, hasAdvocateProfile, isAdmin, activePortal })) return null;
   return (
     <Card icon={<KeyRound className="h-4 w-4" />} title="MCP Connector">
-      {!error && <p className="text-sm leading-6 text-muted-foreground">
-        Free accounts include 20 connector calls per day. Create a read-only key for Claude and other MCP clients. Keys are shown once.
+      <p className="text-sm leading-6 text-muted-foreground">
+        Your plan includes {usage.daily_limit == null ? "no daily call cap" : `${usage.daily_limit} connector calls per day`}.
+        Create a read-only key for Claude and other MCP clients. Keys are shown once.
         Do not paste them into public documents or shared chats.
-      </p>}
-      {!error && !!usage && <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm">
+      </p>
+      <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-sm">
         <div><span className="text-muted-foreground">Calls today</span><p className="font-semibold">{usage.today}</p></div>
         <div><span className="text-muted-foreground">Calls this month</span><p className="font-semibold">{usage.this_month}</p></div>
         <div className="col-span-2"><span className="text-muted-foreground">By tool this month</span>
@@ -92,17 +108,15 @@ function McpKeysSection() {
             <span key={item.tool_name} className="rounded-full border border-border px-2 py-1 text-xs">{item.tool_name}: {item.calls}</span>
           )}</div>
         </div>
-      </div>}
-      {isLoading && <p className="text-sm text-muted-foreground">Loading connector access…</p>}
-      {error && <p role="status" className="text-sm text-muted-foreground">MCP v2 is not enabled for this account or deployment.</p>}
+      </div>
       {newKey && <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
         <p className="text-xs font-semibold">Copy this key now</p>
         <input aria-label="New MCP API key" readOnly value={newKey} className="w-full rounded border border-border bg-background px-2 py-2 font-mono text-xs" />
       </div>}
-      {!error && <div className="flex gap-2">
+      <div className="flex gap-2">
         <input aria-label="MCP key label" value={label} maxLength={64} onChange={(e) => setLabel(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
         <button type="button" onClick={create} disabled={busy || !label.trim()} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Create key</button>
-      </div>}
+      </div>
       {keys.map((key: any) => <div key={key.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
         <div className="min-w-0"><p className="truncate text-sm font-medium">{key.label}</p><p className="font-mono text-xs text-muted-foreground">{key.key_prefix}… · read-only</p></div>
         <button type="button" onClick={() => void revoke(key.id)} disabled={busy} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Revoke</button>
