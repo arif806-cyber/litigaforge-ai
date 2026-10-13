@@ -618,10 +618,11 @@ async def translate_text(body: TranslateBody, user=Depends(get_current_user)):
             "'unclear — check original'. Return only the translation.\n\n" + safe_text
         )
         from llm import legal_llm
+        from llm.config import LLM_MODEL
         system = "Translate legal communication faithfully. Do not add legal advice."
         try:
             translated = await legal_llm.acomplete_for_model(
-                "anthropic/claude-haiku-5-5", system, prompt, max_tokens=8192,
+                LLM_MODEL, system, prompt, max_tokens=8192,
             )
             if not translated:
                 raise RuntimeError("Claude returned an empty translation")

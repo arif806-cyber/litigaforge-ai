@@ -160,6 +160,7 @@ async def get_user_by_email(email: str) -> dict | None:
         """SELECT id, email, name, password_hash, subscription_tier,
                   cases_this_month, month_reset_date, is_superuser, role, email_verified,
                   COALESCE(is_profile_public, FALSE) AS is_profile_public,
+                  COALESCE(preferred_language, 'en') AS preferred_language,
                   COALESCE(is_demo, FALSE) AS is_demo,
                   COALESCE(must_change_password, FALSE) AS must_change_password
            FROM users WHERE email = $1""",
@@ -177,6 +178,7 @@ async def get_user_by_id(user_id: int) -> dict | None:
                    u.created_at,
                    u.username, COALESCE(u.is_profile_public, FALSE) AS is_profile_public,
                    COALESCE(u.email_verified, FALSE) AS email_verified,
+                   COALESCE(u.preferred_language, 'en') AS preferred_language,
                    COALESCE(u.is_demo, FALSE) AS is_demo,
                    COALESCE(u.must_change_password, FALSE) AS must_change_password,
                    COALESCE(l.verified, FALSE) AS is_verified,

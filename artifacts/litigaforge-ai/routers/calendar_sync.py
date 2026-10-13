@@ -59,7 +59,11 @@ async def create_calendar_feed(request: Request, user=Depends(get_current_user))
            VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET token_hash=EXCLUDED.token_hash,
              revoked_at=NULL,updated_at=NOW()""", user["id"], digest,
     )
-    return {"feed_url": f"{str(request.base_url).rstrip('/')}/litigaforge/calendar-sync/{token}.ics"}
+    base_url = str(request.base_url).rstrip("/")
+    base_path = os.getenv("BASE_PATH", "/litigaforge").rstrip("/")
+    if base_path and base_url.endswith(base_path):
+        base_url = base_url[:-len(base_path)]
+    return {"feed_url": f"{base_url}{base_path}/calendar-sync/{token}.ics"}
 
 
 @router.get("/calendar-sync/feed/status")

@@ -1,0 +1,13 @@
+{
+  "client": {
+    "name": "Development E2E Client",
+    "email": "e2e-client@test.litigaforge.local",
+    "password": "Dev-E2E-Client-2026!Only"
+  },
+  "advocate": {
+    "name": "Development E2E Advocate",
+    "email": "e2e-advocate@dev.litigaforge.local",
+    "password": "Dev-E2E-Advocate-2026!Only",
+    "bar_number": "E2E-TEST-TG-0001"
+  }
+}

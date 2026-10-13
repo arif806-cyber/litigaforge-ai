@@ -66,6 +66,7 @@ export interface User {
   lawyer_rejection_reason?: string | null;
   username?: string | null;
   is_profile_public?: boolean;
+  preferred_language?: string;
 }
 
 interface AuthCtx {
