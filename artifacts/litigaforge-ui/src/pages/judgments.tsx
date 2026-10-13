@@ -13,6 +13,7 @@ import { SEOHelmet } from "@/components/SEOHelmet";
 import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { MobileSearchbar } from "@/components/mobile-primitives";
 import { Button } from "@/components/ui/button";
 import { useCountry } from "@/hooks/useCountry";
 import { JUDGMENTS_COPY } from "@/lib/country-copy";
@@ -432,6 +433,15 @@ export default function Judgments() {
           <div className="bg-card rounded-2xl border border-border shadow-sm p-6 md:p-8 space-y-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
+              <MobileSearchbar
+                className="md:hidden"
+                value={query}
+                onValueChange={setQuery}
+                placeholder="e.g. breach of contract damages appeal"
+                inputId="judgment-search-mobile"
+                testId="input-judgment-search-mobile"
+              />
+              <div className="relative hidden md:block">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                <input
                 type="search"
@@ -442,6 +452,7 @@ export default function Judgments() {
                 data-testid="input-judgment-search"
                 className="w-full pl-12 pr-4 py-4 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
               />
+              </div>
             </div>
 
             <div className="relative w-full md:w-56 flex-shrink-0">

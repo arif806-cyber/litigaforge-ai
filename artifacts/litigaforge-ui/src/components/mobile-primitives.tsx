@@ -11,6 +11,7 @@ import {
   ListItem,
   Navbar as KonstaNavbar,
   Preloader,
+  Searchbar as KonstaSearchbar,
   Segmented,
   SegmentedButton,
   Tabbar as KonstaTabbar,
@@ -256,6 +257,28 @@ export function MobileField({ label, className = "", ...props }: InputHTMLAttrib
     <List className={className}>
       <ListInput label={label} outlineIos input={<input {...props} />} />
     </List>
+  );
+}
+
+export function MobileSearchbar({ value, onValueChange, placeholder, inputId, className = "", testId }: {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder: string;
+  inputId?: string;
+  className?: string;
+  testId?: string;
+}) {
+  return (
+    <KonstaSearchbar
+      className={className}
+      value={value}
+      placeholder={placeholder}
+      inputId={inputId}
+      clearButton
+      onInput={(event: React.FormEvent<HTMLInputElement>) => onValueChange(event.currentTarget.value)}
+      onClear={() => onValueChange("")}
+      data-testid={testId}
+    />
   );
 }
 

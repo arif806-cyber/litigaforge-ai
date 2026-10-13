@@ -14,6 +14,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { currentCnrErrorMessage, normalizeCnrRefreshState } from "@/lib/cnr-refresh-state";
 import { cn } from "@/lib/utils";
+import { MobileSearchbar } from "@/components/mobile-primitives";
 import { Link } from "wouter";
 
 const CASE_TYPES = [
@@ -117,6 +118,15 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
       <div className="flex flex-col sm:flex-row gap-3">
         {/* CNR input */}
         <div className="flex-1 relative">
+          <MobileSearchbar
+            className="md:hidden"
+            value={cnr}
+            onValueChange={(value) => { setCnr(value.toUpperCase()); setErr(""); }}
+            placeholder="e.g. TLHC010012342023"
+            inputId="cnr-input-mobile"
+            testId="cnr-input-mobile"
+          />
+          <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
             data-testid="cnr-input"
@@ -129,6 +139,7 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
               placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/30 transition-all"
             style={{ letterSpacing: "0.05em" }}
           />
+          </div>
         </div>
         {/* Case type */}
         <select value={caseType} onChange={(e) => setCaseType(e.target.value)}

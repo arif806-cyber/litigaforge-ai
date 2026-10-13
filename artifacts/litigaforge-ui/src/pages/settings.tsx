@@ -15,6 +15,11 @@ import { Languages } from "lucide-react";
 import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-connect-v2";
 import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
 import { canShowMcpConnector } from "@/lib/mcp-connector-visibility";
+import { GroupedList, GroupedRow } from "@/components/mobile-primitives";
+
+function scrollToSettingsSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 export default function AccountSettings() {
   const { user, logout, activePortal } = useAuth();
@@ -28,14 +33,23 @@ export default function AccountSettings() {
         <p className="text-sm text-muted-foreground mt-1">Manage your profile, privacy, and data rights</p>
       </div>
 
-      <ProfileSection user={user} />
-      <LanguagePreferenceSection user={user} />
-      {user?.lawyer_status && <><AdvocateProfileSection /><CalendarSyncSection /></>}
-      {user && <McpKeysSection userId={user.id} role={user.role} hasAdvocateProfile={!!user.has_lawyer_profile}
-        isAdmin={user.is_superuser} activePortal={activePortal} />}
-      <PasswordSection />
-      <PrivacySection />
-      <DangerZone onDeleted={logout} />
+      <nav className="md:hidden" aria-label="Settings sections">
+        <GroupedList label="Settings sections" title="Quick access">
+          <GroupedRow title="Profile" leading={<User />} onClick={() => scrollToSettingsSection("settings-profile")} accessory />
+          <GroupedRow title="Language" leading={<Languages />} onClick={() => scrollToSettingsSection("settings-language")} accessory />
+          {user?.lawyer_status && <GroupedRow title="Advocate profile" leading={<Shield />} onClick={() => scrollToSettingsSection("settings-advocate")} accessory />}
+          <GroupedRow title="Password" leading={<Lock />} onClick={() => scrollToSettingsSection("settings-password")} accessory />
+          <GroupedRow title="Privacy & data" leading={<Shield />} onClick={() => scrollToSettingsSection("settings-privacy")} accessory />
+        </GroupedList>
+      </nav>
+      <div id="settings-profile" className="scroll-mt-6"><ProfileSection user={user} /></div>
+      <div id="settings-language" className="scroll-mt-6"><LanguagePreferenceSection user={user} /></div>
+      {user?.lawyer_status && <><div id="settings-advocate" className="scroll-mt-6"><AdvocateProfileSection /></div><div id="settings-calendar" className="scroll-mt-6"><CalendarSyncSection /></div></>}
+      {user && <div id="settings-mcp" className="scroll-mt-6"><McpKeysSection userId={user.id} role={user.role} hasAdvocateProfile={!!user.has_lawyer_profile}
+        isAdmin={user.is_superuser} activePortal={activePortal} /></div>}
+      <div id="settings-password" className="scroll-mt-6"><PasswordSection /></div>
+      <div id="settings-privacy" className="scroll-mt-6"><PrivacySection /></div>
+      <div id="settings-danger" className="scroll-mt-6"><DangerZone onDeleted={logout} /></div>
     </div>
   );
 }
