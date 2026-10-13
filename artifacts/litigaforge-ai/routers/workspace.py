@@ -45,10 +45,6 @@ _FIRST_PROVIDER_WAIT_SECONDS = max(60.0, LLM_TIMEOUT)
 _SSE_HEARTBEAT_SECONDS = 5
 _AGENT_TIMEOUT_SECONDS = 90
 
-IK_TOKEN = os.getenv("INDIANKANOON_API_TOKEN", "")
-IK_BASE  = "https://api.indiankanoon.org"
-
-
 @router.post("/workspace/demo/reset")
 async def reset_demo_workspace(request: Request, user=Depends(require_user)):
     """Restore only the explicitly tagged fictional fixture for a demo account."""
@@ -394,6 +390,9 @@ async def _cached_ik_search(
 ) -> list[dict]:
     """Search IK API with 24 h DB caching keyed by normalised query hash."""
     qhash = hashlib.md5(query.lower().strip().encode()).hexdigest()
+    if os.getenv("IK_ENABLED", "false").strip().lower() not in {"1", "true", "yes", "on"}:
+        return []
+    row = None
 
     # Cache hit?
     if not force_refresh:
@@ -410,22 +409,16 @@ async def _cached_ik_search(
                 )
                 return list(row["results_json"])[:max_results]
 
-    if not IK_TOKEN:
-        return []
-
     # Live fetch
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            resp = await client.post(
-                f"{IK_BASE}/search/",
-                data={"formInput": query, "pagenum": 0},
-                headers={"Authorization": f"Token {IK_TOKEN}"},
-            )
-            resp.raise_for_status()
-            docs: list[dict] = resp.json().get("docs", [])[:10]
+        from case_law_search import _ik_call
+        data = await _ik_call(conn, "/search/", {"formInput": query, "pagenum": "0"})
+        docs: list[dict] = data.get("docs", [])[:10]
     except Exception as exc:
-        logger.warning("IK API error for %r: %s", query, exc)
-        return []
+        if row and "cost cap" in str(exc).lower():
+            return list(row["results_json"])[:max_results]
+        logger.warning("IK API request failed (%s)", type(exc).__name__)
+        return list(row["results_json"])[:max_results] if row else []
 
     # Upsert cache
     try:

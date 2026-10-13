@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from auth import get_current_user, require_ai_user, require_ask_access
 from ai_budget import AICapReached, reserve_global_ai_capacity
 from rate_limit import limiter
-from database import fetchrow, fetch, execute, fetchval
+from database import fetchrow, fetch, execute, fetchval, get_pool
 from cache import cache_get, cache_set, cache_key
 from sanitizer import sanitize_text
 from alerts.email import smtp_configured, send_confirmation_email, send_contact_form_email
@@ -36,6 +36,7 @@ from legal_chat_policy import build_case_profile
 
 logger = logging.getLogger("litigaforge.community")
 router = APIRouter(tags=["community"])
+
 
 _SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://litigaforge.com").rstrip("/")
 _BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
@@ -1309,13 +1310,55 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
         db_results = await _search_judgments_keyword(safe_query, req.court or "")
         search_source = "keyword"
 
+    # When the local index is sparse, supplement it with returned official IK
+    # search documents. Never synthesize precedent records from the query.
+    ik_cap_fallback = False
+    if os.getenv("IK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"} and len(db_results) < 5:
+        try:
+            from case_law_search import search_case_law as _shared_case_law_search
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                official = await _shared_case_law_search(
+                    conn, safe_query, limit=5, court=req.court or "",
+                )
+            ik_cap_fallback = bool(official.get("cached_due_to_cap"))
+            existing = {
+                re.sub(r"[^a-z0-9]", "", str(item.get("case_name", "")).lower())
+                for item in db_results
+            }
+            for item in official.get("results", []):
+                if item.get("source") != "indian_kanoon":
+                    continue
+                key = re.sub(r"[^a-z0-9]", "", str(item.get("case_name", "")).lower())
+                if not key or key in existing:
+                    continue
+                existing.add(key)
+                db_results.append({
+                    "case_name": item.get("case_name", ""),
+                    "citation": item.get("citation") or "",
+                    "court": item.get("court") or "",
+                    "year": item.get("year"),
+                    "summary_en": item.get("summary_en") or "",
+                    "outcome": "",
+                    "source_name": "IndianKanoon",
+                    "source_url": item.get("source_url"),
+                    "search_source": "indian_kanoon",
+                    "ik_link": item.get("url"),
+                    "relevance": "Official search result; review the linked judgment for its application to these facts.",
+                })
+                search_source = "indian_kanoon" if len(db_results) == 1 else "merged"
+                if len(db_results) >= 5:
+                    break
+        except Exception as exc:
+            logger.warning("IK case-law supplement unavailable (%s)", type(exc).__name__)
+
     # ── No results: return empty rather than hallucinate ───────────────────────
     if not db_results:
         return {
             "query": safe_query,
             "total": 0,
             "source_name": prov_name,
-            "search_source": "keyword",
+            "search_source": "indian_kanoon" if ik_cap_fallback else "keyword",
             "judgments": [],
             "hint": (
                 "No matching judgments found in the database. "
@@ -1338,6 +1381,7 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
             "ik_link": caselaw_link(req.country, r.get("case_name") or safe_query),
             "source_name": r.get("source_name") or prov_name,
             "search_source": r.get("search_source", search_source),
+            "source_url": r.get("source_url"),
             "slug": r.get("slug"),
             "court_slug": r.get("court_slug"),
             "path": r.get("path"),
@@ -1352,6 +1396,7 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
         "total": len(judgments),
         "source_name": prov_name,
         "search_source": search_source,
+        "cached_due_to_cap": ik_cap_fallback,
         "judgments": judgments,
     }
 

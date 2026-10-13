@@ -72,12 +72,15 @@ DEFAULT_QUERIES: list[tuple[str, str]] = [
 
 
 def _token() -> str:
-    return (os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
+    return (os.getenv("INDIAN_KANOON_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
 
 
 def is_source_configured() -> bool:
-    """True only when a compliant API token is present. No token = no ingestion."""
-    return bool(_token())
+    """Disabled by default; token presence alone never enables paid access."""
+    return (
+        os.getenv("IK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+        and bool(_token())
+    )
 
 
 def _is_prod() -> bool:
@@ -145,13 +148,13 @@ class IndianKanoonClient:
                 time.sleep(MIN_REQUEST_INTERVAL - elapsed)
             cls._last_request = time.monotonic()
 
-    def _post(self, path: str) -> dict:
+    def _post(self, path: str, data: dict | None = None) -> dict:
         url = f"{API_BASE}{path}"
         last_err: Optional[Exception] = None
         for attempt in range(1, MAX_RETRIES + 1):
             self._wait_turn()
             try:
-                r = _req.post(url, headers=self._headers, timeout=REQUEST_TIMEOUT)
+                r = _req.post(url, headers=self._headers, data=data, timeout=REQUEST_TIMEOUT)
             except _req.RequestException as e:
                 last_err = e
                 logger.warning("[IK] %s network error (attempt %d/%d): %s",
@@ -188,6 +191,25 @@ class IndianKanoonClient:
     def get_doc(self, tid: Any) -> dict:
         data = self._post(f"/doc/{tid}/")
         return data if isinstance(data, dict) else {}
+
+    def get_doc_fragment(self, tid: Any, form_input: str) -> dict:
+        """Fetch a cited/search fragment from the official API."""
+        return self._post(f"/docfragment/{tid}/", {"formInput": form_input})
+
+    def get_doc_metadata(self, tid: Any) -> dict:
+        """Fetch official judgment metadata, including citations/cited-by lists."""
+        return self._post(f"/docmeta/{tid}/")
+
+    def get_original_copy(self, tid: Any) -> tuple[bytes, str]:
+        """Fetch the original court copy from the official API."""
+        self._wait_turn()
+        response = _req.post(
+            f"{API_BASE}/origdoc/{tid}/", headers=self._headers, timeout=REQUEST_TIMEOUT,
+        )
+        if response.status_code in (401, 403):
+            raise IndianKanoonError(f"IndianKanoon auth failed (HTTP {response.status_code})")
+        response.raise_for_status()
+        return response.content, response.headers.get("content-type", "application/octet-stream")
 
 
 # ── Normalisation helpers ─────────────────────────────────────────────────────
@@ -567,11 +589,19 @@ async def _do_run(
     per_query_max: Optional[int] = None,
 ) -> None:
     client = IndianKanoonClient(_token())
+
+    async def reserve_call(path: str) -> None:
+        from case_law_search import reserve_ik_budget
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await reserve_ik_budget(conn, path)
+
     remaining = max_docs
     for label, form_input in (queries or _queries()):
         if remaining <= 0:
             break
         qstat = {"query": label, "found": 0, "inserted": 0}
+        await reserve_call("/search/")
         docs = await asyncio.to_thread(client.search, form_input)
         qstat["found"] = len(docs)
         stats["fetched"] += len(docs)
@@ -593,6 +623,7 @@ async def _do_run(
                 stats["skipped_existing"] += 1
                 continue
 
+            await reserve_call("/doc/")
             doc = await asyncio.to_thread(client.get_doc, tid)
             source_full_text = _html_to_text(doc.get("doc") or "", cap=None)
             full_text = source_full_text[:FULL_TEXT_CAP]
@@ -693,8 +724,15 @@ async def run_ingestion(
                 "judgment-ingest [%s]: starting (max_docs=%d, per_query_max=%s, custom_queries=%d)",
                 trigger, cap, per_query_max, len(queries) if queries else 0,
             )
-            await _do_run(stats, cap, queries=queries, per_query_max=per_query_max)
-            stats["status"] = "ok"
+            try:
+                await _do_run(stats, cap, queries=queries, per_query_max=per_query_max)
+                stats["status"] = "ok"
+            except Exception as exc:
+                from case_law_search import IKDailyCostCapExceeded
+                if not isinstance(exc, IKDailyCostCapExceeded):
+                    raise
+                stats["status"] = "daily_cost_cap_reached"
+                logger.warning("judgment-ingest [%s]: daily API cost cap reached", trigger)
             logger.info("judgment-ingest [%s]: done — %s", trigger, stats)
         finally:
             await lock_conn.fetchval("SELECT pg_advisory_unlock($1)", _LOCK_KEY)

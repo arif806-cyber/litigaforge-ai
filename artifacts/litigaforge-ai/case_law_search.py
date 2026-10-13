@@ -14,6 +14,71 @@ import httpx
 logger = logging.getLogger("litigaforge.case_law_search")
 IK_BASE = "https://api.indiankanoon.org"
 _KEY_RE = re.compile(r"[^a-z0-9]+")
+_IK_ESTIMATED_CALL_USD = float(os.getenv("IK_ESTIMATED_CALL_USD", "0.02"))
+_IK_DAILY_COST_CAP_USD = float(os.getenv("IK_DAILY_COST_CAP_USD", "5.00"))
+_IK_MIN_REQUEST_INTERVAL_SECONDS = 2.5
+
+
+def _ik_enabled() -> bool:
+    return os.getenv("IK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _ik_token() -> str:
+    # Keep the legacy spelling as a migration fallback; never expose either value.
+    return (os.getenv("INDIAN_KANOON_API_TOKEN") or os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
+
+
+async def _ik_spend_today(conn) -> float:
+    row = await conn.fetchrow(
+        """SELECT COALESCE(SUM(estimated_cost_usd),0) AS total FROM indian_kanoon_api_metrics
+           WHERE created_at >= CURRENT_DATE"""
+    )
+    return float(row["total"] or 0) if row else 0.0
+
+
+class IKDailyCostCapExceeded(RuntimeError):
+    pass
+
+
+async def reserve_ik_budget(conn, endpoint: str) -> None:
+    """Atomically reserve one estimated API call so concurrent requests can't
+    all pass a stale spend check. Reservations count even if the provider fails."""
+    async with conn.transaction():
+        await conn.execute("SELECT pg_advisory_xact_lock(734239111)")
+        last = await conn.fetchval(
+            "SELECT MAX(created_at) FROM indian_kanoon_api_metrics"
+        )
+        if last:
+            wait = _IK_MIN_REQUEST_INTERVAL_SECONDS - (datetime.now(timezone.utc) - last).total_seconds()
+            if wait > 0:
+                await conn.execute("SELECT pg_sleep($1)", wait)
+        spent = await _ik_spend_today(conn)
+        if spent + _IK_ESTIMATED_CALL_USD > _IK_DAILY_COST_CAP_USD:
+            raise IKDailyCostCapExceeded("Indian Kanoon daily cost cap reached")
+        await conn.execute(
+            """INSERT INTO indian_kanoon_api_metrics(endpoint,estimated_cost_usd)
+               VALUES($1,$2)""",
+            endpoint.split("?")[0],
+            _IK_ESTIMATED_CALL_USD,
+        )
+
+
+async def _ik_call(conn, path: str, data: dict | None = None) -> dict:
+    """Official API only; estimated call spend is tracked in ForgeOS metrics."""
+    if not _ik_enabled():
+        raise RuntimeError("Indian Kanoon integration is disabled")
+    token = _ik_token()
+    if not token:
+        raise RuntimeError("Indian Kanoon server secret is not configured")
+    await reserve_ik_budget(conn, path)
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            f"{IK_BASE}{path}", data=data or {},
+            headers={"Authorization": f"Token {token}", "Accept": "application/json"},
+        )
+    response.raise_for_status()
+    result = response.json()
+    return result if isinstance(result, dict) else {}
 
 
 def _key(value: str) -> str:
@@ -22,36 +87,33 @@ def _key(value: str) -> str:
 
 async def _ik_search(
     conn, query: str, limit: int, *, cache_writes: bool = True
-) -> list[dict]:
+) -> tuple[list[dict], bool]:
     """Read-through cache for the documented Indian Kanoon API.
 
     Public callers can disable cache mutations to preserve a strictly read-only
     request path. Authenticated Workspace searches retain the existing cache.
     """
-    token = (os.getenv("INDIANKANOON_API_TOKEN") or "").strip()
-    if not token:
-        return []
+    if not _ik_enabled() or not _ik_token():
+        return [], False
     qhash = hashlib.md5(query.lower().strip().encode()).hexdigest()
     cached = await conn.fetchrow(
         "SELECT results_json, fetched_at FROM ikanoon_search_cache WHERE query_hash=$1", qhash
     )
-    if cached and datetime.now(timezone.utc) - cached["fetched_at"] < timedelta(hours=24):
+    cache_fresh = bool(cached and datetime.now(timezone.utc) - cached["fetched_at"] < timedelta(hours=24))
+    if cache_fresh:
         if cache_writes:
             await conn.execute(
                 "UPDATE ikanoon_search_cache SET hit_count=hit_count+1 WHERE query_hash=$1", qhash
             )
-        return list(cached["results_json"])[:limit]
+        return list(cached["results_json"])[:limit], False
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.post(
-                f"{IK_BASE}/search/", data={"formInput": query, "pagenum": 0},
-                headers={"Authorization": f"Token {token}"},
-            )
-            response.raise_for_status()
-            docs = list(response.json().get("docs") or [])[:10]
+        data = await _ik_call(conn, "/search/", {"formInput": query, "pagenum": "0"})
+        docs = list(data.get("docs") or [])[:10]
     except Exception as exc:
-        logger.warning("Indian Kanoon search failed for %r: %s", query, exc)
-        return []
+        if cached and "cost cap" in str(exc).lower():
+            return list(cached["results_json"])[:limit], True
+        logger.warning("Indian Kanoon search failed (%s)", type(exc).__name__)
+        return (list(cached["results_json"])[:limit], True) if cached else ([], False)
     if cache_writes:
         try:
             await conn.execute(
@@ -63,7 +125,7 @@ async def _ik_search(
             )
         except Exception as exc:
             logger.warning("Indian Kanoon cache write failed: %s", exc)
-    return docs[:limit]
+    return docs[:limit], False
 
 
 async def search_case_law(
@@ -130,10 +192,12 @@ async def search_case_law(
         results.append(item)
 
     used_ik = False
+    cached_due_to_cap = False
     if len(results) < 3:
-        for doc in await _ik_search(
+        ik_docs, cached_due_to_cap = await _ik_search(
             conn, query, max(10, limit), cache_writes=cache_writes
-        ):
+        )
+        for doc in ik_docs:
             tid = str(doc.get("tid") or doc.get("docid") or "")
             title = str(doc.get("title") or "")
             key = _key(tid or title)
@@ -155,4 +219,7 @@ async def search_case_law(
             if len(results) >= limit:
                 break
     source = "merged" if used_ik and rows else ("indian_kanoon" if used_ik else "local_db")
-    return {"query": query, "count": len(results), "source": source, "results": results[:limit]}
+    return {
+        "query": query, "count": len(results), "source": source,
+        "results": results[:limit], "cached_due_to_cap": cached_due_to_cap,
+    }

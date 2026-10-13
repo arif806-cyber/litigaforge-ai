@@ -821,6 +821,8 @@ async def lifespan(app: FastAPI):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        await conn.execute("ALTER TABLE client_documents ADD COLUMN IF NOT EXISTS source_provider TEXT")
+        await conn.execute("ALTER TABLE client_documents ADD COLUMN IF NOT EXISTS source_url TEXT")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS refresh_tokens (
                 id SERIAL PRIMARY KEY,
@@ -1206,6 +1208,26 @@ async def lifespan(app: FastAPI):
                     fetched_at  TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS ik_document_cache (
+                    doc_id TEXT PRIMARY KEY,
+                    document_json JSONB NOT NULL,
+                    metadata_json JSONB,
+                    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS indian_kanoon_api_metrics (
+                    id BIGSERIAL PRIMARY KEY,
+                    endpoint TEXT NOT NULL,
+                    estimated_cost_usd NUMERIC NOT NULL DEFAULT 0,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_ik_api_metrics_created "
+                "ON indian_kanoon_api_metrics(created_at DESC)"
+            )
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_ikanoon_cache_fetched "
                 "ON ikanoon_search_cache (fetched_at DESC)"
@@ -2088,6 +2110,7 @@ from country_router import router as country_router
 from jobs import router as jobs_router
 from routers.docket import router as docket_router
 from routers.connect_v2 import router as connect_v2_router
+from routers.indian_kanoon import router as indian_kanoon_router
 
 # ForgeOS router is imported ONLY when FORGEOS_ENABLED is set — keeps the
 # subsystem fully inert (no import, no routes) when disabled/unset.
@@ -2127,6 +2150,7 @@ app.include_router(court_intelligence_router, prefix=BASE_PATH)
 app.include_router(mcp_router,              prefix=BASE_PATH)
 app.include_router(jobs_router,             prefix=BASE_PATH)
 app.include_router(connect_v2_router,       prefix=BASE_PATH)
+app.include_router(indian_kanoon_router,    prefix=BASE_PATH)
 if forgeos_router is not None:
     app.include_router(forgeos_router, prefix=BASE_PATH)
 
