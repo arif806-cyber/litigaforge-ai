@@ -98,7 +98,7 @@ export default function TermsOfService() {
 
       <Section icon={<CreditCard className="w-4 h-4" />} title="6. Subscriptions & Payments">
         <ul className="space-y-1.5 text-sm list-disc list-inside">
-          <li>The Platform offers Free, Professional (₹999/month), and Advocate Pro (₹2,499/month) plans.</li>
+          <li>The Platform offers Free, Advocate Pro (₹999/month), and Chamber (₹2,499/month) plans.</li>
           <li>Payments are processed by Razorpay (RBI-licensed). Your card/UPI details are never stored by us.</li>
           <li>Subscriptions auto-renew unless cancelled before the renewal date.</li>
           <li>Refunds: we offer a 7-day refund for new subscriptions if no AI or matching features were used. Contact <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline">{CONTACT_EMAIL}</a> within 7 days of payment.</li>

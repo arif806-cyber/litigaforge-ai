@@ -515,7 +515,7 @@ export default function Ask() {
                       onClick={() => { window.location.href = buildCountryUrl(activeCode, "/subscription"); }}
                       data-testid="button-upgrade-daily-limit"
                     >
-                      Upgrade to Professional
+                      Upgrade to Advocate Pro
                     </Button>
                   )}
                 </div>

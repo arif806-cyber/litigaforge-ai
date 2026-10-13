@@ -53,9 +53,9 @@ const ROUTES = {
     desc: 'Generate free legal documents instantly \u2014 rental agreements, notices, affidavits, employment letters and NDAs, customized for your jurisdiction.',
   },
   '/subscription': {
-    title: 'LitigaForge AI Plans \u2014 Free, Professional &amp; Advocate Pro',
+    title: 'LitigaForge AI Plans \u2014 Free, Advocate Pro &amp; Chamber',
     ogTitle: 'LitigaForge AI Pricing &amp; Plans',
-    desc: 'Compare Free, Professional ₹999, and Advocate Pro ₹2,499 plans for legal-information and advocate productivity tools.',
+    desc: 'Compare Free, Advocate Pro ₹999/month, and Chamber ₹2,499/month plans for legal tools and advocate practice management.',
   },
   '/pricing': {
     title: 'Pricing | LitigaForge AI',

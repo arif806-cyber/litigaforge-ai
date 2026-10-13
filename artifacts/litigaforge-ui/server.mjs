@@ -127,9 +127,9 @@ const ROUTE_META = {
   },
 
   "/subscription": {
-    title: "Pricing Plans — Free & Professional Legal AI | LitigaForge AI",
+    title: "LitigaForge AI Plans — Free, Advocate Pro & Chamber",
     description:
-      "Compare LitigaForge AI plans: Free (5 queries/month), Professional (₹999/month, unlimited queries), and Advocate Pro (₹2,499/month, full practice management). Start free today.",
+      "Compare Free, Advocate Pro (₹999/month), and Chamber (₹2,499/month) plans for legal tools and advocate practice management.",
     canonical: "/subscription",
   },
 
@@ -174,7 +174,7 @@ const ROUTE_META = {
 
   "/refund-policy": {
     title: "Refund Policy | LitigaForge AI",
-    description: "Read the LitigaForge AI refund policy for Professional and Advocate Pro subscriptions.",
+    description: "Read the LitigaForge AI refund policy for Advocate Pro and Chamber subscriptions.",
     canonical: "/refund-policy",
   },
 

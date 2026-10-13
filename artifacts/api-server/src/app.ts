@@ -10,6 +10,7 @@ import { logger } from "./lib/logger";
 import { BLOG_REDIRECTS } from "./lib/blogRedirects";
 import { isTrustedBrowserOrigin } from "./lib/origins";
 import { judgmentRedirectTarget } from "./lib/judgmentRedirect";
+import { subscriptionPlanCopy } from "./lib/subscriptionPlanCopy";
 
 const app: Express = express();
 app.disable("x-powered-by");
@@ -626,13 +627,11 @@ if (true) { // serve frontend in both dev and production when dist exists
           "Generate 10+ legal document templates instantly — rental agreements, legal notices, affidavits, employment letters and NDAs — each AI-generated and customized for your jurisdiction. Free to download, share and print.",
       },
       "/subscription": {
-        title: "LitigaForge plans — legal tools",
-        ogTitle: "LitigaForge plans",
-        description:
-          "Compare plans: free legal tools, Professional for unlimited AI and priority matching, Advocate Pro for full lawyer practice management.",
+        title: `LitigaForge AI Plans — ${subscriptionPlanCopy.freeName}, ${subscriptionPlanCopy.advocateProName} & ${subscriptionPlanCopy.chamberName}`,
+        ogTitle: `LitigaForge AI Plans — ${subscriptionPlanCopy.freeName}, ${subscriptionPlanCopy.advocateProName} & ${subscriptionPlanCopy.chamberName}`,
+        description: `Compare ${subscriptionPlanCopy.freeName}, ${subscriptionPlanCopy.advocateProName} (₹${subscriptionPlanCopy.advocateProMonthly}/month), and ${subscriptionPlanCopy.chamberName} (₹${subscriptionPlanCopy.chamberMonthly}/month) plans for legal tools and advocate practice management.`,
         h1: "Plans &amp; Pricing",
-        intro:
-          "Start free with legal Q&amp;A, document analysis and judgment search. Upgrade to Professional for unlimited AI and priority lawyer matching, or Advocate Pro for full practice and case management.",
+        intro: `Start free with legal Q&amp;A, document analysis and judgment search. ${subscriptionPlanCopy.advocateProName} is ₹${subscriptionPlanCopy.advocateProMonthly}/month; ${subscriptionPlanCopy.chamberName} is ₹${subscriptionPlanCopy.chamberMonthly}/month for full practice and case management.`,
       },
       "/pricing": {
         title: "Pricing | LitigaForge AI",
@@ -712,7 +711,7 @@ if (true) { // serve frontend in both dev and production when dist exists
           "LitigaForge AI refund policy for subscription plans — how billing, cancellations and refunds are handled.",
         h1: "Refund Policy",
         intro:
-          "This page explains how LitigaForge AI handles subscription billing, cancellations and refunds for our Professional and Advocate Pro plans.",
+          `This page explains how LitigaForge AI handles billing, cancellations and refunds for ${subscriptionPlanCopy.advocateProName} and ${subscriptionPlanCopy.chamberName} subscriptions.`,
       },
       "/us-demand-letter": {
         title: "U.S. Demand Letter — Draft &amp; Send | LitigaForge AI",
@@ -779,7 +778,7 @@ if (true) { // serve frontend in both dev and production when dist exists
       "/subscription":
         "<h2>Plans for every need</h2>" +
         "<p>Start free with legal Q&amp;A, document analysis, judgment search, the free legal-aid finder and the advocate directory. Upgrade only when you need more.</p>" +
-        "<p>Professional unlocks unlimited AI queries and priority lawyer matching for individuals and small businesses. Advocate Pro adds full practice management — client and case tracking, a document workspace and hearing reminders — for working lawyers. Prices are shown in your local currency at checkout.</p>",
+        `<p>${subscriptionPlanCopy.advocateProName} unlocks expanded AI queries and priority lawyer matching for individuals and small businesses. ${subscriptionPlanCopy.chamberName} adds full practice management — client and case tracking, a document workspace and hearing reminders — for working lawyers. Prices are shown in your local currency at checkout.</p>`,
       "/digest":
         "<h2>Stay current in five minutes a day</h2>" +
         "<p>Each morning the daily judgment digest delivers the five most important new Supreme Court and High Court decisions to your inbox, each with a concise summary and a link to the full analysis. It is free, and you can unsubscribe at any time.</p>",
@@ -985,7 +984,7 @@ if (true) { // serve frontend in both dev and production when dist exists
           "@type": "FAQPage",
           mainEntity: [
             { "@type": "Question", name: "What is included in the free plan on LitigaForge?", acceptedAnswer: { "@type": "Answer", text: "The free plan includes legal information tools, document analysis, judgment search, the free legal aid finder, advocate profiles, and free legal document templates. No credit card required." } },
-            { "@type": "Question", name: "What does the Professional plan include?", acceptedAnswer: { "@type": "Answer", text: "Professional includes expanded AI legal information, document analysis, document upload and management, and all free plan features. Pricing is shown in INR at checkout." } },
+            { "@type": "Question", name: `What does ${subscriptionPlanCopy.advocateProName} include?`, acceptedAnswer: { "@type": "Answer", text: `${subscriptionPlanCopy.advocateProName} includes expanded AI legal information, document analysis, document upload and management, and all free plan features. It is ₹${subscriptionPlanCopy.advocateProMonthly}/month.` } },
             { "@type": "Question", name: "What is the Advocate Pro plan and who needs it?", acceptedAnswer: { "@type": "Answer", text: "Advocate Pro is designed for practicing advocates and includes case management, client document workspace, billing tools and hearing date reminders." } },
             { "@type": "Question", name: "Can I get a refund if I cancel my LitigaForge AI subscription?", acceptedAnswer: { "@type": "Answer", text: "LitigaForge AI offers a prorated refund for unused days if you cancel within the first 7 days of a billing period. After 7 days, the subscription continues until the end of the cycle and is not refunded. To cancel or request a refund, email info@litigaforge.com." } },
           ],

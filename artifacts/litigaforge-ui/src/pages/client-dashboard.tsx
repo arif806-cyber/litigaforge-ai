@@ -744,7 +744,7 @@ export default function ClientDashboard() {
                   style={{ background: "#F5B754", transform: "translate(30%, -30%)" }} />
                 <div className="flex items-center gap-2 mb-2">
                   <Award className="w-5 h-5 text-amber-400" />
-                  <p className="font-bold text-sm text-white">Upgrade to Professional</p>
+                  <p className="font-bold text-sm text-white">Upgrade to Advocate Pro</p>
                 </div>
                 <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "rgba(245,183,84,0.7)" }}>
                    Priority matching · Unlimited AI ·{" "}
@@ -796,7 +796,7 @@ export default function ClientDashboard() {
                   <Award className="w-5 h-5 text-amber-400" />
                 </div>
                 <div>
-                  <p className="font-bold text-white">Upgrade to Professional</p>
+                  <p className="font-bold text-white">Upgrade to Advocate Pro</p>
                   <p className="text-[11px]" style={{ color: "rgba(245,183,84,0.7)" }}>Priority matching + Unlimited AI</p>
                 </div>
               </div>

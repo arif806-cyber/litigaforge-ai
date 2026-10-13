@@ -15,7 +15,7 @@ LitigaForge AI helps people understand legal information and helps advocates org
 - [AI Legal Chat](/legal-chat): AI-assisted legal-information and drafting workspace.
 - [Free Legal Documents](/free-documents): Document templates and drafting tools.
 - [Free Legal Aid Finder](/legal-aid): Find relevant legal-aid information and public contacts.
-- [Subscription Plans](/subscription): Free tier, Professional ₹999/month, and Advocate Pro ₹2,499/month.
+- [Subscription Plans](/subscription): Free tier, Advocate Pro ₹999/month, and Chamber ₹2,499/month.
 
 ## Target Users
 
