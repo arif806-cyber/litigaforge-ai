@@ -39,16 +39,15 @@ function StatusBadge({ status }: { status?: string }) {
   const s = status.toLowerCase();
   const cfg =
     s.includes("dispos") || s.includes("closed")
-      ? { bg: "rgba(52,211,153,0.12)",   color: "#34D399", border: "rgba(52,211,153,0.25)"  }
+      ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/25"
       : s.includes("pending") || s.includes("admit")
-      ? { bg: "rgba(245,183,84,0.12)",   color: "#F5B754", border: "rgba(245,183,84,0.25)"  }
+      ? "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/25"
       : s.includes("fresh") || s.includes("new")
-      ? { bg: "rgba(139,92,246,0.12)",   color: "#8B5CF6", border: "rgba(139,92,246,0.25)"  }
-      : { bg: "color-mix(in oklch, var(--secondary-oklch) 12%, transparent)", color: "var(--secondary-oklch)", border: "color-mix(in oklch, var(--secondary-oklch) 25%, transparent)" };
+      ? "bg-violet-500/10 text-violet-800 dark:text-violet-300 border-violet-500/25"
+      : "bg-secondary/10 text-secondary border-secondary/25";
 
   return (
-    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+    <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border", cfg)}>
       {status}
     </span>
   );
@@ -104,23 +103,21 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="rounded-2xl p-5 space-y-4"
-      style={{ background: "#14151F", border: "1px solid rgba(245,183,84,0.15)" }}>
+    <form onSubmit={submit} className="rounded-2xl border border-border bg-card p-5 space-y-4">
       <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(245,183,84,0.12)" }}>
-          <Plus className="w-4 h-4 text-amber-400" />
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Plus className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <p className="text-sm font-bold text-white">Track a New Case</p>
-          <p className="text-[11px] text-white/40">Enter the 16-character CNR from eCourts or your court notice</p>
+          <p className="text-sm font-bold text-foreground">Track a New Case</p>
+          <p className="text-[11px] text-muted-foreground">Enter the 16-character CNR from eCourts or your court notice</p>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         {/* CNR input */}
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
             data-testid="cnr-input"
             type="text"
@@ -128,23 +125,21 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
             onChange={(e) => { setCnr(e.target.value.toUpperCase()); setErr(""); }}
             placeholder="e.g. TLHC010012342023"
             maxLength={20}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/30 text-white text-sm font-mono
-              placeholder:text-white/25 outline-none focus:ring-1 focus:ring-amber-400/30 transition-all"
-            style={{ border: "1px solid rgba(255,255,255,0.08)", letterSpacing: "0.05em" }}
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm font-mono
+              placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/30 transition-all"
+            style={{ letterSpacing: "0.05em" }}
           />
         </div>
         {/* Case type */}
         <select value={caseType} onChange={(e) => setCaseType(e.target.value)}
-          className="px-3 py-2.5 rounded-xl bg-black/30 text-sm text-white/70 outline-none
-            appearance-none min-w-[150px]"
-          style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          className="px-3 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm outline-none
+            appearance-none min-w-[150px]">
           <option value="">Type (optional)</option>
           {CASE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         <Button type="submit" disabled={mutation.isPending || !cnr.trim()}
           data-testid="track-btn"
-          className="font-semibold text-sm px-5 shrink-0"
-          style={{ background: "#F5B754", color: "#0A0B10" }}>
+          className="font-semibold text-sm px-5 shrink-0">
           {mutation.isPending
             ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Tracking…</>
             : <><Plus className="w-4 h-4 mr-2" />Track</>}
@@ -154,7 +149,7 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
       <AnimatePresence>
         {err && (
           <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="text-xs text-red-400 flex items-center gap-1.5">
+            className="text-xs text-red-700 dark:text-red-300 flex items-center gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{err}
           </motion.p>
         )}
@@ -175,13 +170,13 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
 
   if (isLoading) return (
     <div className="py-6 flex justify-center">
-      <Loader2 className="w-5 h-5 animate-spin text-amber-400/60" />
+      <Loader2 className="w-5 h-5 animate-spin text-primary" />
     </div>
   );
 
   if (isError || !data) return (
-    <div className="py-4 text-center text-xs text-white/40">
-      <AlertTriangle className="w-4 h-4 mx-auto mb-1 text-red-400/60" />
+    <div className="py-4 text-center text-xs text-muted-foreground">
+      <AlertTriangle className="w-4 h-4 mx-auto mb-1 text-red-700 dark:text-red-300" />
       Could not load timeline.
     </div>
   );
@@ -198,17 +193,16 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
 
   /* No snapshot yet — report the current Partner API refresh state. */
   if (!data.latest_status && data.livetrack_tier !== undefined) return (
-    <div className="rounded-xl p-4 text-center space-y-2"
-      style={{ background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.12)" }}>
+    <div className="rounded-xl border border-border bg-card p-4 text-center space-y-2">
       <AlertTriangle className="w-4 h-4 text-secondary/60 mx-auto" />
-      <p className="text-xs text-white/40">
+      <p className="text-xs text-muted-foreground">
         {refreshState.status === "pending"
           ? "The eCourts India Partner API refresh is in progress."
           : refreshState.status === "failed"
             ? `The latest eCourts India Partner API refresh failed. ${refreshState.error || "Use Retry on the case card to try again."}`
             : "No successful eCourts India Partner API response is available for this case yet."}
       </p>
-      <p className="text-[11px] text-white/25">
+      <p className="text-[11px] text-muted-foreground">
         Use the <span className="text-secondary">Retry</span> button on the case card to request a fresh Partner API check.
       </p>
     </div>
@@ -218,15 +212,14 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
   if (!isPaid && data.upgrade_hint) return (
     <div className="space-y-3">
       {data.latest_status && (
-        <div className="rounded-xl p-3 space-y-1.5"
-          style={{ background: "rgba(245,183,84,0.06)", border: "1px solid rgba(245,183,84,0.12)" }}>
-          <p className="text-[11px] font-bold text-amber-400/60 uppercase tracking-wider">Latest Snapshot</p>
+        <div className="rounded-xl border border-border bg-card p-3 space-y-1.5">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Latest Snapshot</p>
           <div className="flex items-center gap-3 flex-wrap">
             {data.latest_status.case_status && <StatusBadge status={data.latest_status.case_status} />}
             {latestDate && (
-              <span className="text-xs text-white/60 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-amber-400/60" />
-                {latestDate.label}: <span className="text-amber-400 font-semibold ml-0.5">{latestDate.value}</span>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-primary" />
+                {latestDate.label}: <span className="text-primary font-semibold ml-0.5">{latestDate.value}</span>
               </span>
             )}
           </div>
@@ -235,7 +228,7 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
       <div className="rounded-xl p-4 text-center space-y-2.5"
         style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
         <Lock className="w-5 h-5 text-primary mx-auto" />
-        <p className="text-xs text-white/50 max-w-xs mx-auto">{data.upgrade_hint}</p>
+        <p className="text-xs text-muted-foreground max-w-xs mx-auto">{data.upgrade_hint}</p>
         <Link href="/subscription">
           <Button size="sm" className="text-xs"
             style={{ background: "color-mix(in oklch, var(--primary-oklch) 20%, transparent)", color: "var(--primary-oklch)", border: "1px solid color-mix(in oklch, var(--primary-oklch) 30%, transparent)" }}>
@@ -252,19 +245,18 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
   return (
     <div className="space-y-4">
       {data.latest_status && (
-        <div className="rounded-xl p-3 space-y-1.5"
-          style={{ background: "rgba(245,183,84,0.06)", border: "1px solid rgba(245,183,84,0.12)" }}>
-          <p className="text-[11px] font-bold text-amber-400/60 uppercase tracking-wider">Current Status</p>
+        <div className="rounded-xl border border-border bg-card p-3 space-y-1.5">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Current Status</p>
           <div className="flex items-center gap-3 flex-wrap">
             {data.latest_status.case_status && <StatusBadge status={data.latest_status.case_status} />}
             {latestDate && (
-              <span className="text-xs text-white/60 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-amber-400/60" />
-                {latestDate.label}: <span className="text-amber-400 font-semibold ml-0.5">{latestDate.value}</span>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-primary" />
+                {latestDate.label}: <span className="text-primary font-semibold ml-0.5">{latestDate.value}</span>
               </span>
             )}
             {data.latest_status.order_count > 0 && (
-              <span className="text-xs text-white/30">{data.latest_status.order_count} orders</span>
+              <span className="text-xs text-muted-foreground">{data.latest_status.order_count} orders</span>
             )}
           </div>
         </div>
@@ -272,7 +264,7 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
 
       {events.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-[11px] font-bold text-white/30 uppercase tracking-wider">Event Log</p>
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Event Log</p>
           <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
             {events.map((ev: any, i: number) => {
               const { Icon, color } = eventMeta(ev.event_type);
@@ -280,20 +272,19 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
                 <motion.div key={i}
                   initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="flex items-start gap-3 rounded-lg p-3"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: `${color}18` }}>
+                    style={{ background: `color-mix(in oklch, ${color} 10%, transparent)` }}>
                     <Icon className="w-3.5 h-3.5" style={{ color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-white capitalize">
+                    <p className="text-xs font-semibold text-foreground capitalize">
                       {ev.event_type.replace(/_/g, " ")}
                     </p>
                     {ev.summary && (
-                      <p className="text-[11px] text-white/50 mt-0.5 leading-relaxed">{ev.summary}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{ev.summary}</p>
                     )}
-                    <p className="text-[10px] text-white/25 mt-1">
+                    <p className="text-[10px] text-muted-foreground mt-1">
                       {new Date(ev.detected_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
                     </p>
                   </div>
@@ -303,8 +294,8 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
           </div>
         </div>
       ) : (
-        <div className="py-4 text-center text-xs text-white/30">
-          <Activity className="w-4 h-4 mx-auto mb-1 text-white/20" />
+        <div className="py-4 text-center text-xs text-muted-foreground">
+          <Activity className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
           No events detected yet — system checks nightly at 08:00 IST.
         </div>
       )}
@@ -346,8 +337,7 @@ function TrackedCaseCard({ tc }: { tc: any }) {
   return (
     <motion.div layout
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
-      className="rounded-2xl overflow-hidden"
-      style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.07)" }}>
+      className="rounded-2xl overflow-hidden border border-border bg-card">
 
       <div className="px-4 pt-3 text-[11px] text-muted-foreground">
         Last successful fetch: <span className="text-foreground/80">{lastRefreshed}</span>
@@ -360,8 +350,8 @@ function TrackedCaseCard({ tc }: { tc: any }) {
               background: refreshFailed ? "rgba(248,113,113,0.08)" : "rgba(96,165,250,0.07)",
               border: `1px solid ${refreshFailed ? "rgba(248,113,113,0.2)" : "rgba(96,165,250,0.15)"}`,
             }}>
-            <span className={`text-[11px] flex items-start gap-1.5 ${refreshFailed ? "text-red-300/90" : "text-secondary-foreground/75"}`}>
-              <AlertTriangle className={`w-3 h-3 shrink-0 mt-0.5 ${refreshFailed ? "text-red-400" : "text-secondary"}`} />
+            <span className={`text-[11px] flex items-start gap-1.5 ${refreshFailed ? "text-red-800 dark:text-red-300" : "text-muted-foreground"}`}>
+               <AlertTriangle className={`w-3 h-3 shrink-0 mt-0.5 ${refreshFailed ? "text-red-700 dark:text-red-300" : "text-secondary"}`} />
               <span>
                 {refreshFailed
                   ? `Latest eCourts India Partner API refresh failed. Previously saved data is unchanged. ${refreshState.error || ""}`
@@ -396,27 +386,27 @@ function TrackedCaseCard({ tc }: { tc: any }) {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-sm font-bold text-white tracking-wider">{tc.cnr}</span>
+              <span className="font-mono text-sm font-bold text-foreground tracking-wider">{tc.cnr}</span>
               {tc.case_status && <StatusBadge status={tc.case_status} />}
             </div>
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
               {tc.case_type && (
-                <span className="text-[11px] text-white/40 flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                   <Building2 className="w-3 h-3" />{tc.case_type}
                 </span>
               )}
               {tc.court_name && (
-                <span className="text-[11px] text-white/35 truncate max-w-[160px]">{tc.court_name}</span>
+                <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">{tc.court_name}</span>
               )}
               {caseDate && (
-                <span className="text-[11px] text-amber-400/80 font-medium flex items-center gap-1">
+                <span className="text-[11px] text-primary font-medium flex items-center gap-1">
                   <Calendar className="w-3 h-3" />{caseDate.label}: {caseDate.value}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1 mt-1">
-              <RefreshCw className="w-2.5 h-2.5 text-white/20" />
-              <span className="text-[10px] text-white/25">Updated {lastRefreshed}</span>
+              <RefreshCw className="w-2.5 h-2.5 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">Updated {lastRefreshed}</span>
             </div>
           </div>
 
@@ -425,17 +415,17 @@ function TrackedCaseCard({ tc }: { tc: any }) {
             <button data-testid={`expand-${tc.cnr}`}
               onClick={() => setExpanded((v) => !v)}
               title={expanded ? "Hide timeline" : "View timeline"}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-white/5">
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-muted-foreground hover:bg-muted">
               {expanded
-                ? <ChevronUp   className="w-4 h-4 text-white/40" />
-                : <ChevronDown className="w-4 h-4 text-white/40" />}
+                ? <ChevronUp   className="w-4 h-4" />
+                : <ChevronDown className="w-4 h-4" />}
             </button>
             <button data-testid={`remove-${tc.cnr}`}
               onClick={() => removeMutation.mutate(tc.id)}
               disabled={removeMutation.isPending}
               title="Stop tracking"
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-all
-                hover:bg-red-500/10 text-white/30 hover:text-red-400">
+                hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
               {removeMutation.isPending
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 : <Trash2  className="w-3.5 h-3.5" />}
@@ -450,7 +440,7 @@ function TrackedCaseCard({ tc }: { tc: any }) {
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: "easeInOut" }}
-            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ borderTop: "1px solid hsl(var(--border))" }}
             className="overflow-hidden">
             <div className="px-5 py-4">
               <TimelinePanel caseId={tc.id} tier={user?.subscription_tier ?? "free"} />
@@ -512,9 +502,7 @@ export default function CnrTracker() {
         subtitle="Live court intelligence — paste a CNR to watch hearings, orders and status changes."
         action={
           <button onClick={() => refetch()} disabled={isFetching} data-testid="refresh-btn"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-              text-white/50 hover:text-white/80"
-            style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-muted">
             <RefreshCw className={cn("w-3.5 h-3.5", isFetching && "animate-spin")} />
             Refresh
           </button>
@@ -553,24 +541,23 @@ export default function CnrTracker() {
           {/* Cases list */}
           <div className="space-y-3">
             <div className="px-1 flex items-center justify-between">
-              <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest">
-                Tracked Cases{cases.length > 0 && <span className="ml-2 text-white/20">({cases.length})</span>}
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                Tracked Cases{cases.length > 0 && <span className="ml-2 text-muted-foreground">({cases.length})</span>}
               </p>
             </div>
 
             {isLoading && (
               <div className="py-12 flex justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-amber-400/40" />
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
             )}
 
             {isError && (
-              <div className="rounded-2xl p-8 flex flex-col items-center gap-3 text-center"
-                style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <AlertTriangle className="w-8 h-8 text-red-400/60" />
-                <p className="text-sm text-white/50">Could not load tracked cases.</p>
+              <div className="rounded-2xl border border-border bg-card p-8 flex flex-col items-center gap-3 text-center">
+                <AlertTriangle className="w-8 h-8 text-red-700 dark:text-red-300" />
+                <p className="text-sm text-muted-foreground">Could not load tracked cases.</p>
                 <Button size="sm" variant="ghost" onClick={() => refetch()}
-                  className="text-white/40 hover:text-white/70 text-xs">Try again</Button>
+                  className="text-muted-foreground hover:text-foreground text-xs">Try again</Button>
               </div>
             )}
 
@@ -583,23 +570,21 @@ export default function CnrTracker() {
             {/* Empty state */}
             {!isLoading && !isError && cases.length === 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="rounded-2xl p-10 flex flex-col items-center gap-4 text-center"
-                style={{ background: "#14151F", border: "1px dashed rgba(255,255,255,0.08)" }}>
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                  style={{ background: "rgba(245,183,84,0.08)" }}>
-                  <CalendarSearch className="w-8 h-8 text-amber-400/30" />
+                className="rounded-2xl border border-dashed border-border bg-card p-10 flex flex-col items-center gap-4 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <CalendarSearch className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <p className="text-base font-bold text-white/60">No cases tracked yet</p>
-                  <p className="text-sm text-white/30 mt-1 max-w-xs">
+                  <p className="text-base font-bold text-foreground">No cases tracked yet</p>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
                     Enter a CNR above to start tracking live hearing dates, orders, and status changes from eCourts India.
                   </p>
                 </div>
-                <p className="text-xs text-white/20 flex items-center gap-1.5">
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5" />
                   Find your CNR on your court notice or at{" "}
                   <a href="https://ecourts.gov.in" target="_blank" rel="noopener noreferrer"
-                    className="underline underline-offset-2 hover:text-white/40">
+                    className="underline underline-offset-2 hover:text-foreground">
                     ecourts.gov.in
                   </a>
                 </p>
@@ -609,23 +594,21 @@ export default function CnrTracker() {
 
           {/* How it works (shown only when empty) */}
           {!isLoading && cases.length === 0 && (
-            <div className="rounded-2xl p-5 space-y-4"
-              style={{ background: "#14151F", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest">How It Works</p>
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">How It Works</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { Icon: Plus,      color: "#F5B754", title: "Add CNR",      desc: "Paste your 16-character Case Number from eCourts or court notice" },
                   { Icon: RefreshCw, color: "#34D399", title: "Auto Refresh", desc: "Polls eCourts nightly at 08:00 IST — or tap Refresh anytime" },
                   { Icon: Activity,  color: "#8B5CF6", title: "Get Alerts",   desc: "Hearing rescheduled, order passed? You're notified first" },
                 ].map(({ Icon, color, title, desc }) => (
-                  <div key={title} className="flex flex-col items-center text-center gap-2 p-3 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.02)" }}>
+                  <div key={title} className="flex flex-col items-center text-center gap-2 rounded-xl border border-border bg-background p-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center"
                       style={{ background: `${color}12` }}>
                       <Icon className="w-4 h-4" style={{ color }} />
                     </div>
-                    <p className="text-xs font-bold text-white/60">{title}</p>
-                    <p className="text-[11px] text-white/30 leading-relaxed">{desc}</p>
+                    <p className="text-xs font-bold text-foreground">{title}</p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{desc}</p>
                   </div>
                 ))}
               </div>

@@ -20,7 +20,12 @@ for (const line of diff.split("\n")) {
   if (!line.startsWith("+") || line.startsWith("+++")) continue;
   if (/^diff --git/.test(line)) continue;
   if (currentFile.endsWith("/index.css")) continue;
-  if (/(?:#[\da-f]{3,8}\b|rgba?\s*\(|hsla?\s*\()/i.test(line)) violations.push(line.slice(1).trim());
+  const addedSource = line
+    .slice(1)
+    .replace(/hsl\(\s*var\(\s*--[\w-]+\s*\)\s*\)/gi, "");
+  if (/(?:#[\da-f]{3,8}\b|rgba?\s*\(|hsla?\s*\()/i.test(addedSource)) {
+    violations.push(line.slice(1).trim());
+  }
 }
 
 if (violations.length) {

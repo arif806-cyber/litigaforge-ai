@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:visual-colors": "node scripts/check-visual-colors.mjs",
     "test:workspace-onboarding": "node --experimental-strip-types --test tests/workspace-onboarding-progress.test.mjs",
-    "test:cnr": "node --experimental-strip-types --test tests/cnr-refresh-state.test.mjs"
+    "test:cnr": "node --experimental-strip-types --test tests/cnr-refresh-state.test.mjs",
+    "test:theme-vars": "node --test tests/theme-vars.test.mjs"
   },
   "devDependencies": {
     "@dagrejs/dagre": "^3.0.0",

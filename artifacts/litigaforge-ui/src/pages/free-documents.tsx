@@ -137,7 +137,8 @@ export default function FreeDocuments() {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          <div className="relative after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-8 after:bg-gradient-to-l after:from-background after:to-transparent md:after:hidden">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 pr-8 md:pb-0 scrollbar-hidden">
             <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             {CATEGORIES.map(c => (
               <button
@@ -153,6 +154,7 @@ export default function FreeDocuments() {
                 {c.label}
               </button>
             ))}
+            </div>
           </div>
         </div>
 

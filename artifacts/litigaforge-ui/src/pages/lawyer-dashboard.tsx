@@ -534,8 +534,8 @@ export default function LawyerDashboard() {
                       )}
                     </div>
                     <span
-                      className="text-sm"
-                      style={{ color: done ? "#34D399" : active ? "#F5B754" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
+                      className={cn("text-sm", done ? "text-emerald-700 dark:text-emerald-300" : active ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground")}
+                      style={{ fontWeight: active || done ? 600 : 400 }}
                     >
                       {label}
                     </span>

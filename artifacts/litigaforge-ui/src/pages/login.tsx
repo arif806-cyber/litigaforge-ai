@@ -208,21 +208,21 @@ export default function Login() {
 
       {/* Left: Hero panel — navy dark */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 relative overflow-hidden"
-        style={{ background: "linear-gradient(160deg, var(--sidebar), var(--background))" }}>
+        style={{ background: "linear-gradient(160deg, hsl(var(--sidebar)), hsl(var(--background)))" }}>
 
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{ backgroundImage: "linear-gradient(color-mix(in oklch, var(--foreground) 80%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, var(--foreground) 80%, transparent) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+          style={{ backgroundImage: "linear-gradient(color-mix(in oklch, hsl(var(--foreground)) 80%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, hsl(var(--foreground)) 80%, transparent) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
 
         {/* Glow orbs */}
         <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--primary) 9%, transparent) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
+          style={{ background: "radial-gradient(circle, color-mix(in oklch, hsl(var(--primary)) 9%, transparent) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
         <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--secondary) 8%, transparent) 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
+          style={{ background: "radial-gradient(circle, color-mix(in oklch, hsl(var(--secondary)) 8%, transparent) 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
 
         {/* Logo */}
         <div className="relative flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "color-mix(in oklch, var(--primary) 15%, transparent)", border: "1px solid color-mix(in oklch, var(--primary) 28%, transparent)" }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 15%, transparent)", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 28%, transparent)" }}>
             <Scale className="w-5 h-5 text-primary" />
           </div>
           <div>
@@ -235,13 +235,13 @@ export default function Login() {
         <div className="relative space-y-6">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full"
-              style={{ background: "color-mix(in oklch, var(--primary) 12%, transparent)", color: "var(--primary)", border: "1px solid color-mix(in oklch, var(--primary) 24%, transparent)" }}>
+              style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 24%, transparent)" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse inline-block" />
               {copy.badge}
             </div>
             <h2 className="text-3xl font-extrabold text-foreground leading-tight">
               {headingLines[0]}<br />
-              <span style={{ background: "linear-gradient(90deg, var(--primary), var(--secondary))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+              <span style={{ background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                 {headingLines[1] ?? ""}
               </span>
             </h2>
@@ -262,7 +262,7 @@ export default function Login() {
                   <p className="text-lg font-extrabold text-foreground">{n}</p>
                   <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
                 </div>
-                {i < arr.length - 1 && <div className="w-px h-7" style={{ background: "color-mix(in oklch, var(--foreground) 12%, transparent)" }} />}
+                {i < arr.length - 1 && <div className="w-px h-7" style={{ background: "color-mix(in oklch, hsl(var(--foreground)) 12%, transparent)" }} />}
               </div>
             ))}
           </div>

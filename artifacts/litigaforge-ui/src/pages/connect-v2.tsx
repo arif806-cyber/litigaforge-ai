@@ -20,7 +20,7 @@ const PROBLEM_TYPES = [
 ];
 
 const inputClass = "w-full rounded-xl border border-border bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/15";
-const cardClass = "rounded-2xl border border-border bg-card shadow-[0_12px_40px_color-mix(in_oklch,var(--foreground)_4%,transparent)]";
+const cardClass = "rounded-2xl border border-border bg-card shadow-[0_12px_40px_color-mix(in_oklch,hsl(var(--foreground))_4%,transparent)]";
 
 interface ConnectUpload {
   object_path: string;

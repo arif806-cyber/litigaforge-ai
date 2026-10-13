@@ -116,8 +116,8 @@ function NavItem({
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent",
         ...(highlight && !active ? {
-          background: "color-mix(in oklch, var(--secondary) 12%, transparent)",
-          border: "1px solid color-mix(in oklch, var(--secondary) 30%, transparent)",
+          background: "color-mix(in oklch, hsl(var(--secondary)) 12%, transparent)",
+          border: "1px solid color-mix(in oklch, hsl(var(--secondary)) 30%, transparent)",
         } : {}),
       }}
       className={cn(
@@ -140,7 +140,7 @@ function NavItem({
       )}
       {highlight && !active && !badge && (
         <span className="ml-auto text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded"
-          style={{ background: "color-mix(in oklch, var(--secondary) 20%, transparent)", color: "var(--secondary-foreground)" }}>
+        style={{ background: "color-mix(in oklch, hsl(var(--secondary)) 20%, transparent)", color: "hsl(var(--secondary-foreground))" }}>
           NEW
         </span>
       )}
@@ -342,13 +342,15 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
       ];
 
   const msgsActive = location.startsWith("/messages");
-  const moreActive = [...extraNav, ...commonNav].some(s => location.startsWith(s.href));
+  const primaryTabActive = mobileNav.some(({ href }) => location.startsWith(href));
+  const moreActive = !primaryTabActive && !msgsActive
+    && [...extraNav, ...commonNav].some(s => location.startsWith(s.href));
 
   return (
     <>
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 h-[68px] bg-card/95 backdrop-blur-xl border-t border-border flex items-center justify-around px-2 z-30"
-        style={{ boxShadow: "0 -1px 0 color-mix(in oklch, var(--foreground) 8%, transparent), 0 -8px 32px color-mix(in oklch, var(--background) 90%, transparent)" }}
+        style={{ boxShadow: "0 -1px 0 color-mix(in oklch, hsl(var(--foreground)) 8%, transparent), 0 -8px 32px color-mix(in oklch, hsl(var(--background)) 90%, transparent)" }}
       >
         {/* Left 2 primary tabs */}
         {mobileNav.map(({ href, icon: Icon, tKey, label }) => {
@@ -375,7 +377,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
         >
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 72%, var(--foreground)))", boxShadow: "0 4px 16px color-mix(in oklch, var(--primary) 40%, transparent)" }}
+            style={{ background: "linear-gradient(135deg, hsl(var(--primary)), color-mix(in oklch, hsl(var(--primary)) 72%, hsl(var(--foreground))))", boxShadow: "0 4px 16px color-mix(in oklch, hsl(var(--primary)) 40%, transparent)" }}
           >
             <Plus className="w-6 h-6 text-primary-foreground" strokeWidth={2.5} />
           </div>
@@ -520,7 +522,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div>
             <span className="font-bold text-sm tracking-tight">LitigaForge</span>
             {user && (
-              <span className="ml-2 px-1.5 py-0.5 rounded bg-accent/20 text-[9px] font-bold text-accent-foreground uppercase tracking-wide">
+              <span className="ml-2 px-1.5 py-0.5 rounded bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-200 text-[9px] font-bold uppercase tracking-wide">
                 {activePortal === "client" ? "CLIENT" : "ADVOCATE"}
               </span>
             )}

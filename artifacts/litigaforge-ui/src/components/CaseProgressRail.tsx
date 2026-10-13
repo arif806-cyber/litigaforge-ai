@@ -4,7 +4,7 @@ const STAGES = [
   { key: "requested", label: "Requested" },
   { key: "proposals", label: "Proposals" },
   { key: "hired",     label: "Hired" },
-  { key: "completed", label: "Completed" },
+  { key: "completed", label: "Complete" },
 ] as const;
 
 type StageKey = (typeof STAGES)[number]["key"];
@@ -22,40 +22,36 @@ export default function CaseProgressRail({ currentStage }: CaseProgressRailProps
       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
         Your Case Journey
       </p>
-      <div className="flex items-start w-full">
+      <div className="relative grid w-full grid-cols-6 items-start">
+        <div aria-hidden="true" className="absolute left-[8.333%] right-[8.333%] top-4 h-0.5 bg-border">
+          <div
+            className="h-full bg-emerald-500 transition-[width] duration-300"
+            style={{ width: `${(safeIndex / (STAGES.length - 1)) * 100}%` }}
+          />
+        </div>
         {STAGES.map((stage, i) => {
           const isDone   = i < safeIndex;
           const isActive = i === safeIndex;
           return (
-            <div key={stage.key} className="flex items-start flex-1 min-w-0">
-              <div className="flex flex-col items-center flex-shrink-0">
-                <div
-                  className={[
-                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 select-none",
-                    isDone   ? "bg-emerald-500 text-white shadow-sm" : "",
-                    isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20 animate-pulse" : "",
-                    !isDone && !isActive ? "bg-muted text-muted-foreground" : "",
-                  ].join(" ")}
-                >
-                  {isDone ? "✓" : i + 1}
-                </div>
-                <span
-                  className={[
-                    "text-[10px] mt-1.5 leading-tight text-center",
-                    isActive ? "font-bold text-primary" : "text-muted-foreground",
-                  ].join(" ")}
-                >
-                  {stage.label}
-                </span>
+            <div key={stage.key} className="relative z-10 flex min-w-0 flex-col items-center">
+              <div
+                className={[
+                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 select-none",
+                  isDone   ? "bg-emerald-500 text-white shadow-sm" : "",
+                  isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20 animate-pulse" : "",
+                  !isDone && !isActive ? "bg-muted text-muted-foreground" : "",
+                ].join(" ")}
+              >
+                {isDone ? "✓" : i + 1}
               </div>
-              {i < STAGES.length - 1 && (
-                <div
-                  className={[
-                    "flex-1 h-0.5 mt-4 mx-1 transition-colors duration-300",
-                    isDone ? "bg-emerald-400" : "bg-border",
-                  ].join(" ")}
-                />
-              )}
+              <span
+                className={[
+                  "mt-1.5 min-h-8 w-full break-words px-0.5 text-center text-[9px] leading-tight",
+                  isActive ? "font-bold text-primary" : "text-muted-foreground",
+                ].join(" ")}
+              >
+                {stage.label}
+              </span>
             </div>
           );
         })}
