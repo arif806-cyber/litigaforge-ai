@@ -6,6 +6,7 @@ import sys
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi import HTTPException
 from starlette.requests import Request
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -13,8 +14,25 @@ os.environ.setdefault("SESSION_SECRET", "test-secret-123456789012345678901234567
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
 
 import payments
-from routers import subscription
+import payments_mor
+from routers import subscription, paid_documents
 from database import SUBSCRIPTION_PLANS
+
+
+def _webhook_request(path, header_name, signature):
+    sent = False
+
+    async def receive():
+        nonlocal sent
+        if sent:
+            return {"type": "http.request", "body": b"", "more_body": False}
+        sent = True
+        return {"type": "http.request", "body": b"{}", "more_body": False}
+
+    return Request({
+        "type": "http", "method": "POST", "path": path, "query_string": b"",
+        "headers": [(header_name.lower().encode(), signature.encode())],
+    }, receive)
 
 
 def test_plan_catalog_exposes_market_pricing_gst_and_trial():
@@ -186,3 +204,35 @@ async def test_signed_annual_webhook_validates_period_price(monkeypatch):
     activate.assert_awaited_once_with(
         42, "advocate_pro", "pay_annual", "annual"
     )
+
+
+@pytest.mark.parametrize("configured", [False, True], ids=["missing-secret", "wrong-signature"])
+@pytest.mark.asyncio
+async def test_razorpay_subscription_webhook_fails_closed(configured, monkeypatch, caplog):
+    if configured:
+        monkeypatch.setenv("RAZORPAY_WEBHOOK_SECRET", "configured-test-secret")
+    else:
+        monkeypatch.delenv("RAZORPAY_WEBHOOK_SECRET", raising=False)
+    with caplog.at_level("WARNING"), pytest.raises(HTTPException) as exc:
+        await subscription.subscription_webhook(
+            _webhook_request("/subscription/webhook", "X-Razorpay-Signature", "invalid")
+        )
+    assert exc.value.status_code == 400
+    assert "Razorpay webhook rejected" in caplog.text
+
+
+@pytest.mark.parametrize("configured", [False, True], ids=["missing-secret", "wrong-signature"])
+@pytest.mark.asyncio
+async def test_paid_documents_webhook_fails_closed_with_merchant_of_record_secret(
+    configured, monkeypatch, caplog,
+):
+    if configured:
+        monkeypatch.setenv("LEMONSQUEEZY_WEBHOOK_SECRET", "configured-test-secret")
+    else:
+        monkeypatch.delenv("LEMONSQUEEZY_WEBHOOK_SECRET", raising=False)
+    with caplog.at_level("WARNING"), pytest.raises(HTTPException) as exc:
+        await paid_documents.webhook(
+            _webhook_request("/documents/paid/webhook", "X-Signature", "invalid")
+        )
+    assert exc.value.status_code == 400
+    assert "Paid-documents webhook rejected" in caplog.text

@@ -2,8 +2,11 @@
 import os
 import hashlib
 import hmac
+import logging
 
 import razorpay
+
+logger = logging.getLogger("litigaforge.payments")
 from plan_prices import ADVOCATE_PLAN_PRICES
 
 GST_RATE_PERCENT = 18
@@ -160,11 +163,18 @@ def verify_payment(
 def verify_webhook_signature(raw_body: bytes, signature: str) -> bool:
     """Verify a Razorpay webhook against the dedicated webhook secret."""
     secret = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
-    if not secret or not signature:
+    if not secret:
+        logger.error("Razorpay webhook rejected: RAZORPAY_WEBHOOK_SECRET is not configured.")
+        return False
+    if not signature:
+        logger.warning("Razorpay webhook rejected: signature is missing.")
         return False
     expected = hmac.new(
         secret.encode("utf-8"),
         raw_body,
         hashlib.sha256,
     ).hexdigest()
-    return hmac.compare_digest(expected, signature)
+    valid = hmac.compare_digest(expected, signature)
+    if not valid:
+        logger.warning("Razorpay webhook rejected: signature verification failed.")
+    return valid

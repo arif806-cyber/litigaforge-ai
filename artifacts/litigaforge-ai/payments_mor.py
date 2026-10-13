@@ -119,11 +119,18 @@ async def create_checkout(
 def verify_webhook(raw_body: bytes, signature: str) -> bool:
     """Constant-time HMAC-SHA256 verification of a Lemon Squeezy webhook body."""
     secret = webhook_secret()
-    if not secret or not signature:
+    if not secret:
+        logger.error("Paid-documents webhook rejected: LEMONSQUEEZY_WEBHOOK_SECRET is not configured.")
+        return False
+    if not signature:
+        logger.warning("Paid-documents webhook rejected: signature is missing.")
         return False
     digest = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
     try:
-        return hmac.compare_digest(digest, signature.strip())
+        valid = hmac.compare_digest(digest, signature.strip())
+        if not valid:
+            logger.warning("Paid-documents webhook rejected: signature verification failed.")
+        return valid
     except Exception:
         return False
 
