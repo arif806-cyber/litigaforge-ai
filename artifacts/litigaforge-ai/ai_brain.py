@@ -47,14 +47,12 @@ def _init_providers():
         return
 
     # ── Gemini ──────────────────────────────────────────────────────────────
-    gemini_base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
-    gemini_key  = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "")
-    # Fallback to direct Gemini API if Replit proxy is not configured
-    if not gemini_base:
-        direct_key = os.getenv("GEMINI_API_KEY", "").strip()
-        if direct_key:
-            gemini_base = "https://generativelanguage.googleapis.com/v1beta"
-            gemini_key = direct_key
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        gemini_base = "https://generativelanguage.googleapis.com/v1beta"
+    else:
+        gemini_base = os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL", "").rstrip("/")
+        gemini_key = os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY", "").strip()
     gemini_ready = False
     if gemini_base:
         try:
@@ -70,8 +68,14 @@ def _init_providers():
     logger.info(f"[AI_BRAIN] Gemini: {'✓ ready' if gemini_ready else '✗ unavailable'}")
 
     # ── Claude ───────────────────────────────────────────────────────────────
-    claude_base = os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "").rstrip("/")
-    claude_key  = os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
+    claude_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if claude_key:
+        claude_base = (os.getenv("ANTHROPIC_BASE_URL") or "https://api.anthropic.com/v1").rstrip("/")
+    else:
+        claude_base = os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "").rstrip("/")
+        claude_key = os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "").strip()
+    if claude_base and not claude_base.endswith("/v1"):
+        claude_base += "/v1"
     claude_ready = False
     if claude_base:
         try:
@@ -87,8 +91,14 @@ def _init_providers():
     logger.info(f"[AI_BRAIN] Claude Sonnet 4-6: {'✓ ready' if claude_ready else '✗ unavailable'}")
 
     # ── OpenAI GPT-5 ─────────────────────────────────────────────────────────
-    openai_base = os.getenv("AI_INTEGRATIONS_OPENAI_BASE_URL", "").rstrip("/")
-    openai_key  = os.getenv("AI_INTEGRATIONS_OPENAI_API_KEY", "")
+    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if openai_key:
+        openai_base = (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+    else:
+        openai_base = os.getenv("AI_INTEGRATIONS_OPENAI_BASE_URL", "").rstrip("/")
+        openai_key = os.getenv("AI_INTEGRATIONS_OPENAI_API_KEY", "").strip()
+    if openai_base and not openai_base.endswith("/v1"):
+        openai_base += "/v1"
     openai_ready = False
     if openai_base:
         try:

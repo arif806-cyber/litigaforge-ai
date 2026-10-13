@@ -30,11 +30,23 @@ def _resolve_creds(model: str):
     if base or key:
         return (base or None), (key or None)
     if model.startswith("anthropic/"):
+        direct_key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+        if direct_key:
+            return None, direct_key
         return (os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL") or None,
                 os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY") or None)
-    if model.startswith("openai/"):
+    if model.startswith(("openai/", "gpt-")):
+        direct_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+        if direct_key:
+            return None, direct_key
         return (os.getenv("AI_INTEGRATIONS_OPENAI_BASE_URL") or None,
                 os.getenv("AI_INTEGRATIONS_OPENAI_API_KEY") or None)
+    if model.startswith("gemini/"):
+        direct_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+        if direct_key:
+            return None, direct_key
+        return (os.getenv("AI_INTEGRATIONS_GEMINI_BASE_URL") or None,
+                os.getenv("AI_INTEGRATIONS_GEMINI_API_KEY") or None)
     return None, None
 
 
@@ -50,8 +62,24 @@ def is_configured() -> bool:
     """
     if not LLM_MODEL:
         return False
-    if LLM_MODEL.startswith(("anthropic/", "openai/")):
-        return bool(LLM_API_BASE and LLM_API_KEY)
+    if LLM_API_KEY:
+        return True
+    provider_keys = {
+        "anthropic/": ("ANTHROPIC_API_KEY", "AI_INTEGRATIONS_ANTHROPIC_BASE_URL"),
+        "openai/": ("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_BASE_URL"),
+        "gpt-": ("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_BASE_URL"),
+        "gemini/": ("GEMINI_API_KEY", "AI_INTEGRATIONS_GEMINI_BASE_URL"),
+    }
+    for prefix, (direct_key, integration_base) in provider_keys.items():
+        if LLM_MODEL.startswith(prefix):
+            return bool(
+                (os.getenv(direct_key) or "").strip()
+                or (
+                    (os.getenv(integration_base) or "").strip()
+                    and (LLM_API_KEY or "").strip()
+                )
+                or (os.getenv("LLM_API_KEY") and os.getenv("LLM_API_BASE"))
+            )
     return True
 
 

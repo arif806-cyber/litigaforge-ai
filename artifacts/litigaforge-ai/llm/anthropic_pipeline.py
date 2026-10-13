@@ -33,8 +33,12 @@ def model_for(feature: str) -> str:
 
 
 def _endpoint() -> tuple[str, str]:
-    base = (os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL") or "").rstrip("/")
-    key = (os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY") or "").strip()
+    key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+    if key:
+        base = (os.getenv("ANTHROPIC_BASE_URL") or "https://api.anthropic.com/v1").rstrip("/")
+    else:
+        base = (os.getenv("AI_INTEGRATIONS_ANTHROPIC_BASE_URL") or "").rstrip("/")
+        key = (os.getenv("AI_INTEGRATIONS_ANTHROPIC_API_KEY") or "").strip()
     if not base or not key:
         raise AnthropicPipelineError(PUBLIC_RETRY_ERROR)
     return (base if base.endswith("/v1") else base + "/v1") + "/messages", key

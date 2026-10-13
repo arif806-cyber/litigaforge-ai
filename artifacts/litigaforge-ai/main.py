@@ -2159,6 +2159,14 @@ if _FORGEOS_ROUTER_ENABLED:
 async def healthz():
     return {"status": "ok", "service": "litigaforge-ai"}
 
+
+@app.get(f"{BASE_PATH}/readyz", tags=["health"])
+async def readyz():
+    from database import fetchrow
+    await fetchrow("SELECT 1")
+    return {"status": "ready", "service": "litigaforge-ai"}
+
+
 app.include_router(auth_router,         prefix=BASE_PATH)
 app.include_router(matching_router,     prefix=BASE_PATH)
 app.include_router(subscription_router, prefix=BASE_PATH)
