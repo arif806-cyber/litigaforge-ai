@@ -20,6 +20,28 @@ from forgeos import business_pulse, scheduler, orchestrator, dashboard, missions
 
 
 @pytest.mark.asyncio
+async def test_weekly_pulse_metrics_exclude_test_and_demo_accounts(monkeypatch):
+    captured = {}
+
+    async def fake_fetch(query, *params):
+        captured["query"] = query.lower()
+        return [{}]
+
+    monkeypatch.setattr(business_pulse, "fetch", fake_fetch)
+
+    await business_pulse._week_over_week()
+    query = captured["query"]
+    assert query.count("from case_requirements c") == 2
+    assert query.count("u.id=c.user_id") == 2
+    assert query.count("from matches m") == 2
+    assert query.count("u.id=m.client_id") == 2
+    assert query.count("coalesce(l.is_test,false)=true") == 2
+    assert "coalesce(l.admin_hidden,false)=false" in query
+    assert "coalesce(is_demo,false)=false" in query
+    assert "as signups_this_month" in query
+
+
+@pytest.mark.asyncio
 async def test_build_pulse_returns_none_when_cost_cap_reached(monkeypatch):
     async def fake_cap_exceeded():
         return 5.01

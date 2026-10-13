@@ -91,19 +91,58 @@ async def _week_over_week() -> dict:
                 AND LOWER(email) NOT LIKE '%@example.com'
                 AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
                 AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS signups_last_week,
-             (SELECT COUNT(*) FROM case_requirements
-                WHERE created_at >= NOW() - INTERVAL '7 days') AS cases_this_week,
-             (SELECT COUNT(*) FROM case_requirements
-                WHERE created_at >= NOW() - INTERVAL '14 days'
-                AND created_at < NOW() - INTERVAL '7 days') AS cases_last_week,
-             (SELECT COUNT(*) FROM matches
-                WHERE created_at >= NOW() - INTERVAL '7 days') AS matches_this_week,
-             (SELECT COUNT(*) FROM matches
-                WHERE created_at >= NOW() - INTERVAL '14 days'
-                AND created_at < NOW() - INTERVAL '7 days') AS matches_last_week,
-             (SELECT COUNT(*) FROM lawyers WHERE verified = TRUE) AS verified_lawyers,
+              (SELECT COUNT(*) FROM case_requirements c
+                 WHERE c.created_at >= NOW() - INTERVAL '7 days'
+                   AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=c.user_id AND
+                     (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                      OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                      OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                      OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com')))) AS cases_this_week,
+              (SELECT COUNT(*) FROM case_requirements c
+                 WHERE c.created_at >= NOW() - INTERVAL '14 days'
+                   AND c.created_at < NOW() - INTERVAL '7 days'
+                   AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=c.user_id AND
+                     (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                      OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                      OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                      OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com')))) AS cases_last_week,
+              (SELECT COUNT(*) FROM matches m
+                 WHERE m.created_at >= NOW() - INTERVAL '7 days'
+                   AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=m.client_id AND
+                     (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                      OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                      OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                      OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com')))
+                   AND NOT EXISTS (SELECT 1 FROM lawyers l JOIN users u ON u.id=l.user_id WHERE l.id=m.lawyer_id AND
+                     (COALESCE(u.is_demo,FALSE)=TRUE OR COALESCE(l.is_test,FALSE)=TRUE
+                      OR LOWER(u.email) LIKE '%@%.test' OR LOWER(u.email) LIKE '%@%.local'
+                      OR LOWER(u.email) LIKE '%@example.com'))) AS matches_this_week,
+              (SELECT COUNT(*) FROM matches m
+                 WHERE m.created_at >= NOW() - INTERVAL '14 days'
+                   AND m.created_at < NOW() - INTERVAL '7 days'
+                   AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id=m.client_id AND
+                     (COALESCE(u.is_demo,FALSE)=TRUE OR LOWER(u.email) LIKE '%@%.test'
+                      OR LOWER(u.email) LIKE '%@%.local' OR LOWER(u.email) LIKE '%@example.com'
+                      OR LOWER(u.email) LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                      OR LOWER(u.email) IN ('info@litigaforge.com','demo@litigaforge.com')))
+                   AND NOT EXISTS (SELECT 1 FROM lawyers l JOIN users u ON u.id=l.user_id WHERE l.id=m.lawyer_id AND
+                     (COALESCE(u.is_demo,FALSE)=TRUE OR COALESCE(l.is_test,FALSE)=TRUE
+                      OR LOWER(u.email) LIKE '%@%.test' OR LOWER(u.email) LIKE '%@%.local'
+                      OR LOWER(u.email) LIKE '%@example.com'))) AS matches_last_week,
+              (SELECT COUNT(*) FROM lawyers l JOIN users u ON u.id=l.user_id
+                 WHERE l.verified = TRUE AND COALESCE(l.is_test,FALSE)=FALSE
+                   AND COALESCE(l.admin_hidden,FALSE)=FALSE AND COALESCE(u.is_demo,FALSE)=FALSE
+                   AND LOWER(u.email) NOT LIKE '%@%.test' AND LOWER(u.email) NOT LIKE '%@%.local'
+                   AND LOWER(u.email) NOT LIKE '%@example.com'
+                   AND LOWER(u.email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                   AND LOWER(u.email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS verified_lawyers,
              (SELECT COUNT(*) FROM users
-                WHERE created_at >= date_trunc('month', NOW())) AS signups_this_month
+                 WHERE created_at >= date_trunc('month', NOW())
+                   AND COALESCE(is_demo,FALSE)=FALSE
+                   AND LOWER(email) NOT LIKE '%@%.test' AND LOWER(email) NOT LIKE '%@%.local'
+                   AND LOWER(email) NOT LIKE '%@example.com'
+                   AND LOWER(email) NOT LIKE 'jane\\_%@test.com' ESCAPE '\\'
+                   AND LOWER(email) NOT IN ('info@litigaforge.com','demo@litigaforge.com')) AS signups_this_month
         """
     )
     return dict(rows[0]) if rows else {}
