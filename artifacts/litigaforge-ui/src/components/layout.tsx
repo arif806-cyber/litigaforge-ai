@@ -111,7 +111,7 @@ function mobileTitleForPath(path: string): string {
   if (path.startsWith("/lawyers/register")) return "Advocate Registration";
   if (path.startsWith("/lawyers")) return "Find a Lawyer";
   if (path.startsWith("/documents")) return "Documents";
-  if (path.startsWith("/docket")) return "Docket";
+  if (path.startsWith("/docket")) return "Cause lists";
   return "LitigaForge";
 }
 
@@ -119,6 +119,7 @@ function mobileSubtitleForPath(path: string): string {
   if (path.startsWith("/judgments")) return "Search published Indian court decisions.";
   if (path.startsWith("/subscription")) return "Plans and billing for your account.";
   if (path.startsWith("/cnr-tracker")) return "Track hearings, orders, and case status.";
+  if (path.startsWith("/docket")) return "Browse today’s and tomorrow’s cause lists by court.";
   if (path.startsWith("/settings")) return "Manage your account and preferences.";
   if (path.startsWith("/client-dashboard")) return "Your cases, updates, and next steps.";
   if (path.startsWith("/lawyer-dashboard")) return "Your practice, cases, and client updates.";

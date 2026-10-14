@@ -58,7 +58,11 @@ try {
 
   const page = await context.newPage();
   await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "DocketView" }).waitFor();
+  const mobileHeader = page.locator(".lf-mobile-topbar");
+  const mobilePageTitle = mobileHeader.getByText("Cause lists", { exact: true });
+  await mobilePageTitle.first().waitFor();
+  await mobileHeader.getByText("Browse today’s and tomorrow’s cause lists by court.", { exact: true }).first().waitFor();
+  assert.equal(await page.getByRole("heading", { name: "DocketView" }).count(), 0, "duplicate DocketView heading is removed");
   assert.equal(courtRequests, 0, "opening DocketView must not call the eCourts court API");
   assert.equal(loads, 0, "opening DocketView must not load cause-list matters");
   assert.equal(await page.getByLabel(/Name as it appears in cause lists/).getAttribute("required"), null);
@@ -78,7 +82,16 @@ try {
   await page.getByLabel("Court complex").selectOption("Supreme Court");
   await page.getByRole("button", { name: /Choose courts/ }).click();
   const dialog = page.getByRole("dialog", { name: "Choose courts" });
-  await dialog.getByLabel("Search courts by judge or court number").fill("Justice Sample");
+  const searchInput = dialog.getByLabel("Search courts by judge or court number");
+  const searchBox = await searchInput.boundingBox();
+  const selectAll = dialog.getByRole("button", { name: "Select all (max 10)" });
+  const clear = dialog.getByRole("button", { name: "Clear", exact: true });
+  const selectAllBox = await selectAll.boundingBox();
+  const clearBox = await clear.boundingBox();
+  assert.ok(searchBox && searchBox.width >= 300, "court search uses the full row at 390px");
+  assert.ok(selectAllBox && searchBox && selectAllBox.y >= searchBox.y + searchBox.height, "bulk actions are below search");
+  assert.ok(selectAllBox && clearBox && Math.abs(selectAllBox.y - clearBox.y) < 2, "bulk actions share their row");
+  await searchInput.fill("Justice Sample");
   const courtOption = dialog.getByLabel(/Justice Sample/);
   await courtOption.waitFor();
   assert.equal(await courtOption.isChecked(), false, "court picker starts with no courts checked");
