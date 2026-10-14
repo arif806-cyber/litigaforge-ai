@@ -120,6 +120,31 @@ async def ensure_tables(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_court_board_updates_key_day "
         "ON court_board_updates (court_key, board_date, created_at DESC)"
     )
+    # Who is following which court today, so a board update can alert them with the app closed.
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS court_day_watch (
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            case_id     INTEGER NOT NULL,
+            board_date  DATE NOT NULL,
+            court_key   TEXT NOT NULL,
+            item_no     INTEGER NOT NULL,
+            hall        TEXT,
+            title       TEXT NOT NULL,
+            sensitive   BOOLEAN NOT NULL DEFAULT FALSE,
+            notified_at TIMESTAMPTZ,
+            PRIMARY KEY (user_id, case_id, board_date)
+        )
+    """)
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_court_day_watch_key_day ON court_day_watch (court_key, board_date)"
+    )
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS court_day_prefs (
+            user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            alerts     BOOLEAN NOT NULL DEFAULT TRUE,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
 
 
 # ── board ─────────────────────────────────────────────────────────────────────
@@ -234,12 +259,158 @@ async def update_board(payload: BoardUpdate, user=Depends(require_user)):
         )
         rows = await _board_rows(conn, payload.court_key, day)
     _LAST_UPDATE[(user_id, payload.court_key)] = stamp
+    if status == "accepted":
+        _in_background(send_alerts(payload.court_key, day, payload.item_no, user_id))
     return {
         "status": status,
         "message": "Board updated." if status == "accepted"
         else "That is a big jump. It will show once another advocate confirms it.",
         "board": summarise_board(rows, datetime.now(IST)),
     }
+
+
+# ── near-turn alerts (work with the app closed) ───────────────────────────────
+NEAR_ITEMS = 3
+_BACKGROUND: set = set()
+
+
+def due_alerts(watchers: list[dict], now_item: int, updater_id: int | None) -> list[dict]:
+    """Watchers whose matter is now within NEAR_ITEMS and who have not been alerted today. Pure, unit-tested."""
+    due = []
+    for w in watchers:
+        if w.get("notified_at") is not None or not w.get("alerts", True):
+            continue
+        if updater_id is not None and w["user_id"] == updater_id:
+            continue  # they are standing in the hall already
+        ahead = w["item_no"] - now_item
+        if 0 <= ahead <= NEAR_ITEMS:
+            due.append({**w, "ahead": ahead})
+    return due
+
+
+def alert_message(watch: dict, now_item: int) -> tuple[str, str]:
+    """Lock-screen text. Private matters never show party names."""
+    hall = f"Court {watch['hall']}" if watch.get("hall") else "your court"
+    what = "Your matter" if watch.get("sensitive") else watch["title"]
+    if watch["ahead"] == 0:
+        return f"Your matter is being heard in {hall}", f"{what} · item {watch['item_no']}"
+    return (
+        f"Head to {hall} — {watch['ahead']} away",
+        f"Now on item {now_item}. {what} is item {watch['item_no']}.",
+    )
+
+
+def _send_web_push_sync(sub: dict, payload: dict) -> str:
+    """Returns 'sent', 'gone' (subscription expired) or 'failed'. Runs in a worker thread."""
+    import os
+    private_key = os.getenv("VAPID_PRIVATE_KEY", "")
+    if not private_key:
+        return "failed"
+    try:
+        from pywebpush import WebPushException, webpush
+    except ImportError:
+        return "failed"
+    try:
+        webpush(
+            subscription_info={"endpoint": sub["endpoint"], "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]}},
+            data=json.dumps(payload),
+            vapid_private_key=private_key,
+            vapid_claims={"sub": os.getenv("VAPID_CLAIMS_SUB", "mailto:support@litigaforge.com")},
+            ttl=600,  # a near-turn alert is useless after ten minutes
+            timeout=10,
+        )
+        return "sent"
+    except WebPushException as exc:
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        return "gone" if status in (404, 410) else "failed"
+    except Exception:
+        return "failed"
+
+
+async def send_alerts(court_key_value: str, day: date, now_item: int, updater_id: int | None) -> int:
+    """Alert every advocate whose matter in this hall just came within reach. Never raises.
+
+    Claims each alert in the database first (so two workers never double-notify), then sends
+    outside the connection so a slow push service never holds a database connection.
+    """
+    import asyncio
+    try:
+        pool = await get_pool()
+        outbox: list[tuple[dict, dict]] = []
+        async with pool.acquire() as conn:
+            rows = [dict(r) for r in await conn.fetch(
+                """SELECT w.user_id, w.case_id, w.item_no, w.hall, w.title, w.sensitive, w.notified_at,
+                          COALESCE(p.alerts, TRUE) AS alerts
+                   FROM court_day_watch w LEFT JOIN court_day_prefs p ON p.user_id = w.user_id
+                   WHERE w.court_key=$1 AND w.board_date=$2""",
+                court_key_value, day,
+            )]
+            for watch in due_alerts(rows, now_item, updater_id):
+                claimed = await conn.fetchval(
+                    """UPDATE court_day_watch SET notified_at=NOW()
+                       WHERE user_id=$1 AND case_id=$2 AND board_date=$3 AND notified_at IS NULL RETURNING 1""",
+                    watch["user_id"], watch["case_id"], day,
+                )
+                if not claimed:
+                    continue  # another worker already alerted this advocate
+                title, body = alert_message(watch, now_item)
+                payload = {"title": title, "body": body, "url": "/lawyer-dashboard",
+                           "tag": f"court-day-{watch['case_id']}-{day.isoformat()}"}
+                for sub in await conn.fetch(
+                    "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id=$1", watch["user_id"],
+                ):
+                    outbox.append((dict(sub), payload))
+        sent, gone = 0, []
+        for sub, payload in outbox:
+            outcome = await asyncio.to_thread(_send_web_push_sync, sub, payload)
+            if outcome == "sent":
+                sent += 1
+            elif outcome == "gone":
+                gone.append(sub["endpoint"])
+        if gone:
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM push_subscriptions WHERE endpoint = ANY($1::text[])", gone)
+        return sent
+    except Exception:
+        return 0
+
+
+def _in_background(coro) -> None:
+    import asyncio
+    task = asyncio.create_task(coro)
+    _BACKGROUND.add(task)
+    task.add_done_callback(_BACKGROUND.discard)
+
+
+class AlertPrefs(BaseModel):
+    enabled: bool
+
+
+@router.get("/alerts")
+async def get_alerts(user=Depends(require_user)):
+    _advocate_only(user)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await ensure_tables(conn)
+        enabled = await conn.fetchval("SELECT alerts FROM court_day_prefs WHERE user_id=$1", int(user["id"]))
+        devices = await conn.fetchval("SELECT COUNT(*) FROM push_subscriptions WHERE user_id=$1", int(user["id"]))
+    import os
+    return {"enabled": True if enabled is None else bool(enabled), "devices": int(devices or 0),
+            "push_configured": bool(os.getenv("VAPID_PRIVATE_KEY"))}
+
+
+@router.put("/alerts")
+async def set_alerts(payload: AlertPrefs, user=Depends(require_user)):
+    _advocate_only(user)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await ensure_tables(conn)
+        await conn.execute(
+            """INSERT INTO court_day_prefs (user_id, alerts) VALUES ($1, $2)
+               ON CONFLICT (user_id) DO UPDATE SET alerts=EXCLUDED.alerts, updated_at=NOW()""",
+            int(user["id"]), payload.enabled,
+        )
+    return {"enabled": payload.enabled}
 
 
 # ── today ─────────────────────────────────────────────────────────────────────
@@ -297,7 +468,7 @@ async def court_day_today(day: str | None = None, user=Depends(require_user)):
                FROM lawyer_cases WHERE lawyer_id=$1 AND COALESCE(status,'active') <> 'closed'""",
             user_id,
         )]
-        lists = await _cached_cause_lists(conn, user_id, [focus] if focus != today else [today, today + timedelta(days=1)])
+        lists = await _cached_cause_lists(conn, user_id, [focus])
         boards: dict[str, dict | None] = {}
         counts = {d: 0 for d in week}
         matters = []
@@ -316,6 +487,25 @@ async def court_day_today(day: str | None = None, user=Depends(require_user)):
                         await _board_rows(conn, place["court_key"], today), datetime.now(IST),
                     )
                 board = boards[place["court_key"]]
+            sensitive = is_sensitive(case.get("case_type"), case.get("title"))
+            number = int(re.sub(r"\D", "", place["item"]) or 0) if place and place.get("item") else 0
+            if place and place["court_key"] and number and focus == today:
+                await conn.execute(
+                    """INSERT INTO court_day_watch (user_id, case_id, board_date, court_key, item_no, hall, title, sensitive)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                       ON CONFLICT (user_id, case_id, board_date) DO UPDATE SET
+                         court_key=EXCLUDED.court_key, hall=EXCLUDED.hall, title=EXCLUDED.title,
+                         sensitive=EXCLUDED.sensitive,
+                         notified_at=CASE WHEN court_day_watch.item_no = EXCLUDED.item_no
+                                          AND court_day_watch.court_key = EXCLUDED.court_key
+                                          THEN court_day_watch.notified_at ELSE NULL END,
+                         item_no=EXCLUDED.item_no
+                       WHERE (court_day_watch.court_key, court_day_watch.item_no, court_day_watch.hall,
+                              court_day_watch.title, court_day_watch.sensitive)
+                         IS DISTINCT FROM (EXCLUDED.court_key, EXCLUDED.item_no, EXCLUDED.hall,
+                              EXCLUDED.title, EXCLUDED.sensitive)""",
+                    user_id, case["id"], today, place["court_key"], number, place.get("hall"), case["title"][:300], sensitive,
+                )
             matters.append({
                 "case_id": case["id"],
                 "title": case["title"],
@@ -323,7 +513,7 @@ async def court_day_today(day: str | None = None, user=Depends(require_user)):
                 "case_type": case.get("case_type"),
                 "client_name": case.get("client_name"),
                 "stage": case.get("case_stage"),
-                "sensitive": is_sensitive(case.get("case_type"), case.get("title")),
+                "sensitive": sensitive,
                 "court": (place or {}).get("court") or case.get("court_name"),
                 "hall": (place or {}).get("hall"),
                 "item": (place or {}).get("item"),

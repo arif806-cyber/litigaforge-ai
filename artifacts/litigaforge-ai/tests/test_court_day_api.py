@@ -199,3 +199,62 @@ def test_brief_is_owner_only_and_built_from_stored_data(api):
             await conn.execute("DELETE FROM tracked_cases WHERE user_id=$1", uid)
             await conn.execute("DELETE FROM lawyer_cases WHERE lawyer_id=$1", uid)
     api(steps)
+
+
+def test_board_update_alerts_followers_with_the_app_closed(api, monkeypatch):
+    from routers import court_day
+    sent = []
+    monkeypatch.setattr(court_day, "_send_web_push_sync", lambda sub, payload: sent.append((sub["endpoint"], payload)) or "sent")
+
+    async def steps(as_user, users, pool, docket):
+        today = court_day._today()
+        uid = users["a"]["id"]
+        court = {**COURT, "court_no": f"T{uuid.uuid4().hex[:5]}"}
+        key = court_day.court_key(court)
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO docket_profiles (user_id, cause_list_name, enrolment_number, court_ids) VALUES ($1,'','',$2)",
+                uid, [json.dumps(court)],
+            )
+            await conn.execute(
+                """INSERT INTO lawyer_cases (lawyer_id, title, case_type, client_name, court_name, cnr_number, hearing_date, case_stage, status)
+                   VALUES ($1,'K. Lakshmi v. K. Ramesh','Family Law','K. Lakshmi','Family Court','TSFC010000172025',$2,'Counselling','active')""",
+                uid, today.isoformat(),
+            )
+            await conn.execute(
+                "INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES ($1,$2,'k','a')",
+                uid, f"https://push.example.test/{uuid.uuid4().hex}",
+            )
+        await docket.cache_set(docket._court_cache_key(court, today.isoformat()), {
+            "date": today.isoformat(), "status": "ok", "matters": [{"cnr": "TSFC010000172025", "itemNo": 17}],
+        }, ttl=600)
+        # opening Court Day registers advocate A as following this hall
+        assert (await as_user("a").get("/court-day/today")).json()["matters"][0]["item"] == "17"
+
+        await as_user("b").post("/court-day/board", json={"court_key": key, "item_no": 10})
+        await asyncio.gather(*list(court_day._BACKGROUND))
+        assert sent == []                                      # 7 away: no alert yet
+
+        court_day._LAST_UPDATE.clear()
+        await as_user("b").post("/court-day/board", json={"court_key": key, "item_no": 14})
+        await asyncio.gather(*list(court_day._BACKGROUND))
+        assert len(sent) == 1
+        payload = sent[0][1]
+        assert payload["title"] == f"Head to Court {court['court_no']} — 3 away"
+        assert "Lakshmi" not in payload["title"] + payload["body"]   # private matter stays private
+
+        court_day._LAST_UPDATE.clear()
+        await as_user("b").post("/court-day/board", json={"court_key": key, "item_no": 15})
+        await asyncio.gather(*list(court_day._BACKGROUND))
+        assert len(sent) == 1                                  # only once per matter per day
+
+        # turning alerts off is respected
+        assert (await as_user("a").put("/court-day/alerts", json={"enabled": False})).json() == {"enabled": False}
+        assert (await as_user("a").get("/court-day/alerts")).json()["enabled"] is False
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM push_subscriptions WHERE user_id=$1", uid)
+            await conn.execute("DELETE FROM court_day_watch WHERE user_id=$1", uid)
+            await conn.execute("DELETE FROM court_day_prefs WHERE user_id=$1", uid)
+            await conn.execute("DELETE FROM lawyer_cases WHERE lawyer_id=$1", uid)
+            await conn.execute("DELETE FROM court_board_updates WHERE court_key=$1", key)
+    api(steps)

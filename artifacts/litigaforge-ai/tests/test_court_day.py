@@ -126,3 +126,26 @@ def test_orders_from_snapshot_are_newest_first_and_capped():
 def test_week_runs_monday_to_sunday():
     week = cd._week_of(date(2026, 10, 15))
     assert week[0] == date(2026, 10, 12) and week[-1] == date(2026, 10, 18)
+
+
+# ── near-turn alerts ──────────────────────────────────────────────────────────
+def watcher(user, item, **kw):
+    return {"user_id": user, "case_id": user * 10, "item_no": item, "hall": "4", "title": "Sharma v. State",
+            "sensitive": False, "notified_at": None, "alerts": True, **kw}
+
+
+def test_alerts_go_only_to_advocates_within_three_items_once():
+    watchers = [watcher(1, 17), watcher(2, 15), watcher(3, 25), watcher(4, 13), watcher(5, 16, notified_at=NOW),
+                watcher(6, 16, alerts=False), watcher(7, 14)]
+    due = cd.due_alerts(watchers, now_item=14, updater_id=7)
+    assert sorted((w["user_id"], w["ahead"]) for w in due) == [(1, 3), (2, 1)]
+    # 3: too far · 4: already passed · 5: already alerted · 6: alerts off · 7: is the advocate who updated
+
+
+def test_alert_text_never_reveals_private_matters():
+    title, body = cd.alert_message({**watcher(1, 17), "ahead": 3}, 14)
+    assert title == "Head to Court 4 — 3 away"
+    assert body == "Now on item 14. Sharma v. State is item 17."
+    title, body = cd.alert_message({**watcher(1, 17, sensitive=True, title="K. Lakshmi v. K. Ramesh"), "ahead": 0}, 17)
+    assert "Lakshmi" not in title + body and "Your matter" in body
+    assert title == "Your matter is being heard in Court 4"
