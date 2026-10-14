@@ -1211,7 +1211,7 @@ export default function LawyerDashboard() {
             {cnrCases.length > 0 && (
               <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
                 <div className="px-5 pt-5 pb-4 flex items-center gap-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10 border border-primary/20" data-testid="cnr-tracker-icon-tile">
                     <Shield className="w-4 h-4 text-primary" />
                   </div>
                   <div>

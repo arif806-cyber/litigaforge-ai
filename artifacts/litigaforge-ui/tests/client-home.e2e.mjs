@@ -71,6 +71,23 @@ try {
     assert.ok(titleAlignment !== null && titleAlignment <= 1,
       `Home title and subtitle should align on the same left edge (difference=${titleAlignment})`);
 
+    const visualTokens = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const button = document.querySelector('[data-testid="client-new-case-button"]');
+      return {
+        radius: root.getPropertyValue("--radius").trim(),
+        shadowSoft: root.getPropertyValue("--shadow-soft").trim(),
+        borderRadius: button ? getComputedStyle(button).borderRadius : "",
+        whiteSpace: button ? getComputedStyle(button).whiteSpace : "",
+        buttonText: button?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      };
+    });
+    assert.ok(parseFloat(visualTokens.radius) > 0, `${theme}: --radius should be defined and positive`);
+    assert.ok(parseFloat(visualTokens.borderRadius) > 0, `${theme}: button border-radius should be non-zero`);
+    assert.ok(visualTokens.shadowSoft.length > 0, `${theme}: shared shadow token should be defined`);
+    assert.equal(visualTokens.whiteSpace, "nowrap", "New case should stay on one line at 390px");
+    assert.match(visualTokens.buttonText, /New case$/);
+
     const bottomNav = page.locator(".lf-mobile-bottom-nav");
     for (const label of ["Home", "Messages", "Post", "Cases", "More"]) {
       await bottomNav.getByText(label, { exact: true }).waitFor();

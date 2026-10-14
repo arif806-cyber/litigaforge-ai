@@ -108,6 +108,16 @@ try {
       assert.equal(await page.locator("h1").count(), 1, "Cases should have one title");
       assert.equal(await page.getByTestId("add-case-btn").isVisible().catch(() => false), false);
       await page.getByTestId("cases-add-case-btn").waitFor();
+        const radiusCheck = await page.getByTestId("cases-add-case-btn").evaluate((button) => ({
+          radius: getComputedStyle(document.documentElement).getPropertyValue("--radius").trim(),
+          borderRadius: getComputedStyle(button).borderRadius,
+        }));
+        assert.ok(parseFloat(radiusCheck.radius) > 0, `${theme}: --radius should be defined and positive`);
+        assert.ok(parseFloat(radiusCheck.borderRadius) > 0, `${theme}: Add Case border-radius should be non-zero`);
+        const cnrTile = page.getByTestId("cnr-tracker-icon-tile");
+        await cnrTile.waitFor();
+        assert.ok(await cnrTile.evaluate(el => el.classList.contains("bg-primary/10")),
+          "CNR Case Tracker should use the brand tile, not purple");
       if (viewport.width === 390) {
         assert.equal(await page.getByTestId("cases-add-case-btn").evaluate(el => getComputedStyle(el).position), "fixed");
         assert.ok(await page.getByRole("button", { name: /^Active/ }).isVisible());

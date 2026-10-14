@@ -407,8 +407,9 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   <button onClick={() => setLocation("/post-case")}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
-                    <Plus className="w-3.5 h-3.5" /> New Case
+                    data-testid="client-new-case-button"
+                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-semibold px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
+                    <Plus className="w-3.5 h-3.5" /> New case
                   </button>
                 </div>
                 {/* Tab pills */}
