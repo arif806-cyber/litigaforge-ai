@@ -664,11 +664,11 @@ export default function LawyerDashboard() {
   const recordedFeeCount = acceptedLeads.filter((m: any) => m.agreed_fee != null).length;
 
   const SECTION_TABS = [
-    { id: "overview",   label: "Overview",   icon: Briefcase },
-    { id: "cases",      label: "Cases",      icon: FileText, badge: cases.length },
-    { id: "clients",    label: "Clients",    icon: Users, badge: clientList.length },
-    { id: "documents",  label: "Documents",  icon: FolderOpen, badge: docs.length },
-    { id: "earnings",   label: "Earnings",   icon: Award },
+    { id: "overview",   href: "/lawyer-dashboard", label: "Overview",   icon: Briefcase },
+    { id: "cases",      href: "/lawyer-dashboard/cases", label: "Cases",      icon: FileText, badge: cases.length },
+    { id: "clients",    href: "/lawyer-dashboard/clients", label: "Clients",    icon: Users, badge: clientList.length },
+    { id: "documents",  href: "/lawyer-dashboard/documents", label: "Documents",  icon: FolderOpen, badge: docs.length },
+    { id: "earnings",   href: "/lawyer-dashboard/earnings", label: "Earnings",   icon: Award },
   ] as const;
 
   return (
@@ -713,7 +713,7 @@ export default function LawyerDashboard() {
             const Icon = tab.icon;
             const isActive = activeSection === tab.id;
             return (
-              <button key={tab.id} onClick={() => setActiveSection(tab.id)}
+              <button key={tab.id} onClick={() => setLocation(tab.href)}
                 className={cn(
                   "flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-all border-b-2 -mb-px",
                   isActive

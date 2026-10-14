@@ -88,6 +88,13 @@ function navLabel(item: NavEntry, t: Translation): string {
   return item.tKey && t[item.tKey] ? t[item.tKey] : item.label;
 }
 
+function isNavPathActive(href: string, location: string): boolean {
+  if (href === "/lawyer-dashboard") {
+    return location === href || location === "/advocate-dashboard";
+  }
+  return location === href || location.startsWith(`${href}/`);
+}
+
 function mobileTitleForPath(path: string): string {
   if (path.startsWith("/client-dashboard")) return "Dashboard";
   if (path.startsWith("/lawyer-dashboard")) return "Advocate Dashboard";
@@ -145,11 +152,7 @@ function NavItem({
 }: {
   href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string; highlight?: boolean; badge?: number;
 }) {
-  const active = href === "/"
-    ? location === "/"
-    : href === "/lawyer-dashboard"
-      ? location === href || location === "/advocate-dashboard"
-      : location === href || location.startsWith(`${href}/`);
+  const active = isNavPathActive(href, location);
   const feature = FEATURE_BY_HREF[href];
   return (
     <Link
@@ -351,7 +354,7 @@ const clientMobileNav: NavEntry[] = [
 ];
 const lawyerMobileNav: NavEntry[] = [
   { href: "/lawyer-dashboard", label: "Dashboard", icon: Star  },
-  { href: "/matches",          label: "Cases",     icon: Users },
+  { href: "/lawyer-dashboard/cases", label: "Cases", icon: FileText },
 ];
 
 /* ─── Bottom Tab Bar ─── */
@@ -369,9 +372,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
 
   const isLawyer  = !!user && activePortal === "advocate";
   const mobileNav = isLawyer
-    ? connectFlags?.connect_v2
-      ? [{ href: "/lawyer-dashboard", label: "Dashboard", icon: Star }, { href: "/requests", label: connectStrings.requests, icon: Inbox }]
-      : lawyerMobileNav
+    ? lawyerMobileNav
     : clientMobileNav;
   const primaryAction = isLawyer
     ? { href: "/legal-chat", label: "Draft", icon: MessageSquareText }
@@ -385,6 +386,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
         { href: "/docket", label: "DocketView", icon: CalendarSearch },
         { href: "/lawyer-dashboard/cases", label: "Cases & Hearings", icon: FileText },
         { href: "/lawyer-dashboard/clients", label: "Clients", icon: Users },
+        ...(connectFlags?.connect_v2 ? [{ href: "/requests", label: connectStrings.requests, icon: Inbox }] : []),
         ...(connectFlags?.connect_v2 ? [{ href: "/advocate/cases", label: connectStrings.acceptedCases, icon: FileText }] : []),
         ...(connectFlags?.connect_v2 ? [] : [{ href: "/matches", label: "Client Requests", icon: Users, tKey: "client_requests" as const }]),
         { href: "/lawyer-dashboard/earnings", label: "Earnings", icon: Briefcase },
@@ -405,7 +407,8 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
       ];
 
   const msgsActive = location.startsWith("/messages");
-  const primaryTabActive = mobileNav.some(({ href }) => location.startsWith(href));
+  const primaryTab = mobileNav.find(({ href }) => isNavPathActive(href, location));
+  const primaryTabActive = !!primaryTab;
   const tabItems = [
     ...(mainTab ? [{
       id: mainTab.href, href: mainTab.href, label: mainTab.tKey && t[mainTab.tKey] ? t[mainTab.tKey] : mainTab.label,
@@ -426,7 +429,7 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   const selectedTab = msgsActive
     ? "messages"
     : primaryTabActive
-      ? (mobileNav.find(({ href }) => location.startsWith(href))?.href ?? mobileNav[0]?.href ?? "more")
+      ? (primaryTab?.href ?? mobileNav[0]?.href ?? "more")
       : location.startsWith(primaryAction.href)
         ? "primary-action"
         : "more";

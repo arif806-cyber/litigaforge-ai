@@ -52,6 +52,9 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "dashboard should fit the viewport");
       const suffix = viewport.width === 390 ? "390" : "desktop";
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/today-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
+      await page.getByTestId("tab-cases").click();
+      await page.waitForURL(/\/lawyer-dashboard\/cases\/?$/);
+      await page.getByRole("heading", { name: "Case Management" }).waitFor();
       await context.close();
     }
   }

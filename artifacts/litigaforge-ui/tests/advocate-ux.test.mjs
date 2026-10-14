@@ -50,3 +50,14 @@ test("advocate overview leads with today's hearings and upcoming matters", async
   assert.match(dashboard, /Coming up/);
   assert.match(dashboard, /href="\/docket"/);
 });
+
+test("advocate case navigation uses one route in the dashboard tabs and mobile bar", async () => {
+  const dashboard = await source("../src/pages/lawyer-dashboard.tsx");
+  const layout = await source("../src/components/layout.tsx");
+  assert.match(dashboard, /id: "cases",\s+href: "\/lawyer-dashboard\/cases"/);
+  assert.match(dashboard, /onClick=\{\(\) => setLocation\(tab\.href\)\}/);
+  assert.match(layout, /href: "\/lawyer-dashboard\/cases", label: "Cases"/);
+  assert.match(layout, /href: "\/requests", label: connectStrings\.requests/);
+  assert.match(layout, /function isNavPathActive\(href: string, location: string\)/);
+  assert.match(layout, /const primaryTab = mobileNav\.find\(\(\{ href \}\) => isNavPathActive\(href, location\)\)/);
+});
