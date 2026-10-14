@@ -32,6 +32,9 @@ _BULK_REFRESH_WAIT_SECONDS = 30
 _HTTP_TRANSPORT: httpx.AsyncBaseTransport | None = None
 _API_USAGE: dict[str, dict[str, Any]] = {}
 _API_STARTED_AT = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+_DAILY_SPEND_CAP_INR = 60.0
+_SPEND_LIMIT_BLOCKED_DAYS: set[str] = set()
+_API_USAGE_LOCK = asyncio.Lock()
 _CASE_CACHE: dict[str, tuple[float, dict]] = {}
 _CASE_CACHE_TTL_SECONDS = 5 * 60
 _CAUSE_LIST_CACHE: dict[tuple, tuple[float, dict]] = {}
@@ -42,43 +45,64 @@ _AVAILABLE_DATE_TTL_SECONDS = 60 * 60
 _CNR_LISTING_TTL_SECONDS = 4 * 60 * 60
 
 
-def _record_api_usage(method: str, path: str, json_body: dict | None) -> None:
-    """Keep a secret-free, process-local daily estimate for the admin cost panel."""
+def _endpoint_cost(method: str, path: str, json_body: dict | None) -> tuple[str, float]:
     lowered = path.lower()
-    label, credits = "Other", 0.0
     if "/causelist/search" in lowered:
-        label, credits = "Cause-list search", 1.0
-    elif "/causelist/cnr/batch" in lowered:
-        label = "CNR cause-list batch"
-        credits = 0.10 * len((json_body or {}).get("cnrs") or [])
-    elif lowered.endswith("/case/bulk-refresh"):
-        label = "Bulk case refresh"
-        credits = 0.05 * len((json_body or {}).get("cnrs") or [])
-    elif "/bulk-refresh-status" in lowered or "/available-dates" in lowered or "/court-structure/" in lowered:
-        label, credits = "Free court data", 0.0
-    elif "/case/" in lowered and "/refresh" in lowered:
-        label, credits = "Case refresh", 0.05
-    elif "/case/" in lowered and "/order-ai/" in lowered:
-        label, credits = "Order AI", 2.50
-    elif "/case/" in lowered and "/order-md/" in lowered:
-        label, credits = "Order markdown", 1.75
-    elif "/case/" in lowered and "/order/" in lowered:
-        label, credits = "Order PDF", 1.25
-    elif lowered.endswith("/search"):
-        label, credits = "Case search", 0.20
-    elif "/case/" in lowered:
-        label, credits = "Case detail", 0.50
+        return "CAUSE_LIST", 3.0
+    if "/bulk-refresh-status" in lowered:
+        return "REFRESH_STATUS", 0.0
+    if lowered.endswith("/case/bulk-refresh") or ("/case/" in lowered and lowered.endswith("/refresh")):
+        return "CASE_REFRESH", 0.15 * max(1, len((json_body or {}).get("cnrs") or []))
+    if re.search(r"/case/[a-z]{4}\d{12}$", lowered):
+        return "CASE_DETAIL", 1.5
+    if "/available-dates" in lowered or "/court-structure/" in lowered:
+        return "COURT_DATA", 0.0
+    # The dashboard supplied no tariff for other billable endpoints, so budget
+    # them at the highest listed rate rather than letting them bypass the cap.
+    return "OTHER_UNPRICED", 3.0
 
+
+async def _reserve_api_usage(method: str, path: str, json_body: dict | None) -> None:
+    """Count every vendor attempt and fail closed at the configured daily cap."""
+    global _API_USAGE
     day = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
-    record = _API_USAGE.setdefault(day, {"calls": 0, "estimated_credits": 0.0, "endpoints": {}})
-    record["calls"] += 1
-    record["estimated_credits"] = round(record["estimated_credits"] + credits, 4)
-    endpoint = record["endpoints"].setdefault(label, {"calls": 0, "estimated_credits": 0.0})
-    endpoint["calls"] += 1
-    endpoint["estimated_credits"] = round(endpoint["estimated_credits"] + credits, 4)
+    endpoint, cost = _endpoint_cost(method, path, json_body)
+    async with _API_USAGE_LOCK:
+        record = _API_USAGE.setdefault(day, {"calls": 0, "estimated_inr": 0.0, "endpoints": {}})
+        if (
+            record["estimated_inr"] >= _DAILY_SPEND_CAP_INR
+            or record["estimated_inr"] + cost > _DAILY_SPEND_CAP_INR + 1e-9
+        ):
+            _SPEND_LIMIT_BLOCKED_DAYS.add(day)
+            logger.warning("eCourtsIndia daily spend cap reached; blocked endpoint=%s", endpoint)
+            raise CourtDataError(
+                "Daily refresh limit reached, showing last update.",
+                status_code=429, code="daily_spend_cap",
+            )
+        record["calls"] += 1
+        record["estimated_inr"] = round(record["estimated_inr"] + cost, 2)
+        stats = record["endpoints"].setdefault(endpoint, {"calls": 0, "estimated_inr": 0.0})
+        stats["calls"] += 1
+        stats["estimated_inr"] = round(stats["estimated_inr"] + cost, 2)
+
+
+def set_daily_spend_cap_inr(value: float) -> float:
+    global _DAILY_SPEND_CAP_INR
+    if not 0 <= value <= 100000:
+        raise ValueError("Daily spend cap must be between ₹0 and ₹100,000.")
+    _DAILY_SPEND_CAP_INR = round(float(value), 2)
+    return _DAILY_SPEND_CAP_INR
+
+
+def is_daily_spend_cap_reached() -> bool:
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+    current = _API_USAGE.get(today, {}).get("estimated_inr", 0.0)
+    return current >= _DAILY_SPEND_CAP_INR or today in _SPEND_LIMIT_BLOCKED_DAYS
 
 
 def get_api_usage_summary() -> dict[str, Any]:
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+    record = _API_USAGE.get(today, {"calls": 0, "estimated_inr": 0.0, "endpoints": {}})
     return {
         "days": [
             {"date": day, **record}
@@ -86,7 +110,11 @@ def get_api_usage_summary() -> dict[str, Any]:
         ],
         "started_at": _API_STARTED_AT,
         "persistence": "process_memory",
-        "currency": "credits (vendor estimates)",
+        "currency": "INR",
+        "daily_cap_inr": _DAILY_SPEND_CAP_INR,
+        "today_spend_inr": record["estimated_inr"],
+        "today_calls": record["calls"],
+        "today_endpoints": record["endpoints"],
     }
 
 
@@ -244,6 +272,7 @@ async def _request(
 
     for attempt in range(retry_count + 1):
         await _bucket.acquire()
+        await _reserve_api_usage(method, path, json_body)
         try:
             async with httpx.AsyncClient(timeout=timeout, transport=_HTTP_TRANSPORT) as client:
                 resp = await client.request(
@@ -283,7 +312,6 @@ async def _request(
                 )
             request_id = (payload.get("meta") or {}).get("request_id") if isinstance(payload.get("meta"), dict) else None
             logger.debug("eCourts Partner request succeeded path=%s request_id=%s", path, request_id)
-            _record_api_usage(method, path, json_body)
             return payload
         except CourtDataError:
             raise
@@ -678,6 +706,7 @@ async def _persist_snapshots(tracked_case_ids: list[str], raw: dict) -> None:
                     SET last_refreshed = now(),
                         refresh_status = 'succeeded',
                         refresh_error = NULL,
+                        cnr_not_found_count = 0,
                         court_name = COALESCE(NULLIF($2, ''), court_name),
                         case_type = COALESCE(case_type, NULLIF($3, ''))
                     WHERE id = $1::uuid
@@ -695,10 +724,11 @@ async def _persist_snapshot(tracked_case_id: str, raw: dict) -> None:
 
 
 async def _mark_refresh_failure(tracked_case_id: str, exc: Exception) -> None:
+    is_not_found = isinstance(exc, CourtDataError) and exc.code == "not_found"
     if isinstance(exc, CourtDataError):
         message = (
-            "CNR not found on eCourts — check the number."
-            if exc.code == "not_found"
+            "eCourtsIndia could not find this CNR yet."
+            if is_not_found
             else exc.user_message
         )
     elif isinstance(exc, ValueError):
@@ -724,14 +754,32 @@ async def _mark_refresh_failure(tracked_case_id: str, exc: Exception) -> None:
             tracked_case_id, type(exc).__name__, str(exc)[:500],
         )
     try:
-        await db_execute(
-            """
-            UPDATE tracked_cases
-            SET refresh_status = 'failed', refresh_error = $2
-            WHERE id = $1::uuid
-            """,
-            tracked_case_id, message[:500],
-        )
+        if is_not_found:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    UPDATE tracked_cases
+                    SET cnr_not_found_count = cnr_not_found_count + 1,
+                        refresh_status = CASE
+                            WHEN cnr_not_found_count + 1 >= 2 THEN 'cnr_not_found'
+                            ELSE 'failed'
+                        END,
+                        refresh_error = CASE
+                            WHEN cnr_not_found_count + 1 >= 2
+                                THEN 'CNR not found on eCourts — check the number'
+                            ELSE $2
+                        END
+                    WHERE id = $1::uuid
+                    """,
+                    tracked_case_id, message[:500],
+                )
+        else:
+            await db_execute(
+                "UPDATE tracked_cases SET refresh_status = 'failed', refresh_error = $2 "
+                "WHERE id = $1::uuid",
+                tracked_case_id, message[:500],
+            )
     except Exception as state_exc:
         logger.warning(
             "Could not persist eCourts failure state for tracked_case_id=%s (%s)",
@@ -979,8 +1027,10 @@ async def search_litigant(name: str, court: str | None = None) -> list[dict]:
 
 async def _wait_for_refresh_status(cnrs: list[str], timeout_seconds: float = 300.0) -> None:
     """Poll the free bulk status endpoint rather than paying for duplicate refreshes."""
+    timeout_seconds = min(timeout_seconds, 300.0)
     deadline = time.monotonic() + timeout_seconds
     pending = set(cnrs)
+    poll_count = 0
     while pending and time.monotonic() < deadline:
         try:
             payload = await _request(
@@ -1037,7 +1087,9 @@ async def _wait_for_refresh_status(cnrs: list[str], timeout_seconds: float = 300
                     status_code=502, code="missing_refresh_status",
                 )
         if pending:
-            await asyncio.sleep(min(10.0, max(0.1, deadline - time.monotonic())))
+            poll_count += 1
+            delay = (10.0, 30.0, 60.0)[min(poll_count - 1, 2)]
+            await asyncio.sleep(min(delay, max(0.1, deadline - time.monotonic())))
     if pending:
         raise CourtDataError(
             "eCourtsIndia case refresh is still processing; retry the scheduled refresh later.",

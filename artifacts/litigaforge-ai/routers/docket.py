@@ -64,6 +64,12 @@ async def _get_court_day(court: dict[str, str], day: str) -> dict:
     key = _court_cache_key(court, day)
     cached = await cache_get(key)
     if cached is not None:
+        if court_data_client.is_daily_spend_cap_reached():
+            cached = {
+                **cached,
+                "daily_limit_reached": True,
+                "message": "Daily refresh limit reached, showing last update.",
+            }
         return cached
     base = {"date": day, "source_url": SOURCE_URL, "fetched_at": datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()}
     dates = await court_data_client.available_cause_list_dates(
@@ -264,6 +270,13 @@ async def get_schedule(user=Depends(require_user)):
     for court in courts:
         today_cache = await cache_get(_court_cache_key(court, today.isoformat()))
         tomorrow_cache = await cache_get(_court_cache_key(court, tomorrow.isoformat()))
+        if court_data_client.is_daily_spend_cap_reached():
+            for cached in (today_cache, tomorrow_cache):
+                if cached is not None:
+                    cached.update({
+                        "daily_limit_reached": True,
+                        "message": "Daily refresh limit reached, showing last update.",
+                    })
         result.append({
             "court": court,
             "today": today_cache or {"date": today.isoformat(), "status": "not_loaded", "matters": []},
@@ -295,8 +308,8 @@ async def load_cause_list(payload: DocketLoadInput, user=Depends(require_user)):
     return {"courts": result, "source_url": SOURCE_URL}
 
 
-async def refresh_docket_schedules() -> dict[str, int]:
-    """Prewarm shared cause-list cache for every unique saved court."""
+async def refresh_docket_schedules(target_day: str | None = None) -> dict[str, int]:
+    """Prewarm one date for every unique saved court."""
     if _SCHEDULE_REFRESH_LOCK.locked():
         return {"courts": 0, "errors": 0, "total_profiles": 0, "skipped": 1}
     async with _SCHEDULE_REFRESH_LOCK:
@@ -310,12 +323,11 @@ async def refresh_docket_schedules() -> dict[str, int]:
             if all(court.values())
         }
         result = {"courts": 0, "errors": 0, "total_profiles": len(profiles), "skipped": 0}
-        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        target_day = target_day or datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
         for court in unique.values():
-            for day in (today, today + timedelta(days=1)):
-                try:
-                    await _get_court_day(court, day.isoformat())
-                except Exception:
-                    result["errors"] += 1
+            try:
+                await _get_court_day(court, target_day)
+            except Exception:
+                result["errors"] += 1
             result["courts"] += 1
         return result

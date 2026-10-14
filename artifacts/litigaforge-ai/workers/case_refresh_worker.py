@@ -314,13 +314,15 @@ async def run_refresh(*, cnr_filter: str | None = None) -> dict:
     if cnr_filter:
         rows = await db_fetch(
             "SELECT id, cnr, case_type, court_name, user_id "
-            "FROM tracked_cases WHERE cnr = $1 AND is_active = true",
+            "FROM tracked_cases WHERE cnr = $1 AND is_active = true "
+            "AND COALESCE(cnr_not_found_count, 0) < 2",
             cnr_filter,
         )
     else:
         rows = await db_fetch(
             "SELECT id, cnr, case_type, court_name, user_id "
-            "FROM tracked_cases WHERE is_active = true"
+            "FROM tracked_cases WHERE is_active = true "
+            "AND COALESCE(cnr_not_found_count, 0) < 2"
         )
 
     if not rows:

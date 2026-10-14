@@ -15,6 +15,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from services import court_data_client as client
 
 
+@pytest.fixture(autouse=True)
+def isolate_api_meter(monkeypatch):
+    monkeypatch.setattr(client, "_API_USAGE", {})
+    monkeypatch.setattr(client, "_SPEND_LIMIT_BLOCKED_DAYS", set())
+    monkeypatch.setattr(client, "_DAILY_SPEND_CAP_INR", 100000.0)
+
+
 CNR_A = "DLND020047882015"
 CNR_B = "DLHC010001232024"
 

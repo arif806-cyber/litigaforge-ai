@@ -25,7 +25,7 @@ export function normalizeCnrRefreshState(
   }
 
   return {
-    status: statusText === "pending" ? "pending" : statusText === "failed" ? "failed" : "other",
+    status: statusText === "pending" ? "pending" : statusText === "failed" || statusText === "cnr_not_found" ? "failed" : "other",
     error: errorText || null,
     legacy: false,
   };

@@ -1411,6 +1411,7 @@ async def lifespan(app: FastAPI):
                     last_refreshed  TIMESTAMPTZ,
                     refresh_status  VARCHAR(20) DEFAULT 'pending',
                     refresh_error   TEXT,
+                    cnr_not_found_count INTEGER NOT NULL DEFAULT 0,
                     is_active       BOOLEAN DEFAULT true,
                     tier_gated      BOOLEAN DEFAULT true,
                     UNIQUE(user_id, cnr)
@@ -1422,6 +1423,10 @@ async def lifespan(app: FastAPI):
             )
             await conn.execute(
                 "ALTER TABLE tracked_cases ADD COLUMN IF NOT EXISTS refresh_error TEXT"
+            )
+            await conn.execute(
+                "ALTER TABLE tracked_cases ADD COLUMN IF NOT EXISTS "
+                "cnr_not_found_count INTEGER NOT NULL DEFAULT 0"
             )
             refresh_nulls = await conn.fetchval(
                 "SELECT COUNT(*) FROM tracked_cases WHERE refresh_status IS NULL"
@@ -1707,8 +1712,8 @@ async def lifespan(app: FastAPI):
     _notif_retry_sched = asyncio.ensure_future(_notification_retry_loop()) if _schedulers_enabled else None
     app.state.notif_retry_scheduler = _notif_retry_sched
 
-    # DocketView listings are prefetched twice daily so page views never trigger
-    # billable cause-list queries. Case snapshots continue on the 08:00 IST job.
+    # DocketView prewarms tomorrow's list once at 19:00 and today's list once at
+    # 08:00 IST. Cause-list cache reads remain shared across advocates.
     async def _docket_schedule_loop():
         import asyncio as _aio
         from datetime import datetime as _dt, time as _time, timedelta as _td
@@ -1718,7 +1723,7 @@ async def lifespan(app: FastAPI):
             try:
                 tz = _ZoneInfo("Asia/Kolkata")
                 now = _dt.now(tz)
-                slots = [_time(6, 0), _time(12, 0)]
+                slots = [_time(8, 0), _time(19, 0)]
                 next_run = min(
                     [now.replace(hour=slot.hour, minute=slot.minute, second=0, microsecond=0)
                      for slot in slots if now.replace(hour=slot.hour, minute=slot.minute, second=0, microsecond=0) > now]
@@ -1735,7 +1740,12 @@ async def lifespan(app: FastAPI):
                     )
                     continue
                 from routers.docket import refresh_docket_schedules
-                summary = await refresh_docket_schedules()
+                refresh_date = (
+                    _dt.now(tz).date() + _td(days=1)
+                    if next_run.hour == 19
+                    else _dt.now(tz).date()
+                )
+                summary = await refresh_docket_schedules(refresh_date.isoformat())
                 if summary.get("skipped"):
                     outcome = "skipped_already_running"
                 elif summary.get("errors"):

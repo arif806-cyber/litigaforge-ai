@@ -168,32 +168,55 @@ function IndianKanoonUsageTab() {
 }
 
 function EcourtsUsageTab() {
+  const client = useQueryClient();
+  const [cap, setCap] = useState("");
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-ecourts-usage"],
     queryFn: () => apiFetch("/admin/ecourts/usage").then((value) => value as {
       started_at: string;
       persistence: string;
-      days: Array<{ date: string; calls: number; estimated_credits: number; endpoints: Record<string, { calls: number; estimated_credits: number }> }>;
+      daily_cap_inr: number;
+      today_spend_inr: number;
+      today_calls: number;
+      today_endpoints: Record<string, { calls: number; estimated_inr: number }>;
+      days: Array<{ date: string; calls: number; estimated_inr: number; endpoints: Record<string, { calls: number; estimated_inr: number }> }>;
     }),
     refetchInterval: 60_000,
   });
+  const saveCap = useMutation({
+    mutationFn: () => apiFetch("/admin/ecourts/usage/cap", {
+      method: "POST",
+      body: JSON.stringify({ daily_cap_inr: Number(cap || data?.daily_cap_inr || 60) }),
+    }),
+    onSuccess: () => {
+      setCap("");
+      void client.invalidateQueries({ queryKey: ["admin-ecourts-usage"] });
+    },
+  });
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading API usage…</div>;
   if (isError || !data) return <div className="space-y-3 p-6"><p className="text-sm text-destructive">Could not load eCourts usage.</p><Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>;
+  const inr = (value: number) => `₹${value.toFixed(2)}`;
   return (
     <section className="space-y-4">
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-        Credit figures are estimates from successful partner requests. Usage is held in server memory since <strong>{new Date(data.started_at).toLocaleString()}</strong> and resets when the API process restarts.
+        Estimated eCourtsIndia charges; usage is held in API-process memory since <strong>{new Date(data.started_at).toLocaleString()}</strong> and resets when the process restarts.
       </div>
-      {data.days.length === 0 ? <p className="rounded-lg border border-border p-5 text-sm text-muted-foreground">No successful partner requests have been recorded in this process.</p> :
-        data.days.map((day) => (
-          <article key={day.date} className="rounded-lg border border-border p-4">
-            <div className="flex justify-between gap-3"><h2 className="font-semibold">{day.date}</h2><span>{day.calls} calls · {day.estimated_credits.toFixed(2)} estimated credits</span></div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {Object.entries(day.endpoints).map(([name, stats]) => <div key={name} className="flex justify-between rounded bg-muted/50 px-3 py-2 text-sm"><span>{name}</span><span>{stats.calls} · {stats.estimated_credits.toFixed(2)} cr</span></div>)}
-            </div>
-          </article>
-        ))
-      }
+      <div className="grid gap-3 sm:grid-cols-3">
+        <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">Estimated spend today</div><div className="text-xl font-semibold">{inr(data.today_spend_inr)}</div></article>
+        <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">Vendor calls today</div><div className="text-xl font-semibold">{data.today_calls}</div></article>
+        <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">Daily cap</div><div className="text-xl font-semibold">{inr(data.daily_cap_inr)}</div></article>
+      </div>
+      <form className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-4" onSubmit={(event) => { event.preventDefault(); saveCap.mutate(); }}>
+        <label className="text-sm">Daily spend cap (INR)<Input type="number" min="0" max="100000" step="0.01" className="mt-1 w-40" value={cap || String(data.daily_cap_inr)} onChange={(event) => setCap(event.target.value)} /></label>
+        <Button type="submit" disabled={saveCap.isPending}>{saveCap.isPending ? "Saving…" : "Save cap"}</Button>
+        {saveCap.isError && <p role="alert" className="text-sm text-destructive">Could not update the eCourtsIndia cap.</p>}
+      </form>
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm"><thead><tr className="border-b border-border text-left"><th className="p-3">Endpoint</th><th className="p-3">Calls today</th><th className="p-3">Estimated spend</th></tr></thead>
+          <tbody>{Object.entries(data.today_endpoints).map(([name, stats]) => <tr key={name} className="border-b border-border last:border-0"><td className="p-3">{name}</td><td className="p-3">{stats.calls}</td><td className="p-3">{inr(stats.estimated_inr)}</td></tr>)}</tbody>
+        </table>
+        {!Object.keys(data.today_endpoints).length && <p className="p-4 text-sm text-muted-foreground">No eCourtsIndia calls recorded today.</p>}
+      </div>
     </section>
   );
 }

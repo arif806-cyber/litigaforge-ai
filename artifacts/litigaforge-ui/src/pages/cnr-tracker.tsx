@@ -330,10 +330,16 @@ function TrackedCaseCard({ tc }: { tc: any }) {
     mutationFn: (id: string) => apiFetch(`/court-intel/${id}/refresh`, { method: "POST" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }),
   });
+  const editCnrMutation = useMutation({
+    mutationFn: ({ id, cnr }: { id: string; cnr: string }) =>
+      apiFetch(`/court-intel/${id}`, { method: "PATCH", body: JSON.stringify({ cnr }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tracked-cases"] }),
+  });
 
   const refreshState = normalizeCnrRefreshState(tc.refresh_status, tc.refresh_error);
   const refreshPending = refreshState.status === "pending";
   const refreshFailed = refreshState.status === "failed";
+  const cnrNotFound = tc.refresh_status === "cnr_not_found";
   const noSnapshot = !tc.last_refreshed && !tc.case_status;
 
   const lastRefreshed = tc.last_refreshed
@@ -372,7 +378,18 @@ function TrackedCaseCard({ tc }: { tc: any }) {
                     : "No successful eCourts India Partner API response has been saved yet."}
               </span>
             </span>
-            {(refreshFailed || noSnapshot) && (
+            {cnrNotFound && (
+              <button
+                onClick={() => {
+                  const cnr = window.prompt("Check or correct this CNR", tc.cnr);
+                  if (cnr?.trim()) editCnrMutation.mutate({ id: tc.id, cnr: cnr.trim() });
+                }}
+                disabled={editCnrMutation.isPending}
+                className="text-[11px] font-semibold text-secondary hover:text-secondary/80">
+                {editCnrMutation.isPending ? "Saving…" : "Edit CNR"}
+              </button>
+            )}
+            {!cnrNotFound && (refreshFailed || noSnapshot) && (
               <button
                 data-testid={`retry-${tc.cnr}`}
                 onClick={() => retryMutation.mutate(tc.id)}

@@ -139,6 +139,10 @@ class TrackRequest(BaseModel):
     case_type: str | None = Field(None, description="e.g. civil, criminal, property")
 
 
+class UpdateTrackedCnrRequest(BaseModel):
+    cnr: str = Field(..., min_length=16, max_length=20)
+
+
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=500)
 
@@ -189,6 +193,15 @@ async def track_case(
         if existing["is_active"]:
             raise HTTPException(status_code=409, detail="You are already tracking this CNR.")
         tc_id = str(existing["id"])
+        not_found_count = await db_fetchval(
+            "SELECT cnr_not_found_count FROM tracked_cases WHERE id=$1::uuid",
+            tc_id,
+        )
+        if int(not_found_count or 0) >= 2:
+            raise HTTPException(
+                status_code=409,
+                detail="CNR not found on eCourts — edit the number before refreshing.",
+            )
         await db_execute(
             """
             UPDATE tracked_cases
@@ -233,6 +246,7 @@ async def my_tracked_cases(
                refresh_error  = NULL
         WHERE  user_id = $1
           AND  is_active = true
+          AND  COALESCE(cnr_not_found_count, 0) < 2
           AND  (
                  COALESCE(refresh_error, '') ~* $2
                  OR COALESCE(refresh_status, '') ~* $2
@@ -701,12 +715,14 @@ async def refresh_case(
     Returns immediately; actual fetch happens asynchronously.
     """
     row = await db_fetchrow(
-        "SELECT id, user_id, cnr, is_active FROM tracked_cases WHERE id = $1::uuid",
+        "SELECT id, user_id, cnr, is_active, cnr_not_found_count FROM tracked_cases WHERE id = $1::uuid",
         case_id,
     )
     _assert_owns(row, int(user["id"]))
     if not row["is_active"]:
         raise HTTPException(status_code=409, detail="Case is no longer being tracked.")
+    if int(row.get("cnr_not_found_count") or 0) >= 2:
+        raise HTTPException(status_code=409, detail="CNR not found on eCourts — edit the number before refreshing.")
 
     await db_execute(
         """
@@ -735,6 +751,37 @@ async def stop_tracking(case_id: str, user: dict = Depends(require_user)):
     )
     logger.info("User %s stopped tracking CNR %s (id=%s)", user["id"], row["cnr"], case_id)
     return {"status": "stopped", "cnr": row["cnr"]}
+
+
+@router.patch("/court-intel/{case_id}")
+async def edit_tracked_cnr(
+    case_id: str,
+    body: UpdateTrackedCnrRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(require_user),
+):
+    cnr = _validate_cnr(body.cnr)
+    row = await db_fetchrow(
+        "SELECT id, user_id FROM tracked_cases WHERE id=$1::uuid", case_id
+    )
+    _assert_owns(row, int(user["id"]))
+    duplicate = await db_fetchrow(
+        "SELECT id FROM tracked_cases WHERE user_id=$1 AND cnr=$2 AND id<>$3::uuid",
+        int(user["id"]), cnr, case_id,
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail="You are already tracking this CNR.")
+    await db_execute(
+        """
+        UPDATE tracked_cases
+        SET cnr=$2, cnr_not_found_count=0, refresh_status='pending',
+            refresh_error=NULL, last_refreshed=NULL
+        WHERE id=$1::uuid
+        """,
+        case_id, cnr,
+    )
+    background_tasks.add_task(_trigger_single_refresh, case_id, cnr)
+    return {"status": "cnr_updated", "cnr": cnr}
 
 
 # ── POST /court-intel/worker/run (superuser manual trigger) ───────────────────

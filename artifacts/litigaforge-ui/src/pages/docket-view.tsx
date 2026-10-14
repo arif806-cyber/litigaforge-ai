@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 type Court = { state: string; district_code: string; complex_code: string; court: string; court_no: string };
 type Profile = { cause_list_name: string; enrolment_number: string; court_ids: string[] };
 type Matter = Record<string, unknown>;
-type DayResults = { date: string; status: "ok" | "no_sitting" | "not_loaded" | "unavailable"; matters: Matter[]; fetched_at?: string; source_url?: string; message?: string };
+type DayResults = { date: string; status: "ok" | "no_sitting" | "not_loaded" | "unavailable"; matters: Matter[]; fetched_at?: string; source_url?: string; message?: string; daily_limit_reached?: boolean };
 type CourtResults = { court: Court; today: DayResults; tomorrow: DayResults };
 type ListingResponse = { courts: CourtResults[]; source_url: string };
 type Item = Record<string, string>;
@@ -154,6 +154,8 @@ export default function DocketView() {
         {day.status === "not_loaded" && <p className="mt-2 text-sm text-muted-foreground">Select “Load cause list” to check this court.</p>}
         {day.status === "no_sitting" && <p className="mt-2 text-sm text-muted-foreground">No sitting {period === "today" ? "today" : "tomorrow"}.</p>}
         {day.status === "unavailable" && <p role="alert" className="mt-2 text-sm text-destructive">Source unavailable — try again later.</p>}
+         {day.daily_limit_reached && <p role="status" className="mt-2 text-sm text-amber-700 dark:text-amber-300">Daily refresh limit reached, showing last update.</p>}
+         {!day.daily_limit_reached && day.message && <p role="status" className="mt-2 text-sm text-amber-700 dark:text-amber-300">{day.message}</p>}
         {day.status === "ok" && matters.length === 0 && filter === "mine" && <p className="mt-2 text-sm text-muted-foreground">No matching matters for your profile.</p>}
         {matters.map((matter, index) => { const cnr = field(matter, "cnr", "CNR"); const petitioner = field(matter, "petitioner_name", "petitioner", "petitioners"); const respondent = field(matter, "respondent_name", "respondent", "respondents"); const title = [petitioner, respondent].filter(Boolean).join(" vs ") || field(matter, "caseNo", "case_no", "caseNumber", "case_number") || "Court matter"; return <article key={`${cnr}-${index}`} className="mt-2 rounded-lg border bg-background p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><strong>{title}</strong><span className="text-muted-foreground">Item {field(matter, "itemNo", "item_no", "serialNo", "serial_no", "item_number") || index + 1}</span></div><p className="mt-1">{field(matter, "caseNo", "case_no", "caseNumber", "case_number")}</p><p className="text-xs text-muted-foreground">{field(matter, "stage", "purpose", "business", "hearing_purpose")}</p><div className="mt-2 flex flex-wrap gap-3 text-xs">{cnr && <a className="underline" href={`/cnr-tracker?cnr=${encodeURIComponent(cnr)}`}>CNR {cnr}</a>}{cnr && <button type="button" className="underline" disabled={track.isPending} onClick={() => track.mutate(cnr)}>Track this case</button>}</div></article>; })}
         {day.fetched_at && <p className="mt-2 text-xs text-muted-foreground">Updated {new Date(day.fetched_at).toLocaleString()} · <a className="underline" href={day.source_url ?? sourceUrl} target="_blank" rel="noreferrer">eCourtsIndia source</a></p>}

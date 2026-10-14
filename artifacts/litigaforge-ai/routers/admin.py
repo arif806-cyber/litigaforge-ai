@@ -46,6 +46,22 @@ class RejectRequest(BaseModel):
     reason: str = ""
 
 
+class EcourtsSpendCapInput(BaseModel):
+    daily_cap_inr: float
+
+
+@router.post("/admin/ecourts/usage/cap")
+async def admin_set_ecourts_daily_cap(
+    payload: EcourtsSpendCapInput,
+    current_user: dict = Depends(get_superuser),
+):
+    try:
+        cap = court_data_client.set_daily_spend_cap_inr(payload.daily_cap_inr)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"daily_cap_inr": cap}
+
+
 @router.get("/admin/questions/pending")
 async def admin_pending_questions(current_user: dict = Depends(get_superuser)):
     rows = await fetch(
