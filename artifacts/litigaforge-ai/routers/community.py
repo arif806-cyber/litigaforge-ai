@@ -1408,8 +1408,8 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
             "source_name": prov_name,
             "search_source": "indian_kanoon" if ik_cap_fallback else "keyword",
             "judgments": [],
-            "status_message": "live search paused for today" if ik_cap_fallback else None,
-            "hint": "live search paused for today" if ik_cap_fallback else (
+            "status_message": "Judgment search is busy, try again later" if ik_cap_fallback else None,
+            "hint": "Judgment search is busy, try again later" if ik_cap_fallback else (
                 "No matching judgments found in the database. "
                 "Run the admin embed-backfill to index judgments for semantic search, "
                 "or ingest more judgments via the IndianKanoon source."
@@ -1447,7 +1447,7 @@ async def search_judgments(req: JudgmentSearchRequest, request: Request):
         "source_name": prov_name,
         "search_source": search_source,
         "cached_due_to_cap": ik_cap_fallback,
-        "status_message": "live search paused for today" if ik_cap_fallback else None,
+        "status_message": "Judgment search is busy, try again later" if ik_cap_fallback else None,
         "judgments": judgments,
     }
 

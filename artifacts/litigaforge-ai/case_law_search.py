@@ -70,6 +70,32 @@ def ik_daily_cap_inr() -> Decimal:
     return cap
 
 
+async def get_ik_daily_cap_inr(conn) -> Decimal:
+    configured = await conn.fetchval(
+        "SELECT daily_cap_inr FROM indian_kanoon_cost_settings WHERE id=1"
+    )
+    return Decimal(str(configured)) if configured is not None else ik_daily_cap_inr()
+
+
+async def set_ik_daily_cap_inr(conn, value: Decimal | float | int) -> Decimal:
+    try:
+        cap = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("Daily Indian Kanoon cap must be a rupee amount.") from exc
+    if not cap.is_finite() or not Decimal("0") <= cap <= Decimal("100000"):
+        raise ValueError("Daily Indian Kanoon cap must be between ₹0 and ₹100,000.")
+    async with conn.transaction():
+        await conn.execute("SELECT pg_advisory_xact_lock(734239111)")
+        await conn.execute(
+            """INSERT INTO indian_kanoon_cost_settings(id,daily_cap_inr)
+               VALUES(1,$1)
+               ON CONFLICT(id) DO UPDATE SET daily_cap_inr=EXCLUDED.daily_cap_inr,
+                 updated_at=NOW()""",
+            cap,
+        )
+    return cap
+
+
 def _ik_enabled() -> bool:
     return os.getenv("IK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -103,7 +129,7 @@ async def reserve_ik_budget(conn, endpoint: str, *, feature: str = "general", un
                 await conn.execute("SELECT pg_sleep($1)", wait)
         price = ik_endpoint_price_inr(endpoint) * max(1, min(int(units), 1000))
         spent = await _ik_spend_today(conn)
-        if spent + price > ik_daily_cap_inr():
+        if spent + price > await get_ik_daily_cap_inr(conn):
             raise IKDailyCostCapExceeded("Indian Kanoon daily cost cap reached")
         await conn.execute(
             """INSERT INTO indian_kanoon_api_metrics(endpoint,cost_inr,feature)
@@ -320,7 +346,7 @@ async def _ik_search(
         docs = list(data.get("docs") or [])[:10]
     except Exception as exc:
         if isinstance(exc, IKDailyCostCapExceeded):
-            return list(cached_docs)[:limit], bool(cached_docs)
+            return list(cached_docs)[:limit], True
         logger.warning("Indian Kanoon search failed (%s)", type(exc).__name__)
         return (list(cached_docs)[:limit], False) if cached_docs else ([], False)
     if cache_writes:
@@ -443,10 +469,10 @@ async def search_case_law(
             conn, query, max(10, limit), cache_writes=cache_writes, feature=feature
         )
         for doc in ik_docs:
-            tid = str(doc.get("tid") or doc.get("docid") or "")
+            tid = re.sub(r"[^0-9]", "", str(doc.get("tid") or doc.get("docid") or ""))[:40]
             title = str(doc.get("title") or "")
             key = _key(tid or title)
-            if not key or key in seen:
+            if not tid or not key or key in seen:
                 continue
             seen.add(key)
             used_ik = True
@@ -467,5 +493,5 @@ async def search_case_law(
     return {
         "query": query, "count": len(results), "source": source,
         "results": results[:limit], "cached_due_to_cap": cached_due_to_cap,
-        "status_message": "live search paused for today" if cached_due_to_cap else None,
+        "status_message": "Judgment search is busy, try again later" if cached_due_to_cap else None,
     }

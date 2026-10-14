@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 
 from auth import get_current_user
 from case_law_search import (
@@ -22,6 +23,11 @@ from storage import get_object_storage
 from rate_limit import limiter
 
 router = APIRouter(tags=["indian-kanoon"])
+IK_CAP_MESSAGE = "Judgment search is busy, try again later"
+
+
+class IKDailyCapInput(BaseModel):
+    daily_cap_inr: float = Field(ge=0, le=100000)
 
 
 def _require_ik():
@@ -47,11 +53,14 @@ async def get_ik_document(request: Request, tid: str, user=Depends(get_current_u
                         "citeList": document.get("citeList", []),
                         "citedbyList": document.get("citedbyList", [])}
     except IKDailyCostCapExceeded:
-        raise HTTPException(429, "Indian Kanoon daily cost cap reached")
+        raise HTTPException(429, IK_CAP_MESSAGE)
     except httpx.HTTPError:
         raise HTTPException(502, "Indian Kanoon document request failed")
-    return {"document": document, "metadata": metadata, "cached": bool(before),
-            "attribution": "Indian Kanoon"}
+    return {
+        "document": document, "metadata": metadata, "cached": bool(before),
+        "attribution": "Indian Kanoon",
+        "source_url": f"https://indiankanoon.org/doc/{quote(tid, safe='')}/",
+    }
 
 
 @router.get("/ik/admin/costs")
@@ -59,7 +68,7 @@ async def ik_costs_by_feature(user=Depends(get_current_user)):
     if not user or not (user.get("is_superuser") or user.get("role") == "admin"):
         raise HTTPException(403, "Admin access required")
     from database import fetch
-    from case_law_search import ik_daily_cap_inr
+    from case_law_search import get_ik_daily_cap_inr
     rows = await fetch(
         """SELECT feature, COUNT(*) AS calls,
                   COALESCE(SUM(cost_inr) FILTER (WHERE created_at >= CURRENT_DATE),0) AS today_cost_inr,
@@ -75,12 +84,27 @@ async def ik_costs_by_feature(user=Depends(get_current_user)):
     } for row in rows]
     today = sum(item["today_cost_inr"] for item in costs)
     month = sum(item["month_cost_inr"] for item in costs)
-    cap = float(ik_daily_cap_inr())
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        cap = float(await get_ik_daily_cap_inr(conn))
     return {
         "costs": costs, "today_total_inr": today, "month_total_inr": month,
         "daily_cap_inr": cap, "remaining_today_inr": max(0, cap - today),
         "currency": "INR",
     }
+
+
+@router.post("/ik/admin/costs/cap")
+async def set_ik_daily_cost_cap(
+    payload: IKDailyCapInput, user=Depends(get_current_user),
+):
+    if not user or not (user.get("is_superuser") or user.get("role") == "admin"):
+        raise HTTPException(403, "Admin access required")
+    from case_law_search import set_ik_daily_cap_inr
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        cap = await set_ik_daily_cap_inr(conn, payload.daily_cap_inr)
+    return {"daily_cap_inr": float(cap), "currency": "INR"}
 
 
 @router.get("/ik/documents/{tid}/fragments")
@@ -99,7 +123,7 @@ async def get_ik_fragments(
                 {"formInput": query}, feature="fragment",
             )
     except IKDailyCostCapExceeded:
-        raise HTTPException(429, "Indian Kanoon daily cost cap reached")
+        raise HTTPException(429, IK_CAP_MESSAGE)
     except httpx.HTTPError:
         raise HTTPException(502, "Indian Kanoon fragment request failed")
     return {"fragments": result, "attribution": "Indian Kanoon"}
@@ -122,7 +146,7 @@ async def attach_ik_original_copy(request: Request, tid: str, case_id: int, user
         try:
             await reserve_ik_budget(conn, "/origdoc/", feature="original_copy")
         except IKDailyCostCapExceeded:
-            raise HTTPException(429, "Indian Kanoon daily cost cap reached")
+            raise HTTPException(429, IK_CAP_MESSAGE)
     token = _ik_token()
     async with httpx.AsyncClient(timeout=45) as client:
         response = await client.post(

@@ -142,6 +142,8 @@ function EmailTestPanel() {
 }
 
 function IndianKanoonUsageTab() {
+  const client = useQueryClient();
+  const [cap, setCap] = useState("");
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-indian-kanoon-usage"],
     queryFn: () => apiFetch("/ik/admin/costs").then((value) => value as {
@@ -150,10 +152,36 @@ function IndianKanoonUsageTab() {
     }),
     refetchInterval: 60_000,
   });
+  const saveCap = useMutation({
+    mutationFn: () => apiFetch("/ik/admin/costs/cap", {
+      method: "POST",
+      body: JSON.stringify({ daily_cap_inr: Number(cap || data?.daily_cap_inr || 300) }),
+    }),
+    onSuccess: () => {
+      setCap("");
+      void client.invalidateQueries({ queryKey: ["admin-indian-kanoon-usage"] });
+    },
+  });
   const inr = (value: number) => `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading Indian Kanoon usage…</div>;
   if (isError || !data) return <div className="space-y-3 p-6"><p className="text-sm text-destructive">Could not load Indian Kanoon usage.</p><Button variant="outline" onClick={() => void refetch()}>Retry</Button></div>;
   return <section className="space-y-4">
+    <form className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-4" onSubmit={event => {
+      event.preventDefault();
+      saveCap.mutate();
+    }}>
+      <label className="text-sm">Daily spend cap (INR)
+        <Input type="number" min="0" max="100000" step="0.01" className="mt-1 w-44"
+          value={cap || String(data.daily_cap_inr)}
+          onChange={event => setCap(event.target.value)} />
+      </label>
+      <Button type="submit" disabled={saveCap.isPending}>
+        {saveCap.isPending ? "Saving…" : "Save cap"}
+      </Button>
+      {saveCap.isError && <p role="alert" className="text-sm text-destructive">
+        {saveCap.error instanceof Error ? saveCap.error.message : "Could not save the Indian Kanoon cap."}
+      </p>}
+    </form>
     <div className="grid gap-3 sm:grid-cols-3">
       <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">Today</div><div className="text-xl font-semibold">{inr(data.today_total_inr)}</div></article>
       <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">This month</div><div className="text-xl font-semibold">{inr(data.month_total_inr)}</div></article>

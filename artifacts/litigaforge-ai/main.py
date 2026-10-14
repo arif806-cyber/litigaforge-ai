@@ -1214,6 +1214,18 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS indian_kanoon_cost_settings (
+                    id SMALLINT PRIMARY KEY CHECK (id = 1),
+                    daily_cap_inr NUMERIC(12,2) NOT NULL DEFAULT 300,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                INSERT INTO indian_kanoon_cost_settings(id, daily_cap_inr)
+                VALUES(1, 300)
+                ON CONFLICT(id) DO NOTHING
+            """)
             await conn.execute(
                 "ALTER TABLE indian_kanoon_api_metrics ADD COLUMN IF NOT EXISTS cost_inr NUMERIC(12,2) NOT NULL DEFAULT 0"
             )

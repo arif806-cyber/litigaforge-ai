@@ -52,6 +52,44 @@ async def test_rupee_cap_blocks_reservation(monkeypatch):
     assert not conn.inserted
 
 
+@pytest.mark.asyncio
+async def test_admin_cap_is_persisted_and_read_back():
+    class ConfigConn:
+        cap = None
+
+        @asynccontextmanager
+        async def transaction(self):
+            yield
+
+        async def execute(self, sql, *args):
+            if "INSERT INTO indian_kanoon_cost_settings" in sql:
+                self.cap = args[0]
+
+        async def fetchval(self, sql, *_args):
+            if "SELECT daily_cap_inr" in sql:
+                return self.cap
+            return None
+
+    conn = ConfigConn()
+    assert await ik.set_ik_daily_cap_inr(conn, "125.50") == Decimal("125.50")
+    assert await ik.get_ik_daily_cap_inr(conn) == Decimal("125.50")
+
+
+@pytest.mark.asyncio
+async def test_cap_hit_without_cached_results_is_reported(monkeypatch):
+    class EmptyConn:
+        async def fetchrow(self, *_args):
+            return None
+
+    async def capped(*_args, **_kwargs):
+        raise ik.IKDailyCostCapExceeded()
+
+    monkeypatch.setattr(ik, "ik_cached_search", capped)
+    docs, cap_hit = await ik._ik_search(EmptyConn(), "new query", 5)
+    assert docs == []
+    assert cap_hit is True
+
+
 class _CachedConn:
     def __init__(self):
         self.executed = []

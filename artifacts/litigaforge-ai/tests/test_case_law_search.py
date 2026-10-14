@@ -39,3 +39,28 @@ async def test_local_search_is_broad_ranked_and_honestly_labelled(monkeypatch):
     assert result["source"] == "local_db"
     assert result["results"][0]["source"] == "local_db"
     assert result["results"][0]["url"] == "/judgments/supreme-court-of-india/2024/example-v-state"
+
+
+@pytest.mark.asyncio
+async def test_ik_search_results_have_specific_attribution_and_cap_message(monkeypatch):
+    import case_law_search as ik
+
+    monkeypatch.setenv("IK_ENABLED", "true")
+    monkeypatch.setenv("INDIANKANOON_API_TOKEN", "test-token")
+    conn = _Conn([])
+
+    async def linked(*_args, **_kwargs):
+        return ([{"tid": "123", "title": "Linked judgment"}], False)
+
+    monkeypatch.setattr(ik, "_ik_search", linked)
+    result = await ik.search_case_law(conn, "case law", limit=5)
+    item = result["results"][0]
+    assert item["source_name"] == "IndianKanoon"
+    assert item["source_url"] == "https://indiankanoon.org/doc/123/"
+
+    async def capped(*_args, **_kwargs):
+        return ([], True)
+
+    monkeypatch.setattr(ik, "_ik_search", capped)
+    limited = await ik.search_case_law(conn, "new query", limit=5)
+    assert limited["status_message"] == "Judgment search is busy, try again later"

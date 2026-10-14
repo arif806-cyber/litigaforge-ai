@@ -31,6 +31,7 @@ interface Judgment {
   relevance: string;
   ik_link: string;
   source_name?: string;
+  source_url?: string;
 }
 
 interface DigestItem {
@@ -532,6 +533,11 @@ export default function Judgments() {
 
         {search.isSuccess && search.data && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            {(search.data as { status_message?: string }).status_message && (
+              <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+                {(search.data as { status_message?: string }).status_message}
+              </p>
+            )}
             <div className="flex items-center justify-between pb-2 border-b border-border/50">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 Search Results
@@ -574,6 +580,14 @@ export default function Judgments() {
                       {j.relevance}
                     </p>
                   </button>
+                  {isIndianKanoon(j.source_name ?? sourceName) && (
+                    <div className="px-6 pb-4">
+                      <IKanoonAttribution
+                        sourceName={j.source_name ?? sourceName}
+                        sourceUrl={j.source_url || j.ik_link}
+                      />
+                    </div>
+                  )}
 
                   <AnimatePresence>
                     {expanded === idx && (
