@@ -39,7 +39,7 @@ export function MatterCard({
         >
           <span className="text-[10px] font-semibold tracking-[0.16em]">ITEM</span>
           <span className="lf-display text-[32px] font-extrabold leading-[34px] tabular-nums">{matter.item ?? "—"}</span>
-          {matter.list_size ? <span className="text-[10px] text-primary/70">of {matter.list_size}</span> : null}
+          {matter.list_size ? <span className="text-[10px] font-medium text-primary">of {matter.list_size}</span> : null}
         </button>
         <div className="min-w-0 flex-1 space-y-0.5">
           <Link href="/lawyer-dashboard/cases" data-testid="court-day-matter-title"

@@ -231,7 +231,7 @@ function AdminSection({ location, onNav }: { location: string; onNav?: () => voi
   if (!user?.is_superuser) return null;
   return (
     <div className="mt-4 border-t border-sidebar-border/60 pt-3">
-      <div className="px-3.5 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Admin</div>
+      <div className="px-3.5 pb-2 text-[11px] font-bold text-sidebar-foreground/75 uppercase tracking-widest">Admin</div>
       <NavItem href="/admin" label="Admin Panel" icon={Shield} location={location} onClick={onNav} testId="nav-admin" />
       <NavItem href="/forgeos" label="ForgeOS Command Center" icon={Cpu} location={location} onClick={onNav} testId="nav-forgeos" />
     </div>
@@ -254,18 +254,18 @@ function UserPanel({ onNav }: { onNav?: () => void }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-sidebar-foreground truncate">{user.name}</p>
-          <p className="text-[11px] text-sidebar-foreground/50 truncate">{user.email}</p>
+          <p className="text-[11px] text-sidebar-foreground/75 truncate">{user.email}</p>
         </div>
       </div>
       <Link href="/settings" onClick={onNav}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}>
-        <div className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-medium cursor-pointer text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground">
+        <div className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-xs font-medium cursor-pointer text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground">
           <FeatureIcon feature="accountPrivacy" size="small" /> Account &amp; Privacy
         </div>
       </Link>
       <button onClick={handleLogout}
         style={{ touchAction: "manipulation" }}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground transition-all text-xs font-medium">
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground transition-all text-xs font-medium">
         <LogOut className="w-4 h-4" /> Sign Out
       </button>
     </div>
@@ -318,7 +318,7 @@ function SidebarContent({
 
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">
+        <div className="px-3 pb-2 text-[11px] font-bold text-sidebar-foreground/75 uppercase tracking-widest">
           {!user ? "Explore" : isClient ? "Match & Connect" : "Lawyer Portal"}
         </div>
         <div data-testid={isAdvocate ? "advocate-group-navigation" : undefined}>
@@ -348,7 +348,7 @@ function SidebarContent({
           />
         )}
 
-        {user && legalTools.length > 0 && <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>}
+        {user && legalTools.length > 0 && <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/75 uppercase tracking-widest">Legal Tools</div>}
         {user && legalTools.map(item => (
           <NavItem
             key={item.href}

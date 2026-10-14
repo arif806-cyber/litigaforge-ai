@@ -100,12 +100,12 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
           "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 cursor-pointer",
           active
             ? "bg-sidebar-accent text-sidebar-primary font-semibold"
-            : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+            : "text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
         )}
       >
         {feature
           ? <FeatureIcon feature={feature} size="small" />
-          : <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary" : "text-sidebar-foreground/40")} />}
+          : <Icon className={cn("w-4 h-4 flex-shrink-0", active ? "text-sidebar-primary" : "text-sidebar-foreground/60")} />}
         <span className="flex-1">{item.label}</span>
         {item.badge && (
           <span className={cn(
@@ -128,17 +128,17 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
         </div>
         <div>
           <p className="font-bold text-sm tracking-tight text-sidebar-foreground leading-none">LitigaForge</p>
-          <p className="text-[9px] font-semibold tracking-widest text-sidebar-foreground/40 uppercase mt-0.5">Advocate</p>
+          <p className="text-[9px] font-semibold tracking-widest text-sidebar-foreground/75 uppercase mt-0.5">Advocate</p>
         </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {/* Lawyer Portal */}
-        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Lawyer Portal</p>
+        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/75">Lawyer Portal</p>
         {lawyerPortalNav.map((item) => <NavItem key={item.id} item={item} />)}
 
         {/* Legal Tools */}
-        <p className="px-3 pt-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">Legal Tools</p>
+        <p className="px-3 pt-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/75">Legal Tools</p>
         {legalToolsNav.map((item) => <NavItem key={item.id} item={item} />)}
       </nav>
 
@@ -151,15 +151,15 @@ function DashboardSidebar({ location, onNav }: { location: string; onNav?: () =>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-foreground truncate">{user.name}</p>
-              <p className="text-[10px] truncate text-sidebar-foreground/40">{user.email}</p>
+              <p className="text-[10px] truncate text-sidebar-foreground/75">{user.email}</p>
             </div>
           </div>
           <Link href="/settings" onClick={onNav}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
             <FeatureIcon feature="accountPrivacy" size="small" /> Account &amp; Privacy
           </Link>
           <button onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors">
             <LogOut className="w-3.5 h-3.5" /> Sign Out
           </button>
         </div>
