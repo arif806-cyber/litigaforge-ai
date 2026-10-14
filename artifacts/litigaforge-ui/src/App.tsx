@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { ThemeProvider, useTheme as useAppTheme } from "@/lib/theme-provider";
+import { ThemeProvider } from "@/lib/theme-provider";
 import { KonstaProvider } from "konsta/react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { trackPageView } from "@/lib/analytics";
@@ -98,17 +98,8 @@ const queryClient = new QueryClient({
 });
 
 function KonstaAppTheme({ children }: { children: React.ReactNode }) {
-  const { theme } = useAppTheme();
-  const [systemDark, setSystemDark] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => setSystemDark(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
   return (
-    <KonstaProvider theme="ios" dark={theme === "dark" || (theme === "system" && systemDark)} iosHoverHighlight>
+    <KonstaProvider theme="ios" dark={false} iosHoverHighlight>
       {children}
     </KonstaProvider>
   );
@@ -571,7 +562,7 @@ function FirstVisitDisclaimer() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider storageKey="vite-ui-theme">
       <KonstaAppTheme>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>

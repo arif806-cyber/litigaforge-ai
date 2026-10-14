@@ -4,14 +4,13 @@ import {
   Scale, FileText, Menu, ChevronLeft,
   Crown, LogOut, User as UserIcon,
   Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper,
-  Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users, Zap, Inbox,
+  Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Users, Zap, Inbox,
   CalendarSearch, CalendarDays, Cpu,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
-import { useTheme } from "@/lib/theme-provider";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
 import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -490,7 +489,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const isWorkspace = location.startsWith("/workspace");
   const { user, activePortal } = useAuth();
-  const { theme, setTheme } = useTheme();
   const [, setLocation] = useLocation();
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   const isAdvocate = !!user && (user.role === "advocate" || user.role === "lawyer");
@@ -575,12 +573,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-3">
               <LanguageSwitcher />
               <CountrySwitcher />
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-              >
-                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
               {user && (
                 <Link href="/subscription" className="flex items-center gap-2 text-xs font-semibold text-foreground bg-accent/80 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors border border-accent-border">
                   <Crown className="w-3.5 h-3.5 text-amber-600" />

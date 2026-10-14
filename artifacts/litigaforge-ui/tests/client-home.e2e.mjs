@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assertAlwaysLight, seedLegacyDarkPreference } from "./light-theme-checks.mjs";
 
 const baseUrl = process.env.LITIGAFORGE_E2E_URL ?? "http://127.0.0.1:23790/litigaforge-ui";
 const browser = await chromium.launch({
@@ -23,9 +24,9 @@ const client = {
 try {
   await mkdir(new URL("../generated-artifacts/", import.meta.url), { recursive: true });
   const renderedThemeBackgrounds = new Set();
-  for (const theme of ["light", "dark"]) {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    await context.addInitScript(() => localStorage.removeItem("vite-ui-theme"));
+  for (const theme of ["light"]) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "dark" });
+    await seedLegacyDarkPreference(context);
     await context.route("**/litigaforge/**", async (route) => {
       const path = new URL(route.request().url()).pathname;
       const json = (body) => route.fulfill({
@@ -44,14 +45,12 @@ try {
     });
 
     const page = await context.newPage();
-    await page.emulateMedia({ colorScheme: theme });
     await page.goto(`${baseUrl}/client-dashboard`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(/\/client-dashboard\/?$/);
     await page.getByTestId("client-case-journey").waitFor();
     await page.waitForFunction((expectedTheme) =>
       document.documentElement.dataset.theme === expectedTheme, theme);
-    assert.equal(await page.evaluate(() => localStorage.getItem("vite-ui-theme")), null,
-      "system theme should be used when there is no saved manual choice");
+    await assertAlwaysLight(page, "Client Home 390px");
     renderedThemeBackgrounds.add(await page.locator(".lf-app-layout").evaluate((layout) =>
       getComputedStyle(layout).backgroundColor));
     assert.equal(await page.locator("h1").count(), 1, "client Home should have one page heading");
@@ -134,8 +133,8 @@ try {
     });
     await context.close();
   }
-  assert.equal(renderedThemeBackgrounds.size, 2, "system light and dark themes should render different palettes");
-  console.log("PASS: Client Home uses system light/dark themes, aligned heading, unclipped mobile tabs, and intact case steps.");
+  assert.equal(renderedThemeBackgrounds.size, 1, "dark device preference must still render the light palette");
+  console.log("PASS: Client Home stays light with a dark device preference and preserves mobile layout.");
 } finally {
   await browser.close();
 }

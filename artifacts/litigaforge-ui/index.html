@@ -29,18 +29,12 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/mcp-icon.png" />
     <script>
       (() => {
-        try {
-          const saved = localStorage.getItem("vite-ui-theme");
-          const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          const theme = saved === "light" || saved === "dark" ? saved : (systemDark ? "dark" : "light");
-          document.documentElement.classList.add(theme);
-          document.documentElement.dataset.theme = theme;
-          document.documentElement.style.colorScheme = theme;
-        } catch {
-          document.documentElement.classList.add("light");
-          document.documentElement.dataset.theme = "light";
-          document.documentElement.style.colorScheme = "light";
-        }
+        try { localStorage.removeItem("vite-ui-theme"); } catch {}
+        const root = document.documentElement;
+        root.classList.remove("dark");
+        root.classList.add("light");
+        root.dataset.theme = "light";
+        root.style.colorScheme = "light";
       })();
     </script>
     <script type="application/ld+json">

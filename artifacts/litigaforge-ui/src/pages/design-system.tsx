@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useTheme } from "@/lib/theme-provider";
 import {
   ScoreRing, RiskMeter, DocketHeader, MarginRuleCard, PaperSurface,
   SettlingMotion, Stamp, Chip, StageTimeline, ConfidenceBars, CaseMap,
@@ -12,19 +11,14 @@ import {
 /**
  * DEV-only gallery for the Case File OS design system. Registered in App.tsx
  * only when import.meta.env.DEV — it is never bundled into production. Used to
- * verify every signature component in light/dark, mobile and RTL.
+ * verify every signature component in light mode, mobile and RTL.
  */
 export default function DesignSystem() {
-  const { theme, setTheme } = useTheme();
   const [rtl, setRtl] = useState(false);
-  const dark = theme === "dark";
 
-  // Deterministically apply ?theme=dark and ?dir=rtl on load so each variant
-  // can be screenshotted reproducibly (absence of a param resets to the
-  // light / LTR default). Restore LTR when leaving the gallery.
+  // Deterministically apply ?dir=rtl on load and restore LTR when leaving.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    setTheme(p.get("theme") === "dark" ? "dark" : "light");
     const isRtl = p.get("dir") === "rtl";
     setRtl(isRtl);
     document.documentElement.dir = isRtl ? "rtl" : "ltr";
@@ -34,9 +28,6 @@ export default function DesignSystem() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function toggleDark() {
-    setTheme(dark ? "light" : "dark");
-  }
   function toggleRtl() {
     const next = !rtl;
     setRtl(next);
@@ -53,10 +44,6 @@ export default function DesignSystem() {
             <p className="text-muted-foreground mt-1">The living dossier — trust-first components.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={toggleDark} data-testid="toggle-dark"
-              className="px-3 py-2 rounded-lg border border-border bg-card text-sm font-medium">
-              {dark ? "Light" : "Dark"} mode
-            </button>
             <button onClick={toggleRtl} data-testid="toggle-rtl"
               className="px-3 py-2 rounded-lg border border-border bg-card text-sm font-medium">
               {rtl ? "LTR" : "RTL"}

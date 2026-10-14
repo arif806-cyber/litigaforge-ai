@@ -19,7 +19,6 @@ import { GroupedList, GroupedRow } from "@/components/mobile-primitives";
 import { FeatureIcon } from "@/components/FeatureIcon";
 import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useTheme } from "@/lib/theme-provider";
 
 function scrollToSettingsSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -27,7 +26,6 @@ function scrollToSettingsSection(id: string) {
 
 export default function AccountSettings() {
   const { user, logout, activePortal } = useAuth();
-  const { theme, setTheme } = useTheme();
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -50,13 +48,6 @@ export default function AccountSettings() {
         <GroupedList label="Regional preferences" title="Preferences" className="mt-4">
           <GroupedRow title="Country" leading={<FeatureIcon feature="language" size="small" />} trailing={<CountrySwitcher />} accessory={false} />
           <GroupedRow title="Language" leading={<FeatureIcon feature="language" size="small" />} trailing={<LanguageSwitcher />} accessory={false} />
-          <GroupedRow title="Appearance" leading={<FeatureIcon feature="settings" size="small" />}
-            trailing={<div className="flex gap-1" role="group" aria-label="Theme">
-              {(["system", "light", "dark"] as const).map(value => (
-                <button key={value} type="button" onClick={() => setTheme(value)} aria-pressed={theme === value}
-                  className={`rounded-full px-2 py-1 text-[11px] capitalize ${theme === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{value}</button>
-              ))}
-            </div>} accessory={false} />
         </GroupedList>
       </nav>
       <div id="settings-profile" className="scroll-mt-6"><ProfileSection user={user} /></div>

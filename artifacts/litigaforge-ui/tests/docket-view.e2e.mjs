@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { assertAlwaysLight, seedLegacyDarkPreference } from "./light-theme-checks.mjs";
 
 const baseUrl = process.env.LITIGAFORGE_E2E_URL ?? "http://127.0.0.1:23790";
 const browser = await chromium.launch({
@@ -16,7 +17,8 @@ const matters = [
 ];
 
 try {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, colorScheme: "dark" });
+  await seedLegacyDarkPreference(context);
   let profile = null;
   let courtRequests = 0;
   let loads = 0;
@@ -61,6 +63,7 @@ try {
   const mobileHeader = page.locator(".lf-mobile-topbar");
   const mobilePageTitle = mobileHeader.getByText("Cause lists", { exact: true });
   await mobilePageTitle.first().waitFor();
+  await assertAlwaysLight(page, "DocketView 390px");
   await mobileHeader.getByText("Browse today’s and tomorrow’s cause lists by court.", { exact: true }).first().waitFor();
   assert.equal(await page.getByRole("heading", { name: "DocketView" }).count(), 0, "duplicate DocketView heading is removed");
   assert.equal(courtRequests, 0, "opening DocketView must not call the eCourts court API");

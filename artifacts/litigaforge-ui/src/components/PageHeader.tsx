@@ -1,6 +1,5 @@
-import { Scale, Menu, Sun, Moon } from "lucide-react";
+import { Scale, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useTheme } from "@/lib/theme-provider";
 
 interface PageHeaderProps {
   onMenuClick: () => void;
@@ -8,7 +7,6 @@ interface PageHeaderProps {
 
 export function PageHeader({ onMenuClick }: PageHeaderProps) {
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
 
   return (
     <header className="md:hidden flex-shrink-0 border-b border-border bg-card z-20 flex items-center justify-between px-4 h-14" style={{ boxShadow: "var(--cfos-elev-1)" }}>
@@ -26,13 +24,6 @@ export function PageHeader({ onMenuClick }: PageHeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="w-10 h-10 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors active:scale-95"
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
         <button
           onClick={onMenuClick}
           className="flex items-center justify-center w-10 h-10 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors active:scale-95"

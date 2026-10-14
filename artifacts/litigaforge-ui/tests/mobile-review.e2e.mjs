@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
+import { assertAlwaysLight, seedLegacyDarkPreference } from "./light-theme-checks.mjs";
 
 const baseUrl = process.env.LITIGAFORGE_E2E_URL ?? "http://127.0.0.1:23790";
 const outputDir = process.env.MOBILE_SCREENSHOT_DIR ?? "/tmp/litigaforge-mobile-review";
@@ -25,9 +26,11 @@ try {
     isMobile: true,
     hasTouch: true,
     deviceScaleFactor: 1,
+    colorScheme: "dark",
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1",
   });
   await context.addInitScript(() => localStorage.setItem("lf_onboarded", "1"));
+  await seedLegacyDarkPreference(context);
   await context.route("**/litigaforge/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/auth/me")) {
@@ -46,6 +49,9 @@ try {
     for (const path of paths) {
       await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
       await page.locator(".lf-app-layout").waitFor({ timeout: 15000 });
+      await assertAlwaysLight(page, `Mobile review ${width}px ${path}`);
+      assert.equal(await page.getByRole("button", { name: /toggle theme/i }).count(), 0,
+        `Theme toggle should not appear on ${path}`);
       const dimensions = await page.evaluate(() => ({
         width: window.innerWidth,
         documentWidth: document.documentElement.scrollWidth,
@@ -60,6 +66,7 @@ try {
       }
       if (width === 390 && path.endsWith("/settings")) {
         assert.equal(await page.locator('[data-testid="pwa-install-card"]').count(), 0, "Install prompt should appear only once per user/device");
+        assert.equal(await page.getByText("Appearance", { exact: true }).count(), 0, "Settings should not expose a theme preference");
       }
     }
   }
@@ -68,15 +75,9 @@ try {
   assert.equal(await page.locator('[data-testid="pwa-install-card"]').count(), 0, "Install prompt must not appear on login");
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(() => localStorage.setItem("vite-ui-theme", "light"));
   await page.goto(`${baseUrl}/in/client-dashboard`, { waitUntil: "networkidle" });
+  await assertAlwaysLight(page, "Mobile review client dashboard");
   await page.screenshot({ path: `${outputDir}/client-dashboard-light-390.jpg`, fullPage: true, type: "jpeg", quality: 78 });
-  await page.evaluate(() => {
-    localStorage.setItem("vite-ui-theme", "dark");
-    document.documentElement.classList.add("dark");
-  });
-  await page.reload({ waitUntil: "networkidle" });
-  await page.screenshot({ path: `${outputDir}/client-dashboard-dark-390.jpg`, fullPage: true, type: "jpeg", quality: 78 });
 
   await page.locator(".lf-konsta-tabbar button").last().click();
   await page.getByRole("heading", { name: "More" }).waitFor();
@@ -93,7 +94,7 @@ try {
   await page.screenshot({ path: `${outputDir}/more-sheet-390.jpg`, fullPage: false, type: "jpeg", quality: 82 });
   assert.equal(await page.locator('[aria-label="More tools"] a').count() > 0, true, "More sheet grid should be present");
   await context.close();
-  console.log(`PASS: no document/body horizontal overflow at 360px and 390px across ${paths.length} mobile routes; captured three 390px screenshots.`);
+  console.log(`PASS: light theme and no horizontal overflow at 360px and 390px across ${paths.length} mobile routes; captured two 390px screenshots.`);
 } finally {
   await browser.close();
 }

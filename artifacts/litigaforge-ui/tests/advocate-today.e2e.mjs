@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assertAlwaysLight, seedLegacyDarkPreference } from "./light-theme-checks.mjs";
 
 const baseUrl = process.env.LITIGAFORGE_E2E_URL ?? "http://127.0.0.1:23790";
 const browser = await chromium.launch({
@@ -22,10 +23,10 @@ const dateKey = (offset) => {
 
 try {
   await mkdir(new URL("../generated-artifacts/", import.meta.url), { recursive: true });
-  for (const theme of ["light", "dark"]) {
+  for (const theme of ["light"]) {
     for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
-      const context = await browser.newContext({ viewport });
-      await context.addInitScript((savedTheme) => localStorage.setItem("vite-ui-theme", savedTheme), theme);
+      const context = await browser.newContext({ viewport, colorScheme: "dark" });
+      await seedLegacyDarkPreference(context);
       await context.route("**/litigaforge/**", async (route) => {
         const path = new URL(route.request().url()).pathname;
         const json = (body) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
@@ -52,6 +53,7 @@ try {
       const agenda = page.getByTestId("today-agenda");
       await agenda.waitFor();
       await page.waitForTimeout(450);
+      await assertAlwaysLight(page, `advocate Today ${viewport.width}px`);
       await page.getByRole("heading", { level: 1, name: "Today", exact: true }).waitFor();
       assert.equal(await page.locator("h1").count(), 1, "Today should have a single h1");
       assert.equal(await page.getByText("Welcome back, Mira!", { exact: false }).count(), 0);
@@ -218,7 +220,7 @@ try {
       await context.close();
     }
   }
-  console.log("PASS: Today agenda sorts active hearings and fits mobile/desktop in light and dark themes.");
+  console.log("PASS: Today, Cases, Cause lists, and Research stay light with a dark device preference.");
 } finally {
   await browser.close();
 }
