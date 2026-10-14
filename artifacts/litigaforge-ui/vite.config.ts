@@ -53,6 +53,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,png,svg,woff2}"],
+        // Shows pushes (hearing alerts) and opens the app when one is tapped.
+        importScripts: ["push-sw.js"],
+        globIgnores: ["push-sw.js"],
         cleanupOutdatedCaches: true,
         // Install/claim immediately; main.tsx asks the user before reloading.
         skipWaiting: true,

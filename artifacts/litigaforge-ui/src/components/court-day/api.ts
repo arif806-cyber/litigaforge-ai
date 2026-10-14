@@ -85,3 +85,10 @@ export function boardProgress(matter: CourtDayMatter) {
   const eta = !board.stale && board.minutes_per_item && ahead > 0 ? Math.round(ahead * board.minutes_per_item) : null;
   return { mine, ahead, passed, eta, fraction: Math.min(board.now_item / mine, 1) };
 }
+
+export interface AlertPrefs { enabled: boolean; devices: number; push_configured: boolean }
+
+export const fetchAlertPrefs = () => apiFetch<AlertPrefs>("/court-day/alerts");
+
+export const saveAlertPref = (enabled: boolean) =>
+  apiFetch<{ enabled: boolean }>("/court-day/alerts", { method: "PUT", body: { enabled } });

@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { CalendarSearch, ChevronRight, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { boardProgress, courtDayKey, fetchCourtDay, type CourtDayMatter, type HearingBrief } from "./api";
+import { boardProgress, courtDayKey, fetchAlertPrefs, fetchCourtDay, saveAlertPref, type CourtDayMatter, type HearingBrief } from "./api";
+import { hasPushSupport, subscribeToPush } from "@/lib/push";
+import { toast } from "@/hooks/use-toast";
 import { BoardUpdateSheet } from "./BoardUpdateSheet";
 import { BriefSheet } from "./BriefSheet";
 import { CourtBoardCard } from "./CourtBoardCard";
@@ -12,6 +14,13 @@ import { MatterCard } from "./MatterCard";
 import { ShareSheet } from "./ShareSheet";
 import { WeekStrip } from "./WeekStrip";
 import type { ShareInput } from "./share";
+
+function subscribeOnline(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => { window.removeEventListener("online", callback); window.removeEventListener("offline", callback); };
+}
+const useOnline = () => useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
 
 export interface UpcomingHearing { id: number; title: string; hearing_date: string; court?: string | null }
 
@@ -48,6 +57,7 @@ export function CourtDay({
     retry: 1,
   });
 
+  const online = useOnline();
   const isToday = !!data && data.date === data.today;
   const matters = data?.matters ?? [];
   const [focusId, setFocusId] = useState<number | null>(null);
@@ -56,14 +66,35 @@ export function CourtDay({
     [isToday, matters, focusId],
   );
 
-  const [alertOn, setAlertOn] = useState(readAlert);
-  const toggleAlert = () => {
+  // The near-turn alert switch lives on the server (so pushes respect it with the app closed);
+  // localStorage only keeps the last answer for an instant first paint.
+  const queryClient = useQueryClient();
+  const { data: alertPrefs } = useQuery({ queryKey: ["court-day-alerts"], queryFn: fetchAlertPrefs, staleTime: 5 * 60_000, retry: 1 });
+  const [localAlert, setLocalAlert] = useState(readAlert);
+  const alertOn = alertPrefs?.enabled ?? localAlert;
+  const saveAlert = useMutation({
+    mutationFn: saveAlertPref,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["court-day-alerts"] }),
+  });
+  const toggleAlert = async () => {
     const next = !alertOn;
-    setAlertOn(next);
+    setLocalAlert(next);
+    queryClient.setQueryData(["court-day-alerts"], (prev: typeof alertPrefs) => (prev ? { ...prev, enabled: next } : prev));
     try { localStorage.setItem(ALERT_KEY, next ? "on" : "off"); } catch { /* storage unavailable */ }
-    if (next && typeof Notification !== "undefined" && Notification.permission === "default") {
-      Notification.requestPermission().catch(() => undefined);
+    saveAlert.mutate(next);
+    if (!next) {
+      toast({ title: "Court alerts off", description: "You will not be alerted when your turn is near." });
+      return;
     }
+    if (alertPrefs?.push_configured && hasPushSupport && (alertPrefs.devices ?? 0) === 0) {
+      const ok = await subscribeToPush();
+      queryClient.invalidateQueries({ queryKey: ["court-day-alerts"] });
+      toast(ok
+        ? { title: "Phone alerts on", description: "We will notify this device when your matter is 3 away, even if the app is closed." }
+        : { title: "Alerts on in the app", description: "Allow notifications for LitigaForge to get alerts with the app closed." });
+      return;
+    }
+    toast({ title: "Court alerts on", description: "We will alert you when your matter is 3 away." });
   };
 
   // Notify once when the focused matter comes within three items.
@@ -72,7 +103,8 @@ export function CourtDay({
     if (!alertOn || !focused?.board || focused.board.stale) return;
     const p = boardProgress(focused);
     if (!p || p.passed || p.ahead > 3) return;
-    const tag = `${focused.case_id}:${data?.date}`;
+    // Same tag as the server push, so the browser shows one notification, not two.
+    const tag = `court-day-${focused.case_id}-${data?.date}`;
     if (notified.current === tag) return;
     notified.current = tag;
     if (typeof navigator !== "undefined") navigator.vibrate?.([30, 60, 30]);
@@ -114,7 +146,14 @@ export function CourtDay({
           </div>
         )}
 
-        {isError && (
+        {data && (!online || isError) && (
+          <p role="status" data-testid="court-day-offline" className="flex items-center gap-2 rounded-2xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-destructive" />
+            Offline · showing the last update. It will refresh when you are back online.
+          </p>
+        )}
+
+        {isError && !data && (
           <div role="alert" className="rounded-[22px] border border-border bg-card p-5 text-sm">
             <p className="font-semibold">Couldn’t load your court day.</p>
             <button type="button" onClick={() => refetch()} className="mt-2 font-semibold text-primary">Try again</button>

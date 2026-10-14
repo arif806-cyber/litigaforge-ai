@@ -39,6 +39,8 @@ try {
       [KEY_21]: null,
     };
     const posts = [];
+    const alertPuts = [];
+    const alertPrefs = { enabled: true, devices: 1, push_configured: true };
     const context = await browser.newContext({ viewport, colorScheme: "light", hasTouch: viewport.width === 390 });
     await context.route("**/litigaforge/**", async (route) => {
       const url = new URL(route.request().url());
@@ -72,6 +74,15 @@ try {
         }
         boards[body.court_key] = { now_item: body.item_no, updated_at: new Date().toISOString(), minutes_ago: 0, advocates: 1, stale: false, minutes_per_item: 5, source: "advocates_in_court" };
         return json({ status: "accepted", message: "Board updated.", board: boards[body.court_key] });
+      }
+      if (path.endsWith("/court-day/alerts")) {
+        if (route.request().method() === "PUT") {
+          const body = JSON.parse(route.request().postData() || "{}");
+          alertPuts.push(body.enabled);
+          alertPrefs.enabled = body.enabled;
+          return json({ enabled: body.enabled });
+        }
+        return json(alertPrefs);
       }
       if (path.endsWith("/court-day/brief/101")) return json({
         case_id: 101, title: "Sharma v. State of Telangana", cnr: "TSHC010000172025", court: "Telangana High Court",
@@ -184,7 +195,21 @@ try {
     await page.keyboard.press("Escape");
     await share.waitFor({ state: "detached" });
 
-    // 8. Another day: private family matter, no board, no item.
+    // 8. Alert bell: the choice is saved on the server (so pushes respect it with the app closed).
+    await page.getByRole("button", { name: "Turn off the near-turn alert" }).click();
+    await page.getByText("Court alerts off", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Alert me when my turn is near" }).click();
+    await page.getByText("Court alerts on", { exact: true }).waitFor();
+    assert.deepEqual(alertPuts, [false, true]);
+
+    // 9. Losing the connection keeps the last board on screen with a quiet note.
+    await context.setOffline(true);
+    await page.getByTestId("court-day-offline").waitFor();
+    assert.equal(await page.getByTestId("board-now").innerText(), "14", "last known board stays visible offline");
+    await context.setOffline(false);
+    await page.getByTestId("court-day-offline").waitFor({ state: "detached" });
+
+    // 10. Another day: private family matter, no board, no item.
     await page.getByTestId("court-day-week").locator("button").nth(otherIndex).click();
     await page.getByTestId("court-day-matter-104").waitFor();
     assert.equal(await board.count(), 0, "board only shows on today");
