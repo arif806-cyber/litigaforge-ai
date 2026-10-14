@@ -350,7 +350,7 @@ function SidebarContent({
           />
         )}
 
-        {user && <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>}
+        {user && legalTools.length > 0 && <div className="px-3 pt-4 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">Legal Tools</div>}
         {user && legalTools.map(item => (
           <NavItem
             key={item.href}
@@ -493,8 +493,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
   const [, setLocation] = useLocation();
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
-  const mobileTitle = mobileTitleForPath(location);
+  const isAdvocate = !!user && (user.role === "advocate" || user.role === "lawyer");
   const isAdvocateToday = !!user && (user.role === "advocate" || user.role === "lawyer") && location === "/lawyer-dashboard";
+  const isAdvocateCases = isAdvocate && location === "/lawyer-dashboard/cases";
+  const isAdvocateResearch = isAdvocate && ["/judgments", "/legal-chat", "/ask", "/workspace"].some(path => location === path || location.startsWith(`${path}/`));
+  const mobileTitle = isAdvocateResearch ? "Research" : mobileTitleForPath(location);
   const isMobileDetail = /^\/(my-cases\/[^/]+|judgments\/[^/]+|advocate\/cases\/[^/]+|free-documents\/[^/]+|document-template\/[^/]+)$/.test(location);
   const backHref = location.startsWith("/judgments/")
     ? "/judgments"
@@ -524,10 +527,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
       <div className="lf-app-layout flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* Mobile top header */}
-      {!isAdvocateToday && <NavBar
-        className="lf-mobile-topbar md:hidden"
+      {!isAdvocateToday && !isAdvocateCases && <NavBar
+        className={cn("lf-mobile-topbar md:hidden", isAdvocateResearch && "lf-mobile-research-header")}
         title={mobileTitle}
-        subtitle={mobileSubtitleForPath(location)}
+        subtitle={isAdvocateResearch ? undefined : mobileSubtitleForPath(location)}
+        align={isAdvocateResearch ? "left" : "center"}
         large={!isMobileDetail}
         scrollEl={scrollElement}
         leading={isMobileDetail

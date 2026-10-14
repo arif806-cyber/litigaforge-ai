@@ -26,7 +26,7 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
   {
     heading: "Legal Tools",
     links: [
-      { label: "Ask a Lawyer (AI)", href: "/ask" },
+      { label: "Legal information (AI)", href: "/ask" },
       { label: "Document Analyzer", href: "/review" },
       { label: "Judgment Finder", href: "/judgments" },
       { label: "Free Documents", href: "/free-documents" },

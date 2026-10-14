@@ -27,16 +27,17 @@ export interface NavBarProps {
   trailing?: ReactNode;
   subtitle?: ReactNode;
   large?: boolean;
+  align?: "center" | "left";
   scrollEl?: HTMLElement | null;
   className?: string;
 }
 
-export function NavBar({ title, leading, trailing, subtitle, large = false, scrollEl, className = "" }: NavBarProps) {
+export function NavBar({ title, leading, trailing, subtitle, large = false, align = "center", scrollEl, className = "" }: NavBarProps) {
   return (
     <KonstaNavbar
       className={`lf-konsta-navbar sticky top-0 z-30 md:hidden ${className}`}
       title={
-        <span className="flex flex-col items-center leading-tight">
+        <span data-title-align={align} className={`flex flex-col leading-tight ${align === "left" ? "items-start text-left" : "items-center text-center"}`}>
           <span>{title}</span>
           {subtitle && <span className="mt-1 max-w-[80vw] truncate text-xs font-normal text-muted-foreground">{subtitle}</span>}
         </span>
@@ -45,7 +46,7 @@ export function NavBar({ title, leading, trailing, subtitle, large = false, scro
       right={trailing}
       large={large}
       scrollEl={scrollEl ?? undefined}
-      centerTitle
+      centerTitle={align === "center"}
       colors={{
         bgIos: "bg-background/90 dark:bg-background/90",
         textIos: "text-foreground",

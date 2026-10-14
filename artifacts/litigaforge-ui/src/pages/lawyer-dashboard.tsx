@@ -719,7 +719,7 @@ export default function LawyerDashboard() {
             )}
           </div>
           {/* Section quick actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className={cn("flex items-center gap-2 flex-shrink-0", activeSection === "cases" && "hidden")}>
             <button onClick={() => { setActiveSection("cases"); setShowCaseModal(true); }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
               style={{ background: "#F5B754", color: "#0A0B10" }}
@@ -765,28 +765,28 @@ export default function LawyerDashboard() {
         {activeSection === "overview" && (
           <div className="space-y-6">
             <section className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-label="Today’s hearing agenda" data-testid="today-agenda">
-              <div className="mb-3 flex justify-end">
-                <Link href="/cause-lists" className="inline-flex min-h-9 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary hover:bg-primary/5" data-testid="today-cause-lists-link">
-                  Cause lists <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </Link>
-              </div>
               <div className="grid gap-4 lg:grid-cols-2">
                 <div>
-                  <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="mb-2 flex items-center justify-between gap-2" data-testid="today-agenda-heading">
                     <h3 className="text-sm font-semibold text-foreground">Hearings today</h3>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{todayCases.length}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{todayCases.length}</span>
+                      <Link href="/cause-lists" className="inline-flex min-h-8 items-center gap-1 rounded-lg px-1.5 text-xs font-semibold text-primary hover:bg-primary/5" data-testid="today-cause-lists-link">
+                        Cause lists <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    </div>
                   </div>
                   {todayCases.length ? (
                     <ul className="space-y-2">
                       {todayCases.slice(0, 4).map((item) => (
                         <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2">
                           <div className="flex items-start justify-between gap-3">
-                            <Link href="/lawyer-dashboard/cases" className="min-w-0 text-sm font-semibold text-foreground hover:text-primary">
+                            <Link data-testid="today-hearing-title" href="/lawyer-dashboard/cases" className="block min-w-0 text-sm font-semibold leading-5 text-foreground hover:text-primary">
                               {item.title}
                             </Link>
                             <time className="shrink-0 text-xs font-medium text-primary" dateTime={item.hearing_date.slice(0, 10)}>Today</time>
                           </div>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{hearingMeta(item) || item.case_stage || "Hearing scheduled"}</p>
+                          <p data-testid="today-hearing-meta" className="mt-0 truncate text-xs leading-4 text-muted-foreground">{hearingMeta(item) || item.case_stage || "Hearing scheduled"}</p>
                         </li>
                       ))}
                     </ul>
@@ -806,14 +806,14 @@ export default function LawyerDashboard() {
                       {upcomingCases.map((item) => (
                         <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2">
                           <div className="flex items-start justify-between gap-3">
-                            <Link href="/lawyer-dashboard/cases" className="min-w-0 text-sm font-semibold text-foreground hover:text-primary">
+                            <Link href="/lawyer-dashboard/cases" className="block min-w-0 text-sm font-semibold leading-5 text-foreground hover:text-primary">
                               {item.title}
                             </Link>
                             <time className="shrink-0 text-xs font-medium text-primary" dateTime={item.hearing_date.slice(0, 10)}>
                               {formatHearingDate(item.hearing_date)}
                             </time>
                           </div>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{hearingMeta(item) || item.case_stage || "Active matter"}</p>
+                          <p className="mt-0 truncate text-xs leading-4 text-muted-foreground">{hearingMeta(item) || item.case_stage || "Active matter"}</p>
                         </li>
                       ))}
                     </ul>
@@ -1102,13 +1102,9 @@ export default function LawyerDashboard() {
         {activeSection === "cases" && (
           <div className="space-y-5">
             {/* Header */}
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Case Management</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">Track, update, and manage your active matters</p>
-              </div>
+            <div className="flex justify-end">
               <button onClick={() => setShowCaseModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                className="fixed bottom-24 right-4 z-40 flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg transition-all md:static md:bottom-auto md:right-auto md:rounded-xl md:px-4 md:py-2 md:shadow-none"
                 style={{ background: "#F5B754", color: "#0A0B10" }}
                 data-testid="cases-add-case-btn">
                 <Plus className="w-4 h-4" /> Add Case

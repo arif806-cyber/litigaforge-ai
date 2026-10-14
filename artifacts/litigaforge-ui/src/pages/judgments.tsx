@@ -261,14 +261,15 @@ export default function Judgments() {
       subtitle="Plain-English summaries of landmark Supreme Court & High Court judgments — updated for quick legal research."
       icon={<Gavel className="w-6 h-6 text-primary" />}
     >
-      <div className="space-y-10">
+      <div className="flex flex-col gap-10">
         {user && <AuthorityTrackerPanel />}
         {/* ── Forge Workspace promo banner ─────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl"
+          className="order-last flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl"
+          data-testid="forge-workspace-promo"
           style={{
             background: "linear-gradient(135deg, rgba(20,184,166,0.08), rgba(14,116,144,0.05))",
             border: "1px solid rgba(20,184,166,0.22)",

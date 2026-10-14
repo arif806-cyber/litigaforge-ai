@@ -60,6 +60,18 @@ try {
       await page.getByTestId("today-cause-lists-link").getByText("Cause lists", { exact: true }).waitFor();
       await page.getByTestId("client-requests-summary").getByText("Client requests: 0 pending", { exact: false }).waitFor();
       assert.equal(await page.getByText("Quick Actions", { exact: true }).isVisible().catch(() => false), false);
+      const agendaGap = await page.evaluate(() => {
+        const title = document.querySelector('[data-testid="today-hearing-title"]')?.getBoundingClientRect();
+        const meta = document.querySelector('[data-testid="today-hearing-meta"]')?.getBoundingClientRect();
+        return title && meta ? meta.top - title.bottom : null;
+      });
+      assert.ok(agendaGap !== null && agendaGap <= 6, `hearing court line should sit close to its title (gap=${agendaGap})`);
+      const causeLinkGap = await page.evaluate(() => {
+        const heading = document.querySelector('[data-testid="today-agenda-heading"] h3')?.getBoundingClientRect();
+        const link = document.querySelector('[data-testid="today-cause-lists-link"]')?.getBoundingClientRect();
+        return heading && link ? Math.abs(heading.top - link.top) : null;
+      });
+      assert.ok(causeLinkGap !== null && causeLinkGap <= 8, `Cause lists link should share the hearings heading row (gap=${causeLinkGap})`);
       if (viewport.width === 390) {
         const mobileNav = page.locator(".lf-konsta-tabbar");
         for (const label of ["Today", "Cases", "Cause lists", "Research", "More"]) {
@@ -74,6 +86,7 @@ try {
         for (const label of expected) await nav.getByText(label, { exact: true }).waitFor();
         assert.equal(await page.locator("header").getByText("Sign Out", { exact: true }).count(), 0, "sign out belongs in the account menu only");
         await page.locator("header").getByText("Free plan · Upgrade", { exact: true }).waitFor();
+        assert.equal(await page.locator("aside nav").getByText("Legal Tools", { exact: true }).count(), 0, "advocate sidebar should not show an empty Legal Tools label");
       }
       await page.getByText("Upcoming hearing — Patel v Union", { exact: true }).waitFor();
       assert.ok(await agenda.getByText("Hearings today", { exact: true }).isVisible());
@@ -88,11 +101,19 @@ try {
       await page.waitForURL(/\/lawyer-dashboard\/cases\/?$/);
       await page.waitForTimeout(450);
       if (viewport.width === 390) {
-        await page.locator(".lf-mobile-topbar").getByText("Cases", { exact: true }).first().waitFor();
+        await page.getByRole("heading", { level: 1, name: "Cases", exact: true }).waitFor();
       } else {
         await page.getByTestId("desktop-page-context").getByText("Cases", { exact: true }).waitFor();
       }
-      await page.getByRole("heading", { name: "Case Management" }).waitFor();
+      assert.equal(await page.locator("h1").count(), 1, "Cases should have one title");
+      assert.equal(await page.getByTestId("add-case-btn").isVisible().catch(() => false), false);
+      await page.getByTestId("cases-add-case-btn").waitFor();
+      if (viewport.width === 390) {
+        assert.equal(await page.getByTestId("cases-add-case-btn").evaluate(el => getComputedStyle(el).position), "fixed");
+        assert.ok(await page.getByRole("button", { name: /^Active/ }).isVisible());
+        assert.ok(await page.getByRole("button", { name: /^Pending/ }).isVisible());
+        assert.ok(await page.getByRole("button", { name: /^Closed/ }).isVisible());
+      }
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/cases-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
       await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
       await page.waitForURL(/\/cause-lists\/?$/);
@@ -103,6 +124,17 @@ try {
       await page.goto(`${baseUrl}/judgments`, { waitUntil: "domcontentloaded" });
       await page.getByText("Search all case law with AI", { exact: true }).waitFor();
       await page.waitForTimeout(450);
+      if (viewport.width === 390) {
+        await page.locator(".lf-mobile-research-header [data-title-align=left]").getByText("Research", { exact: true }).first().waitFor();
+        const researchTabs = page.getByTestId("advocate-tabs-research");
+        for (const label of ["Judgments", "AI drafting", "Q&A", "Workspace"]) await researchTabs.getByText(label, { exact: true }).waitFor();
+        const promoBelowContent = await page.evaluate(() => {
+          const content = document.querySelector('[data-testid="section-search"]')?.getBoundingClientRect();
+          const promo = document.querySelector('[data-testid="forge-workspace-promo"]')?.getBoundingClientRect();
+          return !!content && !!promo && promo.top >= content.bottom;
+        });
+        assert.equal(promoBelowContent, true, "Forge Workspace promo should follow research content on mobile");
+      }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "research should fit the viewport");
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/research-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
       await context.close();
