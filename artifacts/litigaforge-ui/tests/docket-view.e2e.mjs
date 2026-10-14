@@ -8,142 +8,100 @@ const browser = await chromium.launch({
   args: ["--no-sandbox"],
 });
 
-const advocate = {
-  id: 17,
-  email: "advocate-docket@example.test",
-  name: "Ada Advocate",
-  role: "advocate",
-  subscription_tier: "free",
-  is_verified: true,
-  lawyer_status: "verified",
-};
-const watchedCourt = JSON.stringify({
-  state: "Delhi",
-  district_code: "New Delhi",
-  complex_code: "Supreme Court",
-  court: "Court",
-  court_no: "1",
-});
-const cases = [
-  {
-    name: "no profile",
-    profile: null,
-    tracked_cases_count: 0,
-    schedule: { fetched_at: null, source_status: "scheduled_refresh_pending", today: { date: "2026-10-14", matters: [] }, tomorrow: { date: "2026-10-15", matters: [] } },
-    expectedState: "docket-setup-state",
-  },
-  {
-    name: "incomplete profile",
-    profile: { cause_list_name: "Ada Advocate", enrolment_number: "", court_ids: [] },
-    tracked_cases_count: 0,
-    schedule: { fetched_at: null, source_status: "profile_required", today: { date: "2026-10-14", matters: [] }, tomorrow: { date: "2026-10-15", matters: [] } },
-    expectedState: "docket-setup-state",
-  },
-  {
-    name: "complete profile waiting for refresh",
-    profile: { cause_list_name: "Ada Advocate", enrolment_number: "BAR-123", court_ids: [watchedCourt] },
-    tracked_cases_count: 0,
-    schedule: { fetched_at: null, source_status: "scheduled_refresh_pending", today: { date: "2026-10-14", matters: [] }, tomorrow: { date: "2026-10-15", matters: [] } },
-    expectedState: "docket-pending-state",
-  },
-  {
-    name: "fetched schedule with no matters",
-    profile: { cause_list_name: "Ada Advocate", enrolment_number: "BAR-123", court_ids: [watchedCourt] },
-    tracked_cases_count: 0,
-    schedule: { fetched_at: "2026-10-14T06:05:00+05:30", source_status: "connected", today: { date: "2026-10-14", matters: [] }, tomorrow: { date: "2026-10-15", matters: [] } },
-    expectedState: "docket-empty-state",
-  },
+const advocate = { id: 17, email: "advocate-docket@example.test", name: "Ada Advocate", role: "advocate", subscription_tier: "free", is_verified: true };
+const court = { state: "Delhi", district_code: "New Delhi", complex_code: "Supreme Court", court: "Court", court_no: "1" };
+const matters = [
+  { itemNo: 1, caseNo: "CS/1/2026", petitioner: "Ada Advocate", respondent: "Ravi Kumar", stage: "Arguments", cnr: "DLHC010000012026" },
+  { itemNo: 2, caseNo: "CS/2/2026", petitioner: "Other Party", respondent: "State of Delhi", stage: "Evidence", cnr: "DLHC010000022026" },
 ];
 
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  let current = cases[0];
+  let profile = null;
   let courtRequests = 0;
+  let loads = 0;
+  let saves = 0;
   await context.route("**/litigaforge/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/auth/me")) {
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(advocate) });
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    if (path.endsWith("/auth/me")) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(advocate) });
+    if (path.endsWith("/auth/refresh")) return route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
+    if (path.endsWith("/docket/profile") && route.request().method() === "GET") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ profile, advocate_profile: { name: "Ada Advocate", bar_number: "BAR-123" }, tracked_cases_count: 0 }) });
     }
-    if (path.endsWith("/auth/refresh")) {
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    if (path.endsWith("/docket/profile") && route.request().method() === "PUT") {
+      saves += 1;
+      profile = JSON.parse(route.request().postData());
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ profile }) });
     }
-    if (path.endsWith("/docket/profile")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          profile: current.profile,
-          advocate_profile: { name: "Ada Advocate", bar_number: "BAR-123" },
-          tracked_cases_count: current.tracked_cases_count,
-        }),
-      });
-    }
-    if (path.endsWith("/docket/schedule")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          source_url: "https://services.ecourts.gov.in/ecourtindia_v6/?p=cause_list/index",
-          message: "Cause-list results update on the scheduled eCourtsIndia refresh.",
-          ...current.schedule,
-        }),
-      });
-    }
+    if (path.endsWith("/docket/schedule")) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ courts: [], source_url: "https://services.ecourts.gov.in/ecourtindia_v6/?p=cause_list/index" }) });
     if (path.endsWith("/docket/courts")) {
       courtRequests += 1;
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { items: [] } }) });
+      const requested = url.searchParams.get("path");
+      const data = requested === "states" ? [{ state: "Delhi", stateName: "Delhi" }]
+        : requested.endsWith("/districts") ? [{ districtCode: "New Delhi", districtName: "New Delhi" }]
+        : requested.endsWith("/complexes") ? [{ courtComplexCode: "Supreme Court", courtComplexName: "Supreme Court" }]
+        : [{ court: "Court", courtNo: "1", judgeName: "Justice Sample" }];
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { items: data } }) });
+    }
+    if (path.endsWith("/docket/load")) {
+      loads += 1;
+      const date = new Date().toISOString().slice(0, 10);
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        source_url: "https://services.ecourts.gov.in/ecourtindia_v6/?p=cause_list/index",
+        courts: [{ court, today: { date, status: "ok", matters, fetched_at: new Date().toISOString(), source_url: "https://services.ecourts.gov.in/ecourtindia_v6/?p=cause_list/index" }, tomorrow: { date: tomorrow, status: "no_sitting", matters: [], fetched_at: new Date().toISOString() } }],
+      }) });
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
   });
 
   const page = await context.newPage();
-  for (const state of cases) {
-    current = state;
-    await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
-    await page.getByTestId(state.expectedState).waitFor({ timeout: 15000 });
-    assert.equal(await page.getByRole("link", { name: /Open official eCourts cause list/ }).count(), 1, `${state.name}: source link remains visible`);
-    const dimensions = await page.evaluate(() => ({
-      width: window.innerWidth,
-      documentWidth: document.documentElement.scrollWidth,
-      bodyWidth: document.body.scrollWidth,
-    }));
-    assert.ok(
-      dimensions.documentWidth <= 390 && dimensions.bodyWidth <= 390,
-      `${state.name}: horizontal overflow at 390px: ${JSON.stringify(dimensions)}`,
-    );
-    assert.equal(courtRequests, 0, `${state.name}: opening the page must not call the eCourts court API`);
-  }
-
-  current = cases[0];
   await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
-  await page.getByTestId("docket-setup-state").waitFor();
-  assert.equal(await page.getByLabel("Name as it appears in cause lists").inputValue(), "Ada Advocate");
-  assert.equal(await page.getByLabel("Enrolment number").inputValue(), "BAR-123");
-  await page.getByRole("button", { name: "Set up my cause list" }).click();
-  assert.equal(await page.locator("#docket-courts select").first().evaluate((el) => el === document.activeElement), true);
-  await page.getByRole("button", { name: "Track a case" }).waitFor();
-  await page.getByRole("link", { name: /Open official eCourts cause list/ }).waitFor();
+  await page.getByRole("heading", { name: "DocketView" }).waitFor();
+  assert.equal(courtRequests, 0, "opening DocketView must not call the eCourts court API");
+  assert.equal(loads, 0, "opening DocketView must not load cause-list matters");
+  assert.equal(await page.getByLabel(/Name as it appears in cause lists/).getAttribute("required"), null);
+  assert.equal(await page.getByLabel(/Enrolment number/).getAttribute("required"), null);
+  await page.getByLabel(/Name as it appears in cause lists/).fill("");
+  await page.getByLabel(/Enrolment number/).fill("");
+  assert.match(await page.getByText(/Add your name as it appears/).innerText(), /highlight your matters/);
+  await page.getByLabel(/Name as it appears in cause lists/).fill("Ada Advocate");
+  await page.getByLabel(/Enrolment number/).fill("BAR-123");
 
-  current = cases[2];
-  await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
-  await page.getByTestId("docket-pending-state").waitFor();
-  await page.getByTestId("docket-pending-state").scrollIntoViewIfNeeded();
+  await page.getByLabel("State").focus();
+  await page.getByRole("option", { name: "Delhi" }).waitFor({ state: "attached" });
+  await page.getByLabel("State").selectOption("Delhi");
+  await page.getByRole("option", { name: "New Delhi" }).waitFor({ state: "attached" });
+  await page.getByLabel("District").selectOption("New Delhi");
+  await page.getByRole("option", { name: "Supreme Court" }).waitFor({ state: "attached" });
+  await page.getByLabel("Court complex").selectOption("Supreme Court");
+  await page.getByRole("button", { name: /Choose courts/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Choose courts" });
+  await dialog.getByLabel("Search courts by judge or court number").fill("Justice Sample");
+  const courtOption = dialog.getByLabel(/Justice Sample/);
+  await courtOption.waitFor();
+  assert.equal(await courtOption.isChecked(), false, "court picker starts with no courts checked");
+  await courtOption.check();
+  await dialog.getByRole("button", { name: /Done/ }).click();
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await page.getByText("Ada Advocate vs Ravi Kumar").waitFor();
+  assert.equal(saves, 1);
+  assert.equal(loads, 1, "saving the profile triggers one on-demand load");
+  assert.equal(profile.cause_list_name, "Ada Advocate");
+  assert.equal(profile.enrolment_number, "BAR-123");
+  assert.equal(await page.getByRole("link", { name: "CNR DLHC010000012026" }).count(), 1);
+  await page.getByRole("button", { name: "My matters" }).click();
+  assert.equal(await page.getByText("Ada Advocate vs Ravi Kumar").count(), 1);
+  assert.equal(await page.getByText("Other Party vs State of Delhi").count(), 0);
+  await page.getByRole("button", { name: "All matters" }).click();
+  assert.equal(await page.getByText("Other Party vs State of Delhi").count(), 1);
+
+  const dimensions = await page.evaluate(() => ({ document: document.documentElement.scrollWidth, body: document.body.scrollWidth }));
+  assert.ok(dimensions.document <= 390 && dimensions.body <= 390, `no horizontal overflow at 390px: ${JSON.stringify(dimensions)}`);
   await page.screenshot({ path: "/tmp/litigaforge-docket-390.jpg", fullPage: true, type: "jpeg", quality: 80 });
-  assert.equal(await page.getByText("Your cause list will appear after the next update at 06:00 or 12:00 IST.").count(), 1);
-  assert.equal(await page.getByText(/No fetch time yet/).count(), 0);
-  assert.equal(await page.getByText(/Supreme Court/).count(), 1);
-  await page.getByRole("button", { name: "Edit courts" }).click();
-  assert.ok(courtRequests > 0, "the court API starts only after the advocate opens the court picker");
-
-  current = cases[3];
-  await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
-  await page.getByTestId("docket-empty-state").waitFor();
-  assert.match(await page.getByTestId("docket-empty-state").innerText(), /No listings found for you today · Last updated/);
-  assert.equal(await page.getByRole("heading", { name: "Today’s matters" }).count(), 0);
-  assert.equal(await page.getByRole("heading", { name: "Tomorrow’s matters" }).count(), 0);
-
   await context.close();
-  console.log("PASS: all four DocketView states render at 390px, setup fields prefill, empty headings are hidden, and court lookup is deferred until interaction.");
+  console.log("PASS: DocketView does no page-open vendor fetch, saves with optional details, loads once after save, filters matters, and fits 390px.");
 } finally {
   await browser.close();
 }
