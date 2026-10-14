@@ -37,3 +37,16 @@ test("page titles stay above section headings and page transitions avoid the ful
   assert.doesNotMatch(`${auth}\n${app}`, /Starting LitigaForge AI/);
   assert.match(app, /aria-label="Loading page"/);
 });
+
+test("advocate overview leads with today's hearings and upcoming matters", async () => {
+  const dashboard = await source("../src/pages/lawyer-dashboard.tsx");
+  const today = dashboard.indexOf('data-testid="today-agenda"');
+  const research = dashboard.indexOf('id="authority-alerts-title"');
+  const quickActions = dashboard.indexOf('aria-label="Quick actions"');
+  assert.ok(today >= 0 && research > today, "Today agenda must precede secondary research alerts");
+  assert.ok(quickActions > research, "Quick actions must not push today's agenda below the fold");
+  assert.match(dashboard, /Today<\/h2>/);
+  assert.match(dashboard, /Hearings today/);
+  assert.match(dashboard, /Coming up/);
+  assert.match(dashboard, /href="\/docket"/);
+});

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Scale, Star, Briefcase, Users, FileText, BookOpen, User,
+  Scale, Star, Briefcase, Users, FileText, BookOpen, User, CalendarDays,
   Search, Bell, ChevronRight, Plus, Upload, CheckCircle2,
   X, LogOut, MessageSquare, ExternalLink, Info,
   FileSearch, Gavel, Phone, Award, AlertTriangle,
@@ -640,6 +640,17 @@ export default function LawyerDashboard() {
       const bDate = b.hearing_date ? new Date(b.hearing_date).getTime() : Infinity;
       return aDate - bDate;
     });
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const scheduledCases = cases
+    .filter((c) => c.status !== "closed" && /^\d{4}-\d{2}-\d{2}/.test(c.hearing_date ?? ""))
+    .sort((a, b) => a.hearing_date.localeCompare(b.hearing_date));
+  const todayCases = scheduledCases.filter((c) => c.hearing_date.slice(0, 10) === todayKey);
+  const upcomingCases = scheduledCases.filter((c) => c.hearing_date.slice(0, 10) > todayKey).slice(0, 4);
+  const todayLabel = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const formatHearingDate = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
+  });
 
   // ── Earnings are based only on fees the advocate has entered ──
   const thisMonth = new Date().getMonth();
@@ -722,24 +733,77 @@ export default function LawyerDashboard() {
           })}
         </div>
 
-        <section className="grid grid-cols-4 gap-2 lg:hidden" aria-label="Quick actions">
-          {[
-            { feature: "postCase" as const, label: "Add Case", action: () => { setActiveSection("cases"); setShowCaseModal(true); } },
-            { feature: "documents" as const, label: "Upload Doc", action: () => { setActiveSection("documents"); setShowDocModal(true); } },
-            { feature: "aiLegalDrafting" as const, label: "AI Drafting", action: () => setLocation("/legal-chat") },
-            { feature: "documentAnalyzer" as const, label: "Analyzer", action: () => setLocation("/review") },
-          ].map(item => (
-            <button key={item.feature} onClick={item.action} aria-label={item.label}
-              className="flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-card px-1 py-2 text-center active:scale-[0.98]">
-              <FeatureIcon feature={item.feature} size="large" />
-              <span className="w-full truncate text-[13px] font-medium text-foreground">{item.label}</span>
-            </button>
-          ))}
-        </section>
-
         {/* ── OVERVIEW ── */}
         {activeSection === "overview" && (
           <div className="space-y-6">
+            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="today-agenda-title" data-testid="today-agenda">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <CalendarDays className="mt-0.5 h-5 w-5 text-primary" aria-hidden="true" />
+                  <div>
+                    <h2 id="today-agenda-title" className="text-lg font-semibold text-foreground">Today</h2>
+                    <p className="text-xs text-muted-foreground">{todayLabel}</p>
+                  </div>
+                </div>
+                <Link href="/docket" className="inline-flex min-h-10 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary hover:bg-primary/5">
+                  View cause lists <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Hearings today</h3>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{todayCases.length}</span>
+                  </div>
+                  {todayCases.length ? (
+                    <ul className="space-y-2">
+                      {todayCases.slice(0, 4).map((item) => (
+                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2.5">
+                          <Link href="/lawyer-dashboard/cases" className="block text-sm font-semibold text-foreground hover:text-primary">
+                            {item.title}
+                          </Link>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {item.court_name || item.case_stage || "Hearing scheduled"}
+                            {item.cnr_number ? ` · ${item.cnr_number}` : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="rounded-xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
+                      No hearing dates on your active cases today. Check the court cause lists for today’s schedule.
+                    </p>
+                  )}
+                </div>
+                <div className="border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Coming up</h3>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{upcomingCases.length}</span>
+                  </div>
+                  {upcomingCases.length ? (
+                    <ul className="space-y-2">
+                      {upcomingCases.map((item) => (
+                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <Link href="/lawyer-dashboard/cases" className="min-w-0 text-sm font-semibold text-foreground hover:text-primary">
+                              {item.title}
+                            </Link>
+                            <time className="shrink-0 text-xs font-medium text-primary" dateTime={item.hearing_date.slice(0, 10)}>
+                              {formatHearingDate(item.hearing_date)}
+                            </time>
+                          </div>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">{item.court_name || item.case_stage || item.cnr_number || "Active matter"}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="rounded-xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
+                      No upcoming hearing dates are saved on your active cases.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
             <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="authority-alerts-title">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -778,6 +842,20 @@ export default function LawyerDashboard() {
               ) : (
                 <p className="text-xs text-muted-foreground">No new saved-search or citation-watch results today.</p>
               )}
+            </section>
+            <section className="grid grid-cols-4 gap-2 lg:hidden" aria-label="Quick actions">
+              {[
+                { feature: "postCase" as const, label: "Add Case", action: () => { setActiveSection("cases"); setShowCaseModal(true); } },
+                { feature: "documents" as const, label: "Upload Doc", action: () => { setActiveSection("documents"); setShowDocModal(true); } },
+                { feature: "aiLegalDrafting" as const, label: "AI Drafting", action: () => setLocation("/legal-chat") },
+                { feature: "documentAnalyzer" as const, label: "Analyzer", action: () => setLocation("/review") },
+              ].map(item => (
+                <button key={item.feature} onClick={item.action} aria-label={item.label}
+                  className="flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-card px-1 py-2 text-center active:scale-[0.98]">
+                  <FeatureIcon feature={item.feature} size="large" />
+                  <span className="w-full truncate text-[13px] font-medium text-foreground">{item.label}</span>
+                </button>
+              ))}
             </section>
             {/* Stat cards */}
             {(casesError || matchError) && (

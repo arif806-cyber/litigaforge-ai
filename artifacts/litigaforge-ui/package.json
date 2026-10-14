@@ -13,6 +13,7 @@
     "test:workspace-onboarding": "node --experimental-strip-types --test tests/workspace-onboarding-progress.test.mjs",
     "test:cnr": "node --experimental-strip-types --test tests/cnr-refresh-state.test.mjs",
     "test:advocate-ux": "node --test tests/advocate-ux.test.mjs",
+    "test:advocate-today": "node tests/advocate-today.e2e.mjs",
     "test:docket-view": "node tests/docket-view.e2e.mjs",
     "test:theme-vars": "node --test tests/theme-vars.test.mjs"
   },
