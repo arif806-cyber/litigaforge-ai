@@ -258,3 +258,27 @@ def test_board_update_alerts_followers_with_the_app_closed(api, monkeypatch):
             await conn.execute("DELETE FROM lawyer_cases WHERE lawyer_id=$1", uid)
             await conn.execute("DELETE FROM court_board_updates WHERE court_key=$1", key)
     api(steps)
+
+
+def test_account_erasure_succeeds_for_an_advocate_with_saved_courts(api):
+    """Regression: docket_profiles (no ON DELETE CASCADE) used to make erasure roll back."""
+    async def steps(as_user, users, pool, docket):
+        from fastapi import Response
+        from starlette.requests import Request
+        import routers.auth as auth_router
+        uid = users["a"]["id"]
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO docket_profiles (user_id, cause_list_name, enrolment_number, court_ids) VALUES ($1,'','',$2)",
+                uid, [json.dumps(COURT)],
+            )
+            await conn.execute("INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES ($1,$2,'k','a')",
+                               uid, f"https://push.example.test/{uuid.uuid4().hex}")
+            await conn.execute("INSERT INTO court_day_prefs (user_id, alerts) VALUES ($1, false)", uid)
+        request = Request({"type": "http", "method": "DELETE", "path": "/", "headers": [], "client": ("127.0.0.1", 1)})
+        await auth_router.delete_account.__wrapped__(request, Response(), {"id": uid, "role": "lawyer"})
+        async with pool.acquire() as conn:
+            assert await conn.fetchval("SELECT COUNT(*) FROM users WHERE id=$1", uid) == 0
+            for table in ("docket_profiles", "push_subscriptions", "court_day_prefs"):
+                assert await conn.fetchval(f"SELECT COUNT(*) FROM {table} WHERE user_id=$1", uid) == 0, table
+    api(steps)

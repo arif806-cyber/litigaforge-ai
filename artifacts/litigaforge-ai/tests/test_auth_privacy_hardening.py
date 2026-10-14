@@ -80,6 +80,11 @@ async def test_account_erasure_removes_threads_before_both_side_matches(monkeypa
     user_index = next(i for i, q in enumerate(conn.queries) if "DELETE FROM users" in q)
     assert detach_index < lawyer_cases_index < lawyer_profile_index < user_index
     assert lawyer_docs_index < lawyer_cases_index
+    # Rows that reference users without ON DELETE CASCADE must go first, or erasure rolls back.
+    docket_index = next(i for i, q in enumerate(conn.queries) if "DELETE FROM docket_profiles WHERE user_id" in q)
+    moderation_index = next(i for i, q in enumerate(conn.queries) if "SET moderated_by = NULL" in q)
+    push_index = next(i for i, q in enumerate(conn.queries) if "DELETE FROM push_subscriptions WHERE user_id" in q)
+    assert max(docket_index, moderation_index, push_index) < user_index
 
 
 @pytest.mark.asyncio

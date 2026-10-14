@@ -568,6 +568,15 @@ async def delete_account(
             await conn.execute("DELETE FROM lawyer_cases WHERE lawyer_id = $1", user_id)
             await conn.execute("DELETE FROM lawyer_cases WHERE client_id = $1", user_id)
             await conn.execute("DELETE FROM lawyers WHERE user_id = $1", user_id)
+            # Saved cause-list courts reference users without ON DELETE CASCADE: without this,
+            # erasure failed (and rolled back) for every advocate who had saved their courts.
+            from routers.docket import _ensure_table as _ensure_docket_profiles
+            await _ensure_docket_profiles(conn)
+            await conn.execute("DELETE FROM docket_profiles WHERE user_id = $1", user_id)
+            # Push endpoints identify the user's devices and have no foreign key; remove them too.
+            await conn.execute("DELETE FROM push_subscriptions WHERE user_id = $1", user_id)
+            # An admin's moderation history must not block their own erasure.
+            await conn.execute("UPDATE legal_questions SET moderated_by = NULL WHERE moderated_by = $1", user_id)
             await conn.execute("DELETE FROM legal_questions WHERE user_id = $1", user_id)
             await conn.execute("DELETE FROM subscriptions WHERE user_id = $1", user_id)
             await conn.execute("DELETE FROM users WHERE id = $1", user_id)
