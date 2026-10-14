@@ -1,12 +1,35 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ExternalLink, Save } from "lucide-react";
+import { CalendarDays, Check, Circle, ExternalLink, Save } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
+import { getDocketViewState } from "./docket-state";
 
 type Profile = { cause_list_name: string; enrolment_number: string; court_ids: string[] };
+type ProfileResponse = {
+  profile: Profile | null;
+  advocate_profile?: { name?: string | null; bar_number?: string | null } | null;
+  tracked_cases_count?: number;
+};
 type HierarchyItem = Record<string, string>;
+const OFFICIAL_CAUSE_LIST_URL = "https://services.ecourts.gov.in/ecourtindia_v6/?p=cause_list/index";
+
+function courtLabel(value: string): string {
+  try {
+    const court = JSON.parse(value) as Record<string, string>;
+    return [
+      court.court && court.court_no ? `${court.court} ${court.court_no}` : court.court,
+      court.complex_code,
+      court.district_code,
+      court.state,
+    ].filter(Boolean).join(" · ") || "Selected court";
+  } catch {
+    return value || "Selected court";
+  }
+}
+
 const hierarchyItems = (value: unknown): HierarchyItem[] => {
   if (!value || typeof value !== "object") return [];
   const wrapper = value as { data?: unknown; items?: unknown; states?: unknown; districts?: unknown; complexes?: unknown; courts?: unknown; results?: unknown };
@@ -26,17 +49,19 @@ type Schedule = {
 export default function DocketView() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [profile, setProfile] = useState<Profile>({ cause_list_name: "", enrolment_number: "", court_ids: [] });
   const [stateCode, setStateCode] = useState("");
   const [districtCode, setDistrictCode] = useState("");
   const [complexCode, setComplexCode] = useState("");
+  const [courtPickerEnabled, setCourtPickerEnabled] = useState(false);
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [nameMatchMode, setNameMatchMode] = useState<"phrase" | "fuzzy">("phrase");
   const [suggestionError, setSuggestionError] = useState("");
   const isAdvocate = user?.role === "advocate" || user?.role === "lawyer";
   const profileQuery = useQuery({
     queryKey: ["docket-profile", user?.id],
-    queryFn: () => apiFetch("/docket/profile").then((value) => value as { profile: Profile | null }),
+    queryFn: () => apiFetch("/docket/profile").then((value) => value as ProfileResponse),
     enabled: !!isAdvocate,
   });
   const scheduleQuery = useQuery({
@@ -51,14 +76,20 @@ export default function DocketView() {
     enabled: !!isAdvocate && enabled,
     staleTime: 60 * 60 * 1000,
   });
-  const statesQuery = useQuery(courtStructure("states"));
-  const districtsQuery = useQuery(courtStructure(`states/${stateCode}/districts`, !!stateCode));
-  const complexesQuery = useQuery(courtStructure(`states/${stateCode}/districts/${districtCode}/complexes`, !!stateCode && !!districtCode));
-  const courtsQuery = useQuery(courtStructure(`states/${stateCode}/districts/${districtCode}/complexes/${complexCode}/courts`, !!stateCode && !!districtCode && !!complexCode));
+  const statesQuery = useQuery(courtStructure("states", courtPickerEnabled));
+  const districtsQuery = useQuery(courtStructure(`states/${stateCode}/districts`, courtPickerEnabled && !!stateCode));
+  const complexesQuery = useQuery(courtStructure(`states/${stateCode}/districts/${districtCode}/complexes`, courtPickerEnabled && !!stateCode && !!districtCode));
+  const courtsQuery = useQuery(courtStructure(`states/${stateCode}/districts/${districtCode}/complexes/${complexCode}/courts`, courtPickerEnabled && !!stateCode && !!districtCode && !!complexCode));
   useEffect(() => {
-    if (profileQuery.data?.profile) {
-      setProfile(profileQuery.data.profile);
-      const saved = profileQuery.data.profile.court_ids.map((value) => {
+    if (profileQuery.data) {
+      const savedProfile = profileQuery.data.profile;
+      const advocate = profileQuery.data.advocate_profile;
+      setProfile({
+        cause_list_name: savedProfile?.cause_list_name?.trim() || advocate?.name?.trim() || user?.name || "",
+        enrolment_number: savedProfile?.enrolment_number?.trim() || advocate?.bar_number?.trim() || "",
+        court_ids: savedProfile?.court_ids ?? [],
+      });
+      const saved = (savedProfile?.court_ids ?? []).map((value) => {
         try { return JSON.parse(value) as Record<string, string>; } catch { return null; }
       }).find((value) => value);
       if (saved) {
@@ -67,7 +98,7 @@ export default function DocketView() {
         setComplexCode(saved.complex_code ?? "");
       }
     }
-  }, [profileQuery.data]);
+  }, [profileQuery.data, user?.name]);
   const save = useMutation({
     mutationFn: () => apiFetch("/docket/profile", { method: "PUT", body: JSON.stringify(profile) }),
     onSuccess: () => {
@@ -108,6 +139,20 @@ export default function DocketView() {
   };
   const resetCourts = () => setProfile((p) => ({ ...p, court_ids: [] }));
   const submit = (event: FormEvent) => { event.preventDefault(); save.mutate(); };
+  const focusFormField = (id: string) => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    container.scrollIntoView({ behavior: "smooth", block: "center" });
+    const target = container.matches("input, select, button")
+      ? container
+      : container.querySelector<HTMLElement>("input, select, button");
+    target?.focus({ preventScroll: true });
+  };
+  const firstIncompleteField = () => {
+    if (!profile.cause_list_name.trim()) return "docket-name";
+    if (!profile.enrolment_number.trim()) return "docket-enrolment";
+    return "docket-courts";
+  };
   const matterTitle = (matter: Record<string, unknown>) => {
     const title = matter.title;
     if (typeof title === "string" && title.trim()) return title;
@@ -119,6 +164,12 @@ export default function DocketView() {
 
   if (!isAdvocate) return <main className="mx-auto max-w-3xl p-6"><h1 className="text-2xl font-semibold">DocketView</h1><p className="mt-3 text-muted-foreground">This daily cause list is available to advocates.</p></main>;
   const schedule = scheduleQuery.data;
+  const docketState = getDocketViewState(profileQuery.data?.profile ?? null, schedule ?? null);
+  const watchedCourts = (profileQuery.data?.profile?.court_ids ?? []).map(courtLabel);
+  const trackedCasesCount = profileQuery.data?.tracked_cases_count ?? 0;
+  const lastUpdated = schedule?.fetched_at
+    ? new Date(schedule.fetched_at).toLocaleString()
+    : null;
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 p-4 pb-24 md:p-8" data-testid="docket-view">
       <header className="flex items-start gap-3">
@@ -128,9 +179,9 @@ export default function DocketView() {
       <section className="rounded-xl border border-border bg-card p-4 md:p-6">
         <h2 className="mb-4 font-semibold">Advocate cause-list profile</h2>
         <form onSubmit={submit} className="space-y-4">
-          <label className="block text-sm">Name as it appears in cause lists<input required minLength={2} maxLength={160} className="mt-1 w-full rounded-md border border-input bg-background p-2" value={profile.cause_list_name} onChange={(e) => setProfile({ ...profile, cause_list_name: e.target.value })} /></label>
-          <label className="block text-sm">Enrolment number<input required minLength={2} maxLength={80} className="mt-1 w-full rounded-md border border-input bg-background p-2" value={profile.enrolment_number} onChange={(e) => setProfile({ ...profile, enrolment_number: e.target.value })} /></label>
-          <fieldset className="space-y-3">
+          <label className="block text-sm">Name as it appears in cause lists<input id="docket-name" required minLength={2} maxLength={160} className="mt-1 w-full rounded-md border border-input bg-background p-2" value={profile.cause_list_name} onChange={(e) => setProfile({ ...profile, cause_list_name: e.target.value })} /></label>
+          <label className="block text-sm">Enrolment number<input id="docket-enrolment" required minLength={2} maxLength={80} className="mt-1 w-full rounded-md border border-input bg-background p-2" value={profile.enrolment_number} onChange={(e) => setProfile({ ...profile, enrolment_number: e.target.value })} /></label>
+          <fieldset id="docket-courts" onFocusCapture={() => setCourtPickerEnabled(true)} className="space-y-3">
             <legend className="mb-2 text-sm">Court locations</legend>
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="text-sm">State<select className="mt-1 w-full rounded border border-input bg-background p-2" value={stateCode} onChange={(e) => { setStateCode(e.target.value); setDistrictCode(""); setComplexCode(""); resetCourts(); }}><option value="">Select state</option>{statesQuery.data?.map((item) => <option key={item.state} value={item.state}>{item.stateName}</option>)}</select></label>
@@ -180,29 +231,80 @@ export default function DocketView() {
         </section>
       )}
       <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 md:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-semibold">Today · {schedule?.today.date ?? "…"}</h2>
-          <p className="text-xs text-muted-foreground">Tomorrow · {schedule?.tomorrow.date ?? "…"}</p>
+        <div className="mt-4 space-y-3">
+          {profileQuery.isLoading || scheduleQuery.isLoading ? <p className="text-sm">Checking cause-list status…</p> : null}
+          {!profileQuery.isLoading && docketState === "setup" && (
+            <div className="space-y-4" data-testid="docket-setup-state">
+              <p className="text-sm">Complete these steps to set up your cause list.</p>
+              <Button type="button" onClick={() => focusFormField(firstIncompleteField())}>Set up my cause list</Button>
+              <ul className="space-y-3">
+                <li className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3">
+                  <div className="flex min-w-0 items-start gap-2">
+                    {profile.cause_list_name.trim() && profile.enrolment_number.trim()
+                      ? <Check aria-label="Done" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                      : <Circle aria-label="Not done" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+                    <div><p className="text-sm font-medium">Add your enrolment number</p><p className="text-xs text-muted-foreground">Also confirm your name as it appears on the cause list.</p></div>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => focusFormField(!profile.cause_list_name.trim() ? "docket-name" : "docket-enrolment")}>Add details</Button>
+                </li>
+                <li className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3">
+                  <div className="flex min-w-0 items-start gap-2">
+                    {profile.court_ids.some((court) => court.trim())
+                      ? <Check aria-label="Done" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                      : <Circle aria-label="Not done" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+                    <p className="text-sm font-medium">Choose your courts</p>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => focusFormField("docket-courts")}>Choose courts</Button>
+                </li>
+                <li className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-3">
+                  <div className="flex min-w-0 items-start gap-2">
+                    {trackedCasesCount > 0
+                      ? <Check aria-label="Done" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                      : <Circle aria-label="Not done" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+                    <div><p className="text-sm font-medium">Track a case by CNR <span className="font-normal text-muted-foreground">(optional)</span></p>
+                      {trackedCasesCount > 0 && <p className="text-xs text-muted-foreground">{trackedCasesCount} active case{trackedCasesCount === 1 ? "" : "s"} tracked</p>}</div>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => setLocation("/cnr-tracker")}>Track a case</Button>
+                </li>
+              </ul>
+            </div>
+          )}
+          {!profileQuery.isLoading && docketState === "pending" && (
+            <div className="space-y-3" data-testid="docket-pending-state">
+              <p className="text-sm">Your cause list will appear after the next update at 06:00 or 12:00 IST.</p>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Courts being watched</p>
+                  <ul className="mt-1 space-y-1 text-sm">{watchedCourts.map((court, index) => <li key={`${court}-${index}`}>{court}</li>)}</ul>
+                </div>
+                <Button type="button" variant="link" className="h-auto px-0" onClick={() => focusFormField("docket-courts")}>Edit courts</Button>
+              </div>
+            </div>
+          )}
+          {!profileQuery.isLoading && docketState === "error" && (
+            <p role="alert" className="text-sm text-destructive" data-testid="docket-error-state">
+              {schedule?.message ?? "The cause-list source could not be reached. The next scheduled update will retry."}
+            </p>
+          )}
+          {!profileQuery.isLoading && docketState === "empty" && (
+            <p className="text-sm" data-testid="docket-empty-state">
+              No listings found for you today{lastUpdated ? ` · Last updated ${lastUpdated}` : ""}.
+            </p>
+          )}
+          {!profileQuery.isLoading && docketState === "matters" && (["today", "tomorrow"] as const).map((period) => {
+            const list = schedule?.[period];
+            if (!list?.matters.length) return null;
+            return <div key={period} className="mt-3">
+              <h3 className="text-sm font-semibold">{period === "today" ? "Today" : "Tomorrow"}’s matters</h3>
+              {list.matters.map((matter, index) => <article key={`${String(matter.cnr ?? "matter")}-${index}`} className="mt-2 rounded-lg border border-border bg-background p-3 text-sm">
+                <strong>{matterTitle(matter)}</strong>
+                <p className="text-xs text-muted-foreground">{String(matter.cnr ?? "")} · {String(matter.courtName ?? matter.court_name ?? "")} · {String(matter.courtNo ?? matter.court_no ?? "")}</p>
+              </article>)}
+            </div>;
+          })}
+          {scheduleQuery.isError && <p role="alert" className="text-sm text-destructive">Could not check cause-list status. Try again later.</p>}
+          <a className="inline-flex items-center gap-1 text-sm text-primary underline" href={schedule?.source_url ?? OFFICIAL_CAUSE_LIST_URL} target="_blank" rel="noreferrer">Open official eCourts cause list <ExternalLink className="h-3 w-3" /></a>
         </div>
-        {scheduleQuery.isLoading ? <p className="mt-4 text-sm">Checking court list status…</p> : (
-          <div className="mt-4 space-y-3">
-            <p className="text-sm">{schedule?.message ?? "Cause-list source status unavailable."}</p>
-            <p className="text-xs text-muted-foreground">No fetch time yet{schedule?.fetched_at ? ` · last checked ${new Date(schedule.fetched_at).toLocaleString()}` : ""}. Lists appear only after a verified source is connected.</p>
-            {(["today", "tomorrow"] as const).map((period) => {
-              const list = schedule?.[period];
-              return <div key={period} className="mt-3">
-                <h3 className="text-sm font-semibold">{period === "today" ? "Today" : "Tomorrow"}’s matters</h3>
-                {!list?.published && schedule?.source_status === "connected" ? <p className="text-sm text-muted-foreground">Not published yet.</p> : null}
-                {list?.matters.map((matter, index) => <article key={`${String(matter.cnr ?? "matter")}-${index}`} className="mt-2 rounded-lg border border-border bg-background p-3 text-sm">
-                  <strong>{matterTitle(matter)}</strong>
-                  <p className="text-xs text-muted-foreground">{String(matter.cnr ?? "")} · {String(matter.courtName ?? matter.court_name ?? "")} · {String(matter.courtNo ?? matter.court_no ?? "")}</p>
-                </article>)}
-              </div>;
-            })}
-            {schedule?.source_url && <a className="inline-flex items-center gap-1 text-sm text-primary underline" href={schedule.source_url} target="_blank" rel="noreferrer">Open official eCourts cause list <ExternalLink className="h-3 w-3" /></a>}
-            {scheduleQuery.isError && <p role="alert" className="text-sm text-destructive">Could not check cause-list status. Try again later.</p>}
-          </div>
-        )}
       </section>
     </main>
   );

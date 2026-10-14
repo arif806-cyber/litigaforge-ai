@@ -16,6 +16,7 @@ import { apiFetch } from "@/lib/api";
 import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-connect-v2";
 import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
 import { SegmentedControl } from "@/components/mobile-primitives";
+import { initialAuthMode } from "@/lib/auth-mode";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
   IN: { badge: "Legal tools for advocates", heading: "Legal tools\nbuilt for your practice.", sub: "Track cases, research Indian judgments, analyze documents, and manage advocate work in one platform.", trust: "Bar enrolment checked by LitigaForge where an advocate is admin-verified" },
@@ -40,7 +41,7 @@ export default function Login() {
   const headingLines = copy.heading.split("\n");
 
   const [role, setRole] = useState<Role>("client");
-  const [mode, setMode] = useState<Mode>(() => window.location.pathname.endsWith("/register") ? "signup" : "signin");
+  const [mode, setMode] = useState<Mode>(() => initialAuthMode(window.location.pathname));
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

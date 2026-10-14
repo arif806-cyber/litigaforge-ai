@@ -165,3 +165,409 @@ mtime_ms = 1791809185489
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/31495040-4f7d-4e98-acc8-ca3522f36239/901ce865-7f42-4cef-8f17-d3a4227d802c"
 storage_version_token = "1791809197770594"
 content_type = "image/png"
+
+[[outputs]]
+id = "NYnTMuj_NnULTWPok3XXH"
+uri = "file://screenshots/litigaforge-lawyers-360-direct.png"
+type = "image"
+title = "Lawyer directory — 360px"
+description = "Fresh Chromium capture of the public directory at 360px."
+logical_id = "44e0a8bc-04f6-46ef-8138-96383e7b3b81"
+content_hash = "sha256:66aa7e4bbf5b448fda75ee6cdca81ccf25a0ae973cd0292878047572e1b01825"
+size = 110210
+mtime_ms = 1791917719566
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/44e0a8bc-04f6-46ef-8138-96383e7b3b81/eac0eff8-0e53-480a-bc28-a5a925b684c3"
+storage_version_token = "1791918192710848"
+content_type = "image/png"
+
+[[outputs]]
+id = "DPVCNb_xCKyfnNcEL6c-F"
+uri = "file://screenshots/litigaforge-lawyers-412-direct.png"
+type = "image"
+title = "Lawyer directory — 412px"
+description = "Fresh Chromium capture of the public directory at 412px."
+logical_id = "8aba3eaf-d61a-4330-ba9f-493d6f0bdca0"
+content_hash = "sha256:2b13ab4c72fd9866b392fdb558a5223303830ee3f99e5ce88a565e2bc825c799"
+size = 108404
+mtime_ms = 1791917724397
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/8aba3eaf-d61a-4330-ba9f-493d6f0bdca0/080fba30-cb5b-4fac-85dc-8a55975aafcc"
+storage_version_token = "1791918194007334"
+content_type = "image/png"
+
+[[outputs]]
+id = "NwpqFWwhghsO7esl6rpU2"
+uri = "file://screenshots/advocate-registration-verify-360-light.png"
+type = "image"
+title = "Advocate registration — 360px, light"
+description = "Email-verification gate; test fixture only, no email was sent."
+logical_id = "6cf3d11c-53e7-4c92-964c-654e374cea58"
+content_hash = "sha256:1596f86d2862b6d71f118cf4c43523fab963a0bc62d9a10436640475b64eb658"
+size = 32921
+mtime_ms = 1791917899082
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/6cf3d11c-53e7-4c92-964c-654e374cea58/66ca19fb-5c0d-4a70-a779-80c0eb7cb223"
+storage_version_token = "1791918195218577"
+content_type = "image/png"
+
+[[outputs]]
+id = "q8Zq936NNxrZDmsJBCnrf"
+uri = "file://screenshots/advocate-registration-verify-360-dark.png"
+type = "image"
+title = "Advocate registration — 360px, dark"
+description = "Email-verification gate; test fixture only, no email was sent."
+logical_id = "aff47d34-72ef-4786-8e45-9a324f9a9536"
+content_hash = "sha256:0276ea1d798f9d32cc8aecb465171d204a2a2521a202edf299e194893b356dcd"
+size = 33642
+mtime_ms = 1791917901634
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/aff47d34-72ef-4786-8e45-9a324f9a9536/beb8dd5e-034f-4ab1-b05c-213fe69887e9"
+storage_version_token = "1791918196605251"
+content_type = "image/png"
+
+[[outputs]]
+id = "U9e7MqYxA-tnSYD99fGiE"
+uri = "file://screenshots/advocate-registration-verify-412-light.png"
+type = "image"
+title = "Advocate registration — 412px, light"
+description = "Email-verification gate; test fixture only, no email was sent."
+logical_id = "e995d018-0912-459c-bfcb-64393fdd2f20"
+content_hash = "sha256:49b72e376d8946305e31a896151370008ee33884c2084ad5bea8675acbb69aac"
+size = 32651
+mtime_ms = 1791917904358
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/e995d018-0912-459c-bfcb-64393fdd2f20/1a9dfe8d-8e70-42a3-8ece-72003bc2fc2e"
+storage_version_token = "1791918197799172"
+content_type = "image/png"
+
+[[outputs]]
+id = "7gyqstCuMHzImjh8felT8"
+uri = "file://screenshots/advocate-registration-verify-412-dark.png"
+type = "image"
+title = "Advocate registration — 412px, dark"
+description = "Email-verification gate; test fixture only, no email was sent."
+logical_id = "bd46b5e4-3a55-4bea-bcdc-47ee4bad26e5"
+content_hash = "sha256:046b6b8c6bde5564a360aa5a0ee56231a3cac2964109fc8d7e0738d255877caf"
+size = 33233
+mtime_ms = 1791917907110
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/bd46b5e4-3a55-4bea-bcdc-47ee4bad26e5/6ec4bb8d-79cf-43fa-a6a9-4e03ad6891be"
+storage_version_token = "1791918199019656"
+content_type = "image/png"
+
+[[outputs]]
+id = "dMB8wRdLXrVqv6Ka8zkSO"
+uri = "file://screenshots/litigaforge-login-360-light.jpg"
+type = "image"
+title = "LitigaForge login — 360px, light"
+description = "Mobile login screen captured in fresh local Chromium at 360px."
+logical_id = "40675bc2-395a-4b74-bfc9-f313609db12a"
+content_hash = "sha256:1bd737536eef3458a0dc835f4efe8e6e922faf17960c3079efc40bb8c0e21abf"
+size = 37141
+mtime_ms = 1791918958661
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/40675bc2-395a-4b74-bfc9-f313609db12a/72d4331c-48d4-49d5-bb2b-396e24bf7de5"
+storage_version_token = "1791919054456706"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "flCn8KKO6c7pHkuGSdw8M"
+uri = "file://screenshots/litigaforge-login-360-dark.jpg"
+type = "image"
+title = "LitigaForge login — 360px, dark"
+description = "Mobile login screen captured in fresh local Chromium at 360px."
+logical_id = "61a6f774-af6a-46cb-a91a-fcc0fab42def"
+content_hash = "sha256:7ef71dda9137f3dad18bff574827bba401f82de9eef4a509835ddbcc30ee5e72"
+size = 35529
+mtime_ms = 1791918960077
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/61a6f774-af6a-46cb-a91a-fcc0fab42def/a2203c38-4100-4561-8715-c95f53b05dc1"
+storage_version_token = "1791919055698031"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "uW_sCNMQT7V2VUwFCuKwx"
+uri = "file://screenshots/litigaforge-login-412-light.jpg"
+type = "image"
+title = "LitigaForge login — 412px, light"
+description = "Mobile login screen captured in fresh local Chromium at 412px."
+logical_id = "74556457-6c58-401b-978d-eae80f819382"
+content_hash = "sha256:0769afea605c6890adc4bf82b6319918ae5ba74d633ac05395bc88ed579f7b73"
+size = 39100
+mtime_ms = 1791918961509
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/74556457-6c58-401b-978d-eae80f819382/713d3ceb-72d8-420b-bbce-b9ba4edfbc4b"
+storage_version_token = "1791919057593308"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "xNCF9v8Uj9rmDOAOQsybG"
+uri = "file://screenshots/litigaforge-login-412-dark.jpg"
+type = "image"
+title = "LitigaForge login — 412px, dark"
+description = "Mobile login screen captured in fresh local Chromium at 412px."
+logical_id = "f594c68a-61ba-4eff-be32-85237ebb0475"
+content_hash = "sha256:14ab7eac0f6a70f2d0d11c412ebae86f468d00ff77169197c06c004d98ba6439"
+size = 37174
+mtime_ms = 1791918962909
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/f594c68a-61ba-4eff-be32-85237ebb0475/ca9b4e62-7e78-43b0-b5e6-40f623314501"
+storage_version_token = "1791919058815014"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "RpNbi3vFxjS-rqJ2qz3UM"
+uri = "file://generated-artifacts/litigaforge-mobile/390-login-light.png"
+type = "image"
+title = "LitigaForge mobile login — 390px, light"
+description = "Fresh Chromium screenshot of the login screen at 390px wide in light mode."
+logical_id = "358e604e-52ca-4110-9f2d-ddcf4cb2b176"
+content_hash = "sha256:d1e2fb31204fb6e7f02b6dfee989026a41d5c37355650824620f554d5d3f5244"
+size = 54068
+mtime_ms = 1791919905065
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/358e604e-52ca-4110-9f2d-ddcf4cb2b176/e152ec24-f1f0-4944-be64-9f63923c09f5"
+storage_version_token = "1791920221085693"
+content_type = "image/png"
+
+[[outputs]]
+id = "tNQNVFYR1i0GOO-pP18ZZ"
+uri = "file://generated-artifacts/litigaforge-mobile/390-login-dark.png"
+type = "image"
+title = "LitigaForge mobile login — 390px, dark"
+description = "Fresh Chromium screenshot of the login screen at 390px wide in dark mode."
+logical_id = "88dc3c57-5635-41ad-91df-8c541ee3ab10"
+content_hash = "sha256:7442fce920d706928f3c2d0e9951d837db82f5b72fc1ec4e14595c946790a918"
+size = 52707
+mtime_ms = 1791919860657
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/88dc3c57-5635-41ad-91df-8c541ee3ab10/b5e8ff8e-617c-45e6-a85d-9b5bb23038c3"
+storage_version_token = "1791920222342861"
+content_type = "image/png"
+
+[[outputs]]
+id = "tjS7xiBbocVEk5hbVX9Bk"
+uri = "file://generated-artifacts/litigaforge-mobile/390-judgments-light.png"
+type = "image"
+title = "LitigaForge Judgment Finder — 390px, light"
+description = "Fresh local Chromium screenshot; the recent-judgments panel is still loading in this unauthenticated preview."
+logical_id = "92606f3c-82a5-4966-a99a-f2bbbb275f48"
+content_hash = "sha256:1b69f0da87eef3e3bed1e752da28e36c36f41b94a347553211707cd32f287131"
+size = 190582
+mtime_ms = 1791920447658
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/92606f3c-82a5-4966-a99a-f2bbbb275f48/4459db04-3919-43d4-8446-5339429404c5"
+storage_version_token = "1791920549192408"
+content_type = "image/png"
+
+[[outputs]]
+id = "WwuvvHmlScF6WpSWBRY6E"
+uri = "file://generated-artifacts/litigaforge-mobile/390-judgments-dark.png"
+type = "image"
+title = "LitigaForge Judgment Finder — 390px, dark"
+description = "Fresh local Chromium screenshot; the recent-judgments panel is still loading in this unauthenticated preview."
+logical_id = "6b0b9583-92f4-46ae-865d-60d993c0eaaa"
+content_hash = "sha256:628f0b1a48425cda0cf91c3120a7fd72c5cda513048b706ded4bfe3f0175dd3a"
+size = 189476
+mtime_ms = 1791920449346
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/6b0b9583-92f4-46ae-865d-60d993c0eaaa/5f814940-4133-4a32-9195-b57263d82be1"
+storage_version_token = "1791920550496819"
+content_type = "image/png"
+
+[[outputs]]
+id = "XboOVYaFgGFBjohQuLleu"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-client-dashboard-light.png"
+type = "image"
+title = "Client dashboard — light"
+description = "390px mobile capture. Local-only demo fixture; authentication was not changed."
+logical_id = "8d025aea-1be7-47d4-95e3-8a95a3ccc0c3"
+content_hash = "sha256:2ca20bf494fe1885d052c02800defaf4b492ad06394fefc262d220b781262331"
+size = 107765
+mtime_ms = 1791921399609
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/8d025aea-1be7-47d4-95e3-8a95a3ccc0c3/17c1508b-4d85-4d40-af42-87e8842b28e2"
+storage_version_token = "1791921756659442"
+content_type = "image/png"
+
+[[outputs]]
+id = "a5pNqvOrxu2lzLc85GRCt"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-client-dashboard-dark.png"
+type = "image"
+title = "Client dashboard — dark"
+description = "390px mobile capture. Local-only demo fixture; authentication was not changed."
+logical_id = "20dfcd84-c1ca-4a28-9f84-afee799ca162"
+content_hash = "sha256:aa09195b9ed9abe574f99c816dd5786b2a302100a799c6e15c15d7bd1d9d9e35"
+size = 100758
+mtime_ms = 1791921403233
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/20dfcd84-c1ca-4a28-9f84-afee799ca162/41672beb-71d6-4774-b3a5-280c082fddb8"
+storage_version_token = "1791921757880753"
+content_type = "image/png"
+
+[[outputs]]
+id = "BW9pmyRMDFP96YdAi4PSM"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-advocate-dashboard-light.png"
+type = "image"
+title = "Advocate dashboard — light"
+description = "390px mobile capture. Local-only verified advocate fixture; authentication was not changed."
+logical_id = "c63c5794-0f43-4946-9f5d-f43121b8f386"
+content_hash = "sha256:027035c3d1ed2f656a4312ca004ef1fa0dee6171cec02963fa64cd2a4b3b3342"
+size = 91502
+mtime_ms = 1791921406821
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/c63c5794-0f43-4946-9f5d-f43121b8f386/4b3d8e6c-81cf-432b-b0f0-4dbbcd221e13"
+storage_version_token = "1791921759103698"
+content_type = "image/png"
+
+[[outputs]]
+id = "uIvMZkY3zW0bfjjf5D21O"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-advocate-dashboard-dark.png"
+type = "image"
+title = "Advocate dashboard — dark"
+description = "390px mobile capture. Local-only verified advocate fixture; authentication was not changed."
+logical_id = "d118c06b-dcd0-4f07-a66b-c9c172b0d552"
+content_hash = "sha256:b380cc8dc447745ec0277aa2adb02ed8b5274101a3d565248ff681c78491e0e0"
+size = 88149
+mtime_ms = 1791921410645
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/d118c06b-dcd0-4f07-a66b-c9c172b0d552/1ae57344-a9f2-4cf1-b338-1b96ad5c5c57"
+storage_version_token = "1791921760302909"
+content_type = "image/png"
+
+[[outputs]]
+id = "dzP5BXYg4xrXckHNlNE--"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-client-more-light.png"
+type = "image"
+title = "Client More sheet — light"
+description = "390px mobile capture. Local-only demo fixture; authentication was not changed."
+logical_id = "a69a9558-7209-40e9-b0f3-8d348cd53235"
+content_hash = "sha256:529e177e2b7ace39ac92f300d7c4d3b096c656ce5e98657979c0084e56abe1fd"
+size = 117180
+mtime_ms = 1791921400053
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/a69a9558-7209-40e9-b0f3-8d348cd53235/66263a21-d2e6-47d1-9fdf-2af4a481cf25"
+storage_version_token = "1791921761540886"
+content_type = "image/png"
+
+[[outputs]]
+id = "jnxWYZhVo5lfgrfg_3aV9"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-client-more-dark.png"
+type = "image"
+title = "Client More sheet — dark"
+description = "390px mobile capture. Local-only demo fixture; authentication was not changed."
+logical_id = "d030960f-6756-47d1-9b74-b59c2ddbbb88"
+content_hash = "sha256:a03c79fb0e290bd8bd6d2cddeda141490be1eeff86349bbce0f7d273e1b67a07"
+size = 115517
+mtime_ms = 1791921403685
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/d030960f-6756-47d1-9b74-b59c2ddbbb88/310d5643-7fc7-426f-b37c-debbc6be5c2a"
+storage_version_token = "1791921762829470"
+content_type = "image/png"
+
+[[outputs]]
+id = "IIiGddz-YNp9axTWjOlrZ"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-advocate-more-light.png"
+type = "image"
+title = "Advocate More sheet — light"
+description = "390px mobile capture. Local-only verified advocate fixture; authentication was not changed."
+logical_id = "8dfe4196-872f-4590-9665-3d6f9006610c"
+content_hash = "sha256:4fbb67738dee0db839c4969f84d4708492fe55674ee2fde5bf0cca2937bcc54f"
+size = 110075
+mtime_ms = 1791921407269
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/8dfe4196-872f-4590-9665-3d6f9006610c/fb90e97a-cd2b-4e29-a9b9-ef9153d578c4"
+storage_version_token = "1791921764006984"
+content_type = "image/png"
+
+[[outputs]]
+id = "ey9LPSDTFEzSq6ISvrWlZ"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-advocate-more-dark.png"
+type = "image"
+title = "Advocate More sheet — dark"
+description = "390px mobile capture. Local-only verified advocate fixture; authentication was not changed."
+logical_id = "4f4bcf3f-eb9e-48fb-8c82-1f97afeabed2"
+content_hash = "sha256:eda3d3965e246ccd048984cbe7b85399b1d4ddb76b583351a1c26591e842fac2"
+size = 109238
+mtime_ms = 1791921411113
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/4f4bcf3f-eb9e-48fb-8c82-1f97afeabed2/4f0f2c7a-c7fc-4882-853d-c25d2d126c04"
+storage_version_token = "1791921765173024"
+content_type = "image/png"
+
+[[outputs]]
+id = "60dYBth-1p8A4vxJPiD3i"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-client-settings-light.png"
+type = "image"
+title = "Settings — light"
+description = "390px mobile capture. Local-only client fixture; authentication was not changed."
+logical_id = "3e2f85dd-e5c1-454a-a815-78c7926cae84"
+content_hash = "sha256:69a79fe64d0ba45b4510836fd122428c9f2b37b70510b3a7ec104d3244518878"
+size = 62116
+mtime_ms = 1791921400989
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/3e2f85dd-e5c1-454a-a815-78c7926cae84/68742920-2875-4691-b4f3-8e1978a55028"
+storage_version_token = "1791921766438521"
+content_type = "image/png"
+
+[[outputs]]
+id = "z3bB4cRwecGCKcEZSut9k"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-client-settings-dark.png"
+type = "image"
+title = "Settings — dark"
+description = "390px mobile capture. Local-only client fixture; authentication was not changed."
+logical_id = "860867e8-8a65-4c17-a425-75ad5b126f65"
+content_hash = "sha256:e7bcffc8e2e821761d6f2675cff8778ec9cf680d8df0f66d6d72c16b3de895ce"
+size = 60069
+mtime_ms = 1791921404621
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/860867e8-8a65-4c17-a425-75ad5b126f65/ba223f88-824a-4925-b4ca-766239ee8840"
+storage_version_token = "1791921767669516"
+content_type = "image/png"
+
+[[outputs]]
+id = "mUpP6oecO2oyGRcKIuvCV"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-advocate-settings-light.png"
+type = "image"
+title = "Advocate settings — light"
+description = "390px mobile capture. Local-only verified advocate fixture; authentication was not changed."
+logical_id = "dfde28cd-5cf3-4744-aad4-b7a53f90f892"
+content_hash = "sha256:7e6a8ee578282170f1b70eefcf69a7a41e05cae433d62d04f7cbc1c1cd9953b3"
+size = 68252
+mtime_ms = 1791921408337
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/dfde28cd-5cf3-4744-aad4-b7a53f90f892/a0f27df3-2aeb-4544-8e4c-c1ce04c47e0e"
+storage_version_token = "1791921768890346"
+content_type = "image/png"
+
+[[outputs]]
+id = "FNS_1i1bUQtsfPswXqPP6"
+uri = "file://generated-artifacts/litigaforge-mobile/addendum2/390-advocate-settings-dark.png"
+type = "image"
+title = "Advocate settings — dark"
+description = "390px mobile capture. Local-only verified advocate fixture; authentication was not changed."
+logical_id = "a0c8bd7f-9d99-4be5-aa78-659ffbbf6e26"
+content_hash = "sha256:b5afc00830551accfb92a3683ac34cd651d50fbad1e66ec7617b5c9c010eb1aa"
+size = 66397
+mtime_ms = 1791921412101
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/a0c8bd7f-9d99-4be5-aa78-659ffbbf6e26/5de48f85-e7e6-4e11-bffc-ada28f18ec28"
+storage_version_token = "1791921770073412"
+content_type = "image/png"
+
+[[outputs]]
+id = "h22WK-2iCDCIr9_zYM0OO"
+uri = "file://generated-artifacts/mobile-review/client-dashboard-light-390.jpg"
+type = "image"
+title = "LitigaForge mobile dashboard — light mode, 390px"
+description = "Fresh 390px mobile screenshot of the client dashboard in light mode."
+logical_id = "7b0a9127-7cfc-450b-9ada-1ad55372aab1"
+content_hash = "sha256:bc7362758f338322d6fdd7b14870f59699e989df1b5297b15a2012e809b889b3"
+size = 38356
+mtime_ms = 1791925746531
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/7b0a9127-7cfc-450b-9ada-1ad55372aab1/b60f7cb1-ba7b-4b67-82b4-a45ca3de22e9"
+storage_version_token = "1791925834830872"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "RQL2DiAg9CUeffvPqPsg7"
+uri = "file://generated-artifacts/mobile-review/client-dashboard-dark-390.jpg"
+type = "image"
+title = "LitigaForge mobile dashboard — dark mode, 390px"
+description = "Fresh 390px mobile screenshot of the client dashboard in dark mode."
+logical_id = "02845cb7-ea81-4184-b897-1873ab84f68d"
+content_hash = "sha256:0092d97c9f91bc0a7935fa9aab424ef444aee5a232b08e73b11c71cde188e7b7"
+size = 37492
+mtime_ms = 1791925746531
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/02845cb7-ea81-4184-b897-1873ab84f68d/331f985b-2e62-4de3-b85b-b29fc28e9f51"
+storage_version_token = "1791925836129241"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "mB-92WItHijUT6pKBXc_e"
+uri = "file://generated-artifacts/mobile-review/more-sheet-390.jpg"
+type = "image"
+title = "LitigaForge More sheet — 390px"
+description = "Fresh 390px screenshot showing the four-column FeatureIcon grid in the More sheet."
+logical_id = "150a659d-0b91-4af3-b3ef-2596d868813e"
+content_hash = "sha256:2f0fc61b6460341af031e918d5d6122f69af38befe7c32441afda9ce3d7b6e4d"
+size = 44256
+mtime_ms = 1791925746531
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:5672aa28-effd-46a3-88fe-a3ec3abfa9c9/150a659d-0b91-4af3-b3ef-2596d868813e/94b7ae84-370b-4f95-abb7-6dc909f44656"
+storage_version_token = "1791925837386292"
+content_type = "image/jpeg"

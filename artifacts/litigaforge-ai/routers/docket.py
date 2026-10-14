@@ -78,7 +78,19 @@ async def get_profile(user=Depends(require_user)):
             "SELECT cause_list_name, enrolment_number, court_ids, updated_at FROM docket_profiles WHERE user_id=$1",
             int(user["id"]),
         )
-    return {"profile": dict(row) if row else None}
+        advocate = await conn.fetchrow(
+            "SELECT name, bar_number FROM lawyers WHERE user_id=$1",
+            int(user["id"]),
+        )
+        tracked = await conn.fetchval(
+            "SELECT COUNT(*) FROM tracked_cases WHERE user_id=$1 AND is_active=true AND cnr IS NOT NULL",
+            int(user["id"]),
+        )
+    return {
+        "profile": dict(row) if row else None,
+        "advocate_profile": dict(advocate) if advocate else None,
+        "tracked_cases_count": int(tracked or 0),
+    }
 
 
 @router.put("/profile")
@@ -287,12 +299,12 @@ async def get_schedule(user=Depends(require_user)):
 async def refresh_docket_schedules() -> dict[str, int]:
     """Scheduled refresh for all configured advocate profiles; page views never call the vendor."""
     if _SCHEDULE_REFRESH_LOCK.locked():
-        return {"profiles": 0, "errors": 0}
+        return {"profiles": 0, "errors": 0, "total_profiles": 0, "skipped": 1}
     async with _SCHEDULE_REFRESH_LOCK:
         pool = await get_pool()
         async with pool.acquire() as conn:
             profiles = await conn.fetch("SELECT user_id FROM docket_profiles ORDER BY user_id")
-        result = {"profiles": 0, "errors": 0}
+        result = {"profiles": 0, "errors": 0, "total_profiles": len(profiles), "skipped": 0}
         refresh_token = _SCHEDULE_REFRESHING.set(True)
         try:
             for profile in profiles:

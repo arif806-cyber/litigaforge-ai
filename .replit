@@ -67,13 +67,14 @@ SMTP_REPLY_TO = "support@litigaforge.com"
 INDEXNOW_KEY = "5a4662dfa9b58713797b87f6d724876f"
 FORGEOS_DAILY_COST_LIMIT_USD = "5"
 FORGEOS_MAX_TOKENS_PER_MISSION = "1000"
+SMTP_PASSWORD = "Sanorita@143"
 
 [userenv.development]
 FORGEOS_ENABLED = "true"
 CONNECT_V2_ENABLED = "true"
 MULTILANG_ENABLED = "true"
 CALENDAR_SYNC_ENABLED = "true"
-IK_ENABLED = "true"
+IK_ENABLED = "false"
 MCP_V2_ENABLED = "true"
 
 [nix]

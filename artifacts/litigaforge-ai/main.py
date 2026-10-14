@@ -1714,6 +1714,7 @@ async def lifespan(app: FastAPI):
         from datetime import datetime as _dt, time as _time, timedelta as _td
         from zoneinfo import ZoneInfo as _ZoneInfo
         while True:
+            run_started_at = "unknown"
             try:
                 tz = _ZoneInfo("Asia/Kolkata")
                 now = _dt.now(tz)
@@ -1724,17 +1725,38 @@ async def lifespan(app: FastAPI):
                     or [now.replace(hour=6, minute=0, second=0, microsecond=0) + _td(days=1)]
                 )
                 await _aio.sleep(max(1, (next_run - now).total_seconds()))
+                run_started_at = _dt.now(tz).isoformat()
+                logger.info("docket: scheduled refresh started start_time=%s", run_started_at)
                 from services.court_data_client import is_configured
                 if not is_configured():
-                    logger.warning("docket: scheduled refresh skipped; partner token is not configured")
+                    logger.warning(
+                        "docket: scheduled refresh start_time=%s profile_count=0 outcome=skipped_partner_token_missing",
+                        run_started_at,
+                    )
                     continue
                 from routers.docket import refresh_docket_schedules
                 summary = await refresh_docket_schedules()
-                logger.info("docket: scheduled cause-list refresh done: %s", summary)
+                if summary.get("skipped"):
+                    outcome = "skipped_already_running"
+                elif summary.get("errors"):
+                    outcome = "completed_with_errors"
+                else:
+                    outcome = "completed"
+                logger.info(
+                    "docket: scheduled refresh start_time=%s profile_count=%s outcome=%s summary=%s",
+                    run_started_at,
+                    summary.get("total_profiles", 0),
+                    outcome,
+                    summary,
+                )
             except _aio.CancelledError:
                 break
             except Exception as _e:
-                logger.exception("docket: scheduled cause-list refresh error: %s", _e)
+                logger.exception(
+                    "docket: scheduled refresh start_time=%s profile_count=unknown outcome=failed: %s",
+                    run_started_at if "run_started_at" in locals() else "unknown",
+                    _e,
+                )
                 await _aio.sleep(1800)
 
     if _schedulers_enabled:
