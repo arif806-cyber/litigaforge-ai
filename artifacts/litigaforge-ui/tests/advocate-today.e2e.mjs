@@ -128,6 +128,12 @@ try {
         await page.locator(".lf-mobile-research-header [data-title-align=left]").getByText("Research", { exact: true }).first().waitFor();
         const researchTabs = page.getByTestId("advocate-tabs-research");
         for (const label of ["Judgments", "AI drafting", "Q&A", "Workspace"]) await researchTabs.getByText(label, { exact: true }).waitFor();
+        const tabsGeometry = await page.evaluate(() => {
+          const header = document.querySelector(".lf-mobile-research-header")?.getBoundingClientRect();
+          const tabs = document.querySelector('[data-testid="advocate-tabs-research"]')?.getBoundingClientRect();
+          return header && tabs ? { headerBottom: header.bottom, tabsTop: tabs.top, tabsHeight: tabs.height } : null;
+        });
+        assert.ok(tabsGeometry && tabsGeometry.tabsHeight >= 40 && Math.abs(tabsGeometry.tabsTop - tabsGeometry.headerBottom) <= 1, `Research tabs should sit directly below the title (geometry=${JSON.stringify(tabsGeometry)})`);
         const promoBelowContent = await page.evaluate(() => {
           const content = document.querySelector('[data-testid="section-search"]')?.getBoundingClientRect();
           const promo = document.querySelector('[data-testid="forge-workspace-promo"]')?.getBoundingClientRect();

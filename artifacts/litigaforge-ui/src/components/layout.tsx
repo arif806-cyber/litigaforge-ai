@@ -64,7 +64,7 @@ function AdvocateGroupTabs({ location }: { location: string }) {
   const group = advocateTabGroups.find(({ matches }) => matches.some((path) => location === path || location.startsWith(`${path}/`)));
   if (!group) return null;
   return (
-    <nav aria-label={`${group.key} sections`} data-testid={`advocate-tabs-${group.key}`} className="flex gap-1 overflow-x-auto border-b border-border px-4 md:px-8">
+    <nav aria-label={`${group.key} sections`} data-testid={`advocate-tabs-${group.key}`} className="flex flex-shrink-0 gap-1 overflow-x-auto border-b border-border px-4 md:px-8">
       {group.tabs.map((tab) => {
         const active = location === tab.href || location.startsWith(`${tab.href}/`);
         return <Link key={tab.href} href={tab.href} aria-current={active ? "page" : undefined}
