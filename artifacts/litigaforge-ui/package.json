@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "vite build --config vite.config.ts && node scripts/inject-seo.mjs",
+    "build": "vite build --config vite.config.ts && node scripts/inject-seo.mjs && node scripts/verify-dist.mjs",
     "serve": "node server.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:visual-colors": "node scripts/check-visual-colors.mjs",

@@ -6,6 +6,7 @@ import pinoHttp from "pino-http";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import router from "./routes";
+import { missingFrontendAssets } from "./lib/frontendAssets";
 import { logger } from "./lib/logger";
 import { BLOG_REDIRECTS } from "./lib/blogRedirects";
 import { isTrustedBrowserOrigin } from "./lib/origins";
@@ -563,8 +564,10 @@ if (true) { // serve frontend in both dev and production when dist exists
 
     // Read index.html once at startup and inject correct meta tags
     let _indexHtml: string;
+    let _missingAssets: () => string[] = () => [];
     try {
       const _raw = readFileSync(resolve(_frontendDist, "index.html"), "utf-8");
+      _missingAssets = () => missingFrontendAssets(_raw, _frontendDist);
       _indexHtml = _raw
         .replace(
           /<title>.*?<\/title>/,
@@ -1299,7 +1302,7 @@ if (true) { // serve frontend in both dev and production when dist exists
     // Returns null for non-judgment paths or when the judgment can't be found,
     // so callers fall back to the generic route/index HTML.
     const _judgmentBotHtml = async (reqPath: string): Promise<string | null> => {
-      if (!_indexHtml) return null;
+      if (!_indexHtml || _missingAssets().length > 0) return null;
       let bare = _stripCountry(reqPath);
       if (bare.length > 1) bare = bare.replace(/\/+$/, "");
       const m = bare.match(/^\/judgments\/([^/]+)\/(\d{4})\/([^/]+)$/);
@@ -1428,6 +1431,19 @@ if (true) { // serve frontend in both dev and production when dist exists
 
     if (_indexHtml) {
       const _sendIndex = (req: express.Request, res: express.Response): void => {
+        const missingAssets = _missingAssets();
+        if (missingAssets.length > 0) {
+          logger.error(
+            { path: req.path, missingAssets },
+            "Frontend index references missing bundles — refusing to serve it",
+          );
+          res
+            .status(503)
+            .set("Cache-Control", "no-store")
+            .type("text/plain")
+            .send("Frontend assets are unavailable. Please retry shortly.");
+          return;
+        }
         const path = req.path.toLowerCase();
         const barePath = _stripCountry(path).replace(/\/+$/, "") || "/";
         const knownPaths = new Set([
