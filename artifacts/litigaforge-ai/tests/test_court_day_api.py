@@ -193,7 +193,7 @@ def test_brief_is_owner_only_and_built_from_stored_data(api):
         assert brief["next_date"] == "2026-10-19" and brief["judge"] == "Hon'ble Justice A"
         assert [o["date"] for o in brief["last_orders"]] == ["2026-10-02", "2026-09-18"]
         assert {"old": "CrPC s.439", "new": "BNSS s.483"} == {k: brief["law"][0][k] for k in ("old", "new")}
-        assert brief["checklist"] and brief["data_as_of"]
+        assert brief["checklist"] and brief["data_as_of"].endswith("+05:30")
         assert (await as_user("b").get(f"/court-day/brief/{case_id}")).status_code == 404
         async with pool.acquire() as conn:
             await conn.execute("DELETE FROM tracked_cases WHERE user_id=$1", uid)

@@ -149,3 +149,10 @@ def test_alert_text_never_reveals_private_matters():
     title, body = cd.alert_message({**watcher(1, 17, sensitive=True, title="K. Lakshmi v. K. Ramesh"), "ahead": 0}, 17)
     assert "Lakshmi" not in title + body and "Your matter" in body
     assert title == "Your matter is being heard in Court 4"
+
+
+def test_court_label_prefers_the_advocates_wording_and_drops_generic_names():
+    assert cd.court_label("Telangana HC", "Court") == "Telangana HC"
+    assert cd.court_label("", "Principal District Judge, Hyderabad") == "Principal District Judge, Hyderabad"
+    assert cd.court_label(None, "Court") is None
+    assert cd.court_label("  court ", None) is None

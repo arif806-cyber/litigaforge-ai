@@ -131,10 +131,10 @@ export function CourtBoardCard({
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-xs text-[#E9E4D9]">
             <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {board ? `Updated ${ago(board.minutes_ago)}` : "Shared by advocates"}
+            {board ? `Updated ${ago(board.minutes_ago)}` : "No updates yet"}
           </p>
           <p className="mt-0.5 truncate text-[11px] text-[#9C988F]">
-            {board ? `by ${board.advocates === 1 ? "1 advocate" : `${board.advocates} advocates`} in court` : "in the court hall"}
+            {board ? `by ${board.advocates === 1 ? "1 advocate" : `${board.advocates} advocates`} in court` : "from advocates in court"}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">

@@ -98,6 +98,18 @@ def _parse_day(value: Any) -> date | None:
     return None
 
 
+_GENERIC_COURT = {"court", "courts", "court no", "court number", "-", ""}
+
+
+def court_label(entered: Any, listed: Any) -> str | None:
+    """The court name to show: the advocate's own wording first, else the cause list's, never a bare 'Court'."""
+    for value in (entered, listed):
+        text = re.sub(r"\s+", " ", str(value or "")).strip()
+        if text.casefold() not in _GENERIC_COURT:
+            return text
+    return None
+
+
 def _advocate_only(user: dict) -> dict:
     if user.get("role") not in {"advocate", "lawyer"} and not user.get("is_superuser"):
         raise HTTPException(status_code=403, detail="Court Day is for advocates.")
@@ -514,7 +526,7 @@ async def court_day_today(day: str | None = None, user=Depends(require_user)):
                 "client_name": case.get("client_name"),
                 "stage": case.get("case_stage"),
                 "sensitive": sensitive,
-                "court": (place or {}).get("court") or case.get("court_name"),
+                "court": court_label(case.get("court_name"), (place or {}).get("court")),
                 "hall": (place or {}).get("hall"),
                 "item": (place or {}).get("item"),
                 "list_size": (place or {}).get("list_size"),
@@ -624,7 +636,8 @@ async def hearing_brief(case_id: int, user=Depends(require_user)):
         "checklist": _checklist(stage or ""),
         "law": law_mapping(" ".join(str(case.get(k) or "") for k in ("title", "description"))),
         "sensitive": is_sensitive(case.get("case_type"), case.get("title")),
-        "data_as_of": snapshot["fetched_at"].isoformat() if snapshot else None,
+        # IST, so "as of" shows the Indian calendar date (UTC is still the previous day before 05:30).
+        "data_as_of": snapshot["fetched_at"].astimezone(IST).isoformat() if snapshot else None,
         "source": "Your case record and the latest eCourts update stored in LitigaForge",
         "verify_notice": "Built from stored court data. Check the latest order before relying on it.",
     }
