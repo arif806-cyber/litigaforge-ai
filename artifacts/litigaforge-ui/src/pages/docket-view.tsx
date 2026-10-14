@@ -128,9 +128,9 @@ export default function DocketView() {
 
   if (!advocate) return <main className="mx-auto max-w-3xl p-6"><h1 className="hidden text-2xl font-semibold md:block">Cause lists</h1><p className="mt-3 text-muted-foreground">Available to advocates.</p></main>;
   return <main className="mx-auto w-full max-w-5xl space-y-5 p-4 pb-24 md:p-8" data-testid="docket-view">
-    <header className="hidden items-start gap-3 md:flex"><CalendarDays className="mt-1 h-6 w-6 text-primary" /><div><h1 className="text-2xl font-bold">Cause lists</h1><p className="text-sm text-muted-foreground">Browse today’s and tomorrow’s cause lists by court.</p></div></header>
+    <header className="hidden items-start gap-3 md:flex"><CalendarDays className="mt-1 h-6 w-6 text-primary" /><div><h1 className="text-[30px] leading-9 font-bold">Cause lists</h1><p className="text-sm text-muted-foreground">Browse today’s and tomorrow’s cause lists by court.</p></div></header>
     <section className="rounded-xl border bg-card p-4 md:p-6">
-      <h2 className="mb-4 font-semibold">Your courts and optional matching details</h2>
+      <h2 className="mb-4 text-lg font-semibold">Your courts and optional matching details</h2>
       <form onSubmit={submit} className="space-y-4">
         <label className="block text-sm">Name as it appears in cause lists <span className="text-muted-foreground">(optional)</span><input className="mt-1 w-full rounded-md border bg-background p-2" value={profile.cause_list_name} onChange={(e) => setProfile({ ...profile, cause_list_name: e.target.value })} /></label>
         <label className="block text-sm">Enrolment number <span className="text-muted-foreground">(optional)</span><input className="mt-1 w-full rounded-md border bg-background p-2" value={profile.enrolment_number} onChange={(e) => setProfile({ ...profile, enrolment_number: e.target.value })} /></label>
@@ -145,7 +145,7 @@ export default function DocketView() {
         {save.isError && <p role="alert" className="text-sm text-destructive">{save.error.message}</p>}{load.isError && <p role="alert" className="text-sm text-destructive">{load.error.message}</p>}
       </form>
     </section>
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">Court results</h2><div className="flex gap-2"><Button type="button" size="sm" variant={filter === "all" ? "default" : "outline"} onClick={() => setFilter("all")}>All matters</Button><Button type="button" size="sm" variant={filter === "mine" ? "default" : "outline"} onClick={() => setFilter("mine")}>My matters</Button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Court results</h2><div className="flex gap-2"><Button type="button" size="sm" variant={filter === "all" ? "default" : "outline"} onClick={() => setFilter("all")}>All matters</Button><Button type="button" size="sm" variant={filter === "mine" ? "default" : "outline"} onClick={() => setFilter("mine")}>My matters</Button></div></div>
     {!profile.cause_list_name.trim() && !profile.enrolment_number.trim() && <p className="text-xs text-muted-foreground">Add your name as it appears in cause lists to highlight your matters.</p>}
     {selectedResults.length === 0 && <p className="rounded-lg border p-4 text-sm text-muted-foreground">{selected.length ? "Select Load cause list to fetch these courts." : "Choose one or more courts to browse their cause lists."}</p>}
     {selectedResults.map((entry) => <section key={encodeCourt(entry.court)} className="rounded-xl border bg-card p-4 md:p-6"><h3 className="font-semibold">{courtName(entry.court)}</h3>{(["today", "tomorrow"] as const).map((period) => {

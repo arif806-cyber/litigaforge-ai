@@ -12,6 +12,7 @@
     "test:auth-flow": "node --experimental-strip-types --test tests/auth-mode.test.mjs && node tests/auth-flow.e2e.mjs",
     "test:workspace-onboarding": "node --experimental-strip-types --test tests/workspace-onboarding-progress.test.mjs",
     "test:cnr": "node --experimental-strip-types --test tests/cnr-refresh-state.test.mjs",
+    "test:advocate-ux": "node --test tests/advocate-ux.test.mjs",
     "test:docket-view": "node tests/docket-view.e2e.mjs",
     "test:theme-vars": "node --test tests/theme-vars.test.mjs"
   },

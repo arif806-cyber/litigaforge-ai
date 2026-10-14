@@ -145,7 +145,11 @@ function NavItem({
 }: {
   href: string; label: string; icon: React.ElementType; location: string; onClick?: () => void; testId?: string; highlight?: boolean; badge?: number;
 }) {
-  const active = href === "/" ? location === "/" : location.startsWith(href);
+  const active = href === "/"
+    ? location === "/"
+    : href === "/lawyer-dashboard"
+      ? location === href || location === "/advocate-dashboard"
+      : location === href || location.startsWith(`${href}/`);
   const feature = FEATURE_BY_HREF[href];
   return (
     <Link

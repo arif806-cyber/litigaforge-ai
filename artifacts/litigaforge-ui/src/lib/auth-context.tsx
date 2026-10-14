@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { getCountryFromPath, buildCountryUrl } from "./country";
 import { _tryRefresh } from "./api";
 import { portalDashboardPath, postAuthDestination, portalFromRole, portalStorageKey, validPortal, type ActivePortal } from "./active-portal";
@@ -260,21 +259,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     await refreshUser();
   };
-
-  if (loading) {
-    return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <LoadingSpinner message="Starting LitigaForge AI..." />
-      </div>
-    );
-  }
 
   return (
     <AuthContext.Provider value={{ user, activePortal, setActivePortal, loading, login, register, googleLogin, appleLogin, passkeyLogin, logout, refreshUser, changePassword }}>

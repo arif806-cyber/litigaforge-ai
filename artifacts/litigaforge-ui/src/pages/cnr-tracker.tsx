@@ -14,7 +14,6 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { currentCnrErrorMessage, normalizeCnrRefreshState } from "@/lib/cnr-refresh-state";
 import { cn } from "@/lib/utils";
-import { MobileSearchbar } from "@/components/mobile-primitives";
 import { FeatureIcon } from "@/components/FeatureIcon";
 import { Link } from "wouter";
 
@@ -97,7 +96,7 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
     e.preventDefault();
     const cleaned = cnr.replace(/[\s\-/]/g, "").toUpperCase();
     if (!/^[A-Z]{4}\d{12}$/.test(cleaned)) {
-      setErr("CNR must be 4 letters followed by 12 digits — e.g. TLHC010012342023");
+      setErr("CNR must contain 4 letters followed by 12 digits.");
       return;
     }
     setErr("");
@@ -119,28 +118,17 @@ function CnrInput({ onTracked }: { onTracked: () => void }) {
       <div className="flex flex-col sm:flex-row gap-3">
         {/* CNR input */}
         <div className="flex-1 relative">
-          <MobileSearchbar
-            className="md:hidden"
-            value={cnr}
-            onValueChange={(value) => { setCnr(value.toUpperCase()); setErr(""); }}
-            placeholder="e.g. TLHC010012342023"
-            inputId="cnr-input-mobile"
-            testId="cnr-input-mobile"
-          />
-          <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
             data-testid="cnr-input"
             type="text"
             value={cnr}
             onChange={(e) => { setCnr(e.target.value.toUpperCase()); setErr(""); }}
-            placeholder="e.g. TLHC010012342023"
+            placeholder="16 characters, e.g. TSHC01XXXXXX2024"
             maxLength={20}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm font-mono
+            className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm font-mono
               placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/30 transition-all"
             style={{ letterSpacing: "0.05em" }}
           />
-          </div>
         </div>
         {/* Case type */}
         <select value={caseType} onChange={(e) => setCaseType(e.target.value)}

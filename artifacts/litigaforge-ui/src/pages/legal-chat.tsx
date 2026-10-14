@@ -281,13 +281,13 @@ export default function LegalChat() {
                 {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
               <div className={cn(
-                "rounded-xl px-4 py-3 max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap",
+                "rounded-xl px-4 py-3 max-w-[85%] text-sm leading-relaxed",
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-card-border text-foreground"
+                  ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                  : "bg-card border border-card-border text-foreground [&_.prose]:whitespace-normal"
               )}>
                 {msg.role === "ai"
-                  ? <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+                  ? <div className="prose prose-sm prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 dark:prose-invert max-w-none"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
                   : msg.content}
                 {msg.actions?.length ? <div className="flex flex-wrap gap-2 mt-3">
                   {msg.actions.map(action => <button key={action.kind} type="button"

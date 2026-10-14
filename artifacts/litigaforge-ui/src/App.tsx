@@ -9,7 +9,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { trackPageView } from "@/lib/analytics";
 import { initRecaptcha } from "@/lib/recaptcha";
 import { loadGoogleIdentity } from "@/lib/google-auth";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SkipLink } from "@/components/SkipLink";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -116,8 +116,13 @@ function KonstaAppTheme({ children }: { children: React.ReactNode }) {
 
 function PageLoader() {
   return (
-    <div className="h-full flex items-center justify-center py-32">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    <div className="w-full px-4 py-8 md:px-8" aria-label="Loading page">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <div className="h-8 w-52 animate-pulse rounded bg-muted" />
+        <div className="h-5 w-80 max-w-full animate-pulse rounded bg-muted" />
+        <div className="mt-8 h-28 rounded-[14px] bg-muted animate-pulse" />
+        <div className="h-28 rounded-[14px] bg-muted animate-pulse" />
+      </div>
     </div>
   );
 }
@@ -141,8 +146,9 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      <div className="w-full space-y-4 px-4 py-6 md:px-8" aria-label="Loading account">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-24 rounded-[14px] bg-muted animate-pulse" />
       </div>
     );
   }
@@ -257,8 +263,9 @@ function CountryRoot() {
 
   if (loading || user) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      <div className="w-full space-y-4 px-4 py-6 md:px-8" aria-label="Loading dashboard">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-24 rounded-[14px] bg-muted animate-pulse" />
       </div>
     );
   }

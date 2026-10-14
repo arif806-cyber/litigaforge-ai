@@ -130,7 +130,7 @@ function AuthorityTrackerPanel() {
     <section className="rounded-2xl border border-border bg-card p-5 space-y-4" data-testid="authority-tracker">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-bold flex items-center gap-2"><LibraryBig className="w-4 h-4 text-primary" />Authorities &amp; research alerts</h2>
+          <h2 className="text-lg font-semibold flex items-center gap-2"><LibraryBig className="w-4 h-4 text-primary" />Authorities &amp; research alerts</h2>
           <p className="text-xs text-muted-foreground mt-1">
             Save case-law searches and watch citations.
             {referenceCount > 0 ? ` ${referenceCount} reference tables available.` : " No reference tables are available yet."}
