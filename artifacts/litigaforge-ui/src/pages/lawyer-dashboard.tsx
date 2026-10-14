@@ -19,6 +19,7 @@ import { formatDate, caseTerms } from "@/lib/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import IncomingCaseFeed, { type CaseFeedItem } from "@/components/lawyer/IncomingCaseFeed";
 import { useToast, toast } from "@/hooks/use-toast";
+import { TodayAgenda, type HearingPlace } from "@/components/advocate/TodayAgenda";
 import { FeatureIcon } from "@/components/FeatureIcon";
 import { FEATURE_BY_HREF } from "@/lib/featureIcons";
 
@@ -675,6 +676,22 @@ export default function LawyerDashboard() {
     return [courtName, hallLabel, itemNumber != null && itemNumber !== "" ? `Item ${itemNumber}` : null]
       .filter(Boolean).join(" · ");
   };
+  const hearingPlace = (item: LawyerCase): HearingPlace => {
+    const scheduled = (docketSchedule?.courts ?? []).flatMap((court: any) => [
+      ...(court.today?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
+      ...(court.tomorrow?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
+    ]).find(({ matter }: any) => {
+      const cnr = matter.cnr ?? matter.CNR ?? matter.cnr_number;
+      return item.cnr_number && cnr && String(cnr).toUpperCase() === item.cnr_number.toUpperCase();
+    });
+    const matter = scheduled?.matter;
+    return {
+      court: item.court_name || scheduled?.court?.court || null,
+      hall: item.court_hall || item.hall || item.courtroom || item.court_no || scheduled?.court?.court_no || null,
+      item: item.item_number ?? item.itemNo ?? item.item_no ?? item.serialNo ?? item.serial_no
+        ?? matter?.itemNo ?? matter?.item_no ?? matter?.serialNo ?? matter?.serial_no ?? matter?.item_number ?? null,
+    };
+  };
   const formatHearingDate = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
   });
@@ -710,7 +727,7 @@ export default function LawyerDashboard() {
             {activeSection === "overview" ? (
               <>
                 <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">Today</h1>
-                <p className="mt-1 text-sm text-muted-foreground">{todayLabel.replace(",", "")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{todayLabel.replace(",", "")}<span data-testid="today-summary"> · {todayCases.length ? `${todayCases.length} hearing${todayCases.length > 1 ? "s" : ""} today` : "No hearings today"}{upcomingCases.length ? `, ${upcomingCases.length} coming up` : ""}</span></p>
               </>
             ) : (
               <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
@@ -721,16 +738,14 @@ export default function LawyerDashboard() {
           {/* Section quick actions */}
           <div className={cn("flex items-center gap-2 flex-shrink-0", activeSection === "cases" && "hidden")}>
             <button onClick={() => { setActiveSection("cases"); setShowCaseModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{ background: "#F5B754", color: "#0A0B10" }}
+              className="flex min-h-10 items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-all bg-primary text-primary-foreground hover:opacity-90"
               data-testid="add-case-btn">
-              <FeatureIcon feature="postCase" size="small" /> Add Case
+              <Plus className="h-4 w-4" aria-hidden="true" /> Add case
             </button>
             <button onClick={() => { setActiveSection("documents"); setShowDocModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all bg-card"
-              style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}
+              className="flex min-h-10 items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold border border-border transition-all bg-card text-foreground hover:bg-muted/60"
               data-testid="upload-doc-btn">
-              <FeatureIcon feature="documents" size="small" /> Upload Doc
+              <Upload className="h-4 w-4" aria-hidden="true" /> Upload doc
             </button>
           </div>
         </div>
@@ -764,67 +779,13 @@ export default function LawyerDashboard() {
         {/* ── OVERVIEW ── */}
         {activeSection === "overview" && (
           <div className="space-y-6">
-            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-label="Today’s hearing agenda" data-testid="today-agenda">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-2" data-testid="today-agenda-heading">
-                    <h3 className="text-sm font-semibold text-foreground">Hearings today</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{todayCases.length}</span>
-                      <Link href="/cause-lists" className="inline-flex min-h-8 items-center gap-1 rounded-lg px-1.5 text-xs font-semibold text-primary hover:bg-primary/5" data-testid="today-cause-lists-link">
-                        Cause lists <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </Link>
-                    </div>
-                  </div>
-                  {todayCases.length ? (
-                    <ul className="space-y-2">
-                      {todayCases.slice(0, 4).map((item) => (
-                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2">
-                          <div className="flex items-start justify-between gap-3">
-                            <Link data-testid="today-hearing-title" href="/lawyer-dashboard/cases" className="block min-w-0 text-sm font-semibold leading-5 text-foreground hover:text-primary">
-                              {item.title}
-                            </Link>
-                            <time className="shrink-0 text-xs font-medium text-primary" dateTime={item.hearing_date.slice(0, 10)}>Today</time>
-                          </div>
-                          <p data-testid="today-hearing-meta" className="mt-0 truncate text-xs leading-4 text-muted-foreground">{hearingMeta(item) || item.case_stage || "Hearing scheduled"}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="rounded-xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
-                      No hearing dates on your active cases today. Check the court cause lists for today’s schedule.
-                    </p>
-                  )}
-                </div>
-                <div className="border-t border-border pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground">Coming up</h3>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{upcomingCases.length}</span>
-                  </div>
-                  {upcomingCases.length ? (
-                    <ul className="space-y-2">
-                      {upcomingCases.map((item) => (
-                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2">
-                          <div className="flex items-start justify-between gap-3">
-                            <Link href="/lawyer-dashboard/cases" className="block min-w-0 text-sm font-semibold leading-5 text-foreground hover:text-primary">
-                              {item.title}
-                            </Link>
-                            <time className="shrink-0 text-xs font-medium text-primary" dateTime={item.hearing_date.slice(0, 10)}>
-                              {formatHearingDate(item.hearing_date)}
-                            </time>
-                          </div>
-                          <p className="mt-0 truncate text-xs leading-4 text-muted-foreground">{hearingMeta(item) || item.case_stage || "Active matter"}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="rounded-xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
-                      No upcoming hearing dates are saved on your active cases.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </section>
+            <TodayAgenda
+              todayCases={todayCases}
+              upcomingCases={upcomingCases}
+              todayKey={todayKey}
+              placeOf={(item) => hearingPlace(item as LawyerCase)}
+              onAddCase={() => { setActiveSection("cases"); setShowCaseModal(true); }}
+            />
             <p className="whitespace-nowrap text-sm text-muted-foreground" data-testid="client-requests-summary">
               <span>Client requests: {pendingLeads.length} pending · </span>
               <Link href="/matches" className="font-semibold text-primary hover:underline">View</Link>

@@ -58,7 +58,12 @@ try {
       assert.equal(await page.locator("h1").count(), 1, "Today should have a single h1");
       assert.equal(await page.getByText("Welcome back, Mira!", { exact: false }).count(), 0);
       await page.getByText("Today’s hearing — Sharma v State", { exact: true }).waitFor();
-      await page.getByText(/Item 17/).waitFor();
+      const itemTile = page.getByTestId("today-item-number").first();
+      await itemTile.waitFor();
+      assert.equal((await itemTile.getAttribute("aria-label")), "Cause list item 17", "today card should show the cause-list item number");
+      assert.match(await page.getByTestId("today-hearing-meta").first().innerText(), /Delhi High Court · Hall 4/);
+      const share = await page.getByTestId("today-share-date").first().getAttribute("href");
+      assert.ok(share?.startsWith("https://wa.me/?text=") && decodeURIComponent(share).includes("Item 17"), "share link should carry the hearing details");
       await page.getByTestId("today-cause-lists-link").getByText("Cause lists", { exact: true }).waitFor();
       await page.getByTestId("client-requests-summary").getByText("Client requests: 0 pending", { exact: false }).waitFor();
       assert.equal(await page.getByText("Quick Actions", { exact: true }).isVisible().catch(() => false), false);
