@@ -453,7 +453,7 @@ function Router() {
               <Route path="/client-dashboard" component={ClientDashboardRoute} />
               <Route path="/lawyer-dashboard" component={AdvocateDashboardRoute} />
               <Route path="/lawyer-dashboard/:section" component={AdvocateDashboardRoute} />
-              <Route path="/advocate-dashboard" component={AdvocateDashboardRoute} />
+              <Route path="/advocate-dashboard"><Redirect to="/lawyer-dashboard" /></Route>
               <Route path="/settings" component={SettingsRoute} />
               <Route path="/subscription" component={SubscriptionRoute} />
               <Route path="/ask" component={AskRoute} />
@@ -484,7 +484,8 @@ function Router() {
               <Route path="/messages" component={MessagesRoute} />
               <Route path="/requests" component={AdvocateRequestsRoute} />
               <Route path="/cnr-tracker" component={CnrTrackerRoute} />
-              <Route path="/docket" component={DocketRoute} />
+              <Route path="/cause-lists" component={DocketRoute} />
+              <Route path="/docket"><Redirect to="/cause-lists" /></Route>
               <Route path="/cnr"><Redirect to="/cnr-tracker" /></Route>
               <Route component={NotFound} />
             </Switch>

@@ -38,33 +38,73 @@ try {
         if (path.endsWith("/lawyer/documents")) return json({ documents: [] });
         if (path.endsWith("/matches/lawyer")) return json({ matches: [] });
         if (path.endsWith("/authorities/alerts")) return json({ alerts: [] });
+        if (path.endsWith("/docket/schedule")) return json({ courts: [
+          { court: { court: "Delhi High Court", court_no: "4" }, today: { matters: [{ cnr: "DLHC010000012026", itemNo: 17 }] }, tomorrow: { matters: [] } },
+        ] });
+        if (path.endsWith("/docket/profile")) return json({ profile: null, advocate_profile: { name: "Mira Advocate", bar_number: "BAR-789" }, tracked_cases_count: 2 });
+        if (path.endsWith("/judgments")) return json({ judgments: [], courts: [] });
         if (path.endsWith("/chat/threads")) return json({ threads: [] });
         return json({});
       });
       const page = await context.newPage();
-      await page.goto(`${baseUrl}/lawyer-dashboard`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${baseUrl}/advocate-dashboard`, { waitUntil: "domcontentloaded" });
+      await page.waitForURL(/\/lawyer-dashboard\/?$/);
       const agenda = page.getByTestId("today-agenda");
       await agenda.waitFor();
+      await page.waitForTimeout(450);
+      await page.getByRole("heading", { level: 1, name: "Today", exact: true }).waitFor();
+      assert.equal(await page.locator("h1").count(), 1, "Today should have a single h1");
+      assert.equal(await page.getByText("Welcome back, Mira!", { exact: false }).count(), 0);
+      await page.getByText("Today’s hearing — Sharma v State", { exact: true }).waitFor();
+      await page.getByText(/Item 17/).waitFor();
+      await page.getByTestId("today-cause-lists-link").getByText("Cause lists", { exact: true }).waitFor();
+      await page.getByTestId("client-requests-summary").getByText("Client requests: 0 pending", { exact: false }).waitFor();
+      assert.equal(await page.getByText("Quick Actions", { exact: true }).isVisible().catch(() => false), false);
       if (viewport.width === 390) {
-        await page.locator(".lf-mobile-topbar").getByText("Today", { exact: true }).first().waitFor();
+        const mobileNav = page.locator(".lf-konsta-tabbar");
+        for (const label of ["Today", "Cases", "Cause lists", "Research", "More"]) {
+          await mobileNav.getByText(label, { exact: true }).waitFor();
+        }
+        assert.equal(await mobileNav.locator("a,button").count(), 5, "mobile advocate navigation should have five destinations");
       } else {
         await page.getByTestId("desktop-page-context").getByText("Today", { exact: true }).waitFor();
+        const nav = page.getByTestId("advocate-group-navigation");
+        const expected = ["Today", "Cases", "Cause lists", "Clients", "Documents", "Research", "Earnings", "Settings"];
+        assert.equal(await nav.locator("a").count(), expected.length, "desktop advocate navigation should have eight groups");
+        for (const label of expected) await nav.getByText(label, { exact: true }).waitFor();
+        assert.equal(await page.locator("header").getByText("Sign Out", { exact: true }).count(), 0, "sign out belongs in the account menu only");
+        await page.locator("header").getByText("Free plan · Upgrade", { exact: true }).waitFor();
       }
-      await page.getByText("Today’s hearing — Sharma v State", { exact: true }).waitFor();
       await page.getByText("Upcoming hearing — Patel v Union", { exact: true }).waitFor();
       assert.ok(await agenda.getByText("Hearings today", { exact: true }).isVisible());
       assert.ok(await agenda.getByText("Coming up", { exact: true }).isVisible());
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "dashboard should fit the viewport");
       const suffix = viewport.width === 390 ? "390" : "desktop";
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/today-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
-      await page.getByTestId("tab-cases").click();
+      const casesLink = viewport.width === 390
+        ? page.locator(".lf-konsta-tabbar").getByText("Cases", { exact: true })
+        : page.getByTestId("advocate-group-navigation").getByText("Cases", { exact: true });
+      await casesLink.click();
       await page.waitForURL(/\/lawyer-dashboard\/cases\/?$/);
+      await page.waitForTimeout(450);
       if (viewport.width === 390) {
         await page.locator(".lf-mobile-topbar").getByText("Cases", { exact: true }).first().waitFor();
       } else {
         await page.getByTestId("desktop-page-context").getByText("Cases", { exact: true }).waitFor();
       }
       await page.getByRole("heading", { name: "Case Management" }).waitFor();
+      await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/cases-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
+      await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
+      await page.waitForURL(/\/cause-lists\/?$/);
+      await page.getByTestId("docket-view").waitFor();
+      await page.waitForTimeout(450);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "cause lists should fit the viewport");
+      await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/cause-lists-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
+      await page.goto(`${baseUrl}/judgments`, { waitUntil: "domcontentloaded" });
+      await page.getByText("Search all case law with AI", { exact: true }).waitFor();
+      await page.waitForTimeout(450);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "research should fit the viewport");
+      await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/research-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
       await context.close();
     }
   }

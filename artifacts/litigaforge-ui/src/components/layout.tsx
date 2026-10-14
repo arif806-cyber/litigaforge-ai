@@ -5,7 +5,7 @@ import {
   Crown, LogOut, User as UserIcon,
   Shield, Star, Briefcase, Sparkles, FileCheck, Newspaper,
   Plus, MessageSquareText, MessageSquare, FileSearch, BookOpen, Heart, Sun, Moon, Users, Zap, Inbox,
-  CalendarSearch, Cpu,
+  CalendarSearch, CalendarDays, Cpu,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -19,8 +19,6 @@ import { useLanguage } from "@/hooks/useLanguage";
 import type { Translation } from "@/i18n";
 import { useMessageNotifications } from "@/hooks/use-message-notifications";
 import { PublicSiteHeader } from "@/components/public-site-header";
-import { useConnectFlags } from "@/hooks/use-connect-v2";
-import { connectV2Strings } from "@/i18n/connect-v2";
 import { clientNavigationActive } from "@/lib/active-portal";
 import { GroupedList, GroupedRow, NavBar, Sheet, TabBar } from "@/components/mobile-primitives";
 import { FeatureIcon } from "@/components/FeatureIcon";
@@ -44,20 +42,37 @@ const clientNav: NavEntry[] = [
 ];
 
 const lawyerNav: NavEntry[] = [
-  { href: "/lawyer-dashboard", label: "Dashboard",        icon: Star,      tKey: "dashboard" },
-  { href: "/docket", label: "DocketView", icon: CalendarSearch },
-  { href: "/lawyer-dashboard/cases", label: "Cases & Hearings", icon: FileText },
+  { href: "/lawyer-dashboard", label: "Today", icon: Star },
+  { href: "/lawyer-dashboard/cases", label: "Cases", icon: FileText },
+  { href: "/cause-lists", label: "Cause lists", icon: CalendarSearch },
   { href: "/lawyer-dashboard/clients", label: "Clients", icon: Users },
-  { href: "/judgments",          label: "Judgments",       icon: BookOpen,  tKey: "judgments" },
-  { href: "/cnr-tracker",        label: "CNR Tracker",     icon: CalendarSearch },
-  { href: "/lawyer-dashboard/documents", label: "Documents", icon: FileCheck, tKey: "documents" },
+  { href: "/lawyer-dashboard/documents", label: "Documents", icon: FileCheck },
+  { href: "/judgments", label: "Research", icon: BookOpen },
   { href: "/lawyer-dashboard/earnings", label: "Earnings", icon: Briefcase },
-  { href: "/settings",           label: "Settings",        icon: UserIcon },
-  { href: "/matches",          label: "Client Requests",  icon: Users,     tKey: "client_requests" },
-  { href: "/messages",         label: "Messages",         icon: Inbox },
-  { href: "/review",           label: "Doc Analyzer",     icon: FileSearch, tKey: "doc_analyzer" },
-  { href: "/subscription",     label: "Profile & Plans",  icon: Crown,     tKey: "profile_plans" },
+  { href: "/settings", label: "Settings", icon: UserIcon },
 ];
+
+const advocateTabGroups = [
+  { key: "cases", matches: ["/lawyer-dashboard/cases", "/cnr-tracker", "/cnr"], tabs: [{ label: "Cases", href: "/lawyer-dashboard/cases" }, { label: "CNR Tracker", href: "/cnr-tracker" }] },
+  { key: "clients", matches: ["/lawyer-dashboard/clients", "/matches", "/requests", "/messages", "/advocate/cases"], tabs: [{ label: "Clients", href: "/lawyer-dashboard/clients" }, { label: "Requests", href: "/matches" }, { label: "Messages", href: "/messages" }] },
+  { key: "documents", matches: ["/lawyer-dashboard/documents", "/documents", "/review"], tabs: [{ label: "Documents", href: "/lawyer-dashboard/documents" }, { label: "Analyzer", href: "/review" }] },
+  { key: "research", matches: ["/judgments", "/legal-chat", "/ask", "/workspace"], tabs: [{ label: "Judgments", href: "/judgments" }, { label: "AI drafting", href: "/legal-chat" }, { label: "Q&A", href: "/ask" }, { label: "Workspace", href: "/workspace" }] },
+  { key: "settings", matches: ["/settings", "/subscription"], tabs: [{ label: "Account", href: "/settings" }, { label: "Profile & plan", href: "/subscription" }] },
+];
+
+function AdvocateGroupTabs({ location }: { location: string }) {
+  const group = advocateTabGroups.find(({ matches }) => matches.some((path) => location === path || location.startsWith(`${path}/`)));
+  if (!group) return null;
+  return (
+    <nav aria-label={`${group.key} sections`} data-testid={`advocate-tabs-${group.key}`} className="flex gap-1 overflow-x-auto border-b border-border px-4 md:px-8">
+      {group.tabs.map((tab) => {
+        const active = location === tab.href || location.startsWith(`${tab.href}/`);
+        return <Link key={tab.href} href={tab.href} aria-current={active ? "page" : undefined}
+          className={cn("shrink-0 border-b-2 px-3 py-3 text-sm font-medium", active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>{tab.label}</Link>;
+      })}
+    </nav>
+  );
+}
 
 const commonNav: NavEntry[] = [
   { href: "/legal-chat",     label: "AI Legal Drafting", icon: MessageSquareText },
@@ -89,6 +104,13 @@ function navLabel(item: NavEntry, t: Translation): string {
 }
 
 function isNavPathActive(href: string, location: string): boolean {
+  const isPath = (path: string) => location === path || location.startsWith(`${path}/`);
+  if (href === "/lawyer-dashboard/cases") return isPath(href) || isPath("/cnr-tracker");
+  if (href === "/lawyer-dashboard/clients") return [href, "/matches", "/requests", "/messages", "/advocate/cases"].some(isPath);
+  if (href === "/lawyer-dashboard/documents") return [href, "/documents", "/review"].some(isPath);
+  if (href === "/judgments") return [href, "/legal-chat", "/ask", "/workspace"].some(isPath);
+  if (href === "/cause-lists") return [href, "/docket"].some(isPath);
+  if (href === "/settings") return [href, "/subscription"].some(isPath);
   if (href === "/lawyer-dashboard") {
     return location === href || location === "/advocate-dashboard";
   }
@@ -122,7 +144,7 @@ function mobileTitleForPath(path: string): string {
   if (path.startsWith("/lawyers/register")) return "Advocate Registration";
   if (path.startsWith("/lawyers")) return "Find a Lawyer";
   if (path.startsWith("/documents")) return "Documents";
-  if (path.startsWith("/docket")) return "Cause lists";
+  if (path.startsWith("/cause-lists") || path.startsWith("/docket")) return "Cause lists";
   return "LitigaForge";
 }
 
@@ -130,7 +152,7 @@ function mobileSubtitleForPath(path: string): string {
   if (path.startsWith("/judgments")) return "Search published Indian court decisions.";
   if (path.startsWith("/subscription")) return "Plans and billing for your account.";
   if (path.startsWith("/cnr-tracker")) return "Track hearings, orders, and case status.";
-  if (path.startsWith("/docket")) return "Browse today’s and tomorrow’s cause lists by court.";
+  if (path.startsWith("/cause-lists") || path.startsWith("/docket")) return "Browse today’s and tomorrow’s cause lists by court.";
   if (path.startsWith("/settings")) return "Manage your account and preferences.";
   if (path.startsWith("/client-dashboard")) return "Your cases, updates, and next steps.";
   if (path.startsWith("/lawyer-dashboard/cases")) return "Your active and completed matters.";
@@ -260,22 +282,14 @@ function SidebarContent({
   onNav?: () => void;
   user: User | null;
 }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const { activePortal, setActivePortal } = useAuth();
-  const connectStrings = connectV2Strings(lang);
-  const { data: connectFlags } = useConnectFlags();
   const unreadCount = useUnreadCount();
   const isAdvocateAccount = user?.role === "lawyer" || user?.role === "advocate";
   const isClient = !!user && clientNavigationActive(activePortal, location);
   const isAdvocate = !!user && !isClient;
   const roleNav = !user ? publicNav : isClient ? clientNav : lawyerNav;
-  const activeRoleNav = isAdvocate && !isClient && connectFlags?.connect_v2
-    ? [
-        ...roleNav.filter((item) => item.href !== "/matches"),
-        { href: "/requests", label: connectStrings.requests, icon: Inbox },
-        { href: "/advocate/cases", label: connectStrings.acceptedCases, icon: FileText },
-      ]
-    : roleNav;
+  const activeRoleNav = isAdvocate && !isClient ? lawyerNav : roleNav;
   const roleLabel = !user ? "Public tools" : isClient ? "CLIENT" : "ADVOCATE";
   const showRoleSwitch = !!user && (isAdvocateAccount || !!user.has_lawyer_profile || !!user.lawyer_status);
   const roleSwitch: NavEntry | null = showRoleSwitch
@@ -283,9 +297,7 @@ function SidebarContent({
       ? { href: user?.has_lawyer_profile ? "/lawyer-dashboard" : "/lawyers/register?setup=advocate", label: "Switch to Advocate", icon: Scale }
       : { href: "/client-dashboard", label: "Switch to Client", icon: UserIcon }
     : null;
-  const legalTools = isAdvocate
-    ? commonNav.filter(item => !["/cnr-tracker", "/judgments", "/review"].includes(item.href))
-    : commonNav;
+  const legalTools = isAdvocate ? [] : commonNav;
 
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
@@ -311,6 +323,7 @@ function SidebarContent({
         <div className="px-3 pb-2 text-[11px] font-bold text-sidebar-foreground/40 uppercase tracking-widest">
           {!user ? "Explore" : isClient ? "Match & Connect" : "Lawyer Portal"}
         </div>
+        <div data-testid={isAdvocate ? "advocate-group-navigation" : undefined}>
         {activeRoleNav.map(item => (
           <NavItem
             key={item.href}
@@ -322,6 +335,7 @@ function SidebarContent({
             badge={item.href === "/messages" ? unreadCount : undefined}
           />
         ))}
+        </div>
         {roleSwitch && (
           <NavItem
             key={roleSwitch.href}
@@ -361,15 +375,15 @@ const clientMobileNav: NavEntry[] = [
   { href: "/my-cases",         label: "Cases",     icon: FileText,  tKey: "my_cases"  },
 ];
 const lawyerMobileNav: NavEntry[] = [
-  { href: "/lawyer-dashboard", label: "Dashboard", icon: Star  },
+  { href: "/lawyer-dashboard", label: "Today", icon: CalendarDays },
   { href: "/lawyer-dashboard/cases", label: "Cases", icon: FileText },
+  { href: "/cause-lists", label: "Cause lists", icon: CalendarSearch },
+  { href: "/judgments", label: "Research", icon: BookOpen },
 ];
 
 /* ─── Bottom Tab Bar ─── */
 function BottomTabBar({ location, user }: { location: string; user: User | null }) {
-  const { t, lang } = useLanguage();
-  const connectStrings = connectV2Strings(lang);
-  const { data: connectFlags } = useConnectFlags();
+  const { t } = useLanguage();
   const { logout, activePortal } = useAuth();
   const [, setLocation] = useLocation();
   const unreadCount = useUnreadCount();
@@ -379,30 +393,13 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   useEffect(() => { closeDrawer(); }, [location, closeDrawer]);
 
   const isLawyer  = !!user && activePortal === "advocate";
-  const mobileNav = isLawyer
-    ? lawyerMobileNav
-    : clientMobileNav;
-  const primaryAction = isLawyer
-    ? { href: "/legal-chat", label: "Draft", icon: MessageSquareText }
-    : { href: "/post-case", label: "Post", icon: Plus };
+  const mobileNav = isLawyer ? lawyerMobileNav : clientMobileNav;
+  const primaryAction = { href: "/post-case", label: "Post", icon: Plus };
   const PrimaryActionIcon = primaryAction.icon;
   const mainTab = mobileNav[0];
   const casesTab = mobileNav[1];
-
   const extraNav: NavEntry[] = isLawyer
-    ? [
-        { href: "/docket", label: "DocketView", icon: CalendarSearch },
-        { href: "/lawyer-dashboard/cases", label: "Cases & Hearings", icon: FileText },
-        { href: "/lawyer-dashboard/clients", label: "Clients", icon: Users },
-        ...(connectFlags?.connect_v2 ? [{ href: "/requests", label: connectStrings.requests, icon: Inbox }] : []),
-        ...(connectFlags?.connect_v2 ? [{ href: "/advocate/cases", label: connectStrings.acceptedCases, icon: FileText }] : []),
-        ...(connectFlags?.connect_v2 ? [] : [{ href: "/matches", label: "Client Requests", icon: Users, tKey: "client_requests" as const }]),
-        { href: "/lawyer-dashboard/earnings", label: "Earnings", icon: Briefcase },
-        { href: "/review",       label: "Doc Analyzer",    icon: FileSearch, tKey: "doc_analyzer"  },
-        { href: "/messages", label: "Messages", icon: Inbox },
-        { href: "/settings", label: "Settings", icon: UserIcon },
-        { href: "/subscription", label: "Profile & Plans", icon: Crown,      tKey: "profile_plans" },
-      ]
+    ? lawyerNav.filter((item) => !lawyerMobileNav.some((mobileItem) => mobileItem.href === item.href))
     : [
         { href: "/my-cases", label: "Cases & Hearings", icon: FileText },
         { href: "/post-case", label: "Post a Case", icon: Plus },
@@ -414,14 +411,10 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
         { href: "/documents", label: "Documents",        icon: FileCheck, tKey: "documents"       },
       ];
 
-  const msgsActive = location.startsWith("/messages");
-  const primaryTab = mobileNav.find(({ href }) => isNavPathActive(href, location));
-  const primaryTabActive = !!primaryTab;
-  const tabItems = [
-    ...(mainTab ? [{
-      id: mainTab.href, href: mainTab.href, label: mainTab.tKey && t[mainTab.tKey] ? t[mainTab.tKey] : mainTab.label,
-      icon: <mainTab.icon aria-hidden="true" />,
-    }] : []),
+  const tabItems = isLawyer ? lawyerMobileNav.map((item) => ({
+    id: item.href, href: item.href, label: item.label, icon: <item.icon aria-hidden="true" />,
+  })) : [
+    ...(mainTab ? [{ id: mainTab.href, href: mainTab.href, label: mainTab.tKey && t[mainTab.tKey] ? t[mainTab.tKey] : mainTab.label, icon: <mainTab.icon aria-hidden="true" /> }] : []),
     { id: "messages", href: "/messages", label: "Messages", icon: <Inbox aria-hidden="true" />, badge: unreadCount > 0 ? unreadCount : undefined },
     {
       id: "primary-action", href: primaryAction.href, label: primaryAction.label,
@@ -433,14 +426,16 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
     }] : []),
     { id: "more", label: "More", icon: <Menu aria-hidden="true" />, onSelect: openDrawer },
   ];
-  const moreItems = [...extraNav, ...commonNav].filter((item, index, all) => all.findIndex(candidate => candidate.href === item.href) === index);
-  const selectedTab = msgsActive
-    ? "messages"
-    : primaryTabActive
-      ? (primaryTab?.href ?? mobileNav[0]?.href ?? "more")
-      : location.startsWith(primaryAction.href)
-        ? "primary-action"
-        : "more";
+  if (isLawyer) tabItems.push({ id: "more", label: "More", icon: <Menu aria-hidden="true" />, onSelect: openDrawer });
+  const moreItems = isLawyer
+    ? extraNav
+    : [...extraNav, ...commonNav].filter((item, index, all) => all.findIndex(candidate => candidate.href === item.href) === index);
+  const activeAdvocateTab = lawyerMobileNav.find(({ href }) => isNavPathActive(href, location));
+  const selectedTab = isLawyer
+    ? activeAdvocateTab?.href ?? "more"
+    : location.startsWith("/messages") ? "messages"
+      : isNavPathActive(mobileNav[0]?.href ?? "", location) ? (mobileNav[0]?.href ?? "more")
+        : location.startsWith(primaryAction.href) ? "primary-action" : "more";
 
   return (
     <>
@@ -490,22 +485,6 @@ function BottomTabBar({ location, user }: { location: string; user: User | null 
   );
 }
 
-/* ─── Desktop header logout button ─── */
-function DesktopLogoutButton() {
-  const { logout } = useAuth();
-  const [, setLocation] = useLocation();
-  return (
-    <button
-      onClick={() => { logout(); setLocation("/login"); }}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-      title="Sign out"
-    >
-      <LogOut className="w-4 h-4" />
-      <span>Sign Out</span>
-    </button>
-  );
-}
-
 /* ─── Main Layout ─── */
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -515,6 +494,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   const mobileTitle = mobileTitleForPath(location);
+  const isAdvocateToday = !!user && (user.role === "advocate" || user.role === "lawyer") && location === "/lawyer-dashboard";
   const isMobileDetail = /^\/(my-cases\/[^/]+|judgments\/[^/]+|advocate\/cases\/[^/]+|free-documents\/[^/]+|document-template\/[^/]+)$/.test(location);
   const backHref = location.startsWith("/judgments/")
     ? "/judgments"
@@ -544,7 +524,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
       <div className="lf-app-layout flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* Mobile top header */}
-      <NavBar
+      {!isAdvocateToday && <NavBar
         className="lf-mobile-topbar md:hidden"
         title={mobileTitle}
         subtitle={mobileSubtitleForPath(location)}
@@ -555,7 +535,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <ChevronLeft className="h-6 w-6" /><span className="text-sm">{backHref === "/judgments" ? "Judgments" : backHref === "/free-documents" ? "Documents" : "Cases"}</span>
             </button>
           : null}
-      />
+      />}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
@@ -602,15 +582,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Crown className="w-3.5 h-3.5 text-amber-600" />
                   {user.role === "client"
                     ? (user.subscription_tier === "free" ? "Client Free" : "Client Pro")
-                    : (TIER_LABELS[user.subscription_tier] ?? "Free")}
+                    : user.subscription_tier === "free" ? "Free plan · Upgrade" : (TIER_LABELS[user.subscription_tier] ?? "Free")}
                 </Link>
-              )}
-              {user && (
-                <DesktopLogoutButton />
               )}
             </div>
           </header>
 
+          {user && user.role !== "client" && <AdvocateGroupTabs location={location} />}
           <div className="flex-1 relative">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/[0.03] via-transparent to-transparent pointer-events-none" />
             <div className={cn("relative z-10 flex flex-col", isWorkspace ? "h-full min-h-0 overflow-hidden" : "min-h-full")}>

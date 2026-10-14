@@ -45,10 +45,10 @@ test("advocate overview leads with today's hearings and upcoming matters", async
   const quickActions = dashboard.indexOf('aria-label="Quick actions"');
   assert.ok(today >= 0 && research > today, "Today agenda must precede secondary research alerts");
   assert.ok(quickActions > research, "Quick actions must not push today's agenda below the fold");
-  assert.match(dashboard, /Today<\/h2>/);
+  assert.match(dashboard, /Today<\/h1>/);
   assert.match(dashboard, /Hearings today/);
   assert.match(dashboard, /Coming up/);
-  assert.match(dashboard, /href="\/docket"/);
+  assert.match(dashboard, /href="\/cause-lists"/);
 });
 
 test("advocate case navigation uses one route in the dashboard tabs and mobile bar", async () => {
@@ -57,9 +57,13 @@ test("advocate case navigation uses one route in the dashboard tabs and mobile b
   assert.match(dashboard, /id: "cases",\s+href: "\/lawyer-dashboard\/cases"/);
   assert.match(dashboard, /onClick=\{\(\) => setLocation\(tab\.href\)\}/);
   assert.match(layout, /href: "\/lawyer-dashboard\/cases", label: "Cases"/);
-  assert.match(layout, /href: "\/requests", label: connectStrings\.requests/);
+  assert.match(layout, /key: "clients"[\s\S]*?label: "Requests", href: "\/matches"[\s\S]*?label: "Messages", href: "\/messages"/);
+  assert.match(layout, /label: "Cause lists"/);
+  assert.match(layout, /label: "Research"/);
   assert.match(layout, /function isNavPathActive\(href: string, location: string\)/);
-  assert.match(layout, /const primaryTab = mobileNav\.find\(\(\{ href \}\) => isNavPathActive\(href, location\)\)/);
+  assert.match(layout, /const activeAdvocateTab = lawyerMobileNav\.find\(\(\{ href \}\) => isNavPathActive\(href, location\)\)/);
+  assert.match(layout, /const lawyerMobileNav: NavEntry\[\] = \[/);
+  assert.match(layout, /if \(isLawyer\) tabItems\.push\(\{ id: "more", label: "More"/);
 });
 
 test("advocate headers name the current section and use plain-language dashboard labels", async () => {

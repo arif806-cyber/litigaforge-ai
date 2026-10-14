@@ -66,6 +66,9 @@ interface LawyerCase {
   description: string; client_name: string; court_name: string;
   cnr_number: string; hearing_date: string; case_stage: string;
   status: string; created_at: string; documents?: LawyerDoc[];
+  court_hall?: string; hall?: string; courtroom?: string; court_no?: string;
+  item_number?: string | number; itemNo?: string | number; item_no?: string | number;
+  serialNo?: string | number; serial_no?: string | number;
 }
 
 interface LawyerDoc {
@@ -253,6 +256,14 @@ export default function LawyerDashboard() {
     refetchOnWindowFocus: false,
     retry: 1,
   });
+  const { data: docketSchedule } = useQuery({
+    queryKey: ["docket-schedule-today", user?.id],
+    queryFn: () => apiFetch("/docket/schedule"),
+    enabled: !!user && location === "/lawyer-dashboard",
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
 
   const { data: lawyerDocs, isLoading: docsLoading, isError: docsError } = useQuery({
     queryKey: ["lawyer-documents"],
@@ -393,7 +404,6 @@ export default function LawyerDashboard() {
 
   const isAdvocatePro = user?.subscription_tier === "advocate_pro";
   const hasPaidPlan = ["advocate_pro", "professional"].includes(user?.subscription_tier || "");
-  const lawyerFirstName = user?.name?.split(" ")[0] ?? "Advocate";
 
   const filteredCases = cases.filter((c) => c.status === caseTab);
 
@@ -648,6 +658,23 @@ export default function LawyerDashboard() {
   const todayCases = scheduledCases.filter((c) => c.hearing_date.slice(0, 10) === todayKey);
   const upcomingCases = scheduledCases.filter((c) => c.hearing_date.slice(0, 10) > todayKey).slice(0, 4);
   const todayLabel = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const hearingMeta = (item: LawyerCase) => {
+    const scheduled = (docketSchedule?.courts ?? []).flatMap((court: any) => [
+      ...(court.today?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
+      ...(court.tomorrow?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
+    ]).find(({ matter }: any) => {
+      const cnr = matter.cnr ?? matter.CNR ?? matter.cnr_number;
+      return item.cnr_number && cnr && String(cnr).toUpperCase() === item.cnr_number.toUpperCase();
+    });
+    const matter = scheduled?.matter;
+    const hall = item.court_hall || item.hall || item.courtroom || item.court_no || scheduled?.court?.court_no;
+    const itemNumber = item.item_number ?? item.itemNo ?? item.item_no ?? item.serialNo ?? item.serial_no
+      ?? matter?.itemNo ?? matter?.item_no ?? matter?.serialNo ?? matter?.serial_no ?? matter?.item_number;
+    const courtName = item.court_name || scheduled?.court?.court;
+    const hallLabel = hall && !/hall|court|room/i.test(String(hall)) ? `Hall ${hall}` : hall;
+    return [courtName, hallLabel, itemNumber != null && itemNumber !== "" ? `Item ${itemNumber}` : null]
+      .filter(Boolean).join(" · ");
+  };
   const formatHearingDate = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
   });
@@ -680,14 +707,15 @@ export default function LawyerDashboard() {
         {/* ── Welcome ── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
-              Welcome back, {lawyerFirstName}! 👋
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">{copy.pageSubtitle}</p>
-            {user?.lawyer_status === "verified" && (
-              <span className="inline-flex mt-2 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600">
-                Advocate verification: verified
-              </span>
+            {activeSection === "overview" ? (
+              <>
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">Today</h1>
+                <p className="mt-1 text-sm text-muted-foreground">{todayLabel.replace(",", "")}</p>
+              </>
+            ) : (
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
+                {activeSection === "cases" ? "Cases" : activeSection === "clients" ? "Clients" : activeSection === "documents" ? "Documents" : "Earnings"}
+              </h1>
             )}
           </div>
           {/* Section quick actions */}
@@ -708,7 +736,7 @@ export default function LawyerDashboard() {
         </div>
 
         {/* ── Section Tabs ── */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+        <div className="hidden">
           {SECTION_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSection === tab.id;
@@ -736,17 +764,10 @@ export default function LawyerDashboard() {
         {/* ── OVERVIEW ── */}
         {activeSection === "overview" && (
           <div className="space-y-6">
-            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="today-agenda-title" data-testid="today-agenda">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <CalendarDays className="mt-0.5 h-5 w-5 text-primary" aria-hidden="true" />
-                  <div>
-                    <h2 id="today-agenda-title" className="text-lg font-semibold text-foreground">Today</h2>
-                    <p className="text-xs text-muted-foreground">{todayLabel}</p>
-                  </div>
-                </div>
-                <Link href="/docket" className="inline-flex min-h-10 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary hover:bg-primary/5">
-                  View cause lists <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-label="Today’s hearing agenda" data-testid="today-agenda">
+              <div className="mb-3 flex justify-end">
+                <Link href="/cause-lists" className="inline-flex min-h-9 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-primary hover:bg-primary/5" data-testid="today-cause-lists-link">
+                  Cause lists <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
@@ -758,14 +779,14 @@ export default function LawyerDashboard() {
                   {todayCases.length ? (
                     <ul className="space-y-2">
                       {todayCases.slice(0, 4).map((item) => (
-                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2.5">
-                          <Link href="/lawyer-dashboard/cases" className="block text-sm font-semibold text-foreground hover:text-primary">
-                            {item.title}
-                          </Link>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {item.court_name || item.case_stage || "Hearing scheduled"}
-                            {item.cnr_number ? ` · ${item.cnr_number}` : ""}
-                          </p>
+                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <Link href="/lawyer-dashboard/cases" className="min-w-0 text-sm font-semibold text-foreground hover:text-primary">
+                              {item.title}
+                            </Link>
+                            <time className="shrink-0 text-xs font-medium text-primary" dateTime={item.hearing_date.slice(0, 10)}>Today</time>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{hearingMeta(item) || item.case_stage || "Hearing scheduled"}</p>
                         </li>
                       ))}
                     </ul>
@@ -783,7 +804,7 @@ export default function LawyerDashboard() {
                   {upcomingCases.length ? (
                     <ul className="space-y-2">
                       {upcomingCases.map((item) => (
-                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2.5">
+                        <li key={item.id} className="rounded-xl bg-muted/40 px-3 py-2">
                           <div className="flex items-start justify-between gap-3">
                             <Link href="/lawyer-dashboard/cases" className="min-w-0 text-sm font-semibold text-foreground hover:text-primary">
                               {item.title}
@@ -792,7 +813,7 @@ export default function LawyerDashboard() {
                               {formatHearingDate(item.hearing_date)}
                             </time>
                           </div>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">{item.court_name || item.case_stage || item.cnr_number || "Active matter"}</p>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{hearingMeta(item) || item.case_stage || "Active matter"}</p>
                         </li>
                       ))}
                     </ul>
@@ -804,6 +825,10 @@ export default function LawyerDashboard() {
                 </div>
               </div>
             </section>
+            <p className="whitespace-nowrap text-sm text-muted-foreground" data-testid="client-requests-summary">
+              <span>Client requests: {pendingLeads.length} pending · </span>
+              <Link href="/matches" className="font-semibold text-primary hover:underline">View</Link>
+            </p>
             <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="authority-alerts-title">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -843,7 +868,7 @@ export default function LawyerDashboard() {
                 <p className="text-xs text-muted-foreground">No new saved-search or citation-watch results today.</p>
               )}
             </section>
-            <section className="grid grid-cols-4 gap-2 lg:hidden" aria-label="Quick actions">
+            <section className="hidden" aria-label="Quick actions" aria-hidden="true">
               {[
                 { feature: "postCase" as const, label: "Add Case", action: () => { setActiveSection("cases"); setShowCaseModal(true); } },
                 { feature: "documents" as const, label: "Upload Doc", action: () => { setActiveSection("documents"); setShowDocModal(true); } },
@@ -865,7 +890,7 @@ export default function LawyerDashboard() {
                 Some data could not be loaded — showing cached results.
               </div>
             )}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="hidden" aria-hidden="true">
               {(casesLoading || matchLoading)
                 ? stats.map((s) => (
                     <div key={s.label} className="rounded-xl bg-card p-4 shadow-sm overflow-hidden relative animate-pulse"
@@ -878,7 +903,7 @@ export default function LawyerDashboard() {
             </div>
 
             {/* Two-column body */}
-            <div className="flex gap-6 items-start">
+            <div className="hidden" aria-hidden="true">
               {/* Left — Match proposals + feature cards */}
               <div className="flex-1 min-w-0 space-y-6">
                 {/* Match Proposals */}
