@@ -144,8 +144,22 @@ def summarise_board(rows: list[dict], now: datetime) -> dict | None:
         "minutes_ago": minutes,
         "advocates": len(confirmers),
         "stale": age > timedelta(minutes=BOARD_FRESH_MINUTES),
+        "minutes_per_item": court_pace(accepted, latest["created_at"]),
         "source": "advocates_in_court",
     }
+
+
+def court_pace(accepted: list[dict], latest_at: datetime) -> float | None:
+    """Minutes per matter from this hall's own updates in the last 90 minutes; None when there is too little data."""
+    recent = [r for r in accepted if latest_at - r["created_at"] <= timedelta(minutes=90)]
+    if len(recent) < 2:
+        return None
+    newest, oldest = recent[0], recent[-1]
+    items = newest["item_no"] - oldest["item_no"]
+    span = (newest["created_at"] - oldest["created_at"]).total_seconds() / 60
+    if items < 2 or span < 5:
+        return None
+    return round(min(max(span / items, 0.5), 60.0), 1)
 
 
 def decide_status(current: int | None, proposed: int, recent_pending: list[dict], user_id: int) -> str:

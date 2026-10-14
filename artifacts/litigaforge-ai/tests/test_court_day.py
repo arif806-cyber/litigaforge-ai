@@ -34,6 +34,17 @@ def test_board_goes_stale_then_disappears():
     assert cd.summarise_board([row(9, 1, 60 * 3 + 1)], NOW) is None
 
 
+def test_pace_comes_only_from_real_progress():
+    # 9 → 15 over 30 minutes = 5 minutes per matter
+    assert cd.summarise_board([row(15, 1, 1), row(12, 2, 16), row(9, 3, 31)], NOW)["minutes_per_item"] == 5.0
+    # one update, a tiny span, or no progress: no estimate rather than a guess
+    assert cd.summarise_board([row(9, 1, 1)], NOW)["minutes_per_item"] is None
+    assert cd.summarise_board([row(12, 1, 1), row(9, 2, 3)], NOW)["minutes_per_item"] is None
+    assert cd.summarise_board([row(10, 1, 1), row(9, 2, 30)], NOW)["minutes_per_item"] is None
+    # updates older than 90 minutes are ignored
+    assert cd.summarise_board([row(20, 1, 1), row(5, 2, 120)], NOW)["minutes_per_item"] is None
+
+
 def test_pending_rows_never_become_the_board():
     rows = [row(40, 5, 1, "pending"), row(12, 1, 3)]
     assert cd.summarise_board(rows, NOW)["now_item"] == 12
