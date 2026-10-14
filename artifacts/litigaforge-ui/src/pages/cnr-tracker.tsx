@@ -24,7 +24,7 @@ const CASE_TYPES = [
 
 const EVENT_ICONS: Record<string, { color: string; Icon: React.ElementType }> = {
   hearing_scheduled: { Icon: Calendar,     color: "#F5B754" },
-  hearing_adjourned: { Icon: Clock,        color: "#8B5CF6" },
+  hearing_adjourned: { Icon: Clock,        color: "hsl(var(--primary))" },
   order_passed:      { Icon: Gavel,        color: "#34D399" },
   status_changed:    { Icon: Activity,     color: "var(--secondary-oklch)" },
   case_disposed:     { Icon: CheckCircle2, color: "#34D399" },
@@ -226,7 +226,7 @@ function TimelinePanel({ caseId, tier }: { caseId: string; tier: string }) {
         </div>
       )}
       <div className="rounded-xl p-4 text-center space-y-2.5"
-        style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+        style={{ background: "color-mix(in oklch, hsl(var(--primary)) 8%, transparent)", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 20%, transparent)" }}>
         <Lock className="w-5 h-5 text-primary mx-auto" />
         <p className="text-xs text-muted-foreground max-w-xs mx-auto">{data.upgrade_hint}</p>
         <Link href="/subscription">
@@ -543,7 +543,7 @@ export default function CnrTracker() {
           {/* Upgrade nudge for free users who have cases */}
           {user.subscription_tier === "free" && cases.length > 0 && (
             <div className="flex items-start gap-3 rounded-xl px-4 py-3"
-              style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.18)" }}>
+              style={{ background: "color-mix(in oklch, hsl(var(--primary)) 8%, transparent)", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 18%, transparent)" }}>
               <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <p className="text-xs text-primary">
                 Free plan shows latest status only.{" "}
@@ -615,7 +615,7 @@ export default function CnrTracker() {
                 {[
                   { Icon: Plus,      color: "#F5B754", title: "Add CNR",      desc: "Paste your 16-character Case Number from eCourts or court notice" },
                   { Icon: RefreshCw, color: "#34D399", title: "Auto Refresh", desc: "Polls eCourts nightly at 08:00 IST — or tap Refresh anytime" },
-                  { Icon: Activity,  color: "#8B5CF6", title: "Get Alerts",   desc: "Hearing rescheduled, order passed? You're notified first" },
+                  { Icon: Activity,  color: "hsl(var(--primary))", title: "Get Alerts",   desc: "Hearing rescheduled, order passed? You're notified first" },
                 ].map(({ Icon, color, title, desc }) => (
                   <div key={title} className="flex flex-col items-center text-center gap-2 rounded-xl border border-border bg-background p-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center"

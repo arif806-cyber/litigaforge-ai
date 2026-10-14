@@ -83,7 +83,7 @@ try {
   await page.getByLabel("District").selectOption("New Delhi");
   await page.getByRole("option", { name: "Supreme Court" }).waitFor({ state: "attached" });
   await page.getByLabel("Court complex").selectOption("Supreme Court");
-  await page.getByRole("button", { name: /Choose courts/ }).click();
+  // Picking a court complex opens the court list automatically (no extra tap).
   const dialog = page.getByRole("dialog", { name: "Choose courts" });
   const searchInput = dialog.getByLabel("Search courts by judge or court number");
   const searchBox = await searchInput.boundingBox();

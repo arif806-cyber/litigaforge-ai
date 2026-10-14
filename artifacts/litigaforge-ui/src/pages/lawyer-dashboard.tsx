@@ -413,10 +413,10 @@ export default function LawyerDashboard() {
   const completedCases = cases.filter((c) => c.status === "closed");
 
   const stats = [
-    { label: "Total Requests", value: allLeads.length, sub: "All client requests", iconEl: <Users className="w-5 h-5" />, iconBg: "rgba(139,92,246,0.12)", iconColor: "#8B5CF6", borderColor: "rgba(139,92,246,0.25)" },
+    { label: "Total Requests", value: allLeads.length, sub: "All client requests", iconEl: <Users className="w-5 h-5" />, iconBg: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", iconColor: "hsl(var(--primary))", borderColor: "color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" },
     { label: "Pending", value: pendingLeads.length, sub: "Needs your response", iconEl: <Clock className="w-5 h-5" />, iconBg: "rgba(245,183,84,0.12)", iconColor: "#F5B754", borderColor: "rgba(245,183,84,0.35)" },
     { label: "Accepted", value: acceptedLeads.length, sub: "Active matters", iconEl: <CheckCircle2 className="w-5 h-5" />, iconBg: "rgba(52,211,153,0.12)", iconColor: "#34D399", borderColor: "rgba(52,211,153,0.25)" },
-    { label: "Completed", value: completedCases.length, sub: "This month", iconEl: <FileText className="w-5 h-5" />, iconBg: "rgba(139,92,246,0.12)", iconColor: "#8B5CF6", borderColor: "rgba(139,92,246,0.25)" },
+    { label: "Completed", value: completedCases.length, sub: "This month", iconEl: <FileText className="w-5 h-5" />, iconBg: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", iconColor: "hsl(var(--primary))", borderColor: "color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" },
   ];
 
   // ── Verification wall ──
@@ -448,7 +448,7 @@ export default function LawyerDashboard() {
                 animate={{ rotate: [0, -8, 8, -8, 8, 0] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                 className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: "rgba(139,92,246,0.12)", border: "1.5px solid rgba(139,92,246,0.25)" }}
+                style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", border: "1.5px solid color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" }}
               >
                 <Hourglass className="w-7 h-7 text-primary" />
               </motion.div>
@@ -472,8 +472,8 @@ export default function LawyerDashboard() {
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{
-                        background: done ? "rgba(52,211,153,0.12)" : active ? "rgba(139,92,246,0.12)" : "hsl(var(--muted))",
-                        border: `1.5px solid ${done ? "rgba(52,211,153,0.35)" : active ? "rgba(139,92,246,0.35)" : "hsl(var(--border))"}`,
+                        background: done ? "rgba(52,211,153,0.12)" : active ? "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" : "hsl(var(--muted))",
+                        border: `1.5px solid ${done ? "rgba(52,211,153,0.35)" : active ? "color-mix(in oklch, hsl(var(--primary)) 35%, transparent)" : "hsl(var(--border))"}`,
                       }}
                     >
                       {done ? (
@@ -486,7 +486,7 @@ export default function LawyerDashboard() {
                     </div>
                     <span
                       className="text-sm"
-                      style={{ color: done ? "#34D399" : active ? "#8B5CF6" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
+                      style={{ color: done ? "#34D399" : active ? "hsl(var(--primary))" : "#94A3B8", fontWeight: active || done ? 600 : 400 }}
                     >
                       {label}
                     </span>
@@ -496,7 +496,7 @@ export default function LawyerDashboard() {
 
               <div
                 className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs text-primary mb-4"
-                style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)" }}
+                style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" }}
               >
                 <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                 <span>Checking for updates every 30 seconds — this page will refresh automatically once approved.</span>
@@ -910,8 +910,8 @@ export default function LawyerDashboard() {
                 <div className="bg-card rounded-2xl shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
                   <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
-                        <Sparkles style={{ width: "18px", height: "18px", color: "#8B5CF6" }} />
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" }}>
+                        <Sparkles style={{ width: "18px", height: "18px", color: "hsl(var(--primary))" }} />
                       </div>
                       <div>
                         <h2 className="font-bold text-foreground text-base leading-tight">Client requests</h2>
@@ -978,7 +978,7 @@ export default function LawyerDashboard() {
                             <span className="text-[11px] text-muted-foreground/60">{timeAgo(m.created_at)}</span>
                             <button onClick={() => setLocation("/matches")}
                               className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                              style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}
+                              style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))" }}
                               data-testid={`match-view-${m.id}`}>
                               View Details
                             </button>
@@ -1000,7 +1000,7 @@ export default function LawyerDashboard() {
                 {/* Feature cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { icon: Users,    color: "#4F46E5", bg: "rgba(139,92,246,0.12)", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
+                    { icon: Users,    color: "hsl(var(--primary))", bg: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", label: "AI-Powered Matching", sub: "Get high-quality leads that match your expertise" },
                     { icon: Sparkles, color: "#38BDF8", bg: "rgba(14,165,233,0.12)", label: "Smart Tools",         sub: "AI chat, document analysis, and legal research" },
                     { icon: Award,    color: "#F472B6", bg: "rgba(236,72,153,0.12)", label: "Grow Your Practice",  sub: "Save time and focus on winning cases" },
                   ].map((item) => {
@@ -1061,7 +1061,7 @@ export default function LawyerDashboard() {
                       return (
                         <div key={item.id} className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                            style={{ background: isMatch ? "rgba(139,92,246,0.12)" : isAccepted ? "rgba(52,211,153,0.12)" : "rgba(139,92,246,0.12)" }}>
+                            style={{ background: isMatch ? "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" : isAccepted ? "rgba(52,211,153,0.12)" : "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" }}>
                             {isMatch    && <Users       className="w-3.5 h-3.5 text-primary" />}
                             {isAccepted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
                             {isDoc      && <FileText    className="w-3.5 h-3.5 text-primary" />}
@@ -1234,7 +1234,7 @@ export default function LawyerDashboard() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}>
+                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))" }}>
                           {c.cnr_number}
                         </span>
                         <span className={cn(
@@ -1283,7 +1283,7 @@ export default function LawyerDashboard() {
                     style={{ borderColor: "hsl(var(--muted))" }}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm"
-                        style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}>
+                        style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))" }}>
                         {(client.name ?? "?").charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -1310,7 +1310,7 @@ export default function LawyerDashboard() {
               </div>
               <button onClick={() => setShowDocModal(true)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ background: "#8B5CF6" }}
+                style={{ background: "hsl(var(--primary))" }}
                 data-testid="docs-upload-btn">
                 <Upload className="w-4 h-4" /> Upload Document
               </button>
@@ -1341,13 +1341,13 @@ export default function LawyerDashboard() {
                         className="bg-card rounded-2xl shadow-sm hover:shadow-md transition-all"
                         style={{ border: "1px solid hsl(var(--border))" }}>
                         <div className="flex items-start gap-3 p-4">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
-                            <FileText className="w-5 h-5" style={{ color: "#8B5CF6" }} />
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" }}>
+                            <FileText className="w-5 h-5" style={{ color: "hsl(var(--primary))" }} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-foreground text-sm truncate">{d.filename}</span>
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" }}>
                                 {d.file_type.toUpperCase()}
                               </span>
                               {d.ai_summary && (
@@ -1366,7 +1366,7 @@ export default function LawyerDashboard() {
                               onClick={() => { setAnalyzingDoc(d.id); analyzeDocMut.mutate(d.id, { onSettled: () => setAnalyzingDoc(null) }); }}
                               disabled={analyzeDocMut.isPending && analyzingDoc === d.id}
                               className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                              style={{ background: "rgba(139,92,246,0.25)", color: "#8B5CF6" }}>
+                              style={{ background: "color-mix(in oklch, hsl(var(--primary)) 25%, transparent)", color: "hsl(var(--primary))" }}>
                               {analyzeDocMut.isPending && analyzingDoc === d.id
                                 ? <Loader2 className="w-3 h-3 animate-spin" />
                                 : <Sparkles className="w-3 h-3" />}
@@ -1427,7 +1427,7 @@ export default function LawyerDashboard() {
                 <p className="text-[11px] text-muted-foreground/60 mt-0.5">{monthlyFeeCases.length} fee{monthlyFeeCases.length !== 1 ? "s" : ""} recorded this month</p>
               </div>
               <div className="bg-card rounded-2xl p-6 shadow-sm" style={{ border: "1px solid hsl(var(--border))" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "rgba(139,92,246,0.12)" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" }}>
                   <Briefcase className="w-5 h-5 text-primary" />
                 </div>
                 <p className="text-3xl font-black text-foreground">₹{recordedTotalEarnings.toLocaleString("en-IN")}</p>
@@ -1690,19 +1690,19 @@ function CaseFolderModal({
         {/* Header */}
         <div className="sticky top-0 bg-card z-10 px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: "hsl(var(--border))" }}>
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" }}>
               <FolderOpen className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h3 className="font-bold text-foreground text-lg leading-tight">{caseData.title}</h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>{caseData.case_type}</span>
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" }}>{caseData.case_type}</span>
                 <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full",
                   caseData.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : caseData.status === "closed" ? "bg-muted text-muted-foreground border border-border"
                     : "bg-amber-500/10 text-amber-400 border border-amber-500/20")}>{caseData.status.toUpperCase()}</span>
                 {caseData.cnr_number && (
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" }}>
                     <FileText className="w-2.5 h-2.5" /> {caseTerms(countryCode).short}: {caseData.cnr_number}
                   </span>
                 )}
@@ -1713,9 +1713,9 @@ function CaseFolderModal({
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={onUpload} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white transition-colors" style={{ background: "#8B5CF6" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#8B5CF6"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#8B5CF6"; }}>
+            <button onClick={onUpload} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white transition-colors" style={{ background: "hsl(var(--primary))" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "hsl(var(--primary))"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "hsl(var(--primary))"; }}>
               <Plus className="w-3.5 h-3.5" /> Upload
             </button>
             <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors">
@@ -1754,13 +1754,13 @@ function CaseFolderModal({
                 <motion.div key={d.id} layout className="rounded-xl border overflow-hidden" style={{ borderColor: "hsl(var(--border))" }}>
                   {/* Doc header */}
                   <div className="flex items-start gap-3 p-3.5 bg-card">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(139,92,246,0.12)" }}>
-                      <FileText className="w-4 h-4" style={{ color: "#8B5CF6" }} />
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" }}>
+                      <FileText className="w-4 h-4" style={{ color: "hsl(var(--primary))" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{d.filename}</span>
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>{d.file_type.toUpperCase()}</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" }}>{d.file_type.toUpperCase()}</span>
                         {d.ai_summary && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">AI Analyzed</span>}
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 mt-0.5">{formatDate(d.created_at, countryCode)}</p>
@@ -2023,7 +2023,7 @@ function DocForm({ cases, onSubmit, loading, preselectedCaseId }: { cases: Lawye
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1">Select File</label>
             <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors hover:bg-primary/10 hover:border-primary/40"
-              style={{ borderColor: "rgba(139,92,246,0.35)" }} onClick={() => fileRef.current?.click()}>
+              style={{ borderColor: "color-mix(in oklch, hsl(var(--primary)) 35%, transparent)" }} onClick={() => fileRef.current?.click()}>
               <Upload className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--primary-oklch)" }} />
               <p className="text-sm font-medium text-muted-foreground">{filename || "Click to select .txt, .pdf, .doc"}</p>
               <p className="text-[11px] text-muted-foreground/60 mt-1">Max 25MB — text extracted for AI analysis</p>

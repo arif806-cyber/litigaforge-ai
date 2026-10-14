@@ -12,7 +12,6 @@ import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuth, type User, TIER_LABELS } from "@/lib/auth-context";
 import { LegalDisclaimerFooter } from "@/components/legal-disclaimer";
-import CountrySwitcher from "@/components/CountrySwitcher";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Translation } from "@/i18n";
@@ -205,7 +204,7 @@ function NavItem({
             : "font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent active:bg-sidebar-accent active:text-sidebar-foreground"
       )}>
       {feature
-        ? <FeatureIcon feature={feature} size="small" />
+        ? <FeatureIcon feature={feature} size="small" inverted={active} />
         : <Icon className={cn(
             "w-4 h-4 flex-shrink-0",
             active ? "text-sidebar-primary-foreground" : highlight ? "text-secondary" : "group-hover:text-sidebar-foreground"
@@ -572,10 +571,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center gap-3">
               <LanguageSwitcher />
-              <CountrySwitcher />
               {user && (
-                <Link href="/subscription" className="flex items-center gap-2 text-xs font-semibold text-foreground bg-accent/80 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors border border-accent-border">
-                  <Crown className="w-3.5 h-3.5 text-amber-600" />
+                <Link href="/subscription" data-testid="header-plan-link" className="flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-lg hover:bg-primary/15 transition-colors border border-primary/25">
+                  <Crown className="w-3.5 h-3.5" />
                   {user.role === "client"
                     ? (user.subscription_tier === "free" ? "Client Free" : "Client Pro")
                     : user.subscription_tier === "free" ? "Free plan · Upgrade" : (TIER_LABELS[user.subscription_tier] ?? "Free")}

@@ -73,6 +73,7 @@ export const FEATURE_BY_HREF: Record<string, FeatureKey> = {
   "/lawyer-dashboard": "dashboard",
   "/my-cases": "casesHearings",
   "/docket": "docket",
+  "/cause-lists": "docket",
   "/lawyer-dashboard/cases": "casesHearings",
   "/advocate/cases": "casesHearings",
   "/lawyer-dashboard/clients": "clients",

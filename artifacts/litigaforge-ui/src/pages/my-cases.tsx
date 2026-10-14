@@ -162,13 +162,13 @@ function LegacyMyCases() {
                 className="rounded-xl p-4 hover:shadow-md transition-all cursor-pointer" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)" }}>
                       <FileText className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{c.title}</span>
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.25)" }}>{c.case_type}</span>
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", color: "hsl(var(--primary))", border: "1px solid color-mix(in oklch, hsl(var(--primary)) 25%, transparent)" }}>{c.case_type}</span>
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: st.bg, color: st.text, border: `1px solid ${st.border}` }}>{c.status.toUpperCase()}</span>
                         {c.is_anonymous && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border"><EyeOff className="w-2.5 h-2.5 inline mr-0.5" />Anon</span>}
                       </div>

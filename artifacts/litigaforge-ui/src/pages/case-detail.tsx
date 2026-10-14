@@ -593,7 +593,7 @@ function LegacyCaseDetail() {
                     {[
                       { icon: Users, label: "View Proposals", color: "#F5B754", bg: "rgba(245,183,84,0.12)", action: () => setTab("proposals"), testId: "next-view-proposals" },
                       { icon: Upload, label: "Upload Documents", color: "#F5B754", bg: "rgba(245,183,84,0.12)", action: () => setTab("documents"), testId: "next-upload-docs" },
-                      { icon: Sparkles, label: "AI Legal Analysis", color: "#8B5CF6", bg: "rgba(139,92,246,0.12)", action: () => setTab("overview"), testId: "next-ai-analysis" },
+                      { icon: Sparkles, label: "AI Legal Analysis", color: "hsl(var(--primary))", bg: "color-mix(in oklch, hsl(var(--primary)) 12%, transparent)", action: () => setTab("overview"), testId: "next-ai-analysis" },
                       { icon: MessageSquare, label: "Chat with Lawyer", color: "#34D399", bg: "rgba(52,211,153,0.12)", action: () => setTab("messages"), testId: "next-chat-lawyer" },
                       { icon: Share2, label: "Share Case", color: "#38BDF8", bg: "rgba(14,165,233,0.12)", action: handleShare, testId: "next-share-case" },
                     ].map(({ icon: Icon, label, color, bg, action, testId }) => (
