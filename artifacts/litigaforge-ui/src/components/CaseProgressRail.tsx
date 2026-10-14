@@ -4,7 +4,7 @@ const STAGES = [
   { key: "requested", label: "Request" },
   { key: "proposals", label: "Proposal" },
   { key: "hired",     label: "Hired" },
-  { key: "completed", label: "Complete" },
+  { key: "completed", label: "Done" },
 ] as const;
 
 type StageKey = (typeof STAGES)[number]["key"];
@@ -18,14 +18,15 @@ export default function CaseProgressRail({ currentStage }: CaseProgressRailProps
   const safeIndex = currentIndex === -1 ? 0 : currentIndex;
 
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-sm px-4 pt-3 pb-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-        Your Case Journey
+    <div data-testid="client-case-journey" className="overflow-hidden rounded-2xl border border-border bg-card px-4 pt-3 pb-4 shadow-sm">
+      <p className="mb-3 text-[11px] font-semibold text-muted-foreground">
+        Your case journey
       </p>
-      <div className="relative grid w-full grid-cols-6 items-start">
+      <div className="scrollbar-hidden overflow-x-auto">
+      <div className="relative grid min-w-full grid-cols-6 items-start">
         <div aria-hidden="true" className="absolute left-[8.333%] right-[8.333%] top-4 h-0.5 bg-border">
           <div
-            className="h-full bg-emerald-500 transition-[width] duration-300"
+            className="h-full bg-secondary transition-[width] duration-300"
             style={{ width: `${(safeIndex / (STAGES.length - 1)) * 100}%` }}
           />
         </div>
@@ -37,7 +38,7 @@ export default function CaseProgressRail({ currentStage }: CaseProgressRailProps
               <div
                 className={[
                   "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 select-none",
-                  isDone   ? "bg-emerald-500 text-white shadow-sm" : "",
+                   isDone   ? "bg-secondary text-secondary-foreground shadow-sm" : "",
                   isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20 animate-pulse" : "",
                   !isDone && !isActive ? "bg-muted text-muted-foreground" : "",
                 ].join(" ")}
@@ -46,15 +47,17 @@ export default function CaseProgressRail({ currentStage }: CaseProgressRailProps
               </div>
               <span
                 className={[
-                  "mt-1.5 min-h-8 w-full break-words px-0.5 text-center text-[11px] leading-tight",
+                  "mt-1.5 min-h-8 w-full whitespace-nowrap px-0.5 text-center text-[11px] leading-tight",
                   isActive ? "font-bold text-primary" : "text-muted-foreground",
                 ].join(" ")}
+                data-testid="case-progress-step-label"
               >
                 {stage.label}
               </span>
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

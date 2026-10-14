@@ -33,7 +33,7 @@ interface NavEntry {
 }
 
 const clientNav: NavEntry[] = [
-  { href: "/client-dashboard", label: "Dashboard",       icon: Briefcase, tKey: "dashboard" },
+  { href: "/client-dashboard", label: "Home",             icon: Briefcase },
   { href: "/post-case",        label: "Post a Case",     icon: Plus,      tKey: "post_case" },
   { href: "/my-cases",         label: "My Cases",        icon: FileText,  tKey: "my_cases" },
   { href: "/matches",          label: "Match Proposals", icon: Sparkles,  tKey: "match_proposals" },
@@ -118,7 +118,7 @@ function isNavPathActive(href: string, location: string): boolean {
 }
 
 function mobileTitleForPath(path: string): string {
-  if (path.startsWith("/client-dashboard")) return "Dashboard";
+  if (path.startsWith("/client-dashboard")) return "Home";
   if (path.startsWith("/lawyer-dashboard/cases")) return "Cases";
   if (path.startsWith("/lawyer-dashboard/clients")) return "Clients";
   if (path.startsWith("/lawyer-dashboard/documents")) return "Documents";
@@ -371,8 +371,8 @@ function SidebarContent({
 
 /* ─── Mobile-only nav arrays (5-slot bottom bar) ─── */
 const clientMobileNav: NavEntry[] = [
-  { href: "/client-dashboard", label: "Dashboard", icon: Briefcase, tKey: "dashboard" },
-  { href: "/my-cases",         label: "Cases",     icon: FileText,  tKey: "my_cases"  },
+  { href: "/client-dashboard", label: "Home",   icon: Briefcase },
+  { href: "/my-cases",         label: "Cases",  icon: FileText },
 ];
 const lawyerMobileNav: NavEntry[] = [
   { href: "/lawyer-dashboard", label: "Today", icon: CalendarDays },
@@ -531,7 +531,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         className={cn("lf-mobile-topbar md:hidden", isAdvocateResearch && "lf-mobile-research-header")}
         title={mobileTitle}
         subtitle={isAdvocateResearch ? undefined : mobileSubtitleForPath(location)}
-        align={isAdvocateResearch ? "left" : "center"}
+        align={isAdvocateResearch || location.startsWith("/client-dashboard") ? "left" : "center"}
         large={!isMobileDetail}
         scrollEl={scrollElement}
         leading={isMobileDetail

@@ -32,6 +32,9 @@
   --color-destructive: var(--destructive-oklch);
   --color-destructive-foreground: var(--destructive-foreground-oklch);
   --color-destructive-border: var(--destructive-border);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-sidebar: var(--sidebar-oklch);
   --color-sidebar-foreground: var(--foreground-oklch);
   --color-sidebar-border: var(--border-oklch);
@@ -67,7 +70,7 @@
 
 /* LitigaForge foundation. This is the only source of semantic color tokens.
    sRGB fallbacks precede the OKLCH values for browsers without modern color support. */
-:root, .dark {
+.dark {
   color-scheme: dark;
   --background: 225 16% 7%;
   --foreground: 45 18% 94%;
@@ -145,7 +148,7 @@
   --shadow-raised: 0 22px 64px oklch(0 0 0 / .32);
 }
 
-.light {
+:root:not(.dark), .light {
   color-scheme: light;
   --background: 45 27% 95%;
   --foreground: 95 8% 15%;
@@ -215,7 +218,7 @@
   --info: oklch(0.49 0.075 190);
 }
 
-:root, .dark {
+.dark {
   --cfos-ink: 40 24% 92%;
   --cfos-paper: 220 35% 10%;
   --cfos-gold: 41 90% 55%;
@@ -226,7 +229,7 @@
   --cfos-risk: 6 74% 58%;
   --cfos-grid: 210 40% 80%;
 }
-.light {
+:root:not(.dark), .light {
   --cfos-ink: 222 47% 11%;
   --cfos-paper: 0 0% 100%;
   --cfos-gold: 41 88% 48%;
@@ -315,6 +318,28 @@
   .lf-app-layout { padding-top: env(safe-area-inset-top); }
   .lf-app-layout main { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
   .lf-konsta-tabbar { padding-bottom: env(safe-area-inset-bottom); }
+  .lf-konsta-tabbar.lf-mobile-bottom-nav {
+    background-color: hsl(var(--background)) !important;
+    border-top: 1px solid hsl(var(--border)) !important;
+    backdrop-filter: none !important;
+    opacity: 1 !important;
+  }
+  .lf-konsta-tabbar.lf-mobile-bottom-nav :is(a, button) {
+    min-width: 0;
+    gap: 0 !important;
+    padding-inline: 0 !important;
+    white-space: nowrap;
+  }
+  .lf-konsta-tabbar.lf-mobile-bottom-nav a:not(.k-tabbar-link-active) > span {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+  .lf-konsta-tabbar.lf-mobile-bottom-nav a.k-tabbar-link-active > span {
+    color: hsl(var(--primary)) !important;
+  }
+  .lf-konsta-tabbar.lf-mobile-bottom-nav .k-tabbar-link-icon + span {
+    font-size: 10px;
+    line-height: 1.1;
+  }
   .lf-konsta-sheet { padding-bottom: env(safe-area-inset-bottom); }
   body:has([data-vaul-drawer-visible]) .lf-konsta-tabbar { display: none !important; }
   [data-practice-chip="true"] { position: relative; min-height: 36px !important; }

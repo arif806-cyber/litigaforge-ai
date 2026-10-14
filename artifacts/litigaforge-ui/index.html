@@ -37,8 +37,9 @@
           document.documentElement.dataset.theme = theme;
           document.documentElement.style.colorScheme = theme;
         } catch {
-          document.documentElement.classList.add("dark");
-          document.documentElement.dataset.theme = "dark";
+          document.documentElement.classList.add("light");
+          document.documentElement.dataset.theme = "light";
+          document.documentElement.style.colorScheme = "light";
         }
       })();
     </script>

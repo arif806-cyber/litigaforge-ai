@@ -5,7 +5,6 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CLIENT_DASHBOARD_COPY } from "@/lib/country-copy";
 import { localeFor, caseTerms } from "@/lib/locale";
 import { motion } from "framer-motion";
 import {
@@ -22,7 +21,6 @@ import CaseProgressRail from "@/components/CaseProgressRail";
 import { LawyerMatchCard } from "@/components/LawyerMatchCard";
 import { useLawyerPresence } from "@/hooks/useLawyerPresence";
 import { useToast } from "@/hooks/use-toast";
-import { FeatureIcon } from "@/components/FeatureIcon";
 
 interface MyRequirement {
   id: number; title: string; case_type: string; description: string;
@@ -85,9 +83,9 @@ function CaseStageTimeline({ stage }: { stage: string }) {
         const isCurrent = i === idx;
         return (
           <div key={s} className="flex items-center gap-1">
-            <div className={`w-2 h-2 rounded-full transition-colors ${done ? "bg-emerald-500" : "bg-muted"}`} />
-            {isCurrent && <span className="text-[10px] font-semibold text-emerald-400 ml-0.5">{stageLabel(s)}</span>}
-            {i < CASE_STAGES.length - 1 && <div className={`w-3 h-px ${done ? "bg-emerald-500/40" : "bg-border"}`} />}
+            <div className={`w-2 h-2 rounded-full transition-colors ${done ? "bg-success" : "bg-muted"}`} />
+            {isCurrent && <span className="text-[10px] font-semibold text-success ml-0.5">{stageLabel(s)}</span>}
+            {i < CASE_STAGES.length - 1 && <div className={`w-3 h-px ${done ? "bg-success/40" : "bg-border"}`} />}
           </div>
         );
       })}
@@ -117,7 +115,7 @@ function StatCard({ label, value, icon: Icon, iconBg, iconColor, borderColor }: 
 
 /* ── Match Score Bar ────────────────────────────────────────── */
 function MatchScoreBar({ score }: { score: number }) {
-  const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
+  const color = score >= 80 ? "var(--success)" : score >= 60 ? "var(--warning)" : "var(--destructive-oklch)";
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -131,7 +129,6 @@ function MatchScoreBar({ score }: { score: number }) {
 export default function ClientDashboard() {
   const { user } = useAuth();
   const { activeCode } = useCountry();
-  const copy = CLIENT_DASHBOARD_COPY[activeCode.toUpperCase()] ?? CLIENT_DASHBOARD_COPY.IN;
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const { data: alertConfig } = useQuery<{ whatsapp_enabled: boolean; message?: string | null }>({
@@ -243,10 +240,10 @@ export default function ClientDashboard() {
   const locale = localeFor(activeCode);
 
   const quickActions = [
-    { label: t.post_case, feature: "postCase" as const, action: () => setLocation("/post-case") },
-    { label: t.doc_analyzer, feature: "documentAnalyzer" as const, action: () => setLocation("/review") },
-    { label: t.legal_qa, feature: "legalQa" as const, action: () => setLocation("/ask") },
-    { label: t.free_aid, feature: "freeLegalAid" as const, action: () => setLocation("/legal-aid") },
+    { label: t.post_case, icon: Plus, iconBg: "bg-primary/10", iconColor: "text-primary", action: () => setLocation("/post-case") },
+    { label: t.doc_analyzer, icon: FileText, iconBg: "bg-primary/10", iconColor: "text-primary", action: () => setLocation("/review") },
+    { label: t.legal_qa, icon: Gavel, iconBg: "bg-primary/10", iconColor: "text-primary", action: () => setLocation("/ask") },
+    { label: t.free_aid, icon: Shield, iconBg: "bg-secondary/10", iconColor: "text-secondary", action: () => setLocation("/legal-aid") },
   ];
 
   const caseTabLabels: Record<string, string> = { active: "Active", pending: "Pending", closed: "Closed" };
@@ -254,13 +251,13 @@ export default function ClientDashboard() {
 
   return (
     <>
-      <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-20 md:pb-8">
+      <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-8">
 
         {/* ── Greeting Banner ─────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card to-muted shadow-sm">
           <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.12]"
-            style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #f59e0b 0%, transparent 50%), radial-gradient(circle at 80% 20%, #10b981 0%, transparent 40%)" }} />
+            style={{ backgroundImage: "radial-gradient(circle at 20% 50%, hsl(var(--primary)) 0%, transparent 50%), radial-gradient(circle at 80% 20%, hsl(var(--secondary)) 0%, transparent 40%)" }} />
           <div className="relative px-5 py-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3.5">
@@ -272,9 +269,6 @@ export default function ClientDashboard() {
                   <h1 className="text-xl font-bold leading-tight text-foreground">{firstName}</h1>
                 </div>
               </div>
-              <div className="flex flex-shrink-0 items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                <Shield className="h-3.5 w-3.5" /> AI Protected
-              </div>
             </div>
             {/* Inline mini-stats */}
             <div className="mt-4 flex items-center gap-5 border-t border-border pt-4">
@@ -284,19 +278,19 @@ export default function ClientDashboard() {
               </div>
               <div className="h-8 w-px bg-border" />
               <div>
-                <p className="text-2xl font-bold leading-none text-amber-700 tabular-nums dark:text-amber-300">{upcomingHearings}</p>
+                <p className="text-2xl font-bold leading-none text-foreground tabular-nums">{upcomingHearings}</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">{t.hearings}</p>
               </div>
               <div className="h-8 w-px bg-border" />
               <div>
-                <p className="text-2xl font-bold leading-none text-emerald-700 tabular-nums dark:text-emerald-300">{connectedLawyers}</p>
+                <p className="text-2xl font-bold leading-none text-foreground tabular-nums">{connectedLawyers}</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">{t.my_lawyers}</p>
               </div>
               {pendingMatches > 0 && (
                 <>
                     <div className="h-8 w-px bg-border" />
                   <div>
-                      <p className="text-2xl font-bold leading-none text-primary tabular-nums">{pendingMatches}</p>
+                      <p className="text-2xl font-bold leading-none text-foreground tabular-nums">{pendingMatches}</p>
                       <p className="mt-0.5 text-[10px] text-muted-foreground">Proposals</p>
                   </div>
                 </>
@@ -308,19 +302,18 @@ export default function ClientDashboard() {
         {/* ── Emergency Legal Aid Banner ───────────────────────── */}
         {!countryLoading && activeConfig && (() => {
           const tel = activeConfig.emergency_legal?.replace(/[^\d+]/g, "") ?? "";
-          const cls = "flex items-center gap-3.5 p-4 rounded-2xl text-white transition-all hover:shadow-lg shadow-md";
-          const style = { background: "linear-gradient(135deg, #059669 0%, #10b981 100%)", boxShadow: "0 4px 20px -4px rgba(16,185,129,0.35)" };
+          const cls = "flex items-center gap-3.5 rounded-2xl border border-secondary/25 bg-secondary p-4 text-secondary-foreground shadow-sm transition-all hover:shadow-md";
           const inner = (
             <>
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-secondary-foreground/15">
                 <AlertCircle className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm leading-tight">Emergency Legal Aid · {activeConfig.flag}</p>
-                <p className="text-xs text-emerald-100 mt-0.5 truncate">{activeConfig.emergency_legal}{tel ? " · Tap to call" : ""}</p>
+                <p className="mt-0.5 truncate text-xs text-secondary-foreground/80">{activeConfig.emergency_legal}{tel ? " · Tap to call" : ""}</p>
               </div>
               {tel && (
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-secondary-foreground/15">
                   <Phone className="w-4 h-4" />
                 </div>
               )}
@@ -328,10 +321,10 @@ export default function ClientDashboard() {
           );
           return tel ? (
             <motion.a initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-              href={`tel:${tel}`} className={cls + " active:scale-[0.98]"} style={style}>{inner}</motion.a>
+              href={`tel:${tel}`} className={cls + " active:scale-[0.98]"}>{inner}</motion.a>
           ) : (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-              className={cls} style={style}>{inner}</motion.div>
+              className={cls}>{inner}</motion.div>
           );
         })()}
 
@@ -341,7 +334,7 @@ export default function ClientDashboard() {
         {/* ── Country Section ───────────────────────────────────── */}
         {!countryLoading && activeConfig && (
           <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
-            <div className="px-4 py-3 border-b border-border flex items-center gap-3" style={{ background: "linear-gradient(to right, rgba(26,39,68,0.04), transparent)" }}>
+            <div className="flex items-center gap-3 border-b border-border bg-gradient-to-r from-muted/50 to-transparent px-4 py-3">
               <span className="text-2xl leading-none">{activeConfig.flag}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground text-sm">{activeConfig.name}</p>
@@ -351,10 +344,10 @@ export default function ClientDashboard() {
             <div className="px-4 py-3 space-y-3">
               {(activeConfig.top_services?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Top Services</p>
+                  <p className="mb-2 text-[10px] font-semibold text-muted-foreground">Top services</p>
                 <div className="flex flex-wrap gap-2 pb-1">
                     {activeConfig.top_services!.map((s: string) => (
-                      <span key={s} className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <span key={s} className="flex-shrink-0 rounded-full border border-secondary/20 bg-secondary/10 px-3 py-1.5 text-xs font-semibold text-secondary">
                         {s}
                       </span>
                     ))}
@@ -363,7 +356,7 @@ export default function ClientDashboard() {
               )}
               {(activeConfig.courts?.length ?? 0) > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Courts & Tribunals</p>
+                  <p className="mb-2 text-[10px] font-semibold text-muted-foreground">Courts & tribunals</p>
                   <div className="flex flex-wrap gap-1.5">
                     {activeConfig.courts!.slice(0, 4).map((c: string) => (
                       <span key={c} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-primary/10 text-primary border border-primary/30">
@@ -380,11 +373,14 @@ export default function ClientDashboard() {
         {/* ── Quick Actions ────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {quickActions.map((a) => {
+            const Icon = a.icon;
             return (
               <motion.button key={a.label} onClick={a.action} whileTap={{ scale: 0.96 }}
                 aria-label={a.label}
                 className="flex min-h-[100px] flex-col items-center gap-2 rounded-2xl border border-border bg-card p-3 text-center transition-all active:opacity-80">
-                <FeatureIcon feature={a.feature} size="large" />
+                <span className={`flex h-14 w-14 items-center justify-center rounded-xl ${a.iconBg}`}>
+                  <Icon className={`h-6 w-6 ${a.iconColor}`} aria-hidden="true" />
+                </span>
                 <span className="line-clamp-1 w-full text-[13px] font-semibold leading-snug text-foreground">{a.label}</span>
               </motion.button>
             );
@@ -495,7 +491,7 @@ export default function ClientDashboard() {
                   return filtered.map((c, i) => (
                     <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                       className="rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all overflow-hidden"
-                      style={{ borderLeftWidth: "3px", borderLeftColor: c.status === "active" ? "#10b981" : c.status === "pending" ? "#f59e0b" : "#94a3b8" }}>
+                      style={{ borderLeftWidth: "3px", borderLeftColor: c.status === "active" ? "var(--success)" : c.status === "pending" ? "var(--warning)" : "hsl(var(--border))" }}>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -507,10 +503,10 @@ export default function ClientDashboard() {
                                 <span className="font-semibold text-foreground text-sm">{c.title}</span>
                                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{c.case_type}</span>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                  c.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                                  c.status === "pending" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                                  c.status === "active" ? "bg-success/10 text-success border border-success/20" :
+                                  c.status === "pending" ? "bg-warning/10 text-warning border border-warning/20" :
                                   "bg-muted text-muted-foreground"}`}>
-                                  {c.status.toUpperCase()}
+                                  {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
                                 </span>
                               </div>
                               <CaseStageTimeline stage={c.case_stage} />
@@ -518,7 +514,7 @@ export default function ClientDashboard() {
                                 {c.court_name && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{c.court_name}</span>}
                                 {c.cnr_number && <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{c.cnr_number}</span>}
                                 {c.hearing_date && (
-                                  <span className="flex items-center gap-1 text-amber-400 font-semibold">
+                                  <span className="flex items-center gap-1 text-warning font-semibold">
                                     <Calendar className="w-3 h-3" />
                                     {new Date(c.hearing_date).toLocaleDateString(locale)}
                                   </span>
@@ -537,7 +533,7 @@ export default function ClientDashboard() {
                               const text = `Case: ${c.title}\nType: ${c.case_type}\nCourt: ${c.court_name || "N/A"}\n${caseTerms(activeCode).short}: ${c.cnr_number || "N/A"}\nHearing: ${c.hearing_date || "N/A"}\nLawyer: ${c.lawyer_name || "N/A"}\n\n— LitigaForge AI`;
                               if (navigator.share) navigator.share({ title: c.title, text });
                               else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors" title="Share">
+                            }} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-success hover:bg-success/10 transition-colors" title="Share">
                               <Share2 className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => {
@@ -651,21 +647,21 @@ export default function ClientDashboard() {
             {/* Upcoming Hearings */}
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/20">
-                  <Calendar className="w-4 h-4 text-amber-400" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-warning/10 border border-warning/20">
+                  <Calendar className="w-4 h-4 text-warning" />
                 </div>
                 <p className="text-[14px] font-semibold text-foreground">Upcoming Hearings</p>
               </div>
               <div className="p-3 space-y-2">
                 {clientCases.filter((c) => c.hearing_date).slice(0, 3).map((c) => (
-                  <div key={c.id} className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-500/15">
-                      <Bell className="w-3.5 h-3.5 text-amber-400" />
+                  <div key={c.id} className="flex items-start gap-2.5 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-warning/15">
+                      <Bell className="w-3.5 h-3.5 text-warning" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-foreground truncate">{c.title}</p>
                       <p className="text-[11px] text-muted-foreground">{c.court_name || "District Court"}</p>
-                      <p className="text-[11px] text-amber-400 font-bold mt-0.5">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
+                      <p className="text-[11px] text-warning font-bold mt-0.5">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
                     </div>
                   </div>
                 ))}
@@ -678,8 +674,8 @@ export default function ClientDashboard() {
             {/* My Lawyers */}
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
-                  <User className="w-4 h-4 text-emerald-400" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-success/10 border border-success/20">
+                  <User className="w-4 h-4 text-success" />
                 </div>
                 <p className="text-[14px] font-semibold text-foreground">My Lawyers</p>
               </div>
@@ -695,7 +691,7 @@ export default function ClientDashboard() {
                     </div>
                     {c.lawyer_phone && (
                       <a href={`tel:${c.lawyer_phone}`}
-                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors text-muted-foreground">
+                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-success/10 hover:text-success transition-colors text-muted-foreground">
                         <Phone className="w-3.5 h-3.5" />
                       </a>
                     )}
@@ -716,8 +712,8 @@ export default function ClientDashboard() {
                 {[
                   { label: "Document Analyzer", icon: FileText, href: "/review",    color: "text-primary", bg: "bg-primary/10" },
                   { label: "Judgment Finder",   icon: Scale,    href: "/judgments", color: "text-primary",   bg: "bg-primary/10" },
-                  { label: "Legal Q&A",         icon: Gavel,    href: "/ask",       color: "text-amber-400",  bg: "bg-amber-500/10" },
-                  { label: "Free Legal Aid",    icon: Shield,   href: "/legal-aid", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+                  { label: "Legal Q&A",         icon: Gavel,    href: "/ask",       color: "text-primary",   bg: "bg-primary/10" },
+                  { label: "Free Legal Aid",    icon: Shield,   href: "/legal-aid", color: "text-secondary", bg: "bg-secondary/10" },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -736,21 +732,19 @@ export default function ClientDashboard() {
 
             {/* Upgrade banner */}
             {user?.subscription_tier === "free" && (
-              <div className="rounded-2xl p-4 border border-primary/20 overflow-hidden relative"
-                style={{ background: "linear-gradient(135deg, #14151F 0%, #1a1b2e 100%)", border: "1px solid rgba(245,183,84,0.15)" }}>
+              <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-4">
                 <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10"
-                  style={{ background: "#F5B754", transform: "translate(30%, -30%)" }} />
+                  style={{ background: "hsl(var(--primary))", transform: "translate(30%, -30%)" }} />
                 <div className="flex items-center gap-2 mb-2">
-                  <Award className="w-5 h-5 text-amber-400" />
-                  <p className="font-bold text-sm text-white">Upgrade to Advocate Pro</p>
+                  <Award className="w-5 h-5 text-primary" />
+                  <p className="font-bold text-sm text-foreground">Upgrade to Advocate Pro</p>
                 </div>
-                <p className="text-[11px] mb-3 leading-relaxed" style={{ color: "rgba(245,183,84,0.7)" }}>
+                <p className="text-[11px] mb-3 leading-relaxed text-muted-foreground">
                    Priority matching · Unlimited AI ·{" "}
                    {alertConfig?.whatsapp_enabled ? "WhatsApp alerts" : "WhatsApp alerts coming soon"}
                 </p>
                 <button onClick={() => setLocation("/subscription")}
-                  className="w-full text-xs font-bold py-2.5 rounded-xl text-[#0A0B10] transition-colors hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)" }}>
+                  className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90">
                   Upgrade — ₹999/mo
                 </button>
               </div>
@@ -763,20 +757,20 @@ export default function ClientDashboard() {
           {clientCases.filter((c) => c.hearing_date).length > 0 && (
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className="px-4 py-3.5 border-b border-border flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-400/10 border border-amber-400/20">
-                  <Calendar className="w-4 h-4 text-amber-400" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-warning/10 border border-warning/20">
+                  <Calendar className="w-4 h-4 text-warning" />
                 </div>
                 <p className="text-[14px] font-semibold text-foreground">Upcoming Hearings</p>
               </div>
               <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {clientCases.filter((c) => c.hearing_date).slice(0, 4).map((c) => (
-                  <div key={c.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-400/8 border border-amber-400/15">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-400/15">
-                      <Bell className="w-3.5 h-3.5 text-amber-400" />
+                  <div key={c.id} className="flex items-center gap-2.5 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-warning/15">
+                      <Bell className="w-3.5 h-3.5 text-warning" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-foreground truncate">{c.title}</p>
-                      <p className="text-[11px] text-amber-400 font-bold">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
+                      <p className="text-[11px] text-warning font-bold">{new Date(c.hearing_date).toLocaleDateString(locale)}</p>
                     </div>
                   </div>
                 ))}
@@ -785,22 +779,20 @@ export default function ClientDashboard() {
           )}
 
           {user?.subscription_tier === "free" && (
-            <div className="rounded-2xl p-5 overflow-hidden relative"
-              style={{ background: "linear-gradient(135deg, #14151F 0%, #1a1b2e 100%)", border: "1px solid rgba(245,183,84,0.15)" }}>
+            <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-5">
               <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10"
-                style={{ background: "#F5B754", transform: "translate(40%, -40%)" }} />
+                style={{ background: "hsl(var(--primary))", transform: "translate(40%, -40%)" }} />
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-400/20 flex items-center justify-center">
-                  <Award className="w-5 h-5 text-amber-400" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Award className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-bold text-white">Upgrade to Advocate Pro</p>
-                  <p className="text-[11px]" style={{ color: "rgba(245,183,84,0.7)" }}>Priority matching + Unlimited AI</p>
+                  <p className="font-bold text-foreground">Upgrade to Advocate Pro</p>
+                  <p className="text-[11px] text-muted-foreground">Priority matching + Unlimited AI</p>
                 </div>
               </div>
               <button onClick={() => setLocation("/subscription")}
-                className="w-full text-sm font-bold py-3 rounded-xl text-[#0A0B10] transition-colors hover:opacity-90"
-                style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)" }}>
+                className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90">
                 Upgrade Now — ₹999/month
               </button>
             </div>
@@ -821,7 +813,7 @@ export default function ClientDashboard() {
                 { label: "Hearing",   value: showCaseDetail.hearing_date ? new Date(showCaseDetail.hearing_date).toLocaleDateString(locale) : "N/A" },
               ].map((item) => (
                 <div key={item.label} className="rounded-xl p-3 bg-muted/40 border border-border">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{item.label}</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">{item.label}</p>
                   <p className="text-sm font-semibold text-foreground">{item.value}</p>
                 </div>
               ))}
@@ -894,7 +886,7 @@ export default function ClientDashboard() {
                           const text = `Case Document: ${doc.filename}\nCase: ${showCaseDetail.title}\n\nDownload: ${typeof window !== "undefined" ? window.location.origin : ""}${doc.file_url}\n\n— LitigaForge AI`;
                           if (navigator.share) navigator.share({ title: doc.filename, text });
                           else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                        }} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                        }} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-success hover:bg-success/10 transition-colors">
                           <Share2 className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={async () => {
@@ -933,7 +925,7 @@ export default function ClientDashboard() {
                 <Download className="w-3.5 h-3.5" /> Download
               </button>
               {showCaseDetail.lawyer_phone && (
-                <a href={`tel:${showCaseDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
+                <a href={`tel:${showCaseDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-lg bg-secondary hover:bg-secondary/90 text-secondary-foreground transition-colors">
                   <Phone className="w-3.5 h-3.5" /> Call Lawyer
                 </a>
               )}
@@ -952,12 +944,12 @@ export default function ClientDashboard() {
         {showEditCase && (
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Description</label>
+              <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Description</label>
               <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={4} placeholder="Update case description…"
                 className="w-full text-sm px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none" />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Next Hearing Date</label>
+              <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Next hearing date</label>
               <input type="date" value={editHearing} onChange={(e) => setEditHearing(e.target.value)}
                 className="w-full text-sm px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all" />
             </div>
@@ -988,7 +980,7 @@ export default function ClientDashboard() {
                 { label: "Experience", value: `${showMatchDetail.experience_years} years` },
               ].map((item) => (
                 <div key={item.label} className="rounded-xl p-3 bg-muted/40 border border-border">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{item.label}</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">{item.label}</p>
                   <p className="text-sm font-semibold text-foreground">{item.value}</p>
                 </div>
               ))}
@@ -1001,7 +993,7 @@ export default function ClientDashboard() {
             )}
             <div className="flex gap-2">
               {showMatchDetail.lawyer_phone && (
-                <a href={`tel:${showMatchDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
+                <a href={`tel:${showMatchDetail.lawyer_phone}`} className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl bg-secondary hover:bg-secondary/90 text-secondary-foreground transition-colors">
                   <Phone className="w-4 h-4" /> Call
                 </a>
               )}
@@ -1035,7 +1027,7 @@ export default function ClientDashboard() {
               </div>
             )}
             <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Quick Message</label>
+              <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Quick message</label>
               <textarea value={messageText} onChange={(e) => setMessageText(e.target.value)} rows={3} placeholder="Type your message…"
                 className="w-full text-sm px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
             </div>

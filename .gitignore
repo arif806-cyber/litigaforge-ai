@@ -6,6 +6,7 @@ dist
 # instead of relying on a cached cloud build that may serve stale HTML.
 !artifacts/litigaforge-ui/dist/
 /generated-artifacts/
+/artifacts/litigaforge-ui/generated-artifacts/
 /.agents/outputs/
 /exports/
 /extract/
