@@ -77,6 +77,9 @@ async def test_admin_cap_is_persisted_and_read_back():
 
 @pytest.mark.asyncio
 async def test_cap_hit_without_cached_results_is_reported(monkeypatch):
+    monkeypatch.setenv("IK_ENABLED", "true")
+    monkeypatch.setenv("INDIANKANOON_API_TOKEN", "test-token")
+
     class EmptyConn:
         async def fetchrow(self, *_args):
             return None
