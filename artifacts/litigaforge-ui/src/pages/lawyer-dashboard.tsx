@@ -702,7 +702,7 @@ export default function LawyerDashboard() {
     <div className="flex min-h-full" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
 
       {/* ── Main Content ── */}
-      <main className="flex-1 min-w-0 px-4 md:px-8 py-6 space-y-6">
+      <main className={cn("flex-1 min-w-0 px-4 md:px-8 py-6", activeSection === "cases" ? "space-y-2" : "space-y-6")}>
 
         {/* ── Welcome ── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -1100,16 +1100,13 @@ export default function LawyerDashboard() {
 
         {/* ── CASES ── */}
         {activeSection === "cases" && (
-          <div className="space-y-5">
-            {/* Header */}
-            <div className="flex justify-end">
-              <button onClick={() => setShowCaseModal(true)}
-                className="fixed bottom-24 right-4 z-40 flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg transition-all md:static md:bottom-auto md:right-auto md:rounded-xl md:px-4 md:py-2 md:shadow-none"
-                style={{ background: "#F5B754", color: "#0A0B10" }}
-                data-testid="cases-add-case-btn">
-                <Plus className="w-4 h-4" /> Add Case
-              </button>
-            </div>
+          <div className="space-y-1">
+            <button onClick={() => setShowCaseModal(true)}
+              className="fixed bottom-24 right-4 z-40 flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg transition-all md:static md:bottom-auto md:right-auto md:rounded-xl md:px-4 md:py-2 md:shadow-none"
+              style={{ background: "#F5B754", color: "#0A0B10" }}
+              data-testid="cases-add-case-btn">
+              <Plus className="w-4 h-4" /> Add Case
+            </button>
 
             {/* Status tabs */}
             <div className="flex items-center gap-1 rounded-xl p-1 w-fit" style={{ background: "hsl(var(--muted))" }}>
@@ -1148,16 +1145,13 @@ export default function LawyerDashboard() {
                   <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                     className="bg-card rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer relative"
                     style={{ border: "1px solid hsl(var(--border))" }}
+                    data-testid={`lawyer-case-card-${c.id}`}
                     onClick={() => {
                       setFolderCase(c);
                       setFolderDocs(docs.filter((d) => d.case_id === c.id));
                       setShowFolder(true);
                     }}>
-                    {/* Status stripe */}
-                    <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl"
-                      style={{ background: c.status === "active" ? "#34D399" : c.status === "closed" ? "#9CA3AF" : "#F5B754" }} />
-
-                    <div className="p-5 pt-6 space-y-3">
+                    <div className="p-5 space-y-3">
                       {/* Title + status */}
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-bold text-foreground text-sm leading-snug flex-1">{c.title}</p>
@@ -1190,10 +1184,7 @@ export default function LawyerDashboard() {
 
                       {/* CNR Number */}
                       {c.cnr_number && (
-                        <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)" }}>
-                          <Shield className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                          <span className="text-[11px] font-mono font-semibold text-secondary truncate">{c.cnr_number}</span>
-                        </div>
+                        <p data-testid={`lawyer-case-cnr-${c.id}`} className="truncate text-[11px] font-mono tabular-nums text-muted-foreground">{c.cnr_number}</p>
                       )}
 
                       {/* Docs count + actions */}

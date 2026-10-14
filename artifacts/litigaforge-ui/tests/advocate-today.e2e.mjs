@@ -113,13 +113,45 @@ try {
         assert.ok(await page.getByRole("button", { name: /^Active/ }).isVisible());
         assert.ok(await page.getByRole("button", { name: /^Pending/ }).isVisible());
         assert.ok(await page.getByRole("button", { name: /^Closed/ }).isVisible());
+          const casesGap = await page.evaluate(() => {
+            const title = document.querySelector("h1")?.getBoundingClientRect();
+            const tabs = [...document.querySelectorAll("button")].find(button => button.textContent.trim().startsWith("Active"))?.getBoundingClientRect();
+            return title && tabs ? tabs.top - title.bottom : null;
+          });
+          assert.ok(casesGap !== null && casesGap <= 16, `Cases tabs should sit close under the title (gap=${casesGap})`);
       }
+        const caseCard = page.getByTestId("lawyer-case-card-101");
+        await caseCard.waitFor();
+        assert.equal(await caseCard.locator('[data-testid="case-status-stripe"]').count(), 0, "case cards should not show a decorative status stripe");
+        const caseCnr = page.getByTestId("lawyer-case-cnr-101");
+        await caseCnr.waitFor();
+        assert.match(await caseCnr.evaluate(el => getComputedStyle(el).fontVariantNumeric), /\btabular-nums\b/);
+        assert.equal(await caseCnr.locator("svg").count(), 0, "CNR should be plain text without a shield icon");
+        assert.equal(
+          await caseCnr.evaluate(el => getComputedStyle(el).color),
+          await page.locator(".text-muted-foreground").first().evaluate(el => getComputedStyle(el).color),
+          "CNR should use the muted text color",
+        );
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/cases-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
       await page.goto(`${baseUrl}/docket`, { waitUntil: "domcontentloaded" });
       await page.waitForURL(/\/cause-lists\/?$/);
       await page.getByTestId("docket-view").waitFor();
       await page.waitForTimeout(450);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "cause lists should fit the viewport");
+        if (viewport.width === 390) {
+          const title = page.locator(".lf-mobile-topbar [data-title-align=left]");
+          await title.getByText("Cause lists", { exact: true }).first().waitFor();
+          const titleAlignment = await title.evaluateAll(groups => {
+            const el = groups.find(node => {
+              const rect = node.getBoundingClientRect();
+              return rect.width > 0 && rect.height > 0 && getComputedStyle(node).visibility !== "hidden";
+            });
+            if (!el) return null;
+            const [heading, subtitle] = [...el.children].map(child => child.getBoundingClientRect());
+            return heading && subtitle ? Math.abs(heading.left - subtitle.left) : null;
+          });
+          assert.ok(titleAlignment !== null && titleAlignment <= 1, `Cause lists title and subtitle should align left (difference=${titleAlignment})`);
+        }
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/cause-lists-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
       await page.goto(`${baseUrl}/judgments`, { waitUntil: "domcontentloaded" });
       await page.getByText("Search all case law with AI", { exact: true }).waitFor();
@@ -134,6 +166,20 @@ try {
           return header && tabs ? { headerBottom: header.bottom, tabsTop: tabs.top, tabsHeight: tabs.height } : null;
         });
         assert.ok(tabsGeometry && tabsGeometry.tabsHeight >= 40 && Math.abs(tabsGeometry.tabsTop - tabsGeometry.headerBottom) <= 1, `Research tabs should sit directly below the title (geometry=${JSON.stringify(tabsGeometry)})`);
+          const pageShellSpacing = await page.evaluate(() => {
+            const tabs = document.querySelector('[data-testid="advocate-tabs-research"]')?.getBoundingClientRect();
+            const shell = document.querySelector('[data-testid="page-shell"]')?.getBoundingClientRect();
+            const header = document.querySelector('[data-testid="page-shell-header"]');
+            return tabs && shell && header ? {
+              gap: shell.top - tabs.bottom,
+              headerHeight: header.getBoundingClientRect().height,
+              borderBottomWidth: getComputedStyle(header).borderBottomWidth,
+              paddingBottom: getComputedStyle(header).paddingBottom,
+            } : null;
+          });
+          assert.ok(pageShellSpacing && pageShellSpacing.gap <= 1 && pageShellSpacing.headerHeight === 0
+            && pageShellSpacing.borderBottomWidth === "0px" && pageShellSpacing.paddingBottom === "0px",
+          `Research should not add a line or gap below tabs (spacing=${JSON.stringify(pageShellSpacing)})`);
         const promoBelowContent = await page.evaluate(() => {
           const content = document.querySelector('[data-testid="section-search"]')?.getBoundingClientRect();
           const promo = document.querySelector('[data-testid="forge-workspace-promo"]')?.getBoundingClientRect();
@@ -143,6 +189,22 @@ try {
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, "research should fit the viewport");
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/research-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
+        if (viewport.width === 390) {
+          const nav = page.locator(".lf-konsta-tabbar.lf-mobile-bottom-nav");
+          const navStyle = await nav.evaluate(el => {
+            const style = getComputedStyle(el);
+            const opaqueBackground = [...el.children].map(child => getComputedStyle(child).backgroundColor).find(color => {
+              const alpha = color.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/);
+              return color !== "rgba(0, 0, 0, 0)" && (!alpha || Number(alpha[1]) >= 1);
+            });
+            return { background: style.backgroundColor, borderTopWidth: style.borderTopWidth, opacity: style.opacity, height: el.getBoundingClientRect().height, opaqueBackground };
+          });
+          assert.equal(navStyle.borderTopWidth, "1px", "mobile tab bar should have a top hairline");
+          assert.equal(navStyle.opacity, "1", "mobile tab bar should be fully opaque");
+          assert.ok(navStyle.opaqueBackground, `tab bar needs a solid background layer (style=${JSON.stringify(navStyle)})`);
+          const bottomClearance = await page.locator(".lf-app-layout main").evaluate((main, navHeight) => parseFloat(getComputedStyle(main).paddingBottom) - navHeight, navStyle.height);
+          assert.ok(bottomClearance >= 8, `scroll content should clear the tab bar by at least 8px (clearance=${bottomClearance})`);
+        }
       await context.close();
     }
   }

@@ -79,6 +79,10 @@ export function TabBar({ items, value, onValueChange, label = "Primary navigatio
       <KonstaTabbar
         labels
         icons
+        colors={{
+          bgIos: "bg-background",
+          bgMaterial: "bg-background",
+        }}
         className={`lf-konsta-tabbar fixed inset-x-0 bottom-0 z-40 md:hidden ${className}`}
         aria-label={label}
       >

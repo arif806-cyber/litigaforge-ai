@@ -260,6 +260,7 @@ export default function Judgments() {
       title={copy.pageTitle}
       subtitle="Plain-English summaries of landmark Supreme Court & High Court judgments — updated for quick legal research."
       icon={<Gavel className="w-6 h-6 text-primary" />}
+      compactMobileHeader={user?.role === "advocate" || user?.role === "lawyer"}
     >
       <div className="flex flex-col gap-10">
         {user && <AuthorityTrackerPanel />}

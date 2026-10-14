@@ -531,7 +531,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         className={cn("lf-mobile-topbar md:hidden", isAdvocateResearch && "lf-mobile-research-header")}
         title={mobileTitle}
         subtitle={isAdvocateResearch ? undefined : mobileSubtitleForPath(location)}
-        align={isAdvocateResearch || location.startsWith("/client-dashboard") ? "left" : "center"}
+        align={isAdvocateResearch || location.startsWith("/client-dashboard") || location.startsWith("/cause-lists") || location.startsWith("/docket") ? "left" : "center"}
         large={!isMobileDetail}
         scrollEl={scrollElement}
         leading={isMobileDetail
@@ -561,7 +561,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             if (start && touch.clientX - start.x > 88 && Math.abs(touch.clientY - start.y) < 60) handleBack();
           } : undefined}
           className={cn(
-          "flex-1 overflow-y-auto overflow-x-hidden relative z-0 flex flex-col pb-[72px] md:pb-0 bg-background",
+          "flex-1 overflow-y-auto overflow-x-hidden relative z-0 flex flex-col pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-0 bg-background",
           isWorkspace && "min-h-0 overflow-hidden pb-0",
         )}>
           {/* Desktop sticky header */}
