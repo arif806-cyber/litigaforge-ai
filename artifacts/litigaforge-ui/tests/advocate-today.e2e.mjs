@@ -45,6 +45,11 @@ try {
       await page.goto(`${baseUrl}/lawyer-dashboard`, { waitUntil: "domcontentloaded" });
       const agenda = page.getByTestId("today-agenda");
       await agenda.waitFor();
+      if (viewport.width === 390) {
+        await page.locator(".lf-mobile-topbar").getByText("Today", { exact: true }).first().waitFor();
+      } else {
+        await page.getByTestId("desktop-page-context").getByText("Today", { exact: true }).waitFor();
+      }
       await page.getByText("Today’s hearing — Sharma v State", { exact: true }).waitFor();
       await page.getByText("Upcoming hearing — Patel v Union", { exact: true }).waitFor();
       assert.ok(await agenda.getByText("Hearings today", { exact: true }).isVisible());
@@ -54,6 +59,11 @@ try {
       await page.screenshot({ path: fileURLToPath(new URL(`../generated-artifacts/today-${suffix}-${theme}.png`, import.meta.url)), fullPage: false });
       await page.getByTestId("tab-cases").click();
       await page.waitForURL(/\/lawyer-dashboard\/cases\/?$/);
+      if (viewport.width === 390) {
+        await page.locator(".lf-mobile-topbar").getByText("Cases", { exact: true }).first().waitFor();
+      } else {
+        await page.getByTestId("desktop-page-context").getByText("Cases", { exact: true }).waitFor();
+      }
       await page.getByRole("heading", { name: "Case Management" }).waitFor();
       await context.close();
     }

@@ -97,7 +97,11 @@ function isNavPathActive(href: string, location: string): boolean {
 
 function mobileTitleForPath(path: string): string {
   if (path.startsWith("/client-dashboard")) return "Dashboard";
-  if (path.startsWith("/lawyer-dashboard")) return "Advocate Dashboard";
+  if (path.startsWith("/lawyer-dashboard/cases")) return "Cases";
+  if (path.startsWith("/lawyer-dashboard/clients")) return "Clients";
+  if (path.startsWith("/lawyer-dashboard/documents")) return "Documents";
+  if (path.startsWith("/lawyer-dashboard/earnings")) return "Earnings";
+  if (path.startsWith("/lawyer-dashboard")) return "Today";
   if (path.startsWith("/post-case")) return "Post a Case";
   if (path.startsWith("/my-cases/")) return "Case details";
   if (path.startsWith("/my-cases")) return "My cases";
@@ -129,7 +133,11 @@ function mobileSubtitleForPath(path: string): string {
   if (path.startsWith("/docket")) return "Browse today’s and tomorrow’s cause lists by court.";
   if (path.startsWith("/settings")) return "Manage your account and preferences.";
   if (path.startsWith("/client-dashboard")) return "Your cases, updates, and next steps.";
-  if (path.startsWith("/lawyer-dashboard")) return "Your practice, cases, and client updates.";
+  if (path.startsWith("/lawyer-dashboard/cases")) return "Your active and completed matters.";
+  if (path.startsWith("/lawyer-dashboard/clients")) return "Clients connected to your practice.";
+  if (path.startsWith("/lawyer-dashboard/documents")) return "Files and drafts for your cases.";
+  if (path.startsWith("/lawyer-dashboard/earnings")) return "Recorded fees and payments.";
+  if (path.startsWith("/lawyer-dashboard")) return "Hearings and next steps for your practice.";
   return "";
 }
 
@@ -577,6 +585,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Scale className="w-4 h-4 text-primary" />
               <span className="font-semibold text-foreground">LitigaForge AI</span>
+              <span aria-hidden="true" className="h-4 border-l border-border" />
+              <span data-testid="desktop-page-context" className="text-xs text-muted-foreground">{mobileTitle}</span>
             </div>
             <div className="flex items-center gap-3">
               <LanguageSwitcher />

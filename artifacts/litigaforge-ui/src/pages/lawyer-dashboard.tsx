@@ -664,7 +664,7 @@ export default function LawyerDashboard() {
   const recordedFeeCount = acceptedLeads.filter((m: any) => m.agreed_fee != null).length;
 
   const SECTION_TABS = [
-    { id: "overview",   href: "/lawyer-dashboard", label: "Overview",   icon: Briefcase },
+    { id: "overview",   href: "/lawyer-dashboard", label: "Today",   icon: Briefcase },
     { id: "cases",      href: "/lawyer-dashboard/cases", label: "Cases",      icon: FileText, badge: cases.length },
     { id: "clients",    href: "/lawyer-dashboard/clients", label: "Clients",    icon: Users, badge: clientList.length },
     { id: "documents",  href: "/lawyer-dashboard/documents", label: "Documents",  icon: FolderOpen, badge: docs.length },
@@ -808,7 +808,7 @@ export default function LawyerDashboard() {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Bell className="h-4 w-4 text-primary" />
-                  <h2 id="authority-alerts-title" className="text-sm font-bold text-foreground">Today · Research alerts</h2>
+                    <h2 id="authority-alerts-title" className="text-sm font-bold text-foreground">Research alerts</h2>
                 </div>
                 <Link href="/judgments" className="text-xs font-semibold text-primary hover:underline">
                   Manage saved searches
@@ -889,8 +889,8 @@ export default function LawyerDashboard() {
                         <Sparkles style={{ width: "18px", height: "18px", color: "#8B5CF6" }} />
                       </div>
                       <div>
-                        <h2 className="font-bold text-foreground text-base leading-tight">Match Proposals</h2>
-                        <p className="text-[12px] text-muted-foreground/60 mt-0.5">AI-scored client matches for your expertise.</p>
+                        <h2 className="font-bold text-foreground text-base leading-tight">Client requests</h2>
+                        <p className="text-[12px] text-muted-foreground/60 mt-0.5">Potential clients matched to your practice.</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 rounded-xl p-1" style={{ background: "hsl(var(--muted))" }}>

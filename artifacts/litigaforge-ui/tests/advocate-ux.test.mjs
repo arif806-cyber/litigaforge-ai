@@ -61,3 +61,15 @@ test("advocate case navigation uses one route in the dashboard tabs and mobile b
   assert.match(layout, /function isNavPathActive\(href: string, location: string\)/);
   assert.match(layout, /const primaryTab = mobileNav\.find\(\(\{ href \}\) => isNavPathActive\(href, location\)\)/);
 });
+
+test("advocate headers name the current section and use plain-language dashboard labels", async () => {
+  const layout = await source("../src/components/layout.tsx");
+  const dashboard = await source("../src/pages/lawyer-dashboard.tsx");
+  assert.match(layout, /if \(path\.startsWith\("\/lawyer-dashboard\/cases"\)\) return "Cases"/);
+  assert.match(layout, /if \(path\.startsWith\("\/lawyer-dashboard"\)\) return "Today"/);
+  assert.match(layout, /data-testid="desktop-page-context"/);
+  assert.match(dashboard, /label: "Today"/);
+  assert.match(dashboard, />Research alerts<\/h2>/);
+  assert.match(dashboard, />Client requests<\/h2>/);
+  assert.doesNotMatch(dashboard, /AI-scored client matches/);
+});
