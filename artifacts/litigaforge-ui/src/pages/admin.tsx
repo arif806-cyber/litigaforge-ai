@@ -201,13 +201,14 @@ function EcourtsUsageTab() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-ecourts-usage"],
     queryFn: () => apiFetch("/admin/ecourts/usage").then((value) => value as {
-      started_at: string;
       persistence: string;
+      cap_source: "environment" | "admin_setting";
       daily_cap_inr: number;
       today_spend_inr: number;
       today_calls: number;
       today_endpoints: Record<string, { calls: number; estimated_inr: number }>;
       days: Array<{ date: string; calls: number; estimated_inr: number; endpoints: Record<string, { calls: number; estimated_inr: number }> }>;
+      last_30_days_by_endpoint: Array<{ date: string; endpoint: string; calls: number; estimated_inr: number }>;
     }),
     refetchInterval: 60_000,
   });
@@ -227,7 +228,7 @@ function EcourtsUsageTab() {
   return (
     <section className="space-y-4">
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-        Estimated eCourtsIndia charges; usage is held in API-process memory since <strong>{new Date(data.started_at).toLocaleString()}</strong> and resets when the process restarts.
+        Estimated eCourtsIndia charges; usage is persisted in {data.persistence}. {data.cap_source === "environment" ? "The ECOURTS_DAILY_CAP_INR environment override is active." : "The daily cap is the saved admin setting."}
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <article className="rounded-lg border border-border p-4"><div className="text-sm text-muted-foreground">Estimated spend today</div><div className="text-xl font-semibold">{inr(data.today_spend_inr)}</div></article>
@@ -244,6 +245,15 @@ function EcourtsUsageTab() {
           <tbody>{Object.entries(data.today_endpoints).map(([name, stats]) => <tr key={name} className="border-b border-border last:border-0"><td className="p-3">{name}</td><td className="p-3">{stats.calls}</td><td className="p-3">{inr(stats.estimated_inr)}</td></tr>)}</tbody>
         </table>
         {!Object.keys(data.today_endpoints).length && <p className="p-4 text-sm text-muted-foreground">No eCourtsIndia calls recorded today.</p>}
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Last 30 days by endpoint</h3>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm"><thead><tr className="border-b border-border text-left"><th className="p-3">IST date</th><th className="p-3">Endpoint</th><th className="p-3">Calls</th><th className="p-3">Estimated spend</th></tr></thead>
+            <tbody>{data.last_30_days_by_endpoint.map((row) => <tr key={`${row.date}-${row.endpoint}`} className="border-b border-border last:border-0"><td className="p-3">{row.date}</td><td className="p-3">{row.endpoint}</td><td className="p-3">{row.calls}</td><td className="p-3">{inr(row.estimated_inr)}</td></tr>)}</tbody>
+          </table>
+          {!data.last_30_days_by_endpoint.length && <p className="p-4 text-sm text-muted-foreground">No eCourtsIndia calls recorded in the last 30 days.</p>}
+        </div>
       </div>
     </section>
   );

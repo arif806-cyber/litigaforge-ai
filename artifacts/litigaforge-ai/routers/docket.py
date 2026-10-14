@@ -64,7 +64,7 @@ async def _get_court_day(court: dict[str, str], day: str) -> dict:
     key = _court_cache_key(court, day)
     cached = await cache_get(key)
     if cached is not None:
-        if court_data_client.is_daily_spend_cap_reached():
+        if await court_data_client.is_daily_spend_cap_reached():
             cached = {
                 **cached,
                 "daily_limit_reached": True,
@@ -270,7 +270,7 @@ async def get_schedule(user=Depends(require_user)):
     for court in courts:
         today_cache = await cache_get(_court_cache_key(court, today.isoformat()))
         tomorrow_cache = await cache_get(_court_cache_key(court, tomorrow.isoformat()))
-        if court_data_client.is_daily_spend_cap_reached():
+        if await court_data_client.is_daily_spend_cap_reached():
             for cached in (today_cache, tomorrow_cache):
                 if cached is not None:
                     cached.update({

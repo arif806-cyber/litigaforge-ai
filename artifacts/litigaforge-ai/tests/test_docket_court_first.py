@@ -38,6 +38,9 @@ def test_court_day_cache_is_shared_by_court_and_date(monkeypatch):
         assert ttl == 3 * 60 * 60
         stored[key] = value
 
+    async def cap_reached():
+        return False
+
     async def available_cause_list_dates(**kwargs):
         calls["dates"] += 1
         return {"dates": ["2026-10-14"]}
@@ -49,6 +52,7 @@ def test_court_day_cache_is_shared_by_court_and_date(monkeypatch):
 
     monkeypatch.setattr(docket, "cache_get", cache_get)
     monkeypatch.setattr(docket, "cache_set", cache_set)
+    monkeypatch.setattr(docket.court_data_client, "is_daily_spend_cap_reached", cap_reached)
     monkeypatch.setattr(docket.court_data_client, "available_cause_list_dates", available_cause_list_dates)
     monkeypatch.setattr(docket.court_data_client, "search_cause_list", search_cause_list)
 

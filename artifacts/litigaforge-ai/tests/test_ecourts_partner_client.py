@@ -17,9 +17,11 @@ from services import court_data_client as client
 
 @pytest.fixture(autouse=True)
 def isolate_api_meter(monkeypatch):
-    monkeypatch.setattr(client, "_API_USAGE", {})
-    monkeypatch.setattr(client, "_SPEND_LIMIT_BLOCKED_DAYS", set())
-    monkeypatch.setattr(client, "_DAILY_SPEND_CAP_INR", 100000.0)
+    async def reserve_without_database(*_args, **_kwargs):
+        return {"day": None, "endpoint": "test", "cost": 0}
+
+    monkeypatch.setattr(client, "_reserve_api_usage", reserve_without_database)
+    monkeypatch.setattr(client, "_release_api_usage", AsyncMock())
 
 
 CNR_A = "DLND020047882015"

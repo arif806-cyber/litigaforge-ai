@@ -35,7 +35,7 @@ async def admin_send_test_email(current_user: dict = Depends(get_superuser)):
 @router.get("/admin/ecourts/usage")
 async def admin_ecourts_usage(current_user: dict = Depends(get_superuser)):
     """Show estimated eCourts credits; request records remain server-side and secret-free."""
-    return court_data_client.get_api_usage_summary()
+    return await court_data_client.get_api_usage_summary()
 
 # Background judgment-ingestion tasks. Kept referenced so the event loop does not
 # garbage-collect an in-flight task (asyncio holds only a weak reference to it).
@@ -56,7 +56,7 @@ async def admin_set_ecourts_daily_cap(
     current_user: dict = Depends(get_superuser),
 ):
     try:
-        cap = court_data_client.set_daily_spend_cap_inr(payload.daily_cap_inr)
+        cap = await court_data_client.set_daily_spend_cap_inr(payload.daily_cap_inr)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"daily_cap_inr": cap}

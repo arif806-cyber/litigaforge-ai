@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import hashlib
 import json
 import os
 import re
 import time
 from collections import defaultdict
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -30,14 +32,8 @@ _GET_RETRIES = 2
 _SINGLE_REFRESH_WAIT_SECONDS = 7
 _BULK_REFRESH_WAIT_SECONDS = 30
 _HTTP_TRANSPORT: httpx.AsyncBaseTransport | None = None
-_API_USAGE: dict[str, dict[str, Any]] = {}
-_API_STARTED_AT = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
-_DAILY_SPEND_CAP_INR = 60.0
-_SPEND_LIMIT_BLOCKED_DAYS: set[str] = set()
-_API_USAGE_LOCK = asyncio.Lock()
 _CASE_CACHE: dict[str, tuple[float, dict]] = {}
 _CASE_CACHE_TTL_SECONDS = 5 * 60
-_CAUSE_LIST_CACHE: dict[tuple, tuple[float, dict]] = {}
 _AVAILABLE_DATE_CACHE: dict[tuple, tuple[float, dict]] = {}
 _CNR_LISTING_CACHE: dict[str, tuple[float, list[dict]]] = {}
 _CAUSE_CACHE_TTL_SECONDS = 4 * 60 * 60
@@ -62,59 +58,181 @@ def _endpoint_cost(method: str, path: str, json_body: dict | None) -> tuple[str,
     return "OTHER_UNPRICED", 3.0
 
 
-async def _reserve_api_usage(method: str, path: str, json_body: dict | None) -> None:
-    """Count every vendor attempt and fail closed at the configured daily cap."""
-    global _API_USAGE
-    day = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+def _daily_cap_override() -> Decimal | None:
+    raw = os.getenv("ECOURTS_DAILY_CAP_INR")
+    if raw is None or not raw.strip():
+        return None
+    try:
+        cap = Decimal(raw.strip())
+    except InvalidOperation as exc:
+        raise ValueError("ECOURTS_DAILY_CAP_INR must be a rupee amount.") from exc
+    if not cap.is_finite() or not Decimal("0") <= cap <= Decimal("100000"):
+        raise ValueError("Daily spend cap must be between ₹0 and ₹100,000.")
+    return cap
+
+
+async def _get_daily_cap(conn) -> Decimal:
+    override = _daily_cap_override()
+    if override is not None:
+        return override
+    value = await conn.fetchval(
+        "SELECT daily_cap_inr FROM ecourts_api_settings WHERE id=1"
+    )
+    return Decimal(str(value if value is not None else 60))
+
+
+async def set_daily_spend_cap_inr(value: float, *, conn=None) -> float:
+    try:
+        cap = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("Daily spend cap must be a rupee amount.") from exc
+    if not cap.is_finite() or not Decimal("0") <= cap <= Decimal("100000"):
+        raise ValueError("Daily spend cap must be between ₹0 and ₹100,000.")
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            return await set_daily_spend_cap_inr(value, conn=conn)
+    else:
+        await conn.execute(
+            """INSERT INTO ecourts_api_settings(id,daily_cap_inr)
+               VALUES(1,$1)
+               ON CONFLICT(id) DO UPDATE SET daily_cap_inr=EXCLUDED.daily_cap_inr,
+                 updated_at=NOW()""",
+            cap,
+        )
+    return float(cap)
+
+
+async def _reserve_api_usage(
+    method: str, path: str, json_body: dict | None, *, conn=None,
+) -> dict[str, Any]:
+    """Reserve one vendor attempt in shared PostgreSQL before the network call."""
     endpoint, cost = _endpoint_cost(method, path, json_body)
-    async with _API_USAGE_LOCK:
-        record = _API_USAGE.setdefault(day, {"calls": 0, "estimated_inr": 0.0, "endpoints": {}})
-        if (
-            record["estimated_inr"] >= _DAILY_SPEND_CAP_INR
-            or record["estimated_inr"] + cost > _DAILY_SPEND_CAP_INR + 1e-9
-        ):
-            _SPEND_LIMIT_BLOCKED_DAYS.add(day)
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    day = now.date()
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await _reserve_api_usage(method, path, json_body, conn=acquired)
+    override = _daily_cap_override()
+    async with conn.transaction():
+        reserved = await conn.fetchrow(
+            """WITH cap AS (
+                 SELECT COALESCE($3::numeric,
+                   (SELECT daily_cap_inr FROM ecourts_api_settings WHERE id=1),
+                   60::numeric) AS amount
+               ), reservation AS (
+                 INSERT INTO ecourts_api_daily_spend(day_ist,call_count,estimated_inr)
+                 SELECT $1,1,$2 FROM cap
+                 WHERE 0 < cap.amount AND $2 <= cap.amount
+                 ON CONFLICT(day_ist) DO UPDATE
+                   SET call_count=ecourts_api_daily_spend.call_count+1,
+                       estimated_inr=ecourts_api_daily_spend.estimated_inr+EXCLUDED.estimated_inr,
+                       updated_at=NOW()
+                   WHERE ecourts_api_daily_spend.estimated_inr < (SELECT amount FROM cap)
+                     AND ecourts_api_daily_spend.estimated_inr+EXCLUDED.estimated_inr
+                         <= (SELECT amount FROM cap)
+                 RETURNING day_ist
+               ) SELECT day_ist FROM reservation""",
+            day, Decimal(str(cost)), override,
+        )
+        if not reserved:
             logger.warning("eCourtsIndia daily spend cap reached; blocked endpoint=%s", endpoint)
             raise CourtDataError(
                 "Daily refresh limit reached, showing last update.",
                 status_code=429, code="daily_spend_cap",
             )
-        record["calls"] += 1
-        record["estimated_inr"] = round(record["estimated_inr"] + cost, 2)
-        stats = record["endpoints"].setdefault(endpoint, {"calls": 0, "estimated_inr": 0.0})
-        stats["calls"] += 1
-        stats["estimated_inr"] = round(stats["estimated_inr"] + cost, 2)
+        await conn.execute(
+            """INSERT INTO ecourts_api_usage(day_ist,endpoint,call_count,estimated_inr)
+               VALUES($1,$2,1,$3)
+               ON CONFLICT(day_ist,endpoint) DO UPDATE
+                 SET call_count=ecourts_api_usage.call_count+1,
+                     estimated_inr=ecourts_api_usage.estimated_inr+EXCLUDED.estimated_inr,
+                     updated_at=NOW()""",
+            day, endpoint, Decimal(str(cost)),
+        )
+    return {"day": day, "endpoint": endpoint, "cost": Decimal(str(cost))}
 
 
-def set_daily_spend_cap_inr(value: float) -> float:
-    global _DAILY_SPEND_CAP_INR
-    if not 0 <= value <= 100000:
-        raise ValueError("Daily spend cap must be between ₹0 and ₹100,000.")
-    _DAILY_SPEND_CAP_INR = round(float(value), 2)
-    return _DAILY_SPEND_CAP_INR
+async def _release_api_usage(reservation: dict[str, Any], *, conn=None) -> None:
+    """Undo a reservation only when transport failed before connecting to vendor."""
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            await _release_api_usage(reservation, conn=acquired)
+        return
+    async with conn.transaction():
+        await conn.execute(
+            """UPDATE ecourts_api_daily_spend
+               SET call_count=GREATEST(call_count-1,0),
+                   estimated_inr=GREATEST(estimated_inr-$2,0),updated_at=NOW()
+               WHERE day_ist=$1""",
+            reservation["day"], reservation["cost"],
+        )
+        await conn.execute(
+            """UPDATE ecourts_api_usage
+               SET call_count=GREATEST(call_count-1,0),
+                   estimated_inr=GREATEST(estimated_inr-$3,0),updated_at=NOW()
+               WHERE day_ist=$1 AND endpoint=$2""",
+            reservation["day"], reservation["endpoint"], reservation["cost"],
+        )
 
 
-def is_daily_spend_cap_reached() -> bool:
-    today = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
-    current = _API_USAGE.get(today, {}).get("estimated_inr", 0.0)
-    return current >= _DAILY_SPEND_CAP_INR or today in _SPEND_LIMIT_BLOCKED_DAYS
+async def is_daily_spend_cap_reached(*, conn=None) -> bool:
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await is_daily_spend_cap_reached(conn=acquired)
+    row = await conn.fetchrow(
+        "SELECT estimated_inr FROM ecourts_api_daily_spend WHERE day_ist=$1", today
+    )
+    return Decimal(str(row["estimated_inr"] or 0)) >= await _get_daily_cap(conn)
 
 
-def get_api_usage_summary() -> dict[str, Any]:
-    today = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
-    record = _API_USAGE.get(today, {"calls": 0, "estimated_inr": 0.0, "endpoints": {}})
+async def get_api_usage_summary(*, conn=None) -> dict[str, Any]:
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    start = today.fromordinal(today.toordinal() - 29)
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await get_api_usage_summary(conn=acquired)
+    rows = await conn.fetch(
+        """SELECT day_ist,endpoint,call_count,estimated_inr
+           FROM ecourts_api_usage WHERE day_ist >= $1
+           ORDER BY day_ist DESC,endpoint""",
+        start,
+    )
+    cap = float(await _get_daily_cap(conn))
+    cap_source = "environment" if _daily_cap_override() is not None else "admin_setting"
+    days: dict[str, dict[str, Any]] = {}
+    by_endpoint: list[dict[str, Any]] = []
+    today_endpoints: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        day = row["day_ist"].isoformat()
+        endpoint = row["endpoint"]
+        stats = {
+            "calls": int(row["call_count"]),
+            "estimated_inr": float(row["estimated_inr"]),
+        }
+        record = days.setdefault(day, {"date": day, "calls": 0, "estimated_inr": 0.0, "endpoints": {}})
+        record["calls"] += stats["calls"]
+        record["estimated_inr"] = round(record["estimated_inr"] + stats["estimated_inr"], 2)
+        record["endpoints"][endpoint] = stats
+        by_endpoint.append({"date": day, "endpoint": endpoint, **stats})
+        if day == today.isoformat():
+            today_endpoints[endpoint] = stats
+    today_record = days.get(today.isoformat(), {"calls": 0, "estimated_inr": 0.0})
     return {
-        "days": [
-            {"date": day, **record}
-            for day, record in sorted(_API_USAGE.items(), reverse=True)[:30]
-        ],
-        "started_at": _API_STARTED_AT,
-        "persistence": "process_memory",
+        "days": list(days.values()),
+        "last_30_days_by_endpoint": by_endpoint,
+        "persistence": "postgresql",
+        "cap_source": cap_source,
         "currency": "INR",
-        "daily_cap_inr": _DAILY_SPEND_CAP_INR,
-        "today_spend_inr": record["estimated_inr"],
-        "today_calls": record["calls"],
-        "today_endpoints": record["endpoints"],
+        "daily_cap_inr": cap,
+        "today_spend_inr": today_record["estimated_inr"],
+        "today_calls": today_record["calls"],
+        "today_endpoints": today_endpoints,
     }
 
 
@@ -272,15 +390,22 @@ async def _request(
 
     for attempt in range(retry_count + 1):
         await _bucket.acquire()
-        await _reserve_api_usage(method, path, json_body)
+        reservation = await _reserve_api_usage(method, path, json_body)
         try:
             async with httpx.AsyncClient(timeout=timeout, transport=_HTTP_TRANSPORT) as client:
-                resp = await client.request(
-                    method, url,
-                    headers=headers,
-                    json=json_body,
-                    params=params,
-                )
+                try:
+                    resp = await client.request(
+                        method, url,
+                        headers=headers,
+                        json=json_body,
+                        params=params,
+                    )
+                except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout):
+                    await _release_api_usage(reservation)
+                    if method == "GET" and attempt < retry_count:
+                        await asyncio.sleep(min(2 ** attempt, 8))
+                        continue
+                    raise
             if resp.status_code >= 400:
                 error = _provider_error(resp)
                 if method == "GET" and error.retryable and attempt < retry_count:
@@ -1257,15 +1382,31 @@ async def search_cause_list(
         "districtCode", "courtComplexCode", "court", "courtNo",
     )):
         raise ValueError("At least one cause-list filter is required.")
-    cache_key = tuple(sorted((key, str(value)) for key, value in params.items()))
-    cached = _CAUSE_LIST_CACHE.get(cache_key)
-    if cached and cached[0] > time.monotonic():
-        return copy.deepcopy(cached[1])
+    cache_key = hashlib.sha256(
+        json.dumps(params, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        cached = await conn.fetchrow(
+            """SELECT payload FROM ecourts_cause_list_cache
+               WHERE cache_key=$1 AND expires_at>NOW()""",
+            cache_key,
+        )
+    if cached:
+        value = cached["payload"]
+        return copy.deepcopy(json.loads(value) if isinstance(value, str) else dict(value))
     payload = await _request(
         "GET", f"{_PARTNER_PREFIX}/causelist/search", params=params,
     )
     data = _unwrap_data(payload, "cause-list search")
-    _CAUSE_LIST_CACHE[cache_key] = (time.monotonic() + _CAUSE_CACHE_TTL_SECONDS, copy.deepcopy(data))
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO ecourts_cause_list_cache(cache_key,payload,expires_at)
+               VALUES($1,$2::jsonb,NOW()+($3 * INTERVAL '1 second'))
+               ON CONFLICT(cache_key) DO UPDATE SET payload=EXCLUDED.payload,
+                 expires_at=EXCLUDED.expires_at""",
+            cache_key, json.dumps(data), _CAUSE_CACHE_TTL_SECONDS,
+        )
     return data
 
 
