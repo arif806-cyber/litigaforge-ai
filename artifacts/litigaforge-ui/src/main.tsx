@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "@fontsource-variable/inter";
+import "@fontsource-variable/bricolage-grotesque";
+// Indian scripts: unicode-range subsets, downloaded only when Telugu or Hindi text is on screen.
+import "@fontsource/noto-sans-telugu/400.css";
+import "@fontsource/noto-sans-telugu/600.css";
+import "@fontsource/noto-sans-devanagari/400.css";
+import "@fontsource/noto-sans-devanagari/600.css";
 import "./index.css";
 import * as Sentry from "@sentry/react";
 

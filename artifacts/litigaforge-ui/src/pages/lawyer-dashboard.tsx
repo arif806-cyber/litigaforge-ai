@@ -19,7 +19,7 @@ import { formatDate, caseTerms } from "@/lib/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import IncomingCaseFeed, { type CaseFeedItem } from "@/components/lawyer/IncomingCaseFeed";
 import { useToast, toast } from "@/hooks/use-toast";
-import { TodayAgenda, type HearingPlace } from "@/components/advocate/TodayAgenda";
+import { CourtDay } from "@/components/court-day/CourtDay";
 import { FeatureIcon } from "@/components/FeatureIcon";
 import { FEATURE_BY_HREF } from "@/lib/featureIcons";
 
@@ -254,14 +254,6 @@ export default function LawyerDashboard() {
     queryFn: () => apiFetch("/lawyer/cases"),
     enabled: !!user,
     staleTime: 30000,
-    refetchOnWindowFocus: false,
-    retry: 1,
-  });
-  const { data: docketSchedule } = useQuery({
-    queryKey: ["docket-schedule-today", user?.id],
-    queryFn: () => apiFetch("/docket/schedule"),
-    enabled: !!user && location === "/lawyer-dashboard",
-    staleTime: 3 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -659,42 +651,6 @@ export default function LawyerDashboard() {
   const todayCases = scheduledCases.filter((c) => c.hearing_date.slice(0, 10) === todayKey);
   const upcomingCases = scheduledCases.filter((c) => c.hearing_date.slice(0, 10) > todayKey).slice(0, 4);
   const todayLabel = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
-  const hearingMeta = (item: LawyerCase) => {
-    const scheduled = (docketSchedule?.courts ?? []).flatMap((court: any) => [
-      ...(court.today?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
-      ...(court.tomorrow?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
-    ]).find(({ matter }: any) => {
-      const cnr = matter.cnr ?? matter.CNR ?? matter.cnr_number;
-      return item.cnr_number && cnr && String(cnr).toUpperCase() === item.cnr_number.toUpperCase();
-    });
-    const matter = scheduled?.matter;
-    const hall = item.court_hall || item.hall || item.courtroom || item.court_no || scheduled?.court?.court_no;
-    const itemNumber = item.item_number ?? item.itemNo ?? item.item_no ?? item.serialNo ?? item.serial_no
-      ?? matter?.itemNo ?? matter?.item_no ?? matter?.serialNo ?? matter?.serial_no ?? matter?.item_number;
-    const courtName = item.court_name || scheduled?.court?.court;
-    const hallLabel = hall && !/hall|court|room/i.test(String(hall)) ? `Hall ${hall}` : hall;
-    return [courtName, hallLabel, itemNumber != null && itemNumber !== "" ? `Item ${itemNumber}` : null]
-      .filter(Boolean).join(" · ");
-  };
-  const hearingPlace = (item: LawyerCase): HearingPlace => {
-    const scheduled = (docketSchedule?.courts ?? []).flatMap((court: any) => [
-      ...(court.today?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
-      ...(court.tomorrow?.matters ?? []).map((matter: any) => ({ matter, court: court.court })),
-    ]).find(({ matter }: any) => {
-      const cnr = matter.cnr ?? matter.CNR ?? matter.cnr_number;
-      return item.cnr_number && cnr && String(cnr).toUpperCase() === item.cnr_number.toUpperCase();
-    });
-    const matter = scheduled?.matter;
-    return {
-      court: item.court_name || scheduled?.court?.court || null,
-      hall: item.court_hall || item.hall || item.courtroom || item.court_no || scheduled?.court?.court_no || null,
-      item: item.item_number ?? item.itemNo ?? item.item_no ?? item.serialNo ?? item.serial_no
-        ?? matter?.itemNo ?? matter?.item_no ?? matter?.serialNo ?? matter?.serial_no ?? matter?.item_number ?? null,
-    };
-  };
-  const formatHearingDate = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-  });
 
   // ── Earnings are based only on fees the advocate has entered ──
   const thisMonth = new Date().getMonth();
@@ -779,11 +735,8 @@ export default function LawyerDashboard() {
         {/* ── OVERVIEW ── */}
         {activeSection === "overview" && (
           <div className="space-y-6">
-            <TodayAgenda
-              todayCases={todayCases}
-              upcomingCases={upcomingCases}
-              todayKey={todayKey}
-              placeOf={(item) => hearingPlace(item as LawyerCase)}
+            <CourtDay
+              upcoming={upcomingCases.map((c) => ({ id: c.id, title: c.title, hearing_date: c.hearing_date, court: c.court_name }))}
               onAddCase={() => { setActiveSection("cases"); setShowCaseModal(true); }}
             />
             <p className="whitespace-nowrap text-sm text-muted-foreground" data-testid="client-requests-summary">

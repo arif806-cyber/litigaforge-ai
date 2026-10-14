@@ -54,6 +54,8 @@
   @keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 }
 
+/* Display numerals and headings for Court Day (item numbers, board). */
+.lf-display { font-family: "Bricolage Grotesque Variable", var(--font-sans); font-optical-sizing: auto; }
 .connect-display { font-family: "Newsreader", Georgia, serif; letter-spacing: -0.035em; }
 .scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hidden::-webkit-scrollbar { display: none; }
@@ -225,7 +227,7 @@
 @media (max-width: 767px) {
   html, body, #root { max-width: 100%; overflow-x: clip; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Inter", "Segoe UI", Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Inter", "Segoe UI", Roboto, "Noto Sans Telugu", "Noto Sans Devanagari", sans-serif;
     font-size: 100%;
     line-height: 1.35;
     -webkit-tap-highlight-color: transparent;

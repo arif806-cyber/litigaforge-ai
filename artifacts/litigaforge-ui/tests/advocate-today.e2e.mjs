@@ -42,6 +42,11 @@ try {
         if (path.endsWith("/docket/schedule")) return json({ courts: [
           { court: { court: "Delhi High Court", court_no: "4" }, today: { matters: [{ cnr: "DLHC010000012026", itemNo: 17 }] }, tomorrow: { matters: [] } },
         ] });
+        if (path.endsWith("/court-day/today")) return json({
+          date: dateKey(0), today: dateKey(0), notice: "Court, hall and item come from cause lists you have loaded.",
+          week: Array.from({ length: 7 }, (_, i) => ({ date: dateKey(i - ((new Date().getDay() + 6) % 7)), count: i === (new Date().getDay() + 6) % 7 ? 1 : 0 })),
+          matters: [{ case_id: 101, title: "Today’s hearing — Sharma v State", cnr: "DLHC010000012026", case_type: "Civil", client_name: "R. Sharma", stage: "Arguments", sensitive: false, court: "Delhi High Court", hall: "4", item: "17", list_size: 45, court_key: "DELHI|NEW DELHI|HIGH COURT|4", place_source: "cause_list", board: { now_item: 9, updated_at: new Date().toISOString(), minutes_ago: 2, advocates: 3, stale: false, minutes_per_item: 5, source: "advocates_in_court" } }],
+        });
         if (path.endsWith("/docket/profile")) return json({ profile: null, advocate_profile: { name: "Mira Advocate", bar_number: "BAR-789" }, tracked_cases_count: 2 });
         if (path.endsWith("/judgments")) return json({ judgments: [], courts: [] });
         if (path.endsWith("/chat/threads")) return json({ threads: [] });
@@ -58,27 +63,11 @@ try {
       assert.equal(await page.locator("h1").count(), 1, "Today should have a single h1");
       assert.equal(await page.getByText("Welcome back, Mira!", { exact: false }).count(), 0);
       await page.getByText("Today’s hearing — Sharma v State", { exact: true }).waitFor();
-      const itemTile = page.getByTestId("today-item-number").first();
-      await itemTile.waitFor();
-      assert.equal((await itemTile.getAttribute("aria-label")), "Cause list item 17", "today card should show the cause-list item number");
-      assert.match(await page.getByTestId("today-hearing-meta").first().innerText(), /Delhi High Court · Hall 4/);
-      const share = await page.getByTestId("today-share-date").first().getAttribute("href");
-      assert.ok(share?.startsWith("https://wa.me/?text=") && decodeURIComponent(share).includes("Item 17"), "share link should carry the hearing details");
+      await page.getByTestId("court-board").waitFor();
+      assert.equal(await page.getByTestId("board-mine").innerText(), "17", "court board should show the advocate's item");
       await page.getByTestId("today-cause-lists-link").getByText("Cause lists", { exact: true }).waitFor();
       await page.getByTestId("client-requests-summary").getByText("Client requests: 0 pending", { exact: false }).waitFor();
       assert.equal(await page.getByText("Quick Actions", { exact: true }).isVisible().catch(() => false), false);
-      const agendaGap = await page.evaluate(() => {
-        const title = document.querySelector('[data-testid="today-hearing-title"]')?.getBoundingClientRect();
-        const meta = document.querySelector('[data-testid="today-hearing-meta"]')?.getBoundingClientRect();
-        return title && meta ? meta.top - title.bottom : null;
-      });
-      assert.ok(agendaGap !== null && agendaGap <= 6, `hearing court line should sit close to its title (gap=${agendaGap})`);
-      const causeLinkGap = await page.evaluate(() => {
-        const heading = document.querySelector('[data-testid="today-agenda-heading"] h3')?.getBoundingClientRect();
-        const link = document.querySelector('[data-testid="today-cause-lists-link"]')?.getBoundingClientRect();
-        return heading && link ? Math.abs(heading.top - link.top) : null;
-      });
-      assert.ok(causeLinkGap !== null && causeLinkGap <= 8, `Cause lists link should share the hearings heading row (gap=${causeLinkGap})`);
       if (viewport.width === 390) {
         const mobileNav = page.locator(".lf-konsta-tabbar");
         for (const label of ["Today", "Cases", "Cause lists", "Research", "More"]) {
