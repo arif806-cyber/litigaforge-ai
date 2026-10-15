@@ -76,12 +76,16 @@ def test_v2_requires_bearer_from_initialize_and_advertises_oauth_challenge(monke
         response = client.post("/mcp", json=_rpc(method),
                                headers={"MCP-Protocol-Version": "2025-06-18"})
         assert response.status_code == 401
-        assert 'resource_metadata="https://litigaforge.com/.well-known/oauth-protected-resource"' in response.headers["www-authenticate"]
+        assert response.headers["www-authenticate"] == (
+            'Bearer resource_metadata="https://litigaforge.com/.well-known/oauth-protected-resource"'
+        )
         assert "error=" not in response.headers["www-authenticate"]
     bad = client.post("/mcp", json=_rpc("initialize"),
                       headers={"Authorization": "Bearer bad"})
     assert bad.status_code == 401
-    assert 'error="invalid_token"' in bad.headers["www-authenticate"]
+    assert bad.headers["www-authenticate"] == (
+        'Bearer error="invalid_token", resource_metadata="https://litigaforge.com/.well-known/oauth-protected-resource"'
+    )
 
 
 def test_invalid_credentials_are_rejected_even_for_anonymous_methods_with_v2_disabled(monkeypatch):

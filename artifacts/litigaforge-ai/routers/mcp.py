@@ -97,10 +97,13 @@ def _authentication_error(
     response = _error(request_id, -32001, "MCP authentication required",
                        protocol_version=protocol_version)
     response.status_code = 401
-    challenge = "Bearer"
+    auth_params = []
     if invalid_token:
-        challenge += ' error="invalid_token"'
-    challenge += f', resource_metadata="{_protected_resource_metadata_url(request)}"'
+        auth_params.append('error="invalid_token"')
+    auth_params.append(
+        f'resource_metadata="{_protected_resource_metadata_url(request)}"'
+    )
+    challenge = "Bearer " + ", ".join(auth_params)
     response.headers["WWW-Authenticate"] = challenge
     return response
 
