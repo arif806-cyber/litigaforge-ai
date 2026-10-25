@@ -33,7 +33,7 @@ test("page titles stay above section headings and page transitions avoid the ful
   assert.match(shell, /md:text-\[30px\]/);
   assert.match(docket, /text-lg font-semibold">Your courts and optional matching details/);
   assert.match(docket, /text-lg font-semibold">Court results/);
-  assert.match(judgments, /text-lg font-semibold flex items-center gap-2"><LibraryBig/>/);
+  assert.match(judgments, /text-lg font-semibold flex items-center gap-2"><LibraryBig/);
   assert.doesNotMatch(`${auth}\n${app}`, /Starting LitigaForge AI/);
   assert.match(app, /aria-label="Loading page"/);
 });
