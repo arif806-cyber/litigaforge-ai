@@ -126,6 +126,13 @@ const ROUTE_META = {
     canonical: "/legal-aid",
   },
 
+  "/for-lawyers": {
+    title: "LitigaForge for Advocates — Court Day & Research",
+    description:
+      "Track cases, match cause lists, prepare hearing briefs and verify Indian legal research. Compare advocate and chamber plans.",
+    canonical: "/for-lawyers",
+  },
+
   "/subscription": {
     title: "LitigaForge AI Plans — Free, Advocate Pro & Chamber",
     description:
@@ -316,39 +323,39 @@ function injectMeta(rawPath) {
     .replace(/<title>[^<]*<\/title>/, `<title>${safeTitle}</title>`)
     // <meta name="description">
     .replace(
-      /<meta name="description" content="[^"]*" \/>/,
+      /<meta name="description" content="[^"]*"\s*\/>/,
       `<meta name="description" content="${safeDesc}" />`,
     )
     // <meta name="robots">
     .replace(
-      /<meta name="robots" content="[^"]*" \/>/,
+      /<meta name="robots" content="[^"]*"\s*\/>/,
       `<meta name="robots" content="${robots}" />`,
     )
     // <link rel="canonical">
     .replace(
-      /<link rel="canonical" href="[^"]*" \/>/,
+      /<link rel="canonical" href="[^"]*"\s*\/>/,
       `<link rel="canonical" href="${canonicalUrl}" />`,
     )
     // Open Graph
     .replace(
-      /<meta property="og:url" content="[^"]*" \/>/,
+      /<meta property="og:url" content="[^"]*"\s*\/>/,
       `<meta property="og:url" content="${pageUrl}" />`,
     )
     .replace(
-      /<meta property="og:title" content="[^"]*" \/>/,
+      /<meta property="og:title" content="[^"]*"\s*\/>/,
       `<meta property="og:title" content="${safeTitle}" />`,
     )
     .replace(
-      /<meta property="og:description" content="[^"]*" \/>/,
+      /<meta property="og:description" content="[^"]*"\s*\/>/,
       `<meta property="og:description" content="${safeDesc}" />`,
     )
     // Twitter
     .replace(
-      /<meta name="twitter:title" content="[^"]*" \/>/,
+      /<meta name="twitter:title" content="[^"]*"\s*\/>/,
       `<meta name="twitter:title" content="${safeTitle}" />`,
     )
     .replace(
-      /<meta name="twitter:description" content="[^"]*" \/>/,
+      /<meta name="twitter:description" content="[^"]*"\s*\/>/,
       `<meta name="twitter:description" content="${safeDesc}" />`,
     );
 

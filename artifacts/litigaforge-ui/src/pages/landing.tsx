@@ -44,7 +44,7 @@ function formatCount(value: unknown) {
 function Navbar() {
   const { user } = useAuth();
   const links = [
-    { label: "For advocates", href: "#advocates" },
+    { label: "For advocates", href: "/for-lawyers" },
     { label: "For clients", href: "#clients" },
     { label: "Tools", href: "#tools" },
     { label: "FAQ", href: "#faq" },
@@ -176,7 +176,7 @@ function WorkflowSections() {
             <li><Check size={15} /> Keep case work in one place</li>
             <li><Check size={15} /> Use drafting and analysis tools as support</li>
           </ul>
-          <Link href="/workspace" className="lf-workflow-link">Explore advocate tools <ArrowUpRight size={16} /></Link>
+          <Link href="/for-lawyers" className="lf-workflow-link">Explore advocate tools &amp; plans <ArrowUpRight size={16} /></Link>
         </article>
         <article id="clients" className="lf-workflow lf-workflow-client">
           <div className="lf-workflow-number">02 / CLIENTS</div>

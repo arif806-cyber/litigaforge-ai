@@ -37,6 +37,11 @@ const ROUTES = {
     ogTitle: 'Advocate Directory',
     desc: 'Browse advocate profiles and practical legal tools for advocates and clients.',
   },
+  '/for-lawyers': {
+    title: 'LitigaForge for Advocates \u2014 Court Day &amp; Research',
+    ogTitle: 'LitigaForge for Advocates \u2014 Court Day &amp; Research',
+    desc: 'Track cases, match cause lists, prepare hearing briefs and verify Indian legal research. Compare advocate and chamber plans.',
+  },
   '/judgments': {
     title: 'Judgment Finder \u2014 Search Case Law | LitigaForge',
     ogTitle: 'Judgment Finder \u2014 Search Case Law',
