@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { PageShell } from "@/components/PageShell";
 import { useToast } from "@/hooks/use-toast";
 import { SegmentedControl } from "@/components/mobile-primitives";
+import { readSubscriptionIntent } from "@/lib/subscription-intent";
 
 interface Plan {
   id: string;
@@ -49,7 +50,8 @@ export default function Subscription() {
   const [error, setError] = useState<string | null>(null);
   const [razorpayError, setRazorpayError] = useState<string | null>(null);
   const [downgrading, setDowngrading] = useState(false);
-  const [annualBilling, setAnnualBilling] = useState(false);
+  const [subscriptionIntent] = useState(() => readSubscriptionIntent(window.location.search));
+  const [annualBilling, setAnnualBilling] = useState(subscriptionIntent.billing === "annual");
 
   const country = getCountryFromPath();
 
@@ -415,6 +417,22 @@ export default function Subscription() {
           </div>
         )}
 
+        {subscriptionIntent.plan && subscriptionIntent.plan !== currentTier && (
+          <div
+            role="status"
+            className="max-w-3xl mx-auto flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-5 py-4"
+            data-testid="selected-plan-intent"
+          >
+            <Zap className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+            <p className="text-sm leading-6 text-foreground">
+              <strong>{TIER_LABELS[subscriptionIntent.plan]} selected.</strong>{" "}
+              {subscriptionIntent.plan === "professional"
+                ? "Start the 30-day free trial below—no payment is required—or review paid checkout."
+                : "Review the Chamber plan below and continue to secure checkout when you are ready."}
+            </p>
+          </div>
+        )}
+
         <div className="mx-auto flex w-fit items-center gap-2 md:hidden">
           <SegmentedControl
             className="w-fit"
@@ -482,8 +500,10 @@ export default function Subscription() {
                   className={cn(
                     "rounded-3xl border-2 p-8 flex flex-col relative transition-all duration-300",
                     TIER_ACCENT[plan.id],
+                    subscriptionIntent.plan === plan.id && !isCurrent && "ring-2 ring-primary/30",
                     isCurrent && "ring-4 ring-primary/20 border-primary"
                   )}
+                  data-testid={`subscription-plan-${plan.id}`}
                 >
                   {isPopular && !isCurrent && (
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
