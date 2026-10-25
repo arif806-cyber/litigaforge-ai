@@ -78,8 +78,8 @@ const ConnectAdvocateCasesPage = lazy(() => import("@/pages/connect-v2").then((m
 const CnrTracker          = lazy(() => import("@/pages/cnr-tracker"));
 const DocketView          = lazy(() => import("@/pages/docket-view"));
 const ForgeOsPage         = lazy(() => import("@/pages/forgeos"));
-const CountryLanding      = lazy(() => import("@/pages/CountryLanding"));
 const LandingPage         = lazy(() => import("@/pages/landing"));
+const ForLawyersPage      = lazy(() => import("@/pages/for-lawyers"));
 // DEV-only Case File OS gallery. import.meta.env.DEV is statically replaced by
 // Vite, so this whole branch (and its chunk) is tree-shaken out of prod builds.
 const DesignSystem        = import.meta.env.DEV ? lazy(() => import("@/pages/design-system")) : null;
@@ -202,6 +202,7 @@ const LawyerDashboardRoute = protectedRoute(LawyerDashboard);
 const AdvocateDashboardRoute = protectedErrorRoute("advocate-dashboard", AdvocateDashboardGate);
 const SubscriptionRoute = errorRoute("subscription", Subscription);
 const PricingRoute = errorRoute("pricing", PricingPage);
+const ForLawyersRoute = errorRoute("for-lawyers", ForLawyersPage);
 const AskRoute = errorRoute("ask", Ask);
 const ReviewRoute = errorRoute("review", Review);
 const JudgmentDetailRoute = errorRoute("judgment-detail", JudgmentDetail);
@@ -235,10 +236,6 @@ function MyCaseDetailSwitch() {
 const MyCaseDetailRoute = protectedErrorRoute("case-detail", MyCaseDetailSwitch);
 const ConnectAdvocateCasesRoute = protectedErrorRoute("advocate-cases", ConnectAdvocateCasesPage);
 const ConnectAdvocateCaseDetailRoute = protectedErrorRoute("advocate-case-detail", ConnectCaseDetailPage);
-
-function ForLawyersRoute() {
-  return <CountryLanding countryCode={(getCountryFromPath() || "in").toUpperCase()} />;
-}
 
 // The public root is location-neutral. Signed-in users continue to their
 // role-specific dashboard.
@@ -427,6 +424,7 @@ function Router() {
         <Route path="/about"><PublicPageFrame><About /></PublicPageFrame></Route>
         <Route path="/contact"><PublicPageFrame><Contact /></PublicPageFrame></Route>
         <Route path="/pricing"><PublicPageFrame><PricingRoute /></PublicPageFrame></Route>
+        <Route path="/for-lawyers" component={ForLawyersRoute} />
         <Route path="/digest" component={Digest} />
         <Route path="/profile/:username/research" component={ProfileResearch} />
         <Route path="/refund-policy"><PublicPageFrame><RefundPolicy /></PublicPageFrame></Route>
@@ -451,7 +449,6 @@ function Router() {
               <Route path="/review" component={ReviewRoute} />
               <Route path="/judgments/:court/:year/:slug" component={JudgmentDetailRoute} />
               <Route path="/judgments" component={JudgmentsRoute} />
-              <Route path="/for-lawyers" component={ForLawyersRoute} />
               <Route path="/lawyers/register" component={LawyerRegistrationRoute} />
               <Route path="/lawyers/:city" component={CityLawyersRoute} />
               <Route path="/lawyers" component={LawyersRoute} />

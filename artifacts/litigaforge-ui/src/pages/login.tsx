@@ -17,6 +17,7 @@ import { CONNECT_LANGUAGE_STORAGE_KEY, useConnectFlags } from "@/hooks/use-conne
 import { ConnectLanguageSelect } from "@/components/ConnectLanguageSelect";
 import { SegmentedControl } from "@/components/mobile-primitives";
 import { initialAuthMode } from "@/lib/auth-mode";
+import { subscriptionIntentPath } from "@/lib/subscription-intent";
 
 const COUNTRY_COPY: Record<string, { badge: string; heading: string; sub: string; trust: string }> = {
   IN: { badge: "Legal tools for advocates", heading: "Legal tools\nbuilt for your practice.", sub: "Track cases, research Indian judgments, analyze documents, and manage advocate work in one platform.", trust: "Bar enrolment checked by LitigaForge where an advocate is admin-verified" },
@@ -26,10 +27,10 @@ type Role = "client" | "lawyer";
 type Mode = "signin" | "signup";
 
 // Read conversion intent passed from public CTAs (e.g. Workspace, For Lawyers).
-function readAuthParams(): { role: string | null; plan: string | null; billing: string | null; next: string | null } {
-  if (typeof window === "undefined") return { role: null, plan: null, billing: null, next: null };
+function readAuthParams(): { role: string | null; next: string | null } {
+  if (typeof window === "undefined") return { role: null, next: null };
   const p = new URLSearchParams(window.location.search);
-  return { role: p.get("role"), plan: p.get("plan"), billing: p.get("billing"), next: safeAuthNext(p.get("next")) };
+  return { role: p.get("role"), next: safeAuthNext(p.get("next")) };
 }
 
 export default function Login() {
@@ -69,23 +70,23 @@ export default function Login() {
   // Workspace intent defaults to the advocate flow as it requires a profile.
   useEffect(() => {
     const { role: r, next } = readAuthParams();
+    const intendedDestination = next ?? subscriptionIntentPath(window.location.search);
     if (r === "lawyer" || r === "advocate" || next === "/workspace") setRole("lawyer");
     else if (r === "client") setRole("client");
-    if (next) {
-      try { sessionStorage.setItem("lf_return_to", next); } catch { /* unavailable */ }
+    if (intendedDestination) {
+      // Mandatory advocate-profile registration is a full-page navigation. Keep
+      // the validated destination in session storage so profile completion can
+      // restore it without trusting a new query parameter.
+      try { sessionStorage.setItem("lf_return_to", intendedDestination); } catch { /* unavailable */ }
     }
   }, []);
 
   // Carry the selected pricing plan through registration into the upgrade flow.
   const postAuthDest = (currentRole: Role): string => {
-    const { plan, billing, next } = readAuthParams();
+    const { next } = readAuthParams();
     if (next) return next;
-    if (plan && plan !== "free") {
-      const q = new URLSearchParams({ plan });
-      if (billing) q.set("billing", billing);
-      return `/subscription?${q.toString()}`;
-    }
-    return currentRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard";
+    return subscriptionIntentPath(window.location.search)
+      ?? (currentRole === "lawyer" ? "/lawyer-dashboard" : "/client-dashboard");
   };
 
   // Preload Apple SDK
