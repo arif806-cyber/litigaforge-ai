@@ -33,22 +33,26 @@ test("page titles stay above section headings and page transitions avoid the ful
   assert.match(shell, /md:text-\[30px\]/);
   assert.match(docket, /text-lg font-semibold">Your courts and optional matching details/);
   assert.match(docket, /text-lg font-semibold">Court results/);
-  assert.match(judgments, /text-lg font-semibold flex items-center gap-2"><LibraryBig/);
+  assert.match(judgments, /text-lg font-semibold flex items-center gap-2"><LibraryBig\/>/);
   assert.doesNotMatch(`${auth}\n${app}`, /Starting LitigaForge AI/);
   assert.match(app, /aria-label="Loading page"/);
 });
 
 test("advocate overview leads with today's hearings and upcoming matters", async () => {
-  const dashboard = await source("../src/pages/lawyer-dashboard.tsx");
-  const today = dashboard.indexOf('data-testid="today-agenda"');
+  const [dashboard, courtDay] = await Promise.all([
+    source("../src/pages/lawyer-dashboard.tsx"),
+    source("../src/components/court-day/CourtDay.tsx"),
+  ]);
+  const today = dashboard.indexOf("<CourtDay");
   const research = dashboard.indexOf('id="authority-alerts-title"');
   const quickActions = dashboard.indexOf('aria-label="Quick actions"');
   assert.ok(today >= 0 && research > today, "Today agenda must precede secondary research alerts");
   assert.ok(quickActions > research, "Quick actions must not push today's agenda below the fold");
   assert.match(dashboard, /Today<\/h1>/);
-  assert.match(dashboard, /Hearings today/);
-  assert.match(dashboard, /Coming up/);
-  assert.match(dashboard, /href="\/cause-lists"/);
+  assert.match(courtDay, /data-testid="today-agenda"/);
+  assert.match(courtDay, /Hearings today/);
+  assert.match(courtDay, /Coming up/);
+  assert.match(courtDay, /href="\/cause-lists"/);
 });
 
 test("advocate case navigation uses one route in the dashboard tabs and mobile bar", async () => {

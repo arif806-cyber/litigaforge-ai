@@ -19,6 +19,7 @@ test("static sitemap excludes authentication and US-only routes", () => {
   assert.match(sitemap, /https:\/\/litigaforge\.com\/ask<\/loc>/);
   assert.match(sitemap, /https:\/\/litigaforge\.com\/review<\/loc>/);
   assert.match(sitemap, /https:\/\/litigaforge\.com\/subscription<\/loc>/);
+  assert.match(sitemap, /https:\/\/litigaforge\.com\/for-lawyers<\/loc>/);
 });
 
 test("API SEO manifest marks only account/private routes noindex", () => {
